@@ -5,7 +5,8 @@ import { defineMessageUnion } from 'foldkit/message'
 import { evo } from 'foldkit/struct'
 
 import { getStore } from './livestore/client'
-import { events, GreetingPayload, tables } from './livestore/schema'
+import { events, tables } from './livestore/schema'
+import { validateDraft } from './livestore/validate'
 
 // MODEL
 
@@ -46,12 +47,8 @@ const CommitGreeting = Command.define('CommitGreeting', {
   messages: [Message.CommittedGreeting, Message.FailedValidation],
   execute: ({ message }) =>
     Effect.gen(function* () {
-      // Runtime validation through the Effect 4 RC Schema…
-      const payload: GreetingPayload = yield* S.decodeUnknownEffect(GreetingPayload)(message)
-      const trimmed = payload.message.trim()
-      if (trimmed.length === 0) {
-        return yield* Effect.fail(new Error('Say something first — empty messages are rejected.'))
-      }
+      // Runtime validation (Effect RC Schema) + normalization…
+      const trimmed = yield* validateDraft(message)
       // …then commit the event; LiveStore materializes it into SQLite.
       const store = yield* Effect.promise(getStore)
       store.commit(events.greetingCreated({ id: crypto.randomUUID(), message: trimmed }))
