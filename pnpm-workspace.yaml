@@ -2,7 +2,7 @@ packages:
   - '.'
 
 allowBuilds:
-  msgpackr-extract: set this to true or false
+  msgpackr-extract: false
 
 # Supply-chain guard: refuse dependency versions published less than 24h ago.
 minimumReleaseAge: 1440
@@ -14,8 +14,3 @@ onlyBuiltDependencies:
   - esbuild
   - rolldown
   - sqlite-wasm
-
-# msgpackr-extract ships an optional native accelerator; its postinstall is
-# intentionally skipped — the pure-JS fallback is used instead.
-ignoredBuiltDependencies:
-  - msgpackr-extract
