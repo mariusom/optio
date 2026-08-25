@@ -1,0 +1,31 @@
+{
+  "name": "optio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview",
+    "check": "vp check",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@livestore/adapter-web": "0.5.0-dev.0",
+    "@livestore/livestore": "0.5.0-dev.0",
+    "@livestore/wa-sqlite": "0.5.0-dev.0",
+    "effect": "4.0.0-rc.111",
+    "foldkit": "^0.151.0"
+  },
+  "devDependencies": {
+    "@foldkit/vite-plugin": "^0.17.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "daisyui": "^5.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^7.0.2",
+    "vite-plugin-pwa": "^0.21.0 || ^1.0.0",
+    "vite-plus": "^0.3.0",
+    "workbox-window": "^7.4.1"
+  }
+}

@@ -1,0 +1,17 @@
+packages:
+  - '.'
+
+allowBuilds:
+  msgpackr-extract: set this to true or false
+
+# Supply-chain guard: refuse dependency versions published less than 24h ago.
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - foldkit
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
+  - msgpackr-extract
+  - rolldown
+  - sqlite-wasm
