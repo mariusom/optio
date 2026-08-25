@@ -12,6 +12,10 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - esbuild
-  - msgpackr-extract
   - rolldown
   - sqlite-wasm
+
+# msgpackr-extract ships an optional native accelerator; its postinstall is
+# intentionally skipped — the pure-JS fallback is used instead.
+ignoredBuiltDependencies:
+  - msgpackr-extract
