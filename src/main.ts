@@ -18,10 +18,16 @@ const Greeting = S.Struct({
   createdAt: S.Number,
 })
 
+const EditDraft = S.Struct({
+  id: S.String,
+  draft: S.String,
+})
+
 export const Model = S.Struct({
   draft: S.String,
   lastError: S.Union([S.Null, S.String]),
   greetings: S.Array(Greeting),
+  editing: S.Union([S.Null, EditDraft]),
 })
 export type Model = typeof Model.Type
 
@@ -35,6 +41,11 @@ export const Message = defineMessageUnion({
   FailedValidation: { error: S.String },
   ClickedDeleteGreeting: { id: S.String },
   DeletedGreeting: {},
+  ClickedEditGreeting: { id: S.String, currentText: S.String },
+  ChangedEditDraft: { text: S.String },
+  ClickedSaveGreeting: {},
+  ClickedCancelEdit: {},
+  SavedGreetingEdit: {},
 })
 export type Message = typeof Message.Type
 
@@ -71,6 +82,20 @@ const DeleteGreeting = Command.define('DeleteGreeting', {
     }),
 })
 
+const SaveGreetingEdit = Command.define('SaveGreetingEdit', {
+  args: { id: S.String, message: S.String },
+  messages: [Message.SavedGreetingEdit, Message.FailedValidation],
+  execute: ({ id, message }) =>
+    Effect.gen(function* () {
+      const trimmed = yield* validateDraft(message)
+      const store = yield* Effect.promise(getStore)
+      store.commit(events.greetingEdited({ id, message: trimmed }))
+      return Message.SavedGreetingEdit()
+    }).pipe(
+      Effect.catch(error => Effect.succeed(Message.FailedValidation({ error: String(error) }))),
+    ),
+})
+
 // UPDATE — exhaustive, pure state transitions
 
 export const update = (model: Model, message: Message) =>
@@ -88,12 +113,35 @@ export const update = (model: Model, message: Message) =>
       commands: [DeleteGreeting({ id })],
     }),
     DeletedGreeting: () => ({ model }),
+    ClickedEditGreeting: ({ id, currentText }) => ({
+      model: evo(model, {
+        editing: () => ({ id, draft: currentText }),
+        lastError: () => null,
+      }),
+    }),
+    ChangedEditDraft: ({ text }) => ({
+      model: evo(model, {
+        editing: editing =>
+          editing === null ? null : evo(editing, { draft: () => text }),
+      }),
+    }),
+    ClickedSaveGreeting: () =>
+      model.editing === null
+        ? { model }
+        : {
+            model,
+            commands: [SaveGreetingEdit({ id: model.editing.id, message: model.editing.draft })],
+          },
+    ClickedCancelEdit: () => ({ model: evo(model, { editing: () => null }) }),
+    SavedGreetingEdit: () => ({
+      model: evo(model, { editing: () => null, lastError: () => null }),
+    }),
   })
 
 // INIT
 
 export const init: Runtime.ApplicationInit<Model, Message> = () => ({
-  model: { draft: '', lastError: null, greetings: [] },
+  model: { draft: '', lastError: null, greetings: [], editing: null },
 })
 
 // SUBSCRIPTIONS — LiveStore pushes reactive query results into update
@@ -134,61 +182,132 @@ export const subscriptions = Subscription.make<Model, Message>()(entry => ({
 
 // VIEW — pure Model → daisyUI-styled HTML
 
-export const view = (model: Model, h: HtmlBuilder<Message>): Document => ({
-  title: 'optio — ox-alpha experiment',
-  body: h.div(
-    [h.Class('hero min-h-screen bg-base-200')],
-    [
-      h.div([h.Class('hero-content')], [
-        h.div([h.Class('flex w-full max-w-md flex-col gap-6 text-center')], [
-          h.h1([h.Class('text-4xl font-bold')], ['Hello from ox-alpha']),
-          h.p([h.Class('text-sm text-base-content/70')], [
-            'FoldKit · LiveStore · Effect RC · Vite+ · Bun — persisted locally, works offline.',
+const editInputClasses =
+  'input input-ghost join-item w-full bg-base-300/40 focus:bg-base-300/70 transition-colors'
+
+export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
+  ({
+    title: 'optio — ox-alpha experiment',
+    body: h.div([], [
+      h.div(
+        [h.Class('hero min-h-screen bg-base-200')],
+        [
+          h.div([h.Class('hero-content')], [
+            h.div([h.Class('flex w-full max-w-md flex-col gap-6 text-center')], [
+              h.h1([h.Class('text-4xl font-bold')], ['Hello from ox-alpha']),
+              h.p([h.Class('text-sm text-base-content/70')], [
+                'FoldKit · LiveStore · Effect RC · Vite+ · pnpm — persisted locally, works offline.',
+              ]),
+              h.div([h.Class('card bg-base-100 shadow-xl')], [
+                h.div([h.Class('card-body gap-3')], [
+                  h.div([h.Class('join w-full')], [
+                    h.input([
+                      h.Class(editInputClasses),
+                      h.Value(model.draft),
+                      h.Attribute('placeholder', 'Say something…'),
+                      h.OnInput(value => Message.ChangedDraft({ text: value })),
+                      h.OnKeyDownPreventDefault(key =>
+                        key === 'Enter' && model.draft.trim() !== ''
+                          ? Option.some(Message.ClickedAddGreeting())
+                          : Option.none(),
+                      ),
+                    ]),
+                    h.button(
+                      [
+                        h.Class('btn btn-primary join-item'),
+                        h.OnClick(Message.ClickedAddGreeting()),
+                      ],
+                      ['Greet'],
+                    ),
+                  ]),
+                  ...(model.editing === null && model.lastError !== null
+                    ? [
+                        h.div(
+                          [h.Class('alert alert-warning py-2 text-sm')],
+                          [model.lastError],
+                        ),
+                      ]
+                    : []),
+                  h.div([h.Class('divider my-1 text-xs')], ['stored in SQLite via OPFS']),
+                  ...(model.greetings.length === 0
+                    ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
+                    : model.greetings.map(greeting =>
+                        h.keyed('div')(greeting.id, [h.Class('group flex items-center gap-1')], [
+                          h.div([h.Class('chat chat-start w-fit max-w-[85%]')], [
+                            h.div([h.Class('chat-bubble chat-bubble-primary')], [
+                              greeting.message,
+                            ]),
+                          ]),
+                          h.button(
+                            [
+                              h.Class(
+                                'btn btn-circle btn-ghost btn-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+                              ),
+                              h.AriaLabel(`Edit "${greeting.message}"`),
+                              h.OnClick(
+                                Message.ClickedEditGreeting({
+                                  id: greeting.id,
+                                  currentText: greeting.message,
+                                }),
+                              ),
+                            ],
+                            ['✎'],
+                          ),
+                          h.button(
+                            [
+                              h.Class(
+                                'btn btn-circle btn-ghost btn-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+                              ),
+                              h.AriaLabel(`Delete "${greeting.message}"`),
+                              h.OnClick(Message.ClickedDeleteGreeting({ id: greeting.id })),
+                            ],
+                            ['✕'],
+                          ),
+                        ]),
+                      )),
+                ]),
+              ]),
+            ]),
           ]),
-          h.div([h.Class('card bg-base-100 shadow-xl')], [
-            h.div([h.Class('card-body gap-3')], [
-              h.div([h.Class('join w-full')], [
+        ],
+      ),
+      ...(model.editing === null
+        ? []
+        : [
+            h.div([h.Class('modal modal-open')], [
+              h.div([h.Class('modal-box')], [
+                h.h3([h.Class('text-lg font-bold')], ['Edit greeting']),
+                ...(model.lastError !== null
+                  ? [
+                      h.div(
+                        [h.Class('alert alert-warning mt-3 py-2 text-sm')],
+                        [model.lastError],
+                      ),
+                    ]
+                  : []),
                 h.input([
-                  h.Class('input input-bordered join-item w-full'),
-                  h.Value(model.draft),
-                  h.Attribute('placeholder', 'Say something…'),
-                  h.OnInput(value => Message.ChangedDraft({ text: value })),
+                  h.Class(`${editInputClasses} mt-3`),
+                  h.Value(model.editing.draft),
+                  h.OnInput(value => Message.ChangedEditDraft({ text: value })),
                   h.OnKeyDownPreventDefault(key =>
-                    key === 'Enter' && model.draft.trim() !== ''
-                      ? Option.some(Message.ClickedAddGreeting())
+                    key === 'Enter' && model.editing !== null && model.editing.draft.trim() !== ''
+                      ? Option.some(Message.ClickedSaveGreeting())
                       : Option.none(),
                   ),
                 ]),
-                h.button(
-                  [h.Class('btn btn-primary join-item'), h.OnClick(Message.ClickedAddGreeting())],
-                  ['Greet'],
-                ),
+                h.div([h.Class('modal-action')], [
+                  h.button(
+                    [h.Class('btn btn-ghost'), h.OnClick(Message.ClickedCancelEdit())],
+                    ['Cancel'],
+                  ),
+                  h.button(
+                    [h.Class('btn btn-primary'), h.OnClick(Message.ClickedSaveGreeting())],
+                    ['Save'],
+                  ),
+                ]),
               ]),
-              ...(model.lastError !== null
-                ? [h.div([h.Class('alert alert-warning py-2 text-sm')], [model.lastError])]
-                : []),
-              h.div([h.Class('divider my-1 text-xs')], ['stored in SQLite via OPFS']),
-              ...(model.greetings.length === 0
-                ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
-                : model.greetings.map(greeting =>
-                    h.keyed('div')(greeting.id, [h.Class('flex items-center gap-1')], [
-                      h.div([h.Class('chat chat-start grow')], [
-                        h.div([h.Class('chat-bubble chat-bubble-primary')], [greeting.message]),
-                      ]),
-                      h.button(
-                        [
-                          h.Class('btn btn-circle btn-ghost btn-xs shrink-0'),
-                          h.AriaLabel(`Delete "${greeting.message}"`),
-                          h.OnClick(Message.ClickedDeleteGreeting({ id: greeting.id })),
-                        ],
-                        ['✕'],
-                      ),
-                    ]),
-                  )),
+              h.button([h.Class('modal-backdrop'), h.OnClick(Message.ClickedCancelEdit())], []),
             ]),
           ]),
-        ]),
-      ]),
-    ],
-  ),
-})
+    ]),
+  }) satisfies Document

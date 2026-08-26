@@ -29,12 +29,18 @@ export const events = {
     name: 'v1.GreetingDeleted',
     schema: Schema.Struct({ id: Schema.String }),
   }),
+  greetingEdited: Events.synced({
+    name: 'v1.GreetingEdited',
+    schema: Schema.Struct({ id: Schema.String, message: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
   'v1.GreetingCreated': ({ id, message }) =>
     tables.greetings.insert({ id, message, createdAt: new Date() }),
   'v1.GreetingDeleted': ({ id }) => tables.greetings.delete().where({ id }),
+  'v1.GreetingEdited': ({ id, message }) =>
+    tables.greetings.update({ message }).where({ id }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })
