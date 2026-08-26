@@ -1,4 +1,4 @@
-import { Events, State, makeSchema, sql } from "@livestore/livestore";
+import { Events, State, makeSchema } from "@livestore/livestore";
 import { Schema } from "effect";
 
 // ── Domain schemas ───────────────────────────────────────────────────────
@@ -304,7 +304,9 @@ const materializers = State.SQLite.materializers(events, {
       updatedAt: new Date(),
     }),
   "v2.TemplateUpdated": ({ id, name, isDefault, fields }) => [
-    ...(isDefault ? [sql`update templates set isDefault = 0 where id != ${id}`] : []),
+    ...(isDefault
+      ? [tables.templates.update({ isDefault: 0 }).where({ id: { op: "!=", value: id } })]
+      : []),
     tables.templates
       .update({ name, isDefault: isDefault ? 1 : 0, updatedAt: new Date() })
       .where({ id }),
@@ -320,7 +322,7 @@ const materializers = State.SQLite.materializers(events, {
     tables.templateFields.delete().where({ templateId: id }),
   ],
   "v2.TemplateDefaultSet": ({ id }) => [
-    sql`update templates set isDefault = 0 where id != ${id}`,
+    tables.templates.update({ isDefault: 0 }).where({ id: { op: "!=", value: id } }),
     tables.templates.update({ isDefault: 1 }).where({ id }),
   ],
   "v2.TemplatesSeeded": ({ templates }) =>
@@ -382,12 +384,28 @@ const materializers = State.SQLite.materializers(events, {
     ];
   },
   "v2.SessionLiveGraphCleared": ({ sessionId }) => [
-    sql`delete from sessionTaskFields where taskId in (select id from sessionTasks where sessionId = ${sessionId})`,
-    sql`delete from sessionTasks where sessionId = ${sessionId}`,
+    {
+      sql: "delete from sessionTaskFields where taskId in (select id from sessionTasks where sessionId = $sessionId)",
+      bindValues: { sessionId },
+      writeTables: new Set(["sessionTaskFields"]),
+    },
+    {
+      sql: "delete from sessionTasks where sessionId = $sessionId",
+      bindValues: { sessionId },
+      writeTables: new Set(["sessionTasks"]),
+    },
   ],
   "v2.SessionDeleted": ({ id }) => [
-    sql`delete from taskSectionRecords where taskRecordId in (select id from taskRecords where sessionId = ${id})`,
-    sql`delete from taskRecords where sessionId = ${id}`,
+    {
+      sql: "delete from taskSectionRecords where taskRecordId in (select id from taskRecords where sessionId = $id)",
+      bindValues: { id },
+      writeTables: new Set(["taskSectionRecords"]),
+    },
+    {
+      sql: "delete from taskRecords where sessionId = $id",
+      bindValues: { id },
+      writeTables: new Set(["taskRecords"]),
+    },
     tables.sessions.delete().where({ id }),
   ],
 
@@ -407,14 +425,21 @@ const materializers = State.SQLite.materializers(events, {
   "v2.TaskReopened": ({ id }) =>
     tables.sessionTasks.update({ endDate: null, isBeingEdited: 1 }).where({ id }),
   "v2.TaskEditStarted": ({ sessionId, id }) => [
-    sql`update sessionTasks set isBeingEdited = 0 where sessionId = ${sessionId}`,
+    tables.sessionTasks.update({ isBeingEdited: 0 }).where({ sessionId }),
     tables.sessionTasks.update({ isBeingEdited: 1 }).where({ id }),
   ],
   "v2.TaskEditFinished": ({ id }) => tables.sessionTasks.update({ isBeingEdited: 0 }).where({ id }),
-  "v2.TaskFieldValueChanged": ({ id, value, now }) =>
-    sql`update sessionTaskFields set value = ${value}, startDate = coalesce(startDate, ${now}) where id = ${id}`,
+  // COALESCE = first-write-only startDate (Swift TaskSection.value setter).
+  // Raw SQL with $named binds: the `sql` template tag inlines values
+  // unquoted (String(arg)), which breaks on uuids/dates ("near 'Aug': syntax
+  // error"), so values MUST go through bindValues.
+  "v2.TaskFieldValueChanged": ({ id, value, now }) => ({
+    sql: "update sessionTaskFields set value = $value, startDate = coalesce(startDate, $now) where id = $id",
+    bindValues: { value, now: now.getTime(), id },
+    writeTables: new Set(["sessionTaskFields"]),
+  }),
   "v2.TaskFieldValueRestored": ({ id, value }) =>
-    sql`update sessionTaskFields set value = ${value} where id = ${id}`,
+    tables.sessionTaskFields.update({ value }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

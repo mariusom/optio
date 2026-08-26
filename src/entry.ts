@@ -1,11 +1,8 @@
 import { Runtime } from "foldkit";
-import type { Url } from "foldkit/url";
 import { registerSW } from "virtual:pwa-register";
 
 import "./index.css";
-import { Message } from "./messages.ts";
-import { parseRoute } from "./we/routes.ts";
-import { Model, init, update, view } from "./main.ts";
+import { applicationConfig } from "./application.ts";
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
 // Design system §5.9: never reload the page out from under the user. When a new
@@ -52,17 +49,7 @@ const updateSW = registerSW({
 });
 
 const application = Runtime.makeApplication({
-  Model,
-  init,
-  update,
-  view,
-  routing: {
-    // foldkit preventDefaults same-origin anchor clicks and hands us the
-    // request; history is written by our NavigateInternal/NavigateExternal
-    // Commands (pushUrl/load), which come back here as onUrlChange.
-    onUrlRequest: (request) => Message.ClickedLink({ request }),
-    onUrlChange: (url: Url) => Message.GotRoute({ route: parseRoute(url) }),
-  },
+  ...applicationConfig,
   container: document.getElementById("root")!,
 });
 

@@ -14,12 +14,20 @@ const adapter = makePersistedAdapter({
 /**
  * Imperative handle on the LiveStore store — FoldKit has no hook bridge,
  * so Commands/Subscriptions await this promise directly.
+ *
+ * `createStorePromise` builds a *new* store per call (it grabs the
+ * tablespace lock via a SharedWorker), so the promise is memoized: every
+ * caller shares one store instance. Calling it repeatedly would create
+ * competing store attempts on the same storeId — every call after the
+ * first hangs awaiting the lock and the app deadlocks into empty states.
  */
+let storePromise: Promise<AppStore> | null = null;
+
 export const getStore = () =>
-  createStorePromise({
+  (storePromise ??= createStorePromise({
     storeId: "watchfuleye-v1",
     schema,
     adapter,
-  });
+  }));
 
 export type AppStore = Awaited<ReturnType<typeof getStore>>;
