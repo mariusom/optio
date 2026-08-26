@@ -33,6 +33,8 @@ export const Message = defineMessageUnion({
   ClickedAddGreeting: {},
   CommittedGreeting: {},
   FailedValidation: { error: S.String },
+  ClickedDeleteGreeting: { id: S.String },
+  DeletedGreeting: {},
 })
 export type Message = typeof Message.Type
 
@@ -58,6 +60,17 @@ const CommitGreeting = Command.define('CommitGreeting', {
     ),
 })
 
+const DeleteGreeting = Command.define('DeleteGreeting', {
+  args: { id: S.String },
+  messages: [Message.DeletedGreeting],
+  execute: ({ id }) =>
+    Effect.gen(function* () {
+      const store = yield* Effect.promise(getStore)
+      store.commit(events.greetingDeleted({ id }))
+      return Message.DeletedGreeting()
+    }),
+})
+
 // UPDATE — exhaustive, pure state transitions
 
 export const update = (model: Model, message: Message) =>
@@ -70,6 +83,11 @@ export const update = (model: Model, message: Message) =>
     }),
     CommittedGreeting: () => ({ model: evo(model, { draft: () => '', lastError: () => null }) }),
     FailedValidation: ({ error }) => ({ model: evo(model, { lastError: () => error }) }),
+    ClickedDeleteGreeting: ({ id }) => ({
+      model,
+      commands: [DeleteGreeting({ id })],
+    }),
+    DeletedGreeting: () => ({ model }),
   })
 
 // INIT
@@ -153,8 +171,18 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => ({
               ...(model.greetings.length === 0
                 ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
                 : model.greetings.map(greeting =>
-                    h.keyed('div')(greeting.id, [h.Class('chat chat-start')], [
-                      h.div([h.Class('chat-bubble chat-bubble-primary')], [greeting.message]),
+                    h.keyed('div')(greeting.id, [h.Class('flex items-center gap-1')], [
+                      h.div([h.Class('chat chat-start grow')], [
+                        h.div([h.Class('chat-bubble chat-bubble-primary')], [greeting.message]),
+                      ]),
+                      h.button(
+                        [
+                          h.Class('btn btn-circle btn-ghost btn-xs shrink-0'),
+                          h.AriaLabel(`Delete "${greeting.message}"`),
+                          h.OnClick(Message.ClickedDeleteGreeting({ id: greeting.id })),
+                        ],
+                        ['✕'],
+                      ),
                     ]),
                   )),
             ]),
