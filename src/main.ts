@@ -257,40 +257,37 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
                   ...(model.greetings.length === 0
                     ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
                     : model.greetings.map(greeting =>
-                        h.keyed('div')(greeting.id, [h.Class('group flex items-center gap-1')], [
-                        h.div([h.Class('chat chat-start w-fit max-w-[85%]')], [
+                        h.keyed('div')(greeting.id, [h.Class('chat chat-start w-fit max-w-[85%]')], [
                           h.div([h.Class('chat-bubble chat-bubble-primary')], [
                             greeting.message,
                           ]),
                           h.div(
-                            [h.Class('chat-footer text-base-content/50')],
-                            [formatTimestamp(greeting.createdAt)],
-                          ),
-                        ]),
-                          h.button(
+                            [h.Class('chat-footer mt-1.5 items-center gap-2 text-base-content/50')],
                             [
-                              h.Class(
-                                'btn btn-circle btn-ghost btn-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
+                              formatTimestamp(greeting.createdAt),
+                              h.span([h.Class('text-base-content/30')], ['·']),
+                              h.button(
+                                [
+                                  h.Class('cursor-pointer transition-colors hover:text-base-content'),
+                                  h.AriaLabel(`Edit "${greeting.message}"`),
+                                  h.OnClick(
+                                    Message.ClickedEditGreeting({
+                                      id: greeting.id,
+                                      currentText: greeting.message,
+                                    }),
+                                  ),
+                                ],
+                                ['Edit'],
                               ),
-                              h.AriaLabel(`Edit "${greeting.message}"`),
-                              h.OnClick(
-                                Message.ClickedEditGreeting({
-                                  id: greeting.id,
-                                  currentText: greeting.message,
-                                }),
+                              h.button(
+                                [
+                                  h.Class('cursor-pointer transition-colors hover:text-error'),
+                                  h.AriaLabel(`Delete "${greeting.message}"`),
+                                  h.OnClick(Message.ClickedDeleteGreeting({ id: greeting.id })),
+                                ],
+                                ['Delete'],
                               ),
                             ],
-                            ['✎'],
-                          ),
-                          h.button(
-                            [
-                              h.Class(
-                                'btn btn-circle btn-ghost btn-xs shrink-0 opacity-0 group-hover:opacity-100 transition-opacity',
-                              ),
-                              h.AriaLabel(`Delete "${greeting.message}"`),
-                              h.OnClick(Message.ClickedDeleteGreeting({ id: greeting.id })),
-                            ],
-                            ['✕'],
                           ),
                         ]),
                       )),
