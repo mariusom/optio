@@ -1,4 +1,4 @@
-import { makeWorker } from '@livestore/adapter-web/worker'
-import { schema } from './schema.ts'
+import { makeWorker } from "@livestore/adapter-web/worker";
+import { schema } from "./schema.ts";
 
-makeWorker({ schema })
+makeWorker({ schema });

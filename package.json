@@ -1,10 +1,9 @@
 {
   "name": "optio",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",
@@ -29,5 +28,6 @@
     "vite-plus": "^0.3.0",
     "vitest": "^4.1.11",
     "workbox-window": "^7.4.1"
-  }
+  },
+  "packageManager": "pnpm@11.22.0"
 }

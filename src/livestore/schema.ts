@@ -1,17 +1,11 @@
-import { Events, State, makeSchema, sql } from '@livestore/livestore'
-import { Schema } from 'effect'
+import { Events, State, makeSchema, sql } from "@livestore/livestore";
+import { Schema } from "effect";
 
 // ── Domain schemas ───────────────────────────────────────────────────────
 
 /** The five WatchfulEye field types (raw strings mirror the Swift enum). */
-export const FieldKind = Schema.Literals([
-  'radio',
-  'checkbox',
-  'textInput',
-  'textArea',
-  'boolean',
-])
-export type FieldKind = typeof FieldKind.Type
+export const FieldKind = Schema.Literals(["radio", "checkbox", "textInput", "textArea", "boolean"]);
+export type FieldKind = typeof FieldKind.Type;
 
 export const FieldDef = Schema.Struct({
   id: Schema.String,
@@ -22,17 +16,17 @@ export const FieldDef = Schema.Struct({
   sortOrder: Schema.Number,
   options: Schema.Array(Schema.String),
   exclusiveOptions: Schema.Array(Schema.String),
-})
-export type FieldDef = typeof FieldDef.Type
+});
+export type FieldDef = typeof FieldDef.Type;
 
 // ── Tables ────────────────────────────────────────────────────────────────
 
 export const tables = {
   templates: State.SQLite.table({
-    name: 'templates',
+    name: "templates",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      name: State.SQLite.text({ default: '' }),
+      name: State.SQLite.text({ default: "" }),
       // 0/1 integers — converted at the edges, avoids schema surprises
       isDefault: State.SQLite.integer({ default: 0 }),
       createdAt: State.SQLite.integer({ nullable: false, schema: Schema.DateFromMillis }),
@@ -40,99 +34,99 @@ export const tables = {
     },
   }),
   templateFields: State.SQLite.table({
-    name: 'templateFields',
+    name: "templateFields",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      templateId: State.SQLite.text({ default: '' }),
-      name: State.SQLite.text({ default: '' }),
-      kind: State.SQLite.text({ default: 'textInput' }),
+      templateId: State.SQLite.text({ default: "" }),
+      name: State.SQLite.text({ default: "" }),
+      kind: State.SQLite.text({ default: "textInput" }),
       isRequired: State.SQLite.integer({ default: 0 }),
-      defaultValue: State.SQLite.text({ default: '' }),
+      defaultValue: State.SQLite.text({ default: "" }),
       sortOrder: State.SQLite.integer({ default: 0 }),
       // JSON-encoded string arrays (mirrors Swift's StringArrayCodec semantics)
-      optionsJson: State.SQLite.text({ default: '[]' }),
-      exclusiveOptionsJson: State.SQLite.text({ default: '[]' }),
+      optionsJson: State.SQLite.text({ default: "[]" }),
+      exclusiveOptionsJson: State.SQLite.text({ default: "[]" }),
     },
-    indexes: [{ name: 'idx_templateFields_template', columns: ['templateId'] }],
+    indexes: [{ name: "idx_templateFields_template", columns: ["templateId"] }],
   }),
   // Sessions (live + archived unified: endedAt IS NULL ⇒ live/open)
   sessions: State.SQLite.table({
-    name: 'sessions',
+    name: "sessions",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       templateId: State.SQLite.text({ nullable: true }),
-      templateName: State.SQLite.text({ default: '' }),
-      sessionName: State.SQLite.text({ default: '' }),
+      templateName: State.SQLite.text({ default: "" }),
+      sessionName: State.SQLite.text({ default: "" }),
       startedAt: State.SQLite.integer({ nullable: false, schema: Schema.DateFromMillis }),
       endedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
   }),
   sessionTasks: State.SQLite.table({
-    name: 'sessionTasks',
+    name: "sessionTasks",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      sessionId: State.SQLite.text({ default: '' }),
+      sessionId: State.SQLite.text({ default: "" }),
       orderIndex: State.SQLite.integer({ default: 1 }),
-      taskType: State.SQLite.text({ default: 'single' }),
+      taskType: State.SQLite.text({ default: "single" }),
       endDate: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
       isBeingEdited: State.SQLite.integer({ default: 0 }),
     },
-    indexes: [{ name: 'idx_sessionTasks_session', columns: ['sessionId'] }],
+    indexes: [{ name: "idx_sessionTasks_session", columns: ["sessionId"] }],
   }),
   sessionTaskFields: State.SQLite.table({
-    name: 'sessionTaskFields',
+    name: "sessionTaskFields",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      taskId: State.SQLite.text({ default: '' }),
-      name: State.SQLite.text({ default: '' }),
-      kind: State.SQLite.text({ default: 'textInput' }),
+      taskId: State.SQLite.text({ default: "" }),
+      name: State.SQLite.text({ default: "" }),
+      kind: State.SQLite.text({ default: "textInput" }),
       isRequired: State.SQLite.integer({ default: 0 }),
-      defaultValue: State.SQLite.text({ default: '' }),
+      defaultValue: State.SQLite.text({ default: "" }),
       sortOrder: State.SQLite.integer({ default: 0 }),
-      optionsJson: State.SQLite.text({ default: '[]' }),
-      exclusiveOptionsJson: State.SQLite.text({ default: '[]' }),
-      value: State.SQLite.text({ default: '' }),
+      optionsJson: State.SQLite.text({ default: "[]" }),
+      exclusiveOptionsJson: State.SQLite.text({ default: "[]" }),
+      value: State.SQLite.text({ default: "" }),
       startDate: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
-    indexes: [{ name: 'idx_sessionTaskFields_task', columns: ['taskId'] }],
+    indexes: [{ name: "idx_sessionTaskFields_task", columns: ["taskId"] }],
   }),
   taskRecords: State.SQLite.table({
-    name: 'taskRecords',
+    name: "taskRecords",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      sessionId: State.SQLite.text({ default: '' }),
+      sessionId: State.SQLite.text({ default: "" }),
       taskId: State.SQLite.integer({ default: 0 }),
-      taskType: State.SQLite.text({ default: 'single' }),
+      taskType: State.SQLite.text({ default: "single" }),
       startedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
       endedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
-    indexes: [{ name: 'idx_taskRecords_session', columns: ['sessionId'] }],
+    indexes: [{ name: "idx_taskRecords_session", columns: ["sessionId"] }],
   }),
   taskSectionRecords: State.SQLite.table({
-    name: 'taskSectionRecords',
+    name: "taskSectionRecords",
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
-      taskRecordId: State.SQLite.text({ default: '' }),
-      sectionName: State.SQLite.text({ default: '' }),
-      value: State.SQLite.text({ default: '' }),
-      sectionType: State.SQLite.text({ default: '' }),
+      taskRecordId: State.SQLite.text({ default: "" }),
+      sectionName: State.SQLite.text({ default: "" }),
+      value: State.SQLite.text({ default: "" }),
+      sectionType: State.SQLite.text({ default: "" }),
       isRequired: State.SQLite.integer({ default: 0 }),
       startedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
-    indexes: [{ name: 'idx_taskSectionRecords_record', columns: ['taskRecordId'] }],
+    indexes: [{ name: "idx_taskSectionRecords_record", columns: ["taskRecordId"] }],
   }),
-}
+};
 
 // ── Events ────────────────────────────────────────────────────────────────
 
 export const events = {
   templateCreated: Events.synced({
-    name: 'v2.TemplateCreated',
+    name: "v2.TemplateCreated",
     schema: Schema.Struct({ id: Schema.String, name: Schema.String, isDefault: Schema.Boolean }),
   }),
   /** Full editor save: template metadata + wholesale field replacement, atomic. */
   templateUpdated: Events.synced({
-    name: 'v2.TemplateUpdated',
+    name: "v2.TemplateUpdated",
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
@@ -142,21 +136,21 @@ export const events = {
   }),
   /** Wholesale field replacement (used by duplicate). */
   fieldsReplaced: Events.synced({
-    name: 'v2.FieldsReplaced',
+    name: "v2.FieldsReplaced",
     schema: Schema.Struct({ templateId: Schema.String, fields: Schema.Array(FieldDef) }),
   }),
   templateDeleted: Events.synced({
-    name: 'v2.TemplateDeleted',
+    name: "v2.TemplateDeleted",
     schema: Schema.Struct({ id: Schema.String }),
   }),
   /** Clears other defaults, then sets the given template as the sole default. */
   templateDefaultSet: Events.synced({
-    name: 'v2.TemplateDefaultSet',
+    name: "v2.TemplateDefaultSet",
     schema: Schema.Struct({ id: Schema.String }),
   }),
   /** Atomic first-boot seeding of sample content (never leaves user template-less). */
   templatesSeeded: Events.synced({
-    name: 'v2.TemplatesSeeded',
+    name: "v2.TemplatesSeeded",
     schema: Schema.Struct({
       templates: Schema.Array(
         Schema.Struct({
@@ -171,7 +165,7 @@ export const events = {
 
   // ── Sessions ────────────────────────────────────────────────────────────
   sessionStarted: Events.synced({
-    name: 'v2.SessionStarted',
+    name: "v2.SessionStarted",
     schema: Schema.Struct({
       id: Schema.String,
       templateId: Schema.Union([Schema.Null, Schema.String]),
@@ -180,7 +174,7 @@ export const events = {
     }),
   }),
   sessionRenamed: Events.synced({
-    name: 'v2.SessionRenamed',
+    name: "v2.SessionRenamed",
     schema: Schema.Struct({ id: Schema.String, sessionName: Schema.String }),
   }),
   /**
@@ -189,7 +183,7 @@ export const events = {
    * caller can delete the whole session instead (Swift parity).
    */
   sessionEnded: Events.synced({
-    name: 'v2.SessionEnded',
+    name: "v2.SessionEnded",
     schema: Schema.Struct({
       id: Schema.String,
       endedAt: Schema.DateFromMillis,
@@ -214,18 +208,18 @@ export const events = {
   }),
   /** Deletes a session's live graph (tasks + their fields). */
   sessionLiveGraphCleared: Events.synced({
-    name: 'v2.SessionLiveGraphCleared',
+    name: "v2.SessionLiveGraphCleared",
     schema: Schema.Struct({ sessionId: Schema.String }),
   }),
   /** Deletes an archived session with all its records (cascade semantics). */
   sessionDeleted: Events.synced({
-    name: 'v2.SessionDeleted',
+    name: "v2.SessionDeleted",
     schema: Schema.Struct({ id: Schema.String }),
   }),
 
   // ── Live tasks ──────────────────────────────────────────────────────────
   taskSpawned: Events.synced({
-    name: 'v2.TaskSpawned',
+    name: "v2.TaskSpawned",
     schema: Schema.Struct({
       sessionId: Schema.String,
       id: Schema.String,
@@ -234,20 +228,20 @@ export const events = {
     }),
   }),
   taskFinished: Events.synced({
-    name: 'v2.TaskFinished',
+    name: "v2.TaskFinished",
     schema: Schema.Struct({ id: Schema.String, endedAt: Schema.DateFromMillis }),
   }),
   taskReopened: Events.synced({
-    name: 'v2.TaskReopened',
+    name: "v2.TaskReopened",
     schema: Schema.Struct({ id: Schema.String }),
   }),
   /** Clears edit flags on every task of the session, then flags the target. */
   taskEditStarted: Events.synced({
-    name: 'v2.TaskEditStarted',
+    name: "v2.TaskEditStarted",
     schema: Schema.Struct({ sessionId: Schema.String, id: Schema.String }),
   }),
   taskEditFinished: Events.synced({
-    name: 'v2.TaskEditFinished',
+    name: "v2.TaskEditFinished",
     schema: Schema.Struct({ id: Schema.String }),
   }),
   /**
@@ -255,20 +249,20 @@ export const events = {
    * (COALESCE keeps the earliest timestamp — Swift's TaskSection.value setter).
    */
   taskFieldValueChanged: Events.synced({
-    name: 'v2.TaskFieldValueChanged',
+    name: "v2.TaskFieldValueChanged",
     schema: Schema.Struct({ id: Schema.String, value: Schema.String, now: Schema.DateFromMillis }),
   }),
   /** Restores a value WITHOUT touching startDate (edit-cancel rollback). */
   taskFieldValueRestored: Events.synced({
-    name: 'v2.TaskFieldValueRestored',
+    name: "v2.TaskFieldValueRestored",
     schema: Schema.Struct({ id: Schema.String, value: Schema.String }),
   }),
-}
+};
 
 // ── Materializers ─────────────────────────────────────────────────────────
 
 const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef>) =>
-  fields.map(field =>
+  fields.map((field) =>
     tables.templateFields.insert({
       id: field.id,
       templateId,
@@ -280,10 +274,10 @@ const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef
       optionsJson: JSON.stringify(field.options),
       exclusiveOptionsJson: JSON.stringify(field.exclusiveOptions),
     }),
-  )
+  );
 
 const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>) =>
-  fields.map(field =>
+  fields.map((field) =>
     tables.sessionTaskFields.insert({
       id: crypto.randomUUID(),
       taskId,
@@ -298,10 +292,10 @@ const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>
       value: field.defaultValue,
       startDate: null,
     }),
-  )
+  );
 
 const materializers = State.SQLite.materializers(events, {
-  'v2.TemplateCreated': ({ id, name, isDefault }) =>
+  "v2.TemplateCreated": ({ id, name, isDefault }) =>
     tables.templates.insert({
       id,
       name,
@@ -309,25 +303,28 @@ const materializers = State.SQLite.materializers(events, {
       createdAt: new Date(),
       updatedAt: new Date(),
     }),
-  'v2.TemplateUpdated': ({ id, name, isDefault, fields }) => [
-    tables.templates.update({ name, isDefault: isDefault ? 1 : 0, updatedAt: new Date() }).where({ id }),
+  "v2.TemplateUpdated": ({ id, name, isDefault, fields }) => [
+    ...(isDefault ? [sql`update templates set isDefault = 0 where id != ${id}`] : []),
+    tables.templates
+      .update({ name, isDefault: isDefault ? 1 : 0, updatedAt: new Date() })
+      .where({ id }),
     tables.templateFields.delete().where({ templateId: id }),
     ...insertTemplateFields(id, fields),
   ],
-  'v2.FieldsReplaced': ({ templateId, fields }) => [
+  "v2.FieldsReplaced": ({ templateId, fields }) => [
     tables.templateFields.delete().where({ templateId }),
     ...insertTemplateFields(templateId, fields),
   ],
-  'v2.TemplateDeleted': ({ id }) => [
+  "v2.TemplateDeleted": ({ id }) => [
     tables.templates.delete().where({ id }),
     tables.templateFields.delete().where({ templateId: id }),
   ],
-  'v2.TemplateDefaultSet': ({ id }) => [
+  "v2.TemplateDefaultSet": ({ id }) => [
     sql`update templates set isDefault = 0 where id != ${id}`,
     tables.templates.update({ isDefault: 1 }).where({ id }),
   ],
-  'v2.TemplatesSeeded': ({ templates }) =>
-    templates.flatMap(t => [
+  "v2.TemplatesSeeded": ({ templates }) =>
+    templates.flatMap((t) => [
       tables.templates.insert({
         id: t.id,
         name: t.name,
@@ -338,7 +335,7 @@ const materializers = State.SQLite.materializers(events, {
       ...insertTemplateFields(t.id, t.fields),
     ]),
 
-  'v2.SessionStarted': ({ id, templateId, templateName, sessionName }) =>
+  "v2.SessionStarted": ({ id, templateId, templateName, sessionName }) =>
     tables.sessions.insert({
       id,
       templateId,
@@ -347,18 +344,19 @@ const materializers = State.SQLite.materializers(events, {
       startedAt: new Date(),
       endedAt: null,
     }),
-  'v2.SessionRenamed': ({ id, sessionName }) =>
+  "v2.SessionRenamed": ({ id, sessionName }) =>
     tables.sessions.update({ sessionName }).where({ id }),
-  'v2.SessionEnded': ({ id, endedAt, records }, { query }) => {
+  "v2.SessionEnded": ({ id, endedAt, records }, { query }) => {
     const rows = query({
-      query: 'select count(*) as count from sessionTasks where sessionId = $id and endDate is not null',
+      query:
+        "select count(*) as count from sessionTasks where sessionId = $id and endDate is not null",
       bindValues: { id },
-    }) as ReadonlyArray<{ readonly count: number }>
-    if ((rows[0]?.count ?? 0) < 1) return []
+    }) as ReadonlyArray<{ readonly count: number }>;
+    if ((rows[0]?.count ?? 0) < 1) return [];
     return [
       tables.sessions.update({ endedAt: new Date(endedAt) }).where({ id }),
-      ...records.flatMap(record => {
-        const recordId = crypto.randomUUID()
+      ...records.flatMap((record) => {
+        const recordId = crypto.randomUUID();
         return [
           tables.taskRecords.insert({
             id: recordId,
@@ -368,7 +366,7 @@ const materializers = State.SQLite.materializers(events, {
             startedAt: record.startedAt === null ? null : new Date(record.startedAt),
             endedAt: record.endedAt === null ? null : new Date(record.endedAt),
           }),
-          ...record.sections.map(section =>
+          ...record.sections.map((section) =>
             tables.taskSectionRecords.insert({
               id: crypto.randomUUID(),
               taskRecordId: recordId,
@@ -379,47 +377,46 @@ const materializers = State.SQLite.materializers(events, {
               startedAt: section.startedAt === null ? null : new Date(section.startedAt),
             }),
           ),
-        ]
+        ];
       }),
-    ]
+    ];
   },
-  'v2.SessionLiveGraphCleared': ({ sessionId }) => [
+  "v2.SessionLiveGraphCleared": ({ sessionId }) => [
     sql`delete from sessionTaskFields where taskId in (select id from sessionTasks where sessionId = ${sessionId})`,
     sql`delete from sessionTasks where sessionId = ${sessionId}`,
   ],
-  'v2.SessionDeleted': ({ id }) => [
+  "v2.SessionDeleted": ({ id }) => [
     sql`delete from taskSectionRecords where taskRecordId in (select id from taskRecords where sessionId = ${id})`,
     sql`delete from taskRecords where sessionId = ${id}`,
     tables.sessions.delete().where({ id }),
   ],
 
-  'v2.TaskSpawned': ({ sessionId, id, orderIndex, fields }) => [
+  "v2.TaskSpawned": ({ sessionId, id, orderIndex, fields }) => [
     tables.sessionTasks.insert({
       id,
       sessionId,
       orderIndex,
-      taskType: 'single',
+      taskType: "single",
       endDate: null,
       isBeingEdited: 0,
     }),
     ...insertSessionTaskFields(id, fields),
   ],
-  'v2.TaskFinished': ({ id, endedAt }) =>
+  "v2.TaskFinished": ({ id, endedAt }) =>
     tables.sessionTasks.update({ endDate: new Date(endedAt) }).where({ id }),
-  'v2.TaskReopened': ({ id }) =>
+  "v2.TaskReopened": ({ id }) =>
     tables.sessionTasks.update({ endDate: null, isBeingEdited: 1 }).where({ id }),
-  'v2.TaskEditStarted': ({ sessionId, id }) => [
+  "v2.TaskEditStarted": ({ sessionId, id }) => [
     sql`update sessionTasks set isBeingEdited = 0 where sessionId = ${sessionId}`,
     tables.sessionTasks.update({ isBeingEdited: 1 }).where({ id }),
   ],
-  'v2.TaskEditFinished': ({ id }) =>
-    tables.sessionTasks.update({ isBeingEdited: 0 }).where({ id }),
-  'v2.TaskFieldValueChanged': ({ id, value, now }) =>
+  "v2.TaskEditFinished": ({ id }) => tables.sessionTasks.update({ isBeingEdited: 0 }).where({ id }),
+  "v2.TaskFieldValueChanged": ({ id, value, now }) =>
     sql`update sessionTaskFields set value = ${value}, startDate = coalesce(startDate, ${now}) where id = ${id}`,
-  'v2.TaskFieldValueRestored': ({ id, value }) =>
+  "v2.TaskFieldValueRestored": ({ id, value }) =>
     sql`update sessionTaskFields set value = ${value} where id = ${id}`,
-})
+});
 
-const state = State.SQLite.makeState({ tables, materializers })
+const state = State.SQLite.makeState({ tables, materializers });
 
-export const schema = makeSchema({ events, state })
+export const schema = makeSchema({ events, state });

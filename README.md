@@ -10,15 +10,15 @@ An offline-capable "Hello World": type a greeting, it's validated at runtime and
 
 ## Stack
 
-| Layer | Tool |
-|---|---|
-| UI framework | [FoldKit](https://foldkit.dev) 0.151 — Elm architecture on Effect (Model / Message / update / view) |
-| Styling | Tailwind CSS 4 + daisyUI 5 |
-| Local-first data | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a web worker, OPFS-persisted |
-| Runtime validation | Effect `4.0.0-rc.111` Schema (`decodeUnknownEffect` before every commit) |
-| Toolchain | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary |
-| Package manager | pnpm ≥ 11.22 |
-| Hosting | GitHub Pages (static SPA + PWA service worker) |
+| Layer              | Tool                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| UI framework       | [FoldKit](https://foldkit.dev) 0.151 — Elm architecture on Effect (Model / Message / update / view)             |
+| Styling            | Tailwind CSS 4 + daisyUI 5                                                                                      |
+| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a web worker, OPFS-persisted       |
+| Runtime validation | Effect `4.0.0-rc.111` Schema (`decodeUnknownEffect` before every commit)                                        |
+| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary |
+| Package manager    | pnpm ≥ 11.22                                                                                                    |
+| Hosting            | GitHub Pages (static SPA + PWA service worker)                                                                  |
 
 ### Supply-chain guard
 

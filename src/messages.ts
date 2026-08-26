@@ -1,9 +1,10 @@
-import { Schema as S } from 'effect'
-import { defineMessageUnion } from 'foldkit/message'
-import { UrlRequest } from 'foldkit/navigation'
+import { Schema as S } from "effect";
+import { defineMessageUnion } from "foldkit/message";
+import { UrlRequest } from "foldkit/navigation";
 
-import { RouteSchema } from './we/routes'
-import { SessionSummary, TemplateSummary } from './we/types'
+import { FieldDef } from "./livestore/schema";
+import { RouteSchema } from "./we/routes";
+import { TemplateSummary } from "./we/types";
 
 // Central flat Message union. Payload schemas are grouped by feature;
 // reducers live next to their feature views under src/we/features/*.
@@ -31,5 +32,37 @@ export const Message = defineMessageUnion({
   TemplateOpDone: {},
   FailedTemplateOp: { error: S.String },
   TemplatesSeededCheck: {},
-})
-export type Message = typeof Message.Type
+
+  // ── Template editor ─────────────────────────────────────────────────────
+  GotTemplateDetail: {
+    template: S.Union([
+      S.Null,
+      S.Struct({ id: S.String, name: S.String, isDefault: S.Boolean, fields: S.Array(FieldDef) }),
+    ]),
+  },
+  ChangedEditorName: { text: S.String },
+  ToggledEditorDefault: {},
+  ClickedAddField: {},
+  CanceledAddField: {},
+  ClickedEditField: { id: S.String },
+  ChangedFieldName: { text: S.String },
+  ChangedFieldKind: { kind: S.String },
+  ToggledFieldRequired: {},
+  ChangedFieldDefaultValue: { text: S.String },
+  ToggledFieldDefaultBoolean: {},
+  ChangedNewOptionText: { text: S.String },
+  ConfirmedAddOption: {},
+  ClickedDeleteOption: { index: S.Number },
+  ToggledExclusiveOption: { index: S.Number },
+  ClickedDeleteField: { id: S.String },
+  ClickedMoveFieldUp: { id: S.String },
+  ClickedMoveFieldDown: { id: S.String },
+  ConfirmedSaveField: {},
+  ClickedSaveTemplate: {},
+  ClickedCancelEditTemplate: {},
+  TemplateSaved: {},
+  ShowDiscardConfirm: {},
+  CanceledDiscard: {},
+  ConfirmedDiscard: {},
+});
+export type Message = typeof Message.Type;

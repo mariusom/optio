@@ -1,5 +1,5 @@
 packages:
-  - '.'
+  - "."
 
 allowBuilds:
   msgpackr-extract: false
@@ -10,7 +10,7 @@ minimumReleaseAgeExclude:
   - foldkit
 
 onlyBuiltDependencies:
-  - '@tailwindcss/oxide'
+  - "@tailwindcss/oxide"
   - esbuild
   - rolldown
   - sqlite-wasm

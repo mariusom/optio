@@ -1,4 +1,4 @@
-import { Schema as S } from 'effect'
+import { Schema as S } from "effect";
 
 // Shared model payload schemas (used by Messages and the shell Model)
 
@@ -10,8 +10,8 @@ export const TemplateSummary = S.Struct({
   updatedAt: S.Number,
   fieldCount: S.Number,
   requiredCount: S.Number,
-})
-export type TemplateSummary = typeof TemplateSummary.Type
+});
+export type TemplateSummary = typeof TemplateSummary.Type;
 
 export const SessionSummary = S.Struct({
   id: S.String,
@@ -21,5 +21,5 @@ export const SessionSummary = S.Struct({
   startedAt: S.Number,
   endedAt: S.Union([S.Null, S.Number]),
   taskCount: S.Number,
-})
-export type SessionSummary = typeof SessionSummary.Type
+});
+export type SessionSummary = typeof SessionSummary.Type;

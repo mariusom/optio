@@ -1,13 +1,15 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* WatchfulEye design system — see docs/design-system.md
    Custom daisyUI themes: inspection-grade palette, iOS grouped surfaces. */
 @plugin 'daisyui' {
-  themes: watchful-light --default, watchful-dark --prefersdark;
+  themes:
+    watchful-light --default,
+    watchful-dark --prefersdark;
 }
 
 @plugin 'daisyui/theme' {
-  name: 'watchful-light';
+  name: "watchful-light";
   default: true;
   color-scheme: light;
 
@@ -41,7 +43,7 @@
 }
 
 @plugin 'daisyui/theme' {
-  name: 'watchful-dark';
+  name: "watchful-dark";
   prefersdark: true;
   color-scheme: dark;
 
@@ -73,8 +75,8 @@
 
 @theme {
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
-    Helvetica, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
 }
 
 /* ── Safari / iOS standalone PWA hardening ─────────────────────────────── */
