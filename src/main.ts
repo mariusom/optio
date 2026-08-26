@@ -217,6 +217,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
                     h.button(
                       [
                         h.Class('btn btn-primary join-item'),
+                        h.Disabled(model.draft.trim() === ''),
                         h.OnClick(Message.ClickedAddGreeting()),
                       ],
                       ['Greet'],
