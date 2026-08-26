@@ -202,27 +202,37 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
               ),
               h.div([h.Class('card bg-base-100 shadow-xl')], [
                 h.div([h.Class('card-body gap-3')], [
-                  h.div([h.Class('join w-full')], [
-                    h.input([
-                      h.Class(editInputClasses),
-                      h.Value(model.draft),
-                      h.Attribute('placeholder', 'Say something…'),
-                      h.OnInput(value => Message.ChangedDraft({ text: value })),
-                      h.OnKeyDownPreventDefault(key =>
-                        key === 'Enter' && model.draft.trim() !== ''
-                          ? Option.some(Message.ClickedAddGreeting())
-                          : Option.none(),
+                  h.div(
+                    [
+                      h.Class(
+                        'flex w-full items-stretch overflow-hidden rounded-xl border border-base-content/20 bg-base-100 transition-colors duration-200 hover:border-base-content/30 focus-within:border-primary',
                       ),
-                    ]),
-                    h.button(
-                      [
-                        h.Class('btn btn-primary join-item'),
-                        h.Disabled(model.draft.trim() === ''),
-                        h.OnClick(Message.ClickedAddGreeting()),
-                      ],
-                      ['Greet'],
-                    ),
-                  ]),
+                    ],
+                    [
+                      h.input([
+                        h.Class(
+                          'input w-full min-w-0 grow border-0 bg-transparent shadow-none focus:outline-none focus:shadow-none',
+                        ),
+                        h.Value(model.draft),
+                        h.Attribute('placeholder', 'Say something…'),
+                        h.OnInput(value => Message.ChangedDraft({ text: value })),
+                        h.OnKeyDownPreventDefault(key =>
+                          key === 'Enter' && model.draft.trim() !== ''
+                            ? Option.some(Message.ClickedAddGreeting())
+                            : Option.none(),
+                        ),
+                      ]),
+                      h.div([h.Class('w-px self-stretch bg-base-content/10')], []),
+                      h.button(
+                        [
+                          h.Class('btn btn-primary rounded-none'),
+                          h.Disabled(model.draft.trim() === ''),
+                          h.OnClick(Message.ClickedAddGreeting()),
+                        ],
+                        ['Greet'],
+                      ),
+                    ],
+                  ),
                   ...(model.editing === null && model.lastError !== null
                     ? [
                         h.div(
