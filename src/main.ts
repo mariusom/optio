@@ -187,6 +187,23 @@ const editInputClasses =
 
 const githubUrl = 'https://github.com/mariusom/optio'
 
+// TIME — render timestamps in the viewer's locale and system timezone
+// (epoch ms is stored UTC-side; Intl resolves the zone at display time)
+
+const formatTimestamp = (createdAt: number): string => {
+  const date = new Date(createdAt)
+  const now = new Date()
+  const sameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  return new Intl.DateTimeFormat(undefined, {
+    ...(sameDay ? {} : { month: 'short', day: 'numeric' }),
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
   ({
     title: 'optio',
@@ -205,7 +222,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
                   h.div(
                     [
                       h.Class(
-                        'flex w-full items-stretch overflow-hidden rounded-xl border border-base-content/20 bg-base-100 transition-colors duration-200 hover:border-base-content/30 focus-within:border-primary',
+                        'flex w-full items-stretch overflow-hidden rounded-xl border border-base-content/25 bg-base-100 transition-all duration-200 hover:border-base-content/35 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25',
                       ),
                     ],
                     [
@@ -245,11 +262,15 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
                     ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
                     : model.greetings.map(greeting =>
                         h.keyed('div')(greeting.id, [h.Class('group flex items-center gap-1')], [
-                          h.div([h.Class('chat chat-start w-fit max-w-[85%]')], [
-                            h.div([h.Class('chat-bubble chat-bubble-primary')], [
-                              greeting.message,
-                            ]),
+                        h.div([h.Class('chat chat-start w-fit max-w-[85%]')], [
+                          h.div([h.Class('chat-bubble chat-bubble-primary')], [
+                            greeting.message,
                           ]),
+                          h.div(
+                            [h.Class('chat-footer text-base-content/50')],
+                            [formatTimestamp(greeting.createdAt)],
+                          ),
+                        ]),
                           h.button(
                             [
                               h.Class(
