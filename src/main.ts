@@ -190,19 +190,15 @@ const githubUrl = 'https://github.com/mariusom/optio'
 // TIME — render timestamps in the viewer's locale and system timezone
 // (epoch ms is stored UTC-side; Intl resolves the zone at display time)
 
-const formatTimestamp = (createdAt: number): string => {
-  const date = new Date(createdAt)
-  const now = new Date()
-  const sameDay =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  return new Intl.DateTimeFormat(undefined, {
-    ...(sameDay ? {} : { month: 'short', day: 'numeric' }),
+const formatTimestamp = (createdAt: number): string =>
+  new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date)
-}
+    timeZoneName: 'short',
+  }).format(new Date(createdAt))
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
   ({
