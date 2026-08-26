@@ -21,13 +21,15 @@ const adapter = makePersistedAdapter({
  * competing store attempts on the same storeId — every call after the
  * first hangs awaiting the lock and the app deadlocks into empty states.
  */
-let storePromise: Promise<AppStore> | null = null;
-
-export const getStore = () =>
-  (storePromise ??= createStorePromise({
+const openStore = () =>
+  createStorePromise({
     storeId: "optio-v1",
     schema,
     adapter,
-  }));
+  });
 
-export type AppStore = Awaited<ReturnType<typeof getStore>>;
+export type AppStore = Awaited<ReturnType<typeof openStore>>;
+
+let storePromise: Promise<AppStore> | null = null;
+
+export const getStore = () => (storePromise ??= openStore());

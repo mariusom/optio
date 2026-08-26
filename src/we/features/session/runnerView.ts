@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../../../messages";
@@ -16,102 +17,71 @@ import {
 // ── Icons ───────────────────────────────────────────────────────────────────
 
 const clockTinyIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
+  ]);
 
 const listBulletIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-    ],
-    [
-      h.line(
-        [
-          h.Attribute("x1", "8"),
-          h.Attribute("y1", "6"),
-          h.Attribute("x2", "20"),
-          h.Attribute("y2", "6"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "8"),
-          h.Attribute("y1", "12"),
-          h.Attribute("x2", "20"),
-          h.Attribute("y2", "12"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "8"),
-          h.Attribute("y1", "18"),
-          h.Attribute("x2", "20"),
-          h.Attribute("y2", "18"),
-        ],
-        [],
-      ),
-      h.circle(
-        [
-          h.Attribute("cx", "4"),
-          h.Attribute("cy", "6"),
-          h.Attribute("r", "1"),
-          h.Attribute("fill", "currentColor"),
-        ],
-        [],
-      ),
-      h.circle(
-        [
-          h.Attribute("cx", "4"),
-          h.Attribute("cy", "12"),
-          h.Attribute("r", "1"),
-          h.Attribute("fill", "currentColor"),
-        ],
-        [],
-      ),
-      h.circle(
-        [
-          h.Attribute("cx", "4"),
-          h.Attribute("cy", "18"),
-          h.Attribute("r", "1"),
-          h.Attribute("fill", "currentColor"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.line(
+      [
+        h.Attribute("x1", "8"),
+        h.Attribute("y1", "6"),
+        h.Attribute("x2", "20"),
+        h.Attribute("y2", "6"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "8"),
+        h.Attribute("y1", "12"),
+        h.Attribute("x2", "20"),
+        h.Attribute("y2", "12"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "8"),
+        h.Attribute("y1", "18"),
+        h.Attribute("x2", "20"),
+        h.Attribute("y2", "18"),
+      ],
+      [],
+    ),
+    h.circle(
+      [
+        h.Attribute("cx", "4"),
+        h.Attribute("cy", "6"),
+        h.Attribute("r", "1"),
+        h.Attribute("fill", "currentColor"),
+      ],
+      [],
+    ),
+    h.circle(
+      [
+        h.Attribute("cx", "4"),
+        h.Attribute("cy", "12"),
+        h.Attribute("r", "1"),
+        h.Attribute("fill", "currentColor"),
+      ],
+      [],
+    ),
+    h.circle(
+      [
+        h.Attribute("cx", "4"),
+        h.Attribute("cy", "18"),
+        h.Attribute("r", "1"),
+        h.Attribute("fill", "currentColor"),
+      ],
+      [],
+    ),
+  ]);
 
 const checkIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2.5"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])],
-  );
+  svgIcon(classes, h, [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])], "2.5");
 
 // ── SessionTimerView ────────────────────────────────────────────────────────
 
@@ -405,7 +375,7 @@ export const formSectionsView = (
 
 // ── BottomFadeGradient ──────────────────────────────────────────────────────
 
-export const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
+const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
   h.div(
     [
       h.Class(
@@ -418,7 +388,7 @@ export const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
 
 // ── SessionBottomBar ────────────────────────────────────────────────────────
 
-export const sessionBottomBar = (
+const sessionBottomBar = (
   runner: RunnerState,
   task: RunnerTask | null,
   h: HtmlBuilder<Message>,

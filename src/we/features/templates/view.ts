@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
@@ -71,42 +72,31 @@ const kebabMenu = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
   );
 
 const docIcon = (classes: string, h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.path(
-        [h.Attribute("d", "M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5z")],
-        [],
-      ),
-      h.polyline([h.Attribute("points", "14 2 14 7 19 7")], []),
-      h.line(
-        [
-          h.Attribute("x1", "9"),
-          h.Attribute("y1", "13"),
-          h.Attribute("x2", "15"),
-          h.Attribute("y2", "13"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "9"),
-          h.Attribute("y1", "17"),
-          h.Attribute("x2", "13"),
-          h.Attribute("y2", "17"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.path(
+      [h.Attribute("d", "M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5z")],
+      [],
+    ),
+    h.polyline([h.Attribute("points", "14 2 14 7 19 7")], []),
+    h.line(
+      [
+        h.Attribute("x1", "9"),
+        h.Attribute("y1", "13"),
+        h.Attribute("x2", "15"),
+        h.Attribute("y2", "13"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "9"),
+        h.Attribute("y1", "17"),
+        h.Attribute("x2", "13"),
+        h.Attribute("y2", "17"),
+      ],
+      [],
+    ),
+  ]);
 
 export const templatesPage = (
   model: {

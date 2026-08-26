@@ -4,38 +4,7 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, FieldDef } from "../../../livestore/schema";
-
-const safeArray = (json: string): ReadonlyArray<string> => {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-};
-
-const fieldRowsToDefs = (
-  rows: ReadonlyArray<{
-    readonly id: string;
-    readonly name: string;
-    readonly kind: string;
-    readonly isRequired: number;
-    readonly defaultValue: string;
-    readonly sortOrder: number;
-    readonly optionsJson: string;
-    readonly exclusiveOptionsJson: string;
-  }>,
-): ReadonlyArray<FieldDef> =>
-  rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    kind: row.kind as FieldDef["kind"],
-    isRequired: row.isRequired === 1,
-    defaultValue: row.defaultValue,
-    sortOrder: row.sortOrder,
-    options: safeArray(row.optionsJson),
-    exclusiveOptions: safeArray(row.exclusiveOptionsJson),
-  }));
+import { fieldRowsToDefs, safeArray } from "../../fieldRows";
 
 export const StartSession = Command.define("StartSession", {
   args: {

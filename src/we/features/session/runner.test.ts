@@ -14,7 +14,6 @@ import {
 const section = (overrides: Partial<RunnerSection> & { name: string }): RunnerSection => ({
   id: "s-" + overrides.name,
   taskId: "t1",
-  name: overrides.name,
   kind: "textInput",
   isRequired: false,
   defaultValue: "",

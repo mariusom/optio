@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp, formatTimeOnly, formatDurationHms } from "../../format";
@@ -47,20 +48,10 @@ const chevronRight = (h: HtmlBuilder<Message>) =>
   );
 
 const clockTinyIcon = (h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class("h-3 w-3 shrink-0 text-base-content/50"),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
-    ],
-  );
+  svgIcon("h-3 w-3 shrink-0 text-base-content/50", h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
+  ]);
 
 const badge = (taskId: number, h: HtmlBuilder<Message>) =>
   h.div(

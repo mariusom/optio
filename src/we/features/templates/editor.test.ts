@@ -14,7 +14,7 @@ import {
   renumberFields,
   toggleExclusiveOption,
 } from "./editor";
-import type { EditorState } from "./editor";
+import type { EditorState, FieldDraft } from "./editor";
 
 const field = (overrides: Partial<FieldDef> & { id: string }): FieldDef => ({
   name: "Field",
@@ -286,10 +286,10 @@ describe("option helpers", () => {
   });
 
   it("toggleExclusiveOption adds/removes", () => {
-    let draft = {
+    let draft: FieldDraft = {
       ...makeEmptyDraft(0),
       name: "Tools",
-      kind: "checkbox" as const,
+      kind: "checkbox",
       options: ["A", "None"],
       exclusiveOptions: [],
     };

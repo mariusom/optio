@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../../../messages";
@@ -8,16 +9,9 @@ import { formSectionsView, sessionTimerView, endConfirmModal, errorAlert } from 
 // ── Icons ───────────────────────────────────────────────────────────────────
 
 const sidebarLeftIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "1.8"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
+  svgIcon(
+    classes,
+    h,
     [
       h.rect(
         [
@@ -66,54 +60,28 @@ const sidebarLeftIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
         [],
       ),
     ],
+    "1.8",
   );
 
 const checkIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2.5"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])],
-  );
+  svgIcon(classes, h, [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])], "2.5");
 
 const pencilIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "1.8"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
+  svgIcon(
+    classes,
+    h,
     [
       h.path([h.Attribute("d", "M12 20h9")], []),
       h.path([h.Attribute("d", "M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z")], []),
     ],
+    "1.8",
   );
 
 const clockTinyIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
+  ]);
 
 // ── Sidebar state indicator (16pt) ──────────────────────────────────────────
 
@@ -150,7 +118,7 @@ const sidebarStateIndicator = (task: RunnerTask, h: HtmlBuilder<Message>) => {
 
 // ── SidebarTaskListView ─────────────────────────────────────────────────────
 
-export const sidebarTaskListView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+const sidebarTaskListView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const sorted = [...runner.tasks].sort((a, b) => b.orderIndex - a.orderIndex);
   const curId = currentTask(runner)?.id ?? runner.currentTaskId;
   return h.div(

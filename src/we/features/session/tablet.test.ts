@@ -18,7 +18,6 @@ const makeRunner = (
   overrides: Partial<Model["runner"]> & { sessionId: string },
 ): NonNullable<Model["runner"]> => {
   const base: NonNullable<Model["runner"]> = {
-    sessionId: overrides.sessionId,
     templateName: "Sample Study",
     sessionName: "Test",
     startedAt: Date.now(),
@@ -55,6 +54,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   activeSession: null,
   pendingDiscardSession: false,
   runner,
+  runnerPhase: "collecting",
   history: [],
   selectedHistorySession: null,
   pendingHistoryDelete: null,

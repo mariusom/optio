@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp } from "../../format";
@@ -30,76 +31,42 @@ const badge = (taskId: number, h: HtmlBuilder<Message>) =>
   );
 
 const playIcon = (h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class("h-4 w-4 text-base-content/50 shrink-0"),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
-    ],
-  );
+  svgIcon("h-4 w-4 text-base-content/50 shrink-0", h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
+  ]);
 const stopIcon = (h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class("h-4 w-4 text-base-content/50 shrink-0"),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.rect(
-        [
-          h.Attribute("x", "9"),
-          h.Attribute("y", "9"),
-          h.Attribute("width", "6"),
-          h.Attribute("height", "6"),
-          h.Attribute("rx", "1"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon("h-4 w-4 text-base-content/50 shrink-0", h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.rect(
+      [
+        h.Attribute("x", "9"),
+        h.Attribute("y", "9"),
+        h.Attribute("width", "6"),
+        h.Attribute("height", "6"),
+        h.Attribute("rx", "1"),
+      ],
+      [],
+    ),
+  ]);
 const clockIcon = (h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class("h-4 w-4 text-base-content/50 shrink-0"),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
-    ],
-  );
+  svgIcon("h-4 w-4 text-base-content/50 shrink-0", h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
+  ]);
 
 const checkIcon = (h: HtmlBuilder<Message>) =>
-  h.svg(
-    [
-      h.Class("h-3.5 w-3.5 text-success shrink-0"),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "currentColor"),
-    ],
-    [
-      h.path(
-        [
-          h.Attribute(
-            "d",
-            "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm4.3 7.3-5 5a1 1 0 0 1-1.4 0l-2-2 1.4-1.4 1.3 1.3 4.3-4.3z",
-          ),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon("h-3.5 w-3.5 text-success shrink-0", h, [
+    h.path(
+      [
+        h.Attribute(
+          "d",
+          "M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm4.3 7.3-5 5a1 1 0 0 1-1.4 0l-2-2 1.4-1.4 1.3 1.3 4.3-4.3z",
+        ),
+      ],
+      [],
+    ),
+  ]);
 
 export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) => {
   const task = model.task;

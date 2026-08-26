@@ -92,8 +92,6 @@ describe("effect-machine smoke", () => {
         events: [{ _tag: "Start" }, { _tag: "Increment" }],
       }),
     );
-    console.log("TRACE KEYS:", Object.keys(trace));
-    console.log("TRACE LEN?:", trace.states?.length ?? "n/a");
     const last = trace.final;
     console.log("LAST:", JSON.stringify(last));
     expect(JSON.stringify(last)).toContain('"count":1');

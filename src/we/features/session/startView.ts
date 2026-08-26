@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
@@ -9,215 +10,116 @@ import { displaySessionName, isTemplateMissing } from "./startHelpers";
 
 // Icons — small SVGs mirrored from we/ui icon set (generic SVGs; SF Symbols-accurate variants deferred to S7 polish)
 const clockIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-      h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
+    h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
+  ]);
 
 const triangleIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.path(
-        [
-          h.Attribute(
-            "d",
-            "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
-          ),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "12"),
-          h.Attribute("y1", "9"),
-          h.Attribute("x2", "12"),
-          h.Attribute("y2", "13"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "12"),
-          h.Attribute("y1", "17"),
-          h.Attribute("x2", "12.01"),
-          h.Attribute("y2", "17"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.path(
+      [
+        h.Attribute(
+          "d",
+          "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
+        ),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "12"),
+        h.Attribute("y1", "9"),
+        h.Attribute("x2", "12"),
+        h.Attribute("y2", "13"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "12"),
+        h.Attribute("y1", "17"),
+        h.Attribute("x2", "12.01"),
+        h.Attribute("y2", "17"),
+      ],
+      [],
+    ),
+  ]);
 
 const playIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [h.polygon([h.Attribute("points", "5 3 19 12 5 21 5 3")], [])],
-  );
+  svgIcon(classes, h, [h.polygon([h.Attribute("points", "5 3 19 12 5 21 5 3")], [])]);
 
 const checkIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.path([h.Attribute("d", "M22 11.08V12a10 10 0 1 1-5.93-9.14")], []),
-      h.polyline([h.Attribute("points", "22 4 12 14.01 9 11.01")], []),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.path([h.Attribute("d", "M22 11.08V12a10 10 0 1 1-5.93-9.14")], []),
+    h.polyline([h.Attribute("points", "22 4 12 14.01 9 11.01")], []),
+  ]);
 
 const docIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.path([h.Attribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z")], []),
-      h.polyline([h.Attribute("points", "14 2 14 8 20 8")], []),
-      h.line(
-        [
-          h.Attribute("x1", "16"),
-          h.Attribute("y1", "13"),
-          h.Attribute("x2", "8"),
-          h.Attribute("y2", "13"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "16"),
-          h.Attribute("y1", "17"),
-          h.Attribute("x2", "8"),
-          h.Attribute("y2", "17"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.path([h.Attribute("d", "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z")], []),
+    h.polyline([h.Attribute("points", "14 2 14 8 20 8")], []),
+    h.line(
+      [
+        h.Attribute("x1", "16"),
+        h.Attribute("y1", "13"),
+        h.Attribute("x2", "8"),
+        h.Attribute("y2", "13"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "16"),
+        h.Attribute("y1", "17"),
+        h.Attribute("x2", "8"),
+        h.Attribute("y2", "17"),
+      ],
+      [],
+    ),
+  ]);
 
 const xIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.line(
-        [
-          h.Attribute("x1", "18"),
-          h.Attribute("y1", "6"),
-          h.Attribute("x2", "6"),
-          h.Attribute("y2", "18"),
-        ],
-        [],
-      ),
-      h.line(
-        [
-          h.Attribute("x1", "6"),
-          h.Attribute("y1", "6"),
-          h.Attribute("x2", "18"),
-          h.Attribute("y2", "18"),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.line(
+      [
+        h.Attribute("x1", "18"),
+        h.Attribute("y1", "6"),
+        h.Attribute("x2", "6"),
+        h.Attribute("y2", "18"),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "6"),
+        h.Attribute("y1", "6"),
+        h.Attribute("x2", "18"),
+        h.Attribute("y2", "18"),
+      ],
+      [],
+    ),
+  ]);
 
 const chevronIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [h.polyline([h.Attribute("points", "6 9 12 15 18 9")], [])],
-  );
+  svgIcon(classes, h, [h.polyline([h.Attribute("points", "6 9 12 15 18 9")], [])]);
 
 const checkSmallIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "3"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])],
-  );
+  svgIcon(classes, h, [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])], "3");
 
 const trashIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "2"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
-    [
-      h.polyline([h.Attribute("points", "3 6 5 6 21 6")], []),
-      h.path(
-        [
-          h.Attribute(
-            "d",
-            "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
-          ),
-        ],
-        [],
-      ),
-    ],
-  );
+  svgIcon(classes, h, [
+    h.polyline([h.Attribute("points", "3 6 5 6 21 6")], []),
+    h.path(
+      [
+        h.Attribute(
+          "d",
+          "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+        ),
+      ],
+      [],
+    ),
+  ]);
 
 // ── BottomToolbar chrome wrapper ──────────────────────────────────────────
 // Gradient + safe-area aware container per spec §BottomToolbarView

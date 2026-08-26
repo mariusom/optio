@@ -4,17 +4,9 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, type FieldDef } from "../../../livestore/schema";
+import { safeArray } from "../../fieldRows";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-const safeArray = (json: string): ReadonlyArray<string> => {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-};
 
 const toEpoch = (v: number | Date | null | undefined): number | null => {
   if (v === null || v === undefined) return null;

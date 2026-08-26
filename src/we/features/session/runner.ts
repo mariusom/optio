@@ -35,6 +35,7 @@ export type RunnerData = {
 export type RunnerState = RunnerData & {
   readonly focusedSectionId: string | null;
   readonly showTaskList: boolean;
+  readonly showSidebar: boolean;
   readonly showEndConfirm: boolean;
   readonly lastError: string | null;
   readonly now: number;
@@ -50,16 +51,6 @@ export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isS
 
 export const canRecordTask = (task: RunnerTask | null | undefined): boolean =>
   task !== null && task !== undefined && isTaskDone(task);
-
-// Task state: current (open) / editable (being edited) / done (ended)
-export type TaskState = "current" | "editable" | "done";
-
-export const taskState = (task: RunnerTask): TaskState => {
-  if (task.endDate === null || task.endDate === undefined) return "current";
-  return task.isBeingEdited ? "editable" : "done";
-};
-
-export const isTaskEditable = (task: RunnerTask): boolean => taskState(task) === "editable";
 
 // Earliest touched section startDate (min) — mirrors Task.startDate
 export const taskStartDate = (task: RunnerTask): number | null => {
@@ -84,11 +75,6 @@ export const currentTask = (runner: RunnerData | RunnerState): RunnerTask | null
   return runner.tasks.length > 0 ? (runner.tasks[runner.tasks.length - 1] as RunnerTask) : null;
 };
 
-export const isEditing = (runner: RunnerData | RunnerState): boolean => {
-  const cur = currentTask(runner);
-  return cur !== null && cur.isBeingEdited;
-};
-
 // Find next unfulfilled section after current index (radio auto-advance)
 // Mirrors FormSectionContent.findNextUnfulfilledSection logic
 export const findNextUnfulfilledSectionId = (
@@ -105,4 +91,3 @@ export const findNextUnfulfilledSectionId = (
 };
 
 // Checkbox semantics re-export for runner tests (uses fields.toggleCheckboxOption)
-export { toggleCheckboxOption } from "../../fields";

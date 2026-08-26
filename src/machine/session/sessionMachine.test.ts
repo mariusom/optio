@@ -5,9 +5,7 @@ import { Effect } from "effect";
 
 import { planSession } from "./plan";
 import {
-  freshLiveValue,
   nextFocusForField,
-  SessionEvents,
   SessionMachine,
   SessionStates,
   type RunnerData,
@@ -94,7 +92,7 @@ describe("sessionMachine topology", () => {
   });
 
   it("enters Live.Collecting with fresh controls on first DataSynced", () => {
-    const { runner, phase } = plan(null, SessionEvents.DataSynced({ data: data() } as never));
+    const { runner, phase } = plan(null, { _tag: "DataSynced", data: data() });
     expect(phase).toBe("collecting");
     expect(runner).not.toBeNull();
     expect(runner!.focusedSectionId).toBeNull();

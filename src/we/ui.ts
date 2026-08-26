@@ -1,4 +1,4 @@
-import type { HtmlBuilder } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { hrefFor, isFullScreenRoute, type Route } from "./routes";
 
@@ -9,6 +9,30 @@ import { hrefFor, isFullScreenRoute, type Route } from "./routes";
 
 type IconProps = { readonly name: IconName; readonly class?: string };
 export type IconName = "play" | "clock" | "doc" | "plus" | "chevronRight" | "list";
+
+/**
+ * Shared stroke-icon shell — 24px-grid, feather-style attributes. Every icon
+ * factory in the app previously re-declared this 7-attribute array (34 clone
+ * groups); views build their glyphs on this shell instead.
+ */
+export const svgIcon = <M>(
+  classes: string,
+  h: HtmlBuilder<M>,
+  children: ReadonlyArray<Html | string>,
+  strokeWidth = "2",
+) =>
+  h.svg(
+    [
+      h.Class(classes),
+      h.Attribute("viewBox", "0 0 24 24"),
+      h.Attribute("fill", "none"),
+      h.Attribute("stroke", "currentColor"),
+      h.Attribute("stroke-width", strokeWidth),
+      h.Attribute("stroke-linecap", "round"),
+      h.Attribute("stroke-linejoin", "round"),
+    ],
+    children,
+  );
 
 /** Stroke-based 24px-grid icons, feather-style, sized via the class string. */
 const icon = <M>({ name, class: classes = "h-5 w-5" }: IconProps, h: HtmlBuilder<M>) => {
@@ -246,23 +270,3 @@ type EmptyStateProps = {
   readonly title: string;
   readonly message: string;
 };
-
-/** Unified empty state: icon in soft circle, semibold heading, muted copy. */
-export const emptyState = <M>(props: EmptyStateProps, h: HtmlBuilder<M>) =>
-  h.div(
-    [h.Class("mx-auto my-auto flex max-w-sm flex-col items-center justify-center p-8 text-center")],
-    [
-      h.div(
-        [
-          h.Class(
-            "mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-base-300/60 text-base-content/50",
-          ),
-        ],
-        [icon({ name: props.icon, class: "h-7 w-7" }, h)],
-      ),
-      h.h3([h.Class("text-base font-semibold text-base-content")], [props.title]),
-      h.p([h.Class("mt-1 text-xs leading-relaxed text-base-content/60")], [props.message]),
-    ],
-  );
-
-export { icon };

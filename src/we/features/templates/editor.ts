@@ -32,6 +32,33 @@ export type EditorState = {
   readonly pendingDiscard: boolean;
 };
 
+/**
+ * Draft transform for a field-kind change — carries over the options/defaults
+ * that stay valid for the new kind, clears what no longer applies.
+ */
+export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDraft => {
+  let next = { ...draft, kind: nextKind };
+  if (!supportsRequired(nextKind)) next = { ...next, isRequired: false };
+  if (!hasOptions(nextKind)) {
+    next = { ...next, options: [], exclusiveOptions: [], newOptionText: "" };
+  }
+  if (nextKind === "boolean") {
+    const current = next.defaultValue;
+    next = { ...next, defaultValue: current === "true" ? "true" : "false" };
+  } else if (next.defaultValue === "true" || next.defaultValue === "false") {
+    // Coming from boolean to text types, clear boolean-style default
+    next = { ...next, defaultValue: "" };
+  }
+  if (nextKind === "checkbox" && next.exclusiveOptions.length > 0) {
+    next = {
+      ...next,
+      exclusiveOptions: next.exclusiveOptions.filter((option) => next.options.includes(option)),
+    };
+  }
+  if (nextKind !== "checkbox") next = { ...next, exclusiveOptions: [] };
+  return next;
+};
+
 // ── Validation ─────────────────────────────────────────────────────────────
 
 export const isTemplateValid = (editor: { readonly name: string }): boolean =>
@@ -48,24 +75,24 @@ export const isDraftValid = (draft: FieldDraft): boolean => {
 const arrayEqual = (a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean =>
   a.length === b.length && a.every((value, index) => value === b[index]);
 
-export const hasChanges = (editor: EditorState): boolean => {
-  if (editor.name !== editor.original.name) return true;
-  if (editor.isDefault !== editor.original.isDefault) return true;
-  if (editor.fields.length !== editor.original.fields.length) return true;
-  for (let index = 0; index < editor.fields.length; index += 1) {
-    const current = editor.fields[index] as FieldDef;
-    const original = editor.original.fields[index] as FieldDef;
-    if (current.id !== original.id) return true;
-    if (current.name !== original.name) return true;
-    if (current.kind !== original.kind) return true;
-    if (current.isRequired !== original.isRequired) return true;
-    if (current.defaultValue !== original.defaultValue) return true;
-    if (current.sortOrder !== original.sortOrder) return true;
-    if (!arrayEqual(current.options, original.options)) return true;
-    if (!arrayEqual(current.exclusiveOptions, original.exclusiveOptions)) return true;
-  }
-  return false;
-};
+/** One field's dirty check: identity + every editable attribute. */
+const fieldDiffers = (current: FieldDef, original: FieldDef): boolean =>
+  current.id !== original.id ||
+  current.name !== original.name ||
+  current.kind !== original.kind ||
+  current.isRequired !== original.isRequired ||
+  current.defaultValue !== original.defaultValue ||
+  current.sortOrder !== original.sortOrder ||
+  !arrayEqual(current.options, original.options) ||
+  !arrayEqual(current.exclusiveOptions, original.exclusiveOptions);
+
+export const hasChanges = (editor: EditorState): boolean =>
+  editor.name !== editor.original.name ||
+  editor.isDefault !== editor.original.isDefault ||
+  editor.fields.length !== editor.original.fields.length ||
+  editor.fields.some((current, index) =>
+    fieldDiffers(current as FieldDef, editor.original.fields[index] as FieldDef),
+  );
 
 // ── Sort order helpers — dense renumber after moves/deletes ───────────────
 

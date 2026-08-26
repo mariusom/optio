@@ -1,3 +1,4 @@
+import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 import { Message } from "../../../messages";
 import { formatTimestamp } from "../../format";
@@ -18,16 +19,9 @@ type HistoryModel = {
 };
 
 const clockQuestionIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  h.svg(
-    [
-      h.Class(classes),
-      h.Attribute("viewBox", "0 0 24 24"),
-      h.Attribute("fill", "none"),
-      h.Attribute("stroke", "currentColor"),
-      h.Attribute("stroke-width", "1.8"),
-      h.Attribute("stroke-linecap", "round"),
-      h.Attribute("stroke-linejoin", "round"),
-    ],
+  svgIcon(
+    classes,
+    h,
     [
       h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
       h.polyline([h.Attribute("points", "12 7 12 12 15 10")], []),
@@ -42,6 +36,7 @@ const clockQuestionIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
       ),
       h.path([h.Attribute("d", "M9 9a3 3 0 0 1 5.2 2 3 3 0 0 1-1.2 2.5")], []),
     ],
+    "1.8",
   );
 
 const chevronRight = (h: HtmlBuilder<Message>) =>

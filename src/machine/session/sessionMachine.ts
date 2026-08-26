@@ -20,7 +20,7 @@ import { Schema } from "effect";
 
 // ── Data schema (mirrors src/we/features/session/runner.ts RunnerData) ─────
 
-export const RunnerSectionSchema = Schema.Struct({
+const RunnerSectionSchema = Schema.Struct({
   id: Schema.String,
   taskId: Schema.String,
   name: Schema.String,
@@ -35,7 +35,7 @@ export const RunnerSectionSchema = Schema.Struct({
 });
 export type RunnerSection = typeof RunnerSectionSchema.Type;
 
-export const RunnerTaskSchema = Schema.Struct({
+const RunnerTaskSchema = Schema.Struct({
   id: Schema.String,
   orderIndex: Schema.Number,
   endDate: Schema.Union([Schema.Null, Schema.Number]),
@@ -44,7 +44,7 @@ export const RunnerTaskSchema = Schema.Struct({
 });
 export type RunnerTask = typeof RunnerTaskSchema.Type;
 
-export const RunnerDataSchema = Schema.Struct({
+const RunnerDataSchema = Schema.Struct({
   sessionId: Schema.String,
   templateName: Schema.String,
   sessionName: Schema.String,
@@ -93,7 +93,7 @@ export type SessionPhase = "collecting" | "confirming";
 
 // ── Events (public input protocol) ─────────────────────────────────────────
 
-export const SessionEvents = Machine.events(
+const SessionEvents = Machine.events(
   Schema.TaggedUnion({
     /** Store snapshot arrives (runner stream); null = session gone. */
     DataSynced: { data: Schema.Union([RunnerDataSchema, Schema.Null]) },
@@ -125,11 +125,11 @@ export const SessionEvents = Machine.events(
     EndAcked: {},
   }),
 );
-export type SessionEvent = typeof SessionEvents.Type;
+export type SessionEvent = Machine.EventOf<typeof SessionEvents>;
 
 // ── Emissions (effects out → LiveStore commands via plan.ts) ───────────────
 
-export const SessionEmissions = Machine.emittedEvents(
+const SessionEmissions = Machine.emittedEvents(
   Schema.TaggedUnion({
     CommitFieldValue: { taskFieldId: Schema.String, value: Schema.String },
     CommitRecord: { sessionId: Schema.String, taskId: Schema.String },
@@ -142,16 +142,16 @@ export const SessionEmissions = Machine.emittedEvents(
     CommitEndSession: { sessionId: Schema.String },
   }),
 );
-export type SessionEmission = typeof SessionEmissions.Type;
+export type SessionEmission = Machine.EventOf<typeof SessionEmissions>;
 
 // ── Pure domain helpers ────────────────────────────────────────────────────
 
-export const isSectionDone = (section: RunnerSection): boolean =>
+const isSectionDone = (section: RunnerSection): boolean =>
   section.isRequired ? section.value !== "" : true;
 
-export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
+const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
 
-export const currentTask = (data: RunnerData): RunnerTask | null => {
+const currentTask = (data: RunnerData): RunnerTask | null => {
   if (data.currentTaskId !== null) {
     const byId = data.tasks.find((t) => t.id === data.currentTaskId);
     if (byId !== undefined) return byId;
@@ -166,14 +166,14 @@ export const currentTask = (data: RunnerData): RunnerTask | null => {
 };
 
 /** Newest unfinished task id — the target after finishing/cancelling an edit. */
-export const fallbackTaskId = (data: RunnerData): string | null => {
+const fallbackTaskId = (data: RunnerData): string | null => {
   const unfinished = [...data.tasks]
     .filter((t) => t.endDate === null)
     .sort((a, b) => b.orderIndex - a.orderIndex);
   return unfinished[0]?.id ?? null;
 };
 
-export const findNextUnfulfilledSectionId = (
+const findNextUnfulfilledSectionId = (
   sections: ReadonlyArray<RunnerSection>,
   currentSectionId: string,
 ): string | null => {
@@ -217,7 +217,7 @@ export const nextFocusForField = (
 };
 
 /** Fresh Live value for a new session (every control reset). */
-export const freshLiveValue = (data: RunnerData): LiveValue => ({
+const freshLiveValue = (data: RunnerData): LiveValue => ({
   _tag: "Live",
   data,
   focusedSectionId: null,

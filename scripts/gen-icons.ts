@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file — tooling, run manually (bun scripts/gen-icons.ts)
 // Generates PWA PNG icons (dark rounded square + light-blue θ-ish ring) without
 // any image libraries: raw RGBA raster + zlib deflate + PNG chunk assembly.
 // Run: bun scripts/gen-icons.ts

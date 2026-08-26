@@ -1,3 +1,4 @@
+// fallow-ignore-file unused-file — app entry (referenced by index.html, not by other modules)
 import { Runtime } from "foldkit";
 import { registerSW } from "virtual:pwa-register";
 

@@ -18,6 +18,7 @@ import {
 import { sessionView } from "./we/features/session/sessionView";
 import {} from "./we/features/session/runner";
 import { planSession, type SessionEmission } from "./machine/session/plan";
+import { safeArray } from "./we/fieldRows";
 import type { SessionEvent } from "./machine/session/sessionMachine";
 import {
   CreateTemplate,
@@ -34,6 +35,7 @@ import {
   draftFromField,
   draftToFieldDef,
   hasChanges,
+  withKindChanged,
   isDraftValid,
   isTemplateValid,
   makeEmptyDraft,
@@ -530,30 +532,7 @@ export const update = (model: Model, message: Message) =>
     },
     ChangedFieldKind: ({ kind }) => {
       if (model.editor === null || model.editor.draft === null) return { model };
-      const nextKind = kind as FieldKind;
-      let draft = { ...model.editor.draft, kind: nextKind };
-      if (!supportsRequired(nextKind)) draft = { ...draft, isRequired: false };
-      if (!hasOptions(nextKind)) {
-        draft = { ...draft, options: [], exclusiveOptions: [], newOptionText: "" };
-      } else if (draft.options.length === 0 && nextKind === "checkbox") {
-        // keep exclusive empty
-      }
-      if (nextKind === "boolean") {
-        const current = draft.defaultValue;
-        draft = { ...draft, defaultValue: current === "true" ? "true" : "false" };
-      } else if (draft.defaultValue === "true" || draft.defaultValue === "false") {
-        // Coming from boolean to text types, clear boolean-style default
-        if (nextKind !== "boolean") draft = { ...draft, defaultValue: "" };
-      }
-      if (nextKind === "checkbox" && draft.exclusiveOptions.length > 0) {
-        draft = {
-          ...draft,
-          exclusiveOptions: draft.exclusiveOptions.filter((option) =>
-            draft.options.includes(option),
-          ),
-        };
-      }
-      if (nextKind !== "checkbox") draft = { ...draft, exclusiveOptions: [] };
+      const draft = withKindChanged(model.editor.draft, kind as FieldKind);
       return { model: { ...model, editor: { ...model.editor, draft } } };
     },
     ToggledFieldRequired: () => {
@@ -1048,17 +1027,6 @@ const templatesStream: Stream.Stream<Message> = Stream.callback((queue) =>
     Effect.flatMap(() => Effect.never),
   ),
 );
-
-const safeArray = (json: string): ReadonlyArray<string> => {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === "string")
-      : [];
-  } catch {
-    return [];
-  }
-};
 
 type DetailTemplateRow = {
   readonly id: string;

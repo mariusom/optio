@@ -25,7 +25,7 @@ import {
   type SessionPhase,
 } from "./sessionMachine";
 
-export type { RunnerState };
+export type { RunnerState, SessionEmission }; // SessionEmission re-exported for main.ts
 
 /** The machine path ↔ model phase mapping (model.runner null ⇒ Idle). */
 const phaseToChildPath = (phase: SessionPhase): "Live.Collecting" | "Live.ConfirmingEnd" =>
@@ -35,7 +35,7 @@ const childPathToPhase = (childPath: string): SessionPhase =>
   childPath === "Live.ConfirmingEnd" ? "confirming" : "collecting";
 
 /** RunnerState → machine value (data + control surface). */
-export const runnerToValue = (runner: RunnerState): LiveValue => ({
+const runnerToValue = (runner: RunnerState): LiveValue => ({
   _tag: "Live",
   data: {
     sessionId: runner.sessionId,
@@ -66,7 +66,7 @@ const toEncoded = (runner: RunnerState | null, phase: SessionPhase) =>
       };
 
 /** Machine snapshot → (runner, phase). Idle yields a null runner. */
-export const snapshotToRunner = (
+const snapshotToRunner = (
   next: { path: string; value?: unknown; state?: { path: string } },
   now: number,
 ): { runner: RunnerState | null; phase: SessionPhase } => {

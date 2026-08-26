@@ -31,7 +31,7 @@ export const RouteSchema = S.Union([
 
 // ROUTERS — bidirectional: parse URL segments AND build href strings
 
-export const startRouter = mapTo(StartTab)(literal("start"));
+const startRouter = mapTo(StartTab)(literal("start"));
 export const historyRouter = mapTo(HistoryTab)(literal("history"));
 export const templatesRouter = mapTo(TemplatesTab)(literal("templates"));
 export const sessionRunnerRouter = pipe(
