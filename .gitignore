@@ -4,3 +4,6 @@ dev-dist/
 coverage/
 *.log
 .DS_Store
+
+# Local working docs (specs, design notes) — never committed
+notes/
