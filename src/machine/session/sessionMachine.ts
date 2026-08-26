@@ -188,7 +188,7 @@ export const findNextUnfulfilledSectionId = (
 
 /**
  * Radio auto-advance: when a radio section becomes done, move focus to the
- * next unfulfilled section. Mirrors Swift's findNextUnfulfilledSection.
+ * next unfulfilled section.
  * `changed: false` means "no auto-advance" (keep the current focus).
  */
 export const nextFocusForField = (

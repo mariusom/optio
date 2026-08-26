@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* optio design system — see notes/design-system.md
-   Custom daisyUI themes: inspection-grade palette, iOS grouped surfaces. */
+   Custom daisyUI themes: inspection-grade palette, grouped surfaces. */
 @plugin 'daisyui' {
   themes:
     optio-light --default,
@@ -23,7 +23,7 @@
   --color-neutral: oklch(24% 0.02 260); /* charcoal iron */
   --color-neutral-content: oklch(98% 0 0);
 
-  /* iOS grouped surfaces */
+  /* grouped surfaces */
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(96.5% 0.005 250);
   --color-base-300: oklch(91% 0.01 250);
@@ -79,7 +79,7 @@
     sans-serif;
 }
 
-/* ── Safari / iOS standalone PWA hardening ─────────────────────────────── */
+/* ── Standalone-PWA hardening ──────────────────────────────────────────── */
 
 html,
 body {
@@ -87,7 +87,7 @@ body {
 }
 
 body {
-  /* No gray flash rectangles on tap (iOS). */
+  /* No gray flash rectangles on tap. */
   -webkit-tap-highlight-color: transparent;
   /* The app shell delegates scrolling to <main>; body itself never scrolls. */
   overflow: hidden;
@@ -97,7 +97,7 @@ input,
 textarea,
 select,
 button {
-  /* Strip iOS bevels/shadows on form controls. */
+  /* Strip native bevels/shadows on form controls. */
   -webkit-appearance: none;
   appearance: none;
 }
@@ -136,11 +136,11 @@ button {
   }
 }
 
-/* ── Safari checklist #6: momentum scrolling on scrollable regions ───────────
+/* ── PWA checklist: momentum scrolling on scrollable regions ────────────────
    `main` is the shell scroll host; .overflow-y-auto/.overflow-auto covers the
    runner canvases, task sheets and dropdown menus. (-webkit-overflow-scrolling
-   is a no-op on modern iOS but harmless, and is the documented belt-and-braces
-   for old iOS 12 — keep it explicit.) */
+   sets the desired momentum behavior; a no-op on modern WebKit, harmless
+   elsewhere — keep it explicit.) */
 main,
 .overflow-y-auto,
 .overflow-auto {

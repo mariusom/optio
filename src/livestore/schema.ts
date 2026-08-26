@@ -3,7 +3,7 @@ import { Schema } from "effect";
 
 // ── Domain schemas ───────────────────────────────────────────────────────
 
-/** The five optio field types (raw strings mirror the Swift enum). */
+/** The five optio field types (raw strings mirror the domain enum). */
 export const FieldKind = Schema.Literals(["radio", "checkbox", "textInput", "textArea", "boolean"]);
 export type FieldKind = typeof FieldKind.Type;
 
@@ -43,7 +43,7 @@ export const tables = {
       isRequired: State.SQLite.integer({ default: 0 }),
       defaultValue: State.SQLite.text({ default: "" }),
       sortOrder: State.SQLite.integer({ default: 0 }),
-      // JSON-encoded string arrays (mirrors Swift's StringArrayCodec semantics)
+      // JSON-encoded string arrays (mirrors the original codec semantics)
       optionsJson: State.SQLite.text({ default: "[]" }),
       exclusiveOptionsJson: State.SQLite.text({ default: "[]" }),
     },
@@ -180,7 +180,7 @@ export const events = {
   /**
    * Ends a session: stamps endedAt and archives finished tasks into history
    * records. When zero finished tasks exist the materializer no-ops so the
-   * caller can delete the whole session instead (Swift parity).
+   * caller can delete the whole session instead.
    */
   sessionEnded: Events.synced({
     name: "v2.SessionEnded",
@@ -246,7 +246,7 @@ export const events = {
   }),
   /**
    * Writes a live field value; startDate stamped on FIRST write only
-   * (COALESCE keeps the earliest timestamp — Swift's TaskSection.value setter).
+   * (COALESCE keeps the earliest timestamp — first-write-wins).
    */
   taskFieldValueChanged: Events.synced({
     name: "v2.TaskFieldValueChanged",
@@ -429,7 +429,7 @@ const materializers = State.SQLite.materializers(events, {
     tables.sessionTasks.update({ isBeingEdited: 1 }).where({ id }),
   ],
   "v2.TaskEditFinished": ({ id }) => tables.sessionTasks.update({ isBeingEdited: 0 }).where({ id }),
-  // COALESCE = first-write-only startDate (Swift TaskSection.value setter).
+  // COALESCE = first-write-only startDate.
   // Raw SQL with $named binds: the `sql` template tag inlines values
   // unquoted (String(arg)), which breaks on uuids/dates ("near 'Aug': syntax
   // error"), so values MUST go through bindValues.

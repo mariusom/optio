@@ -170,7 +170,7 @@ const TABS: ReadonlyArray<TabDef> = [
 ];
 
 /**
- * iOS-style bottom tab bar. Safe-area aware; hidden on full-screen routes.
+ * Bottom tab bar. Safe-area aware; hidden on full-screen routes.
  * Anchors drive hash routing — no JS navigation needed.
  */
 export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
@@ -207,7 +207,7 @@ export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
     ],
   );
 
-/** iOS blurred sticky top bar with centered title + optional trailing slot. */
+/** Blurred sticky top bar with centered title + optional trailing slot. */
 export const topBar = <M>(
   title: string,
   trailing: ReturnType<HtmlBuilder<M>["div"]> | null,

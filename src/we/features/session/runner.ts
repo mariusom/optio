@@ -1,5 +1,4 @@
-// Runner pure helpers — mirrors Swift TaskSection/Task/SessionManager semantics
-// Spec §1.5, §1.6, §2, §4
+// Runner pure helpers — task/section/session semantics (spec §1.5, §1.6, §2, §4)
 
 export type RunnerSection = {
   readonly id: string;
@@ -52,7 +51,7 @@ export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isS
 export const canRecordTask = (task: RunnerTask | null | undefined): boolean =>
   task !== null && task !== undefined && isTaskDone(task);
 
-// Task state mirrors Swift TaskState enum
+// Task state: current (open) / editable (being edited) / done (ended)
 export type TaskState = "current" | "editable" | "done";
 
 export const taskState = (task: RunnerTask): TaskState => {

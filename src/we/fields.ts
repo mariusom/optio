@@ -1,6 +1,6 @@
 import type { FieldKind } from "../livestore/schema";
 
-// FieldKind metadata mirroring TemplateSectionType in the Swift original.
+// FieldKind metadata for the five field types.
 
 export const FIELD_KINDS: ReadonlyArray<FieldKind> = [
   "radio",

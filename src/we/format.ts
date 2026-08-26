@@ -9,12 +9,12 @@ const abbreviator = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-/** "Aug 26, 2026, 2:05 PM" — abbreviated date + short time (Swift .formatted(date: .abbreviated, time: .shortened)). */
+/** "Aug 26, 2026, 2:05 PM" — abbreviated date + short time. */
 export const formatTimestamp = (epochMs: number): string => abbreviator.format(new Date(epochMs));
 
 const timeOnly = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 
-/** "9:41 AM" — Swift .formatted(date: .omitted, time: .shortened). */
+/** "9:41 AM" — short time only. */
 export const formatTimeOnly = (epochMs: number): string => timeOnly.format(new Date(epochMs));
 
 /** Fixed CSV timestamp: "dd-MM-yyyy HH:mm:ss" — matches CSVGenerator.displayDate exactly. */

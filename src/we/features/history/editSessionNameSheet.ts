@@ -62,7 +62,7 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
                   h.div(
                     [h.Class("p-4")],
                     [
-                      // NOTE (S7): Swift focuses this field ~500ms after the sheet
+                      // NOTE (S7): focus this field ~500ms after the sheet
                       // appears (keyboard-delay nicety). Deferred — a setTimeout
                       // in a Subscription is fiddly for marginal gain; immediate
                       // autofocus here instead. focus-visible only, per the

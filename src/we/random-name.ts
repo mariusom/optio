@@ -1,4 +1,4 @@
-// RandomNameGenerator — verbatim word lists from the Swift original
+// RandomNameGenerator — curated two-word session names (96 adjectives × nouns)
 // (spec §2.4). Used as the session-name placeholder; a blank input promotes
 // the placeholder to the actual session name.
 
@@ -68,7 +68,6 @@ const ADJECTIVES: ReadonlyArray<string> = [
   "Solid",
   "Steady",
   "Strong",
-  "Swift",
   "Tender",
   "True",
   "Valiant",

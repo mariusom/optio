@@ -254,7 +254,7 @@ const initialModel = (route: Route): Model => ({
 });
 
 // INIT — first paint parses the URL and seeds sample content if the store is
-// empty (Swift seeds on container init; a session can't start without a template)
+// empty (seeded once at container init; a session can't start without a template)
 
 export const init = (url: Url) => ({
   model: initialModel(parseRoute(url)),

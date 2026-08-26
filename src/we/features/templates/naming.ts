@@ -1,5 +1,5 @@
 // Duplicate naming: "{name} copy", "{name} copy 2", … skipping taken names
-// (Swift TemplatesTab.duplicateTemplate).
+// Matching the duplicate-template naming behavior.
 
 export const nextDuplicateName = (
   originalName: string,

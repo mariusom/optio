@@ -63,7 +63,7 @@ describe("exclusive options", () => {
     expect(toggleCheckboxOption("None", "A", OPTS2, TWO)).toBe("A");
   });
 
-  it("real-world scenario from the Swift tests", () => {
+  it("real-world checkbox scenario", () => {
     const REAL = ["BNF", "Calculator", "Touchdose", "NONE"];
     let value = "BNF,Calculator";
     value = toggleCheckboxOption(value, "NONE", REAL, ["NONE"]);
