@@ -16,12 +16,9 @@ import {
   UpdateFieldValue,
 } from "./we/features/session/runnerCommands";
 import { sessionView } from "./we/features/session/sessionView";
-import {
-  findNextUnfulfilledSectionId,
-  isSectionDone,
-  type RunnerSection,
-  type RunnerTask,
-} from "./we/features/session/runner";
+import {} from "./we/features/session/runner";
+import { planSession, type SessionEmission } from "./machine/session/plan";
+import type { SessionEvent } from "./machine/session/sessionMachine";
 import {
   CreateTemplate,
   DeleteTemplate,
@@ -182,6 +179,8 @@ export const Model = S.Struct({
       ]),
     }),
   ]),
+  // Machine phase for the live Session statechart (Idle ⇔ runner === null)
+  runnerPhase: S.Union([S.Literal("collecting"), S.Literal("confirming")]),
   // History slice (S6)
   history: S.Array(
     S.Struct({
@@ -244,6 +243,7 @@ const initialModel = (route: Route): Model => ({
   activeSession: null,
   pendingDiscardSession: false,
   runner: null,
+  runnerPhase: "collecting",
   history: [],
   selectedHistorySession: null,
   pendingHistoryDelete: null,
@@ -276,6 +276,38 @@ const NavigateExternal = Command.define("NavigateExternal", {
   messages: [Message.Navigated],
   execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
 });
+
+// ── Runner state machine bridge (effect-machine → FoldKit) ───────────────
+
+const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> => {
+  switch (emission._tag) {
+    case "CommitFieldValue":
+      return [UpdateFieldValue({ taskFieldId: emission.taskFieldId, value: emission.value })];
+    case "CommitRecord":
+      return [RecordTask({ sessionId: emission.sessionId, currentTaskId: emission.taskId })];
+    case "CommitSelectTask":
+      return [SelectTask({ sessionId: emission.sessionId, taskId: emission.taskId })];
+    case "CommitCancelEdit":
+      return [CancelEdit({ taskId: emission.taskId, backup: emission.backup })];
+    case "CommitSaveEdit":
+      return [SaveEdit({ taskId: emission.taskId })];
+    case "CommitEndSession":
+      return [EndSession({ sessionId: emission.sessionId })];
+  }
+};
+
+/** Plan a Session-machine event; merge the result into model + commands. */
+const applyPlan = (model: Model, event: SessionEvent) => {
+  const plan = planSession(model.runner, model.runnerPhase, event);
+  const changed =
+    plan.runner !== model.runner || plan.phase !== model.runnerPhase || plan.emissions.length > 0;
+  return changed
+    ? {
+        model: { ...model, runner: plan.runner, runnerPhase: plan.phase },
+        commands: plan.emissions.flatMap(emissionToCommand),
+      }
+    : { model };
+};
 
 // UPDATE — pure state transitions
 
@@ -787,278 +819,37 @@ export const update = (model: Model, message: Message) =>
       model: { ...model, lastError: error, pendingDiscardSession: false },
     }),
 
-    // ── Runner ───────────────────────────────────────────────────────────
-    GotRunnerData: ({ data }) => {
-      if (data === null) return { model: { ...model, runner: null } };
-      const existing = model.runner;
-      const isNewSession = existing === null || existing.sessionId !== data.sessionId;
-      const merged = {
-        ...data,
-        focusedSectionId: isNewSession ? null : (existing?.focusedSectionId ?? null),
-        showTaskList: isNewSession ? false : (existing?.showTaskList ?? false),
-        showEndConfirm: isNewSession ? false : (existing?.showEndConfirm ?? false),
-        showSidebar: isNewSession ? true : (existing?.showSidebar ?? true),
-        lastError: isNewSession ? null : (existing?.lastError ?? null),
-        now: isNewSession ? Date.now() : (existing?.now ?? Date.now()),
-        editBackup: isNewSession ? null : (existing?.editBackup ?? null),
-      };
-      // Preserve editBackup task existence check: if editBackup task no longer exists or not being edited, clear it
-      if (merged.editBackup !== null) {
-        const backupExists = merged.tasks.some(
-          (t) => t.id === merged.editBackup?.taskId && t.isBeingEdited,
-        );
-        if (!backupExists) {
-          // keep backup for cancel scenario where flag not yet set? Only clear if task no longer edited and not in transition
-          // If current task is not being edited, keep backup until explicit cancel/save
-          const isEditing = merged.tasks.some((t) => t.isBeingEdited);
-          if (!isEditing && merged.editBackup.taskId !== merged.currentTaskId) {
-            // stale backup after save/cancel — clear
-            // but leave if we are in the tick after edit started where flag not yet reflected
-            // Check if flag should be there: backup task should be the one that isBeingEdited
-            const flagged = merged.tasks.find((t) => t.isBeingEdited);
-            if (flagged === undefined || flagged.id !== merged.editBackup.taskId) {
-              // if no editing task, clear backup
-              // we'll keep it until explicit cancel/save clears it via messages
-            }
-          }
-        }
-      }
-      return { model: { ...model, runner: merged } };
-    },
+    // ── Runner (effect-machine state machine) ────────────────────────────
+    // Every runner message is planned through the Session machine
+    // (src/machine/session/): the machine owns the control logic and emits
+    // Commit* effects which become LiveStore commands below.
+    GotRunnerData: ({ data }) => applyPlan(model, { _tag: "DataSynced", data } as SessionEvent),
     Tick: ({ now }) => {
       if (model.runner === null) return { model };
       return { model: { ...model, runner: { ...model.runner, now } } };
     },
-    ChangedFieldValue: ({ taskFieldId, value }) => {
-      if (model.runner === null) return { model };
-      const runner = model.runner;
-      let targetSection: RunnerSection | null = null;
-      let targetTask: RunnerTask | null = null;
-      for (const t of runner.tasks) {
-        const s = t.sections.find((sec) => sec.id === taskFieldId);
-        if (s !== undefined) {
-          targetSection = s;
-          targetTask = t;
-          break;
-        }
-      }
-      let nextFocused = runner.focusedSectionId;
-      if (targetSection !== null && targetTask !== null) {
-        const kind = targetSection.kind;
-        const updated: RunnerSection = { ...targetSection, value };
-        const isDone = isSectionDone(updated);
-        if (kind === "radio" && isDone) {
-          const cur = runner.tasks.find((t) => t.id === runner.currentTaskId) ?? targetTask;
-          if (cur !== null) {
-            const sorted = [...cur.sections].sort((a, b) => a.sortOrder - b.sortOrder);
-            const updatedSorted = sorted.map((s) => (s.id === taskFieldId ? { ...s, value } : s));
-            const nextId = findNextUnfulfilledSectionId(
-              updatedSorted as ReadonlyArray<RunnerSection>,
-              taskFieldId,
-            );
-            nextFocused = nextId;
-          }
-        }
-      }
-      const nextRunner =
-        nextFocused !== runner.focusedSectionId
-          ? { ...runner, focusedSectionId: nextFocused }
-          : runner;
+    ChangedFieldValue: ({ taskFieldId, value }) =>
+      applyPlan(model, { _tag: "FieldChanged", taskFieldId, value } as SessionEvent),
+    ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
+    TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
+    ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
+    CanceledEndSession: () => applyPlan(model, { _tag: "EndCancelled" }),
+    ConfirmedEndSession: () => applyPlan(model, { _tag: "EndConfirmed" }),
+    SessionEnded: () => {
+      const planned = applyPlan(model, { _tag: "EndAcked" });
       return {
-        model: nextRunner !== runner ? { ...model, runner: nextRunner } : model,
-        commands: [UpdateFieldValue({ taskFieldId, value })],
+        model: { ...planned.model, placeholderName: generateSessionName() },
+        commands: [...(planned.commands ?? []), NavigateInternal({ url: "#/start" })],
       };
     },
-    UpdatedFieldValue: () => ({ model }),
-    ClickedRecord: () => {
-      if (model.runner === null) return { model };
-      const runner = model.runner;
-      const cur = runner.tasks.find((t) => t.id === runner.currentTaskId) ?? null;
-      if (cur === null) return { model };
-      const canRecord = cur.sections.every((s) => (s.isRequired ? s.value !== "" : true));
-      if (!canRecord) {
-        return {
-          model: {
-            ...model,
-            runner: { ...runner, lastError: "Please complete required fields before recording." },
-          },
-        };
-      }
-      return {
-        model: { ...model, runner: { ...runner, focusedSectionId: null } },
-        commands: [RecordTask({ sessionId: runner.sessionId, currentTaskId: cur.id })],
-      };
-    },
-    TaskRecorded: () => {
-      if (model.runner === null) return { model };
-      return {
-        model: {
-          ...model,
-          runner: { ...model.runner, focusedSectionId: null, showTaskList: false },
-        },
-      };
-    },
-    ClickedEndSession: () => {
-      if (model.runner === null) return { model };
-      return { model: { ...model, runner: { ...model.runner, showEndConfirm: true } } };
-    },
-    CanceledEndSession: () => {
-      if (model.runner === null) return { model };
-      return { model: { ...model, runner: { ...model.runner, showEndConfirm: false } } };
-    },
-    ConfirmedEndSession: () => {
-      if (model.runner === null) return { model };
-      return {
-        model: { ...model, runner: { ...model.runner, showEndConfirm: false } },
-        commands: [EndSession({ sessionId: model.runner.sessionId })],
-      };
-    },
-    SessionEnded: () => ({
-      model: { ...model, runner: null, placeholderName: generateSessionName() },
-      commands: [NavigateInternal({ url: "#/start" })],
-    }),
-    ClickedSelectTask: ({ taskId }) => {
-      if (model.runner === null) return { model };
-      const runner = model.runner;
-      const target = runner.tasks.find((t) => t.id === taskId);
-      if (target === undefined) return { model };
-      const isFinished = target.endDate !== null;
-      if (isFinished) {
-        const values: Record<string, string> = {};
-        for (const s of target.sections) values[s.id] = s.value;
-        const nextRunner = {
-          ...runner,
-          showTaskList: false,
-          focusedSectionId: null,
-          editBackup: { taskId, values },
-          currentTaskId: taskId,
-        };
-        return {
-          model: { ...model, runner: nextRunner },
-          commands: [SelectTask({ sessionId: runner.sessionId, taskId })],
-        };
-      } else {
-        const nextRunner = {
-          ...runner,
-          showTaskList: false,
-          focusedSectionId: null,
-          currentTaskId: taskId,
-          editBackup: null,
-        };
-        return {
-          model: { ...model, runner: nextRunner },
-          commands: [SelectTask({ sessionId: runner.sessionId, taskId })],
-        };
-      }
-    },
-    ToggledTaskList: () => {
-      if (model.runner === null) return { model };
-      return {
-        model: { ...model, runner: { ...model.runner, showTaskList: !model.runner.showTaskList } },
-      };
-    },
-    FocusedSection: ({ fieldId }) => {
-      if (model.runner === null) return { model };
-      return { model: { ...model, runner: { ...model.runner, focusedSectionId: fieldId } } };
-    },
-    ClickedCancelEdit: () => {
-      if (model.runner === null) return { model };
-      const runner = model.runner;
-      const backup = runner.editBackup;
-      const editing = runner.tasks.find((t) => t.isBeingEdited) ?? null;
-      const fallback =
-        [...runner.tasks]
-          .filter((t) => t.endDate === null)
-          .sort((a, b) => b.orderIndex - a.orderIndex)[0] ?? null;
-      const fallbackId = fallback?.id ?? runner.currentTaskId;
-      if (backup === null || editing === null) {
-        const targetId = editing?.id ?? backup?.taskId;
-        if (targetId === undefined)
-          return {
-            model: {
-              ...model,
-              runner: {
-                ...runner,
-                editBackup: null,
-                showTaskList: false,
-                currentTaskId: fallbackId,
-              },
-            },
-          };
-        return {
-          model: {
-            ...model,
-            runner: { ...runner, editBackup: null, showTaskList: false, currentTaskId: fallbackId },
-          },
-          commands: [CancelEdit({ taskId: targetId, backup: {} })],
-        };
-      }
-      return {
-        model: {
-          ...model,
-          runner: {
-            ...runner,
-            editBackup: null,
-            showTaskList: false,
-            focusedSectionId: null,
-            currentTaskId: fallbackId,
-          },
-        },
-        commands: [CancelEdit({ taskId: backup.taskId, backup: backup.values })],
-      };
-    },
-    ClickedSaveEdit: () => {
-      if (model.runner === null) return { model };
-      const runner = model.runner;
-      const editing = runner.tasks.find((t) => t.isBeingEdited) ?? null;
-      if (editing === null) return { model: { ...model, runner: { ...runner, editBackup: null } } };
-      const canSave = editing.sections.every((s) => (s.isRequired ? s.value !== "" : true));
-      if (!canSave) {
-        return {
-          model: {
-            ...model,
-            runner: { ...runner, lastError: "Please complete required fields before saving." },
-          },
-        };
-      }
-      const fallback =
-        [...runner.tasks]
-          .filter((t) => t.endDate === null)
-          .sort((a, b) => b.orderIndex - a.orderIndex)[0] ?? null;
-      return {
-        model: {
-          ...model,
-          runner: {
-            ...runner,
-            editBackup: null,
-            showTaskList: false,
-            focusedSectionId: null,
-            currentTaskId: fallback?.id ?? runner.currentTaskId,
-          },
-        },
-        commands: [SaveEdit({ taskId: editing.id })],
-      };
-    },
+    ClickedSelectTask: ({ taskId }) => applyPlan(model, { _tag: "TaskSelected", taskId }),
+    ToggledTaskList: () => applyPlan(model, { _tag: "TaskListToggled" }),
+    FocusedSection: ({ fieldId }) => applyPlan(model, { _tag: "SectionFocused", fieldId }),
+    ClickedCancelEdit: () => applyPlan(model, { _tag: "EditCancelled" }),
+    ClickedSaveEdit: () => applyPlan(model, { _tag: "EditSaved" }),
     TaskEditStarted: () => ({ model }),
-    TaskEditFinished: () => {
-      if (model.runner === null) return { model };
-      const fallback =
-        [...model.runner.tasks]
-          .filter((t) => t.endDate === null)
-          .sort((a, b) => b.orderIndex - a.orderIndex)[0] ?? null;
-      return {
-        model: {
-          ...model,
-          runner: {
-            ...model.runner,
-            editBackup: null,
-            focusedSectionId: null,
-            showTaskList: false,
-            currentTaskId: fallback?.id ?? model.runner.currentTaskId,
-          },
-        },
-      };
-    },
+    UpdatedFieldValue: () => ({ model }),
+    TaskEditFinished: () => applyPlan(model, { _tag: "EditAcked" }),
     FailedRunnerOp: ({ error }) => {
       if (model.runner === null) return { model: { ...model, lastError: error } };
       return { model: { ...model, runner: { ...model.runner, lastError: error } } };

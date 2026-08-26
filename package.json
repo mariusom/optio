@@ -15,6 +15,7 @@
     "@livestore/adapter-web": "0.5.0-dev.0",
     "@livestore/livestore": "0.5.0-dev.0",
     "@livestore/wa-sqlite": "0.5.0-dev.0",
+    "@typeonce/effect-machine": "0.25.0",
     "effect": "4.0.0-rc.111",
     "foldkit": "^0.151.0"
   },
