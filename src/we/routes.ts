@@ -73,7 +73,7 @@ export const parseRoute = (url: Url): Route =>
     router.parse(segmentsFromHash(url.hash)),
     Effect.match({
       onFailure: () => StartTab(),
-      onSuccess: ([route]) => route as Route,
+      onSuccess: ([route]) => route,
     }),
     Effect.runSync,
   )

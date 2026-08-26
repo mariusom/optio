@@ -70,6 +70,6 @@ describe('hrefFor round-trips through parseRoute', () => {
   it('builds distinct hrefs for tabs', () => {
     const hrefs = routes.slice(0, 3).map(hrefFor)
     expect(new Set(hrefs).size).toBe(3)
-    void historyRouter
+    expect(historyRouter()).toBe('/history')
   })
 })

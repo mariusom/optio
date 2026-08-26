@@ -1,5 +1,7 @@
 import { defineMessageUnion } from 'foldkit/message'
 
+import { UrlRequest } from 'foldkit/navigation'
+
 import { RouteSchema } from './we/routes'
 
 // Central flat Message union. Feature payload shapes are grouped by comment;
@@ -8,5 +10,7 @@ import { RouteSchema } from './we/routes'
 export const Message = defineMessageUnion({
   // ── Routing ────────────────────────────────────────────────────────────
   GotRoute: { route: RouteSchema },
+  ClickedLink: { request: UrlRequest },
+  Navigated: {},
 })
 export type Message = typeof Message.Type
