@@ -112,3 +112,37 @@ button {
     opacity: 1;
   }
 }
+
+/* Generic fade (design system §4.1 — toast / overlay entries). */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Update-toast entry: rise 8px + fade. Keeps translateX(-50%) in both frames,
+   since the toast itself is centered with -translate-x-1/2. */
+@keyframes toast-in {
+  from {
+    transform: translate(-50%, 8px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+/* ── Safari checklist #6: momentum scrolling on scrollable regions ───────────
+   `main` is the shell scroll host; .overflow-y-auto/.overflow-auto covers the
+   runner canvases, task sheets and dropdown menus. (-webkit-overflow-scrolling
+   is a no-op on modern iOS but harmless, and is the documented belt-and-braces
+   for old iOS 12 — keep it explicit.) */
+main,
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}

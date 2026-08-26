@@ -262,7 +262,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                       ),
                       h.input([
                         h.Class(
-                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus:input-primary focus:outline-none transition-colors placeholder:text-base-content/40",
+                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
                         ),
                         h.Value(editor.name),
                         h.Placeholder("Template Name"),
@@ -551,7 +551,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                       ),
                       h.input([
                         h.Class(
-                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus:input-primary focus:outline-none transition-colors placeholder:text-base-content/40",
+                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
                         ),
                         h.Value(draft.name),
                         h.Placeholder("Field Name"),
@@ -714,7 +714,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                           [
                             h.input([
                               h.Class(
-                                "input input-bordered flex-1 rounded-field text-base md:text-sm bg-base-100 focus:input-primary focus:outline-none",
+                                "input input-bordered flex-1 rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none",
                               ),
                               h.Value(draft.newOptionText),
                               h.Placeholder("Option name"),
@@ -797,7 +797,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                             ? [
                                 h.textarea([
                                   h.Class(
-                                    "textarea textarea-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus:textarea-primary focus:outline-none min-h-[90px] leading-relaxed placeholder:text-base-content/40",
+                                    "textarea textarea-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:textarea-primary focus-visible:outline-none min-h-[90px] leading-relaxed placeholder:text-base-content/40",
                                   ),
                                   h.Placeholder("Default Value"),
                                   h.Value(draft.defaultValue),
@@ -815,7 +815,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                             : [
                                 h.input([
                                   h.Class(
-                                    "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus:input-primary focus:outline-none placeholder:text-base-content/40",
+                                    "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                                   ),
                                   h.Value(draft.defaultValue),
                                   h.Placeholder("Default Value"),

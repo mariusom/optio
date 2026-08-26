@@ -62,9 +62,14 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
                   h.div(
                     [h.Class("p-4")],
                     [
+                      // NOTE (S7): Swift focuses this field ~500ms after the sheet
+                      // appears (keyboard-delay nicety). Deferred — a setTimeout
+                      // in a Subscription is fiddly for marginal gain; immediate
+                      // autofocus here instead. focus-visible only, per the
+                      // Safari checklist — raw `focus:` rings persist on touch.
                       h.input([
                         h.Class(
-                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus:input-primary focus:outline-none placeholder:text-base-content/40",
+                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                         ),
                         h.Value(model.editHistoryNameInput),
                         h.Placeholder("Session Name"),

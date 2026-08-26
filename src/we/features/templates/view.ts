@@ -200,7 +200,12 @@ export const templatesPage = (
 const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
   h.keyed("div")(
     template.id,
-    [h.Class("flex items-stretch bg-base-100 transition-colors")],
+    // Micro-scale press feedback (design system §4.2).
+    [
+      h.Class(
+        "flex items-stretch bg-base-100 active:scale-[0.98] active:opacity-80 transition-transform duration-75",
+      ),
+    ],
     [
       h.button(
         [
@@ -253,7 +258,7 @@ const createModal = (newName: string, h: HtmlBuilder<Message>) =>
           h.h3([h.Class("text-base font-bold")], ["New Template"]),
           h.input([
             h.Class(
-              "input input-bordered mt-3 w-full rounded-field bg-base-100 text-base focus:outline-none",
+              "input input-bordered mt-3 w-full rounded-field bg-base-100 text-base focus-visible:outline-none",
             ),
             h.Value(newName),
             h.Placeholder("Template Name"),

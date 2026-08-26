@@ -189,7 +189,7 @@ export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
           return h.a(
             [
               h.Class(
-                `flex h-full flex-col items-center justify-center transition-transform active:scale-95 ${
+                `flex h-full flex-col items-center justify-center transition-transform duration-75 active:scale-95 active:opacity-80 ${
                   active ? "text-primary" : "text-base-content/50 hover:text-base-content/80"
                 }`,
               ),

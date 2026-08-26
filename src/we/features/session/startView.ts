@@ -466,7 +466,7 @@ const templatePicker = (
         [
           h.Tabindex(0),
           h.Class(
-            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-100 focus:outline-none",
+            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-100 focus-visible:outline-none focus-visible:border-primary",
           ),
           h.Attribute("role", "button"),
         ],
@@ -526,7 +526,7 @@ const sessionNameField = (
       ),
       h.input([
         h.Class(
-          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus:outline-none focus-visible:outline-none transition-colors placeholder:text-base-content/40",
+          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
         ),
         h.Value(sessionNameInput),
         h.Placeholder(placeholderName),

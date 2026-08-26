@@ -68,7 +68,13 @@ const sessionRowView = (session: HistoryModel["history"][number], h: HtmlBuilder
   const timeRange = formatRange(session.startedAt, session.endedAt);
   const hasCustomName = session.sessionName !== "";
   return h.div(
-    [h.Class("flex items-stretch bg-base-100")],
+    // Micro-scale press feedback (design system §4.2) — active propagates from
+    // the row button, giving a tactile "press" without framework churn.
+    [
+      h.Class(
+        "flex items-stretch bg-base-100 active:scale-[0.98] active:opacity-80 transition-transform duration-75",
+      ),
+    ],
     [
       h.button(
         [
@@ -179,10 +185,21 @@ const emptyState = (h: HtmlBuilder<Message>) =>
             ],
             [clockQuestionIcon("h-7 w-7", h)],
           ),
-          h.h3([h.Class("text-base font-semibold")], ["No sessions yet"]),
+          h.h3([h.Class("text-base font-semibold text-base-content")], ["No sessions yet"]),
           h.p(
             [h.Class("mt-1 text-xs leading-relaxed text-base-content/60")],
-            ["Start a session from the Session tab to begin tracking."],
+            ["Finish a session and it will appear here, ready for CSV export."],
+          ),
+          // Unified empty-state pattern: icon / title / message / action.
+          // Same primary-action chrome as the NoTemplates empty state.
+          h.a(
+            [
+              h.Class(
+                "btn btn-primary mt-5 rounded-field gap-1.5 text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform",
+              ),
+              h.Attribute("href", "#/start"),
+            ],
+            [h.span([h.Class("text-lg leading-none")], ["+"]), "Start a Session"],
           ),
         ],
       ),
