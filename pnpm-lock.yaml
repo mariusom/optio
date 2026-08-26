@@ -36,6 +36,9 @@ importers:
       daisyui:
         specifier: ^5.0.0
         version: 5.7.22
+      fallow:
+        specifier: ^3.18.0
+        version: 3.18.0
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.3
@@ -630,6 +633,46 @@ packages:
     peerDependencies:
       effect: ^4.0.0-rc.111
       vitest: '>=4.1.0 <5.0.0'
+
+  '@fallow-cli/darwin-arm64@3.18.0':
+    resolution: {integrity: sha512-eQ16bS0U5OAC+8OadDsedhWQILp8UpqowUIlvMmQ7XHigfD5VLpJXcLcHGkWXGvkNjkHRM46CXNFQaiCXK/miQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@fallow-cli/darwin-x64@3.18.0':
+    resolution: {integrity: sha512-QK8Ostp5jSO48CJuei9Gc878ej+UQpmdLqxW5dk1mOQj37ZTNiZ8wamh8GLBVncpl1qakcZ1e0OhjKHj8cI+2w==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@fallow-cli/linux-arm64-gnu@3.18.0':
+    resolution: {integrity: sha512-015DL5529tNJBjkdwo2O+cJP07qkD9gjO0EcHuXn+alBzKoUTm1ip99sDQ5Q/TnzVi86s0fDnBQF8N4EGTUaHw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-arm64-musl@3.18.0':
+    resolution: {integrity: sha512-t/pmJFGqFL445/4tiNJ4zCezYDNQn0Wmc17FdPM/CA9ToVtMODh0TTMYD3KKNBP5+4MbC3Fxjkp6ITgPTzUj6Q==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-gnu@3.18.0':
+    resolution: {integrity: sha512-4hHPWzkxYMgI5vf6W6b+XgeftgB7fSQdDK1Vg6DklwZ8K10wbN2dXvt7MAvq9FrPZhSuxE5SyPe5mJryukqZvA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/linux-x64-musl@3.18.0':
+    resolution: {integrity: sha512-mgXTHI0tNVnos1bVNqi4BPv7NyFHk1X9JcRRrMR6/wqezb0U3qePzSrbJpsP1LVo93uovXB5B+hby/sztxDfqw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@fallow-cli/win32-arm64-msvc@3.18.0':
+    resolution: {integrity: sha512-b2EHII8eWUlzZnbY0x9MaO6+TDOuKhRHvuyONjAQ3uK/LYMIYo54YdvAKVEW8SYbeuOy9Hyl/dt5rH/+DgmJLw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@fallow-cli/win32-x64-msvc@3.18.0':
+    resolution: {integrity: sha512-etBjK9DatwNz+oXfTi3lhtyLsFeb4RUfqFyHh01BQUpLpBBJ570Ea25SryShGbLd8m4ns9HxAcO/VL5alviRyg==}
+    cpu: [x64]
+    os: [win32]
 
   '@foldkit/vite-plugin@0.17.0':
     resolution: {integrity: sha512-C7OjQg0AG7D1jTisaX1V1CLzJAftup/aDGWsR3gqDik8bDSGgjIrFnupLxd3IJF7x/j1LVf6FDniHPIFizNIwQ==}
@@ -2219,6 +2262,16 @@ packages:
   expect-type@1.4.0:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
+
+  fallow-type-aware@3.18.0:
+    resolution: {integrity: sha512-d86JCguQHB6BMpkO/hq5bfUiVOWD8epDNxhhXiDTPewMcF/tpMVOSCq2VPKF7WVaZTi2StAIOqt2a23IQN4FTA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  fallow@3.18.0:
+    resolution: {integrity: sha512-9cVAFeByGlqAKcGE4qfICQtzT4zEha0KUF/tLzpaM8DD74sVn08Km2GAyMLktZ7KdSm41AdtmW64/Cny2v1p4A==}
+    engines: {node: '>=22'}
+    hasBin: true
 
   fast-check@4.9.0:
     resolution: {integrity: sha512-7ms6T7SybUev/PQITciI0yLM2pOSFy5zpG8Ty7tQofcVaQUvrMXp6CBwqF6fThLCLOrfBtuHAtwq6Yu4XPCllg==}
@@ -4044,6 +4097,30 @@ snapshots:
       effect: 4.0.0-rc.111
       vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-preview@4.1.11)(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
 
+  '@fallow-cli/darwin-arm64@3.18.0':
+    optional: true
+
+  '@fallow-cli/darwin-x64@3.18.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-gnu@3.18.0':
+    optional: true
+
+  '@fallow-cli/linux-arm64-musl@3.18.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-gnu@3.18.0':
+    optional: true
+
+  '@fallow-cli/linux-x64-musl@3.18.0':
+    optional: true
+
+  '@fallow-cli/win32-arm64-msvc@3.18.0':
+    optional: true
+
+  '@fallow-cli/win32-x64-msvc@3.18.0':
+    optional: true
+
   '@foldkit/vite-plugin@0.17.0(effect@4.0.0-rc.111)(foldkit@0.151.0(effect@4.0.0-rc.111))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))':
     dependencies:
       effect: 4.0.0-rc.111
@@ -5225,6 +5302,25 @@ snapshots:
   eta@4.6.0: {}
 
   expect-type@1.4.0: {}
+
+  fallow-type-aware@3.18.0:
+    dependencies:
+      typescript: 7.0.2
+    optional: true
+
+  fallow@3.18.0:
+    dependencies:
+      detect-libc: 2.1.2
+    optionalDependencies:
+      '@fallow-cli/darwin-arm64': 3.18.0
+      '@fallow-cli/darwin-x64': 3.18.0
+      '@fallow-cli/linux-arm64-gnu': 3.18.0
+      '@fallow-cli/linux-arm64-musl': 3.18.0
+      '@fallow-cli/linux-x64-gnu': 3.18.0
+      '@fallow-cli/linux-x64-musl': 3.18.0
+      '@fallow-cli/win32-arm64-msvc': 3.18.0
+      '@fallow-cli/win32-x64-msvc': 3.18.0
+      fallow-type-aware: 3.18.0
 
   fast-check@4.9.0:
     dependencies:

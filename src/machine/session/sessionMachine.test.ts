@@ -108,6 +108,17 @@ describe("sessionMachine topology", () => {
     expect(runner).toBeNull();
   });
 
+  it("stays Idle without failing when DataSynced null arrives at Idle (dead runner link)", () => {
+    // Regression: the Idle handler used to plan an entry into the compound
+    // Live state without an active child — invalid configuration, so every
+    // store refresh errored ("Machine expected state Live builder to provide
+    // active child states") while the runner route showed an infinite
+    // "Loading session…". Must be a safe no-op.
+    const planned = plan(null, { _tag: "DataSynced", data: null });
+    expect(planned.runner).toBeNull();
+    expect(planned.emissions).toEqual([]);
+  });
+
   it("preserves controls across same-session DataSynced", () => {
     const start = plan(
       liveRunner({ focusedSectionId: "f-category", showTaskList: true, lastError: "oops" }),

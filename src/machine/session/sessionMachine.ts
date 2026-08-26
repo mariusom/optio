@@ -246,13 +246,18 @@ export const SessionMachine = Machine.make({
   Idle: {
     on: {
       // Store says a session exists → enter Live with fresh controls.
+      // No session (null) ⇒ stay Idle: entering a compound without an active
+      // child is invalid and fails planning.
       DataSynced: (to) =>
-        to.full
-          .Live()
-          .resolve(({ event, target }) =>
+        to
+          .branches({
+            stay: { target: to.none },
+            enter: { target: to.full.Live() },
+          })
+          .resolve(({ event, select }) =>
             event.data === null
-              ? target.from()
-              : target.from(freshLiveValue(event.data), (live) => live.Collecting.from()),
+              ? select.stay()
+              : select.enter.from(freshLiveValue(event.data), (live) => live.Collecting.from()),
           ),
     },
   },

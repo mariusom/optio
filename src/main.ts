@@ -823,7 +823,18 @@ export const update = (model: Model, message: Message) =>
     // Every runner message is planned through the Session machine
     // (src/machine/session/): the machine owns the control logic and emits
     // Commit* effects which become LiveStore commands below.
-    GotRunnerData: ({ data }) => applyPlan(model, { _tag: "DataSynced", data } as SessionEvent),
+    GotRunnerData: ({ data }) => {
+      const planned = applyPlan(model, { _tag: "DataSynced", data } as SessionEvent);
+      // Dead link / store reset mid-session: the runner route has no live
+      // session — bounce to Start instead of an infinite "Loading session…".
+      if (data === null && model.route._tag === "SessionRunner" && model.runner === null) {
+        return {
+          model: planned.model,
+          commands: [...(planned.commands ?? []), NavigateInternal({ url: "#/start" })],
+        };
+      }
+      return planned;
+    },
     Tick: ({ now }) => {
       if (model.runner === null) return { model };
       return { model: { ...model, runner: { ...model.runner, now } } };

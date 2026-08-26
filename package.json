@@ -23,6 +23,7 @@
     "@foldkit/vite-plugin": "^0.17.0",
     "@tailwindcss/vite": "^4.0.0",
     "daisyui": "^5.0.0",
+    "fallow": "^3.18.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^7.0.2",
     "vite-plugin-pwa": "^0.21.0 || ^1.0.0",
