@@ -17,7 +17,7 @@ const adapter = makePersistedAdapter({
  */
 export const getStore = () =>
   createStorePromise({
-    storeId: 'optio-hello',
+    storeId: 'watchfuleye-v1',
     schema,
     adapter,
   })

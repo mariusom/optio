@@ -143,7 +143,10 @@ type EmptyStateProps = {
 }
 
 /** Unified empty state: icon in soft circle, semibold heading, muted copy. */
-export const emptyState = <M>(props: EmptyStateProps, h: HtmlBuilder<M>) =>
+export const emptyState = <M>(
+  props: EmptyStateProps,
+  h: HtmlBuilder<M>,
+) =>
   h.div(
     [h.Class('mx-auto my-auto flex max-w-sm flex-col items-center justify-center p-8 text-center')],
     [

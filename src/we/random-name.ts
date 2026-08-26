@@ -1,0 +1,53 @@
+// RandomNameGenerator — verbatim word lists from the Swift original
+// (spec §2.4). Used as the session-name placeholder; a blank input promotes
+// the placeholder to the actual session name.
+
+const ADJECTIVES: ReadonlyArray<string> = [
+  // Nature & Elements
+  'Amber', 'Azure', 'Blazing', 'Breezy', 'Bright', 'Brilliant', 'Calm', 'Celestial',
+  'Clear', 'Cloudy', 'Cool', 'Crimson', 'Crystal', 'Deep', 'Emerald', 'Fiery',
+  'Frosty', 'Golden', 'Icy', 'Misty', 'Radiant', 'Scarlet', 'Shimmering', 'Shining',
+  'Silver', 'Snowy', 'Sparkling', 'Starry', 'Stormy', 'Sunny', 'Violet', 'Warm',
+  // Qualities
+  'Bold', 'Brave', 'Clever', 'Daring', 'Eager', 'Fair', 'Fearless', 'Gentle',
+  'Grand', 'Great', 'Happy', 'Humble', 'Keen', 'Kind', 'Lively', 'Loyal',
+  'Mighty', 'Noble', 'Peaceful', 'Proud', 'Pure', 'Quick', 'Quiet', 'Rapid',
+  'Serene', 'Sharp', 'Silent', 'Smooth', 'Solid', 'Steady', 'Strong', 'Swift',
+  'Tender', 'True', 'Valiant', 'Vigilant', 'Vital', 'Vivid', 'Wise', 'Zealous',
+  // Descriptive
+  'Ancient', 'Agile', 'Alert', 'Elegant', 'Epic', 'Eternal', 'Fleet', 'Fresh',
+  'Glowing', 'Hidden', 'Infinite', 'Lasting', 'Lucid', 'Majestic', 'Mystic', 'Rising',
+  'Sacred', 'Soaring', 'Timeless', 'Tranquil', 'Vibrant', 'Whispering', 'Wild', 'Winding',
+]
+
+const NOUNS: ReadonlyArray<string> = [
+  // Landscapes
+  'Canyon', 'Cave', 'Cliff', 'Coast', 'Creek', 'Delta', 'Desert', 'Dune',
+  'Field', 'Forest', 'Garden', 'Grove', 'Harbor', 'Hill', 'Hollow', 'Island',
+  'Lake', 'Meadow', 'Mountain', 'Ocean', 'Oasis', 'Pass', 'Peak', 'Plain',
+  'Plateau', 'Prairie', 'Range', 'Ridge', 'River', 'Shore', 'Spring', 'Stream',
+  'Summit', 'Trail', 'Valley', 'Vista', 'Waterfall', 'Woods',
+  // Sky & Weather
+  'Aurora', 'Breeze', 'Cloud', 'Comet', 'Dawn', 'Dusk', 'Eclipse', 'Horizon',
+  'Lightning', 'Meteor', 'Moon', 'Nebula', 'Rain', 'Sky', 'Star', 'Storm',
+  'Sun', 'Sunrise', 'Sunset', 'Thunder', 'Twilight', 'Wind',
+  // Animals & Mythical
+  'Bear', 'Condor', 'Deer', 'Dragon', 'Eagle', 'Falcon', 'Fox', 'Griffin',
+  'Hawk', 'Heron', 'Leopard', 'Lion', 'Lynx', 'Owl', 'Panther', 'Phoenix',
+  'Raven', 'Serpent', 'Sparrow', 'Tiger', 'Unicorn', 'Wolf', 'Wyvern',
+  // Elements & Materials
+  'Amber', 'Bronze', 'Copper', 'Crystal', 'Diamond', 'Ember', 'Flame', 'Flint',
+  'Frost', 'Gem', 'Gold', 'Granite', 'Iron', 'Jade', 'Marble', 'Obsidian',
+  'Opal', 'Pearl', 'Quartz', 'Ruby', 'Sapphire', 'Shadow', 'Silver', 'Steel',
+  'Stone', 'Topaz',
+]
+
+const pick = <T>(items: ReadonlyArray<T>): T =>
+  items[Math.floor(Math.random() * items.length)] as T
+
+/** "Amber Canyon"-style name; falls back to "Random Session" if lists empty. */
+export const generateSessionName = (): string => {
+  const adjective = ADJECTIVES.length > 0 ? pick(ADJECTIVES) : 'Random'
+  const noun = NOUNS.length > 0 ? pick(NOUNS) : 'Session'
+  return `${adjective} ${noun}`
+}
