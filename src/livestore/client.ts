@@ -25,7 +25,7 @@ let storePromise: Promise<AppStore> | null = null;
 
 export const getStore = () =>
   (storePromise ??= createStorePromise({
-    storeId: "watchfuleye-v1",
+    storeId: "optio-v1",
     schema,
     adapter,
   }));

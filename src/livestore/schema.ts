@@ -3,7 +3,7 @@ import { Schema } from "effect";
 
 // ── Domain schemas ───────────────────────────────────────────────────────
 
-/** The five WatchfulEye field types (raw strings mirror the Swift enum). */
+/** The five optio field types (raw strings mirror the Swift enum). */
 export const FieldKind = Schema.Literals(["radio", "checkbox", "textInput", "textArea", "boolean"]);
 export type FieldKind = typeof FieldKind.Type;
 

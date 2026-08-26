@@ -1,10 +1,10 @@
-# WatchfulEye PWA (optio)
+# optio
 
-A fully offline **time & motion study** recorder — a browser PWA port of the
-Swift **WatchfulEye** app (SwiftData + CloudKit, iPhone/iPad/Mac Catalyst),
-rebuilt as a local-first web app. No server, no sync, no account: every
-observation is written to a local SQLite database persisted in **OPFS**, so it
-survives reloads, background kills and airplane mode.
+A fully offline **time & motion study** recorder — a browser PWA modeled on a
+Swift (SwiftData + CloudKit, iPhone/iPad/Mac Catalyst) original, rebuilt as a
+local-first web app. No server, no sync, no account: every observation is
+written to a local SQLite database persisted in **OPFS**, so it survives
+reloads, background kills and airplane mode.
 
 The most critical target platform is **Safari on iOS standalone PWA** (Add to
 Home Screen); hardening for it is a first-class concern (see below).
@@ -27,22 +27,23 @@ Home Screen); hardening for it is a first-class concern (see below).
 - **History** — archived sessions with full task/section detail, editable
   session names, delete confirmation, and **CSV export** per session in both
   Swift formats (live per-option expanded columns, archive alphabetical
-  union), downloaded as `WatchfulEye_<name>_<yyyy-MM-dd_HH-mm-ss>.csv`.
+  union), downloaded as `optio_<name>_<yyyy-MM-dd_HH-mm-ss>.csv`.
 - **Fully offline** — the whole app is a service-worker-precached PWA; there
   is no network dependency at runtime.
 
 ## Stack
 
-| Layer              | Tool                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| UI framework       | [FoldKit](https://foldkit.dev) 0.151 — Elm architecture on Effect (Model / Message / update / view)                              |
-| Styling            | Tailwind CSS 4 + daisyUI 5 (`watchful-light` / `watchful-dark` themes, iOS grouped surfaces)                                     |
-| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `watchfuleye-v1` |
-| Runtime validation | Effect `4.0.0-rc.111` Schema (`decodeUnknownEffect` before every commit)                                                         |
-| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                  |
-| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (Safari: confirmed-refresh update toast)                                  |
-| Package manager    | pnpm ≥ 11.22 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                            |
-| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                               |
+| Layer              | Tool                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| UI framework       | [FoldKit](https://foldkit.dev) 0.151 — Elm architecture on Effect (Model / Message / update / view)                            |
+| Styling            | Tailwind CSS 4 + daisyUI 5 (`optio-light` / `optio-dark` themes, iOS grouped surfaces)                                         |
+| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`     |
+| Session logic      | `@typeonce/effect-machine` 0.25 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously |
+| Runtime validation | Effect `4.0.0-rc.111` Schema (`decodeUnknownEffect` before every commit)                                                       |
+| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                |
+| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (Safari: confirmed-refresh update toast)                                |
+| Package manager    | pnpm ≥ 11.22 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                          |
+| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                             |
 
 ## Safari-first hardening
 
@@ -79,5 +80,5 @@ visit thanks to the generated service worker.
 ## Local data
 
 Everything lives in the browser: LiveStore → SQLite (WASM) → OPFS. The store
-id is `watchfuleye-v1` — old optio greetings dev data is deliberately
-incompatible and ignored. There is intentionally no sync and no backend.
+id is `optio-v1` — earlier store versions are deliberately incompatible and
+ignored. There is intentionally no sync and no backend.

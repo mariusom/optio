@@ -69,4 +69,4 @@ export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => 
 };
 
 export const filenameForArchive = (displayName: string, now: Date = new Date()): string =>
-  `WatchfulEye_${filenameSafe(displayName)}_${formatFilenameDate(now)}.csv`;
+  `optio_${filenameSafe(displayName)}_${formatFilenameDate(now)}.csv`;

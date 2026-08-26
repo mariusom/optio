@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
-/* WatchfulEye design system — see docs/design-system.md
+/* optio design system — see notes/design-system.md
    Custom daisyUI themes: inspection-grade palette, iOS grouped surfaces. */
 @plugin 'daisyui' {
   themes:
-    watchful-light --default,
-    watchful-dark --prefersdark;
+    optio-light --default,
+    optio-dark --prefersdark;
 }
 
 @plugin 'daisyui/theme' {
-  name: "watchful-light";
+  name: "optio-light";
   default: true;
   color-scheme: light;
 
@@ -43,7 +43,7 @@
 }
 
 @plugin 'daisyui/theme' {
-  name: "watchful-dark";
+  name: "optio-dark";
   prefersdark: true;
   color-scheme: dark;
 

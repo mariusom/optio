@@ -25,7 +25,7 @@ describe("displayNameFor", () => {
 describe("filenameSafe", () => {
   it("replaces spaces with underscores", () => {
     expect(filenameSafe("My Session 2024")).toBe("My_Session_2024");
-    expect(filenameSafe("Watchful Eye")).toBe("Watchful_Eye");
+    expect(filenameSafe("Optio Eye")).toBe("Optio_Eye");
   });
   it("leaves non-space characters intact", () => {
     expect(filenameSafe("NoSpaces")).toBe("NoSpaces");
@@ -77,10 +77,10 @@ describe("formatFilenameDate", () => {
 });
 
 describe("filenameForArchive", () => {
-  it("prefix WatchfulEye and suffix .csv", () => {
+  it("prefix optio and suffix .csv", () => {
     const d = new Date(2026, 5, 15, 12, 30, 45);
     const name = filenameForArchive("My Session", d);
-    expect(name).toBe("WatchfulEye_My_Session_2026-06-15_12-30-45.csv");
+    expect(name).toBe("optio_My_Session_2026-06-15_12-30-45.csv");
   });
   it("uses displayName spaces→underscores", () => {
     const d = new Date(2026, 0, 1, 0, 0, 0);

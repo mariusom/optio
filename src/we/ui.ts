@@ -2,7 +2,7 @@ import type { HtmlBuilder } from "foldkit/html";
 
 import { hrefFor, isFullScreenRoute, type Route } from "./routes";
 
-// Shared view primitives for the WatchfulEye shell.
+// Shared view primitives for the optio shell.
 // Plain functions per foldkit docs (only h.submodel-embedded views need defineView).
 
 // ── Icons ────────────────────────────────────────────────────────────────
