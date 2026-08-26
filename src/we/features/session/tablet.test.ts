@@ -55,6 +55,13 @@ const makeModel = (runner: Model["runner"]): Model => ({
   activeSession: null,
   pendingDiscardSession: false,
   runner,
+  history: [],
+  selectedHistorySession: null,
+  pendingHistoryDelete: null,
+  showEditHistoryName: false,
+  editHistoryNameInput: "",
+  selectedHistoryTaskId: null,
+  csvError: null,
 });
 
 describe("tablet sidebar visibility", () => {

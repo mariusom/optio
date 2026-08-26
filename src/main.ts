@@ -54,12 +54,20 @@ import {
   isFullScreenRoute,
   parseRoute,
   RouteSchema,
+  sessionDetailRouter,
   sessionRunnerRouter,
   templateEditorRouter,
   templatesRouter,
   type Route,
 } from "./we/routes";
-import { bottomTabBar, emptyState, topBar } from "./we/ui";
+import { bottomTabBar, topBar } from "./we/ui";
+import {
+  DeleteHistorySession,
+  ExportSessionCsv,
+  RenameHistorySession,
+} from "./we/features/history/historyCommands";
+import { historyPage } from "./we/features/history/historyView";
+import { sessionDetailPage } from "./we/features/history/sessionDetailView";
 
 // MODEL — shell state + feature slices
 
@@ -174,6 +182,51 @@ export const Model = S.Struct({
       ]),
     }),
   ]),
+  // History slice (S6)
+  history: S.Array(
+    S.Struct({
+      id: S.String,
+      displayName: S.String,
+      templateName: S.String,
+      sessionName: S.String,
+      startedAt: S.Number,
+      endedAt: S.Number,
+      taskCount: S.Number,
+    }),
+  ),
+  selectedHistorySession: S.Union([
+    S.Null,
+    S.Struct({
+      id: S.String,
+      sessionName: S.String,
+      templateName: S.String,
+      startedAt: S.Number,
+      endedAt: S.Union([S.Null, S.Number]),
+      taskCount: S.Number,
+      tasks: S.Array(
+        S.Struct({
+          id: S.String,
+          taskId: S.Number,
+          startedAt: S.Union([S.Null, S.Number]),
+          endedAt: S.Union([S.Null, S.Number]),
+          sections: S.Array(
+            S.Struct({
+              sectionName: S.String,
+              value: S.String,
+              sectionType: S.String,
+              isRequired: S.Boolean,
+              startedAt: S.Union([S.Null, S.Number]),
+            }),
+          ),
+        }),
+      ),
+    }),
+  ]),
+  pendingHistoryDelete: S.Union([S.Null, S.Struct({ id: S.String, displayName: S.String })]),
+  showEditHistoryName: S.Boolean,
+  editHistoryNameInput: S.String,
+  selectedHistoryTaskId: S.Union([S.Null, S.String]),
+  csvError: S.Union([S.Null, S.String]),
 });
 export type Model = typeof Model.Type;
 
@@ -191,6 +244,13 @@ const initialModel = (route: Route): Model => ({
   activeSession: null,
   pendingDiscardSession: false,
   runner: null,
+  history: [],
+  selectedHistorySession: null,
+  pendingHistoryDelete: null,
+  showEditHistoryName: false,
+  editHistoryNameInput: "",
+  selectedHistoryTaskId: null,
+  csvError: null,
 });
 
 // INIT — first paint parses the URL and seeds sample content if the store is
@@ -223,12 +283,34 @@ export const update = (model: Model, message: Message) =>
   Message.match<Update.Return<Model, Message>>(message, {
     // ── Routing ────────────────────────────────────────────────────────────
     GotRoute: ({ route }) => {
-      const base =
+      let base =
         route._tag === "TemplateEditor"
           ? model.editor !== null && model.editor.id === route.templateId
             ? { ...model, route }
             : { ...model, route, editor: null }
           : { ...model, route, editor: null };
+      // Clear history detail when leaving SessionDetail
+      if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
+        base = {
+          ...base,
+          selectedHistorySession: null,
+          selectedHistoryTaskId: null,
+          showEditHistoryName: false,
+        };
+      }
+      // Clear stale task selection when switching detail session
+      if (
+        route._tag === "SessionDetail" &&
+        base.selectedHistorySession !== null &&
+        base.selectedHistorySession.id !== route.sessionId
+      ) {
+        base = {
+          ...base,
+          selectedHistorySession: null,
+          selectedHistoryTaskId: null,
+          showEditHistoryName: false,
+        };
+      }
       // Regenerate placeholder on every entry to Start tab when no active session (spec: onAppear & after start). Preserve typed input via sessionNameInput.
       if (route._tag === "StartTab" && base.activeSession === null) {
         return { model: { ...base, placeholderName: generateSessionName() } };
@@ -991,6 +1073,102 @@ export const update = (model: Model, message: Message) =>
         model: { ...model, runner: { ...model.runner, showSidebar: !model.runner.showSidebar } },
       };
     },
+
+    // ── History ───────────────────────────────────────────────────────────
+    GotHistory: ({ history }) => ({ model: { ...model, history } }),
+    GotHistoryDetail: ({ detail }) => {
+      // detail null => session not found (maybe deleted); keep model as is or clear
+      if (detail === null) return { model: { ...model, selectedHistorySession: null } };
+      // Preserve edit state if already editing? keep showEdit flag
+      return {
+        model: {
+          ...model,
+          selectedHistorySession: detail,
+          // If entering detail first time, seed edit input with sessionName
+          editHistoryNameInput:
+            model.selectedHistorySession === null || model.selectedHistorySession.id !== detail.id
+              ? detail.sessionName
+              : model.editHistoryNameInput,
+        },
+      };
+    },
+    ClickedHistoryRow: ({ id }) => ({
+      model,
+      commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
+    }),
+    RequestedHistoryDelete: ({ id, displayName }) => ({
+      model: { ...model, pendingHistoryDelete: { id, displayName } },
+    }),
+    CanceledHistoryDelete: () => ({ model: { ...model, pendingHistoryDelete: null } }),
+    ConfirmedHistoryDelete: () =>
+      model.pendingHistoryDelete === null
+        ? { model }
+        : {
+            // Keep pending until HistoryDeleted arrives so we know which was deleted
+            model,
+            commands: [DeleteHistorySession({ id: model.pendingHistoryDelete.id })],
+          },
+    HistoryDeleted: () => {
+      const deletedId = model.pendingHistoryDelete?.id ?? null;
+      const shouldNavigate =
+        model.route._tag === "SessionDetail" &&
+        (deletedId !== null
+          ? model.route.sessionId === deletedId
+          : model.selectedHistorySession !== null &&
+            model.route.sessionId === model.selectedHistorySession.id);
+      if (shouldNavigate) {
+        return {
+          model: {
+            ...model,
+            pendingHistoryDelete: null,
+            selectedHistorySession: null,
+            selectedHistoryTaskId: null,
+          },
+          commands: [NavigateInternal({ url: "#/history" })],
+        };
+      }
+      return { model: { ...model, pendingHistoryDelete: null } };
+    },
+    ClickedEditHistoryName: () => {
+      if (model.selectedHistorySession === null) return { model };
+      return {
+        model: {
+          ...model,
+          showEditHistoryName: true,
+          editHistoryNameInput: model.selectedHistorySession.sessionName,
+        },
+      };
+    },
+    ChangedEditHistoryName: ({ text }) => ({ model: { ...model, editHistoryNameInput: text } }),
+    CanceledEditHistoryName: () => ({
+      model: {
+        ...model,
+        showEditHistoryName: false,
+        editHistoryNameInput: model.selectedHistorySession?.sessionName ?? "",
+      },
+    }),
+    ConfirmedEditHistoryName: () => {
+      if (model.selectedHistorySession === null)
+        return { model: { ...model, showEditHistoryName: false } };
+      const trimmed = model.editHistoryNameInput;
+      // Allow empty to clear custom name (revert to template)
+      return {
+        model: { ...model, showEditHistoryName: false },
+        commands: [
+          RenameHistorySession({ id: model.selectedHistorySession.id, sessionName: trimmed }),
+        ],
+      };
+    },
+    HistoryNameUpdated: () => ({ model: { ...model, showEditHistoryName: false } }),
+    ClickedHistoryTask: ({ taskId }) => ({ model: { ...model, selectedHistoryTaskId: taskId } }),
+    DismissedHistoryTask: () => ({ model: { ...model, selectedHistoryTaskId: null } }),
+    ClickedExportHistoryCsv: ({ sessionId }) => ({
+      model: { ...model, csvError: null },
+      commands: [ExportSessionCsv({ sessionId })],
+    }),
+    CsvExported: () => ({ model }),
+    FailedCsvExport: ({ error }) => ({ model: { ...model, csvError: error } }),
+    DismissedCsvError: () => ({ model: { ...model, csvError: null } }),
   });
 
 // SUBSCRIPTIONS — LiveStore pushes reactive query results into update.
@@ -1382,6 +1560,183 @@ const runnerStream = (sessionId: string): Stream.Stream<Message> =>
     ),
   );
 
+type HistorySessionRow = {
+  readonly id: string;
+  readonly templateName: string;
+  readonly sessionName: string;
+  readonly startedAt: number | Date;
+  readonly endedAt: number | Date | null;
+};
+type TaskRecordRow = {
+  readonly id: string;
+  readonly sessionId: string;
+  readonly taskId: number;
+  readonly startedAt: number | Date | null;
+  readonly endedAt: number | Date | null;
+};
+type TaskSectionRow = {
+  readonly id: string;
+  readonly taskRecordId: string;
+  readonly sectionName: string;
+  readonly value: string;
+  readonly sectionType: string;
+  readonly isRequired: number;
+  readonly startedAt: number | Date | null;
+};
+
+const historyStream: Stream.Stream<Message> = Stream.callback((queue) =>
+  Effect.acquireRelease(
+    Effect.promise(async () => {
+      const store = await getStore();
+      let latestSessions: ReadonlyArray<HistorySessionRow> = [];
+      let latestRecords: ReadonlyArray<TaskRecordRow> = [];
+
+      const push = () => {
+        const counts = new Map<string, number>();
+        for (const r of latestRecords as ReadonlyArray<TaskRecordRow>) {
+          counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
+        }
+        const history = (latestSessions as ReadonlyArray<HistorySessionRow>)
+          .filter((s) => s.endedAt !== null && s.endedAt !== undefined)
+          .map((s) => {
+            const displayName = s.sessionName !== "" ? s.sessionName : s.templateName;
+            return {
+              id: s.id,
+              displayName,
+              templateName: s.templateName,
+              sessionName: s.sessionName,
+              startedAt: toEpoch(s.startedAt),
+              endedAt: toEpoch(s.endedAt as number | Date),
+              taskCount: counts.get(s.id) ?? 0,
+            };
+          })
+          .sort((a, b) => b.startedAt - a.startedAt);
+        Queue.offerUnsafe(queue, Message.GotHistory({ history }));
+      };
+
+      const unsubscribeSessions = store.subscribe(tables.sessions.select(), (rows) => {
+        latestSessions = rows as unknown as ReadonlyArray<HistorySessionRow>;
+        push();
+      });
+      const unsubscribeRecords = store.subscribe(tables.taskRecords.select(), (rows) => {
+        latestRecords = rows as unknown as ReadonlyArray<TaskRecordRow>;
+        push();
+      });
+      return [unsubscribeSessions, unsubscribeRecords] as const;
+    }),
+    (unsubs) => Effect.sync(() => unsubs.forEach((u) => u())),
+  ).pipe(
+    Effect.asVoid,
+    Effect.flatMap(() => Effect.never),
+  ),
+);
+
+const historyDetailStream = (sessionId: string): Stream.Stream<Message> =>
+  Stream.callback((queue) =>
+    Effect.acquireRelease(
+      Effect.promise(async () => {
+        const store = await getStore();
+        let latestSessions: ReadonlyArray<HistorySessionRow> = [];
+        let latestRecords: ReadonlyArray<TaskRecordRow> = [];
+        let latestSections: ReadonlyArray<TaskSectionRow> = [];
+
+        const push = () => {
+          const session =
+            (latestSessions as ReadonlyArray<HistorySessionRow>).find((s) => s.id === sessionId) ??
+            null;
+          if (session === null) {
+            Queue.offerUnsafe(queue, Message.GotHistoryDetail({ detail: null }));
+            return;
+          }
+          // If session not ended (live), still push detail? Spec says History detail is for ended sessions; but we push anyway
+          const recordsForSession = (latestRecords as ReadonlyArray<TaskRecordRow>).filter(
+            (r) => r.sessionId === sessionId,
+          );
+          const sectionsByRecord = new Map<string, ReadonlyArray<TaskSectionRow>>();
+          for (const sec of latestSections as ReadonlyArray<TaskSectionRow>) {
+            const arr = sectionsByRecord.get(sec.taskRecordId) ?? [];
+            (sectionsByRecord as Map<string, Array<TaskSectionRow>>).set(sec.taskRecordId, [
+              ...(arr as Array<TaskSectionRow>),
+              sec,
+            ]);
+          }
+          const tasks = recordsForSession
+            .map((r) => {
+              const secs = sectionsByRecord.get(r.id) ?? [];
+              return {
+                id: r.id,
+                taskId: Number(r.taskId),
+                startedAt:
+                  r.startedAt === null || r.startedAt === undefined
+                    ? null
+                    : toEpoch(r.startedAt as number | Date),
+                endedAt:
+                  r.endedAt === null || r.endedAt === undefined
+                    ? null
+                    : toEpoch(r.endedAt as number | Date),
+                sections: secs.map((s) => ({
+                  sectionName: s.sectionName,
+                  value: s.value,
+                  sectionType: s.sectionType,
+                  isRequired: s.isRequired === 1,
+                  startedAt:
+                    s.startedAt === null || s.startedAt === undefined
+                      ? null
+                      : toEpoch(s.startedAt as number | Date),
+                })),
+              };
+            })
+            .sort((a, b) => {
+              const aStart = a.startedAt ?? Date.now();
+              const bStart = b.startedAt ?? Date.now();
+              return aStart - bStart;
+            });
+          Queue.offerUnsafe(
+            queue,
+            Message.GotHistoryDetail({
+              detail: {
+                id: session.id,
+                sessionName: session.sessionName,
+                templateName: session.templateName,
+                startedAt: toEpoch(session.startedAt),
+                endedAt:
+                  session.endedAt === null || session.endedAt === undefined
+                    ? null
+                    : toEpoch(session.endedAt as number | Date),
+                taskCount: tasks.length,
+                tasks,
+              },
+            }),
+          );
+        };
+
+        const unsubSessions = store.subscribe(
+          tables.sessions.select().where({ id: sessionId }),
+          (rows) => {
+            latestSessions = rows as unknown as ReadonlyArray<HistorySessionRow>;
+            push();
+          },
+        );
+        const unsubRecords = store.subscribe(
+          tables.taskRecords.select().where({ sessionId }),
+          (rows) => {
+            latestRecords = rows as unknown as ReadonlyArray<TaskRecordRow>;
+            push();
+          },
+        );
+        const unsubSections = store.subscribe(tables.taskSectionRecords.select(), (rows) => {
+          latestSections = rows as unknown as ReadonlyArray<TaskSectionRow>;
+          push();
+        });
+        return [unsubSessions, unsubRecords, unsubSections] as const;
+      }),
+      (unsubs) => Effect.sync(() => unsubs.forEach((u) => u())),
+    ).pipe(
+      Effect.asVoid,
+      Effect.flatMap(() => Effect.never),
+    ),
+  );
+
 const tickStream: Stream.Stream<Message> = Stream.tick(Duration.seconds(1)).pipe(
   Stream.map(() => Message.Tick({ now: Date.now() })),
 );
@@ -1396,6 +1751,32 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           templatesStream,
           Effect.sync(() => true),
         ),
+    },
+  ),
+  history: entry(
+    { live: S.Boolean },
+    {
+      modelToDependencies: () => ({ live: true }),
+      dependenciesToStream: () =>
+        Stream.when(
+          historyStream,
+          Effect.sync(() => true),
+        ),
+    },
+  ),
+  historyDetail: entry(
+    { sessionId: S.Union([S.Null, S.String]) },
+    {
+      modelToDependencies: (model) => ({
+        sessionId: model.route._tag === "SessionDetail" ? model.route.sessionId : null,
+      }),
+      dependenciesToStream: ({ sessionId }) =>
+        sessionId === null
+          ? Stream.empty
+          : Stream.when(
+              historyDetailStream(sessionId),
+              Effect.sync(() => true),
+            ),
     },
   ),
   templateDetail: entry(
@@ -1524,20 +1905,13 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
     case "TemplatesTab":
       return templatesPage(model, h);
     case "HistoryTab":
-      return emptyState(
-        {
-          icon: "clock",
-          title: "No sessions yet",
-          message: "Start a session from the Session tab to begin tracking.",
-        },
-        h,
-      );
+      return historyPage(model, h);
     case "SessionRunner":
       return sessionView(model as unknown as Parameters<typeof sessionView>[0], h);
     case "TemplateEditor":
       return templateEditorPage(model as Parameters<typeof templateEditorPage>[0], h);
     case "SessionDetail":
-      return comingSoon("Session details", h);
+      return sessionDetailPage(model, h);
   }
 };
 

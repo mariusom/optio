@@ -146,5 +146,66 @@ export const Message = defineMessageUnion({
   FailedRunnerOp: { error: S.String },
   DismissedRunnerError: {},
   ToggledSidebar: {},
+
+  // ── History tab + Session detail + CSV ──────────────────────────────────────
+  GotHistory: {
+    history: S.Array(
+      S.Struct({
+        id: S.String,
+        displayName: S.String,
+        templateName: S.String,
+        sessionName: S.String,
+        startedAt: S.Number,
+        endedAt: S.Number,
+        taskCount: S.Number,
+      }),
+    ),
+  },
+  GotHistoryDetail: {
+    detail: S.Union([
+      S.Null,
+      S.Struct({
+        id: S.String,
+        sessionName: S.String,
+        templateName: S.String,
+        startedAt: S.Number,
+        endedAt: S.Union([S.Null, S.Number]),
+        taskCount: S.Number,
+        tasks: S.Array(
+          S.Struct({
+            id: S.String,
+            taskId: S.Number,
+            startedAt: S.Union([S.Null, S.Number]),
+            endedAt: S.Union([S.Null, S.Number]),
+            sections: S.Array(
+              S.Struct({
+                sectionName: S.String,
+                value: S.String,
+                sectionType: S.String,
+                isRequired: S.Boolean,
+                startedAt: S.Union([S.Null, S.Number]),
+              }),
+            ),
+          }),
+        ),
+      }),
+    ]),
+  },
+  RequestedHistoryDelete: { id: S.String, displayName: S.String },
+  CanceledHistoryDelete: {},
+  ConfirmedHistoryDelete: {},
+  HistoryDeleted: {},
+  ClickedHistoryRow: { id: S.String },
+  ClickedEditHistoryName: {},
+  ChangedEditHistoryName: { text: S.String },
+  ConfirmedEditHistoryName: {},
+  CanceledEditHistoryName: {},
+  HistoryNameUpdated: {},
+  ClickedHistoryTask: { taskId: S.String },
+  DismissedHistoryTask: {},
+  ClickedExportHistoryCsv: { sessionId: S.String },
+  CsvExported: { filename: S.String },
+  FailedCsvExport: { error: S.String },
+  DismissedCsvError: {},
 });
 export type Message = typeof Message.Type;
