@@ -64,5 +64,30 @@ export const Message = defineMessageUnion({
   ShowDiscardConfirm: {},
   CanceledDiscard: {},
   ConfirmedDiscard: {},
+
+  // ── Start tab (Session start / Resume / Discard) ──────────────────────────
+  ChangedSessionNameInput: { text: S.String },
+  SelectedTemplate: { id: S.String },
+  ClickedStartSession: {},
+  SessionStarted: { sessionId: S.String },
+  ClickedResumeSession: {},
+  ClickedDiscardSession: {},
+  ConfirmedDiscardSession: {},
+  CanceledDiscardSession: {},
+  SessionDiscarded: {},
+  GotActiveSession: {
+    activeSession: S.Union([
+      S.Null,
+      S.Struct({
+        id: S.String,
+        templateId: S.Union([S.Null, S.String]),
+        templateName: S.String,
+        sessionName: S.String,
+        startedAt: S.Number,
+        completedCount: S.Number,
+      }),
+    ]),
+  },
+  FailedSessionOp: { error: S.String },
 });
 export type Message = typeof Message.Type;

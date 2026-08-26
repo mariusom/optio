@@ -6,6 +6,7 @@ import { toString as urlToString, type Url } from "foldkit/url";
 import { Message } from "./messages";
 import { getStore } from "./livestore/client";
 import { FieldDef, FieldKind, tables } from "./livestore/schema";
+import { generateSessionName } from "./we/random-name";
 import {
   CreateTemplate,
   DeleteTemplate,
@@ -30,11 +31,15 @@ import {
 } from "./we/features/templates/editor";
 import { templateEditorPage } from "./we/features/templates/editorView";
 import { templatesPage } from "./we/features/templates/view";
+import { DiscardLiveSession, StartSession } from "./we/features/session/startCommands";
+import { effectiveTemplateId, resolveSelectedTemplate } from "./we/features/session/startHelpers";
+import { startView } from "./we/features/session/startView";
 import { hasOptions, supportsRequired } from "./we/fields";
 import {
   isFullScreenRoute,
   parseRoute,
   RouteSchema,
+  sessionRunnerRouter,
   templateEditorRouter,
   templatesRouter,
   type Route,
@@ -93,6 +98,22 @@ export const Model = S.Struct({
       pendingDiscard: S.Boolean,
     }),
   ]),
+  // Start tab slice (S3)
+  selectedTemplateId: S.Union([S.Null, S.String]),
+  sessionNameInput: S.String,
+  placeholderName: S.String,
+  activeSession: S.Union([
+    S.Null,
+    S.Struct({
+      id: S.String,
+      templateId: S.Union([S.Null, S.String]),
+      templateName: S.String,
+      sessionName: S.String,
+      startedAt: S.Number,
+      completedCount: S.Number,
+    }),
+  ]),
+  pendingDiscardSession: S.Boolean,
 });
 export type Model = typeof Model.Type;
 
@@ -104,6 +125,11 @@ const initialModel = (route: Route): Model => ({
   pendingDelete: null,
   lastError: null,
   editor: null,
+  selectedTemplateId: null,
+  sessionNameInput: "",
+  placeholderName: generateSessionName(),
+  activeSession: null,
+  pendingDiscardSession: false,
 });
 
 // INIT — first paint parses the URL and seeds sample content if the store is
@@ -136,13 +162,17 @@ export const update = (model: Model, message: Message) =>
   Message.match<Update.Return<Model, Message>>(message, {
     // ── Routing ────────────────────────────────────────────────────────────
     GotRoute: ({ route }) => {
-      if (route._tag === "TemplateEditor") {
-        if (model.editor !== null && model.editor.id === route.templateId) {
-          return { model: { ...model, route } };
-        }
-        return { model: { ...model, route, editor: null } };
+      const base =
+        route._tag === "TemplateEditor"
+          ? model.editor !== null && model.editor.id === route.templateId
+            ? { ...model, route }
+            : { ...model, route, editor: null }
+          : { ...model, route, editor: null };
+      // Regenerate placeholder on every entry to Start tab when no active session (spec: onAppear & after start). Preserve typed input via sessionNameInput.
+      if (route._tag === "StartTab" && base.activeSession === null) {
+        return { model: { ...base, placeholderName: generateSessionName() } };
       }
-      return { model: { ...model, route, editor: null } };
+      return { model: base };
     },
     ClickedLink: ({ request }) =>
       request._tag === "Internal"
@@ -151,7 +181,28 @@ export const update = (model: Model, message: Message) =>
     Navigated: () => ({ model }),
 
     // ── Templates ──────────────────────────────────────────────────────────
-    GotTemplates: ({ templates }) => ({ model: { ...model, templates } }),
+    GotTemplates: ({ templates }) => {
+      let nextSelected = model.selectedTemplateId;
+      if (templates.length === 0) {
+        nextSelected = null;
+      } else if (nextSelected === null || !templates.some((t) => t.id === nextSelected)) {
+        const prioritized = effectiveTemplateId(templates, nextSelected);
+        nextSelected = prioritized;
+      }
+      // Ensure placeholder exists when on Start tab
+      let nextPlaceholder = model.placeholderName;
+      if (model.route._tag === "StartTab" && (nextPlaceholder === "" || nextPlaceholder === null)) {
+        nextPlaceholder = generateSessionName();
+      }
+      return {
+        model: {
+          ...model,
+          templates,
+          selectedTemplateId: nextSelected,
+          placeholderName: nextPlaceholder,
+        },
+      };
+    },
     ClickedNewTemplate: () => ({
       model: { ...model, showCreate: true, newName: "", lastError: null },
     }),
@@ -523,6 +574,75 @@ export const update = (model: Model, message: Message) =>
         commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
       };
     },
+
+    // ── Start tab ─────────────────────────────────────────────────────────
+    GotActiveSession: ({ activeSession }) => ({ model: { ...model, activeSession } }),
+    ChangedSessionNameInput: ({ text }) => ({ model: { ...model, sessionNameInput: text } }),
+    SelectedTemplate: ({ id }) => ({ model: { ...model, selectedTemplateId: id } }),
+    ClickedStartSession: () => {
+      const selected = resolveSelectedTemplate(model.templates, model.selectedTemplateId);
+      if (selected === null) return { model };
+      const sessionName =
+        model.sessionNameInput.trim() !== ""
+          ? model.sessionNameInput.trim()
+          : model.placeholderName;
+      const id = crypto.randomUUID();
+      // Pass empty fields array; StartSession will resolve via store fallback
+      return {
+        model,
+        commands: [
+          StartSession({
+            id,
+            templateId: selected.id,
+            templateName: selected.name,
+            sessionName,
+            fields: [],
+          }),
+        ],
+      };
+    },
+    SessionStarted: ({ sessionId }) => ({
+      model: {
+        ...model,
+        sessionNameInput: "",
+        placeholderName: generateSessionName(),
+        lastError: null,
+      },
+      commands: [NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` })],
+    }),
+    ClickedResumeSession: () => {
+      if (model.activeSession === null) return { model };
+      return {
+        model,
+        commands: [
+          NavigateInternal({
+            url: `#${sessionRunnerRouter({ sessionId: model.activeSession.id })}`,
+          }),
+        ],
+      };
+    },
+    ClickedDiscardSession: () => ({ model: { ...model, pendingDiscardSession: true } }),
+    CanceledDiscardSession: () => ({ model: { ...model, pendingDiscardSession: false } }),
+    ConfirmedDiscardSession: () => {
+      if (model.activeSession === null)
+        return { model: { ...model, pendingDiscardSession: false } };
+      return {
+        model: { ...model, pendingDiscardSession: false },
+        commands: [DiscardLiveSession({ sessionId: model.activeSession.id })],
+      };
+    },
+    SessionDiscarded: () => ({
+      model: {
+        ...model,
+        activeSession: null,
+        pendingDiscardSession: false,
+        placeholderName: generateSessionName(),
+        lastError: null,
+      },
+    }),
+    FailedSessionOp: ({ error }) => ({
+      model: { ...model, lastError: error, pendingDiscardSession: false },
+    }),
   });
 
 // SUBSCRIPTIONS — LiveStore pushes reactive query results into update.
@@ -696,6 +816,75 @@ const templateDetailStream = (templateId: string): Stream.Stream<Message> =>
     ),
   );
 
+type ActiveSessionRow = {
+  readonly id: string;
+  readonly templateId: string | null;
+  readonly templateName: string;
+  readonly sessionName: string;
+  readonly startedAt: number | Date;
+  readonly endedAt: number | Date | null;
+};
+type TaskRowLite = { readonly sessionId: string; readonly endDate: number | Date | null };
+
+const toEpoch = (value: number | Date): number =>
+  value instanceof Date ? value.getTime() : Number(value);
+
+const activeSessionStream: Stream.Stream<Message> = Stream.callback((queue) =>
+  Effect.acquireRelease(
+    Effect.promise(async () => {
+      const store = await getStore();
+      let latestSessions: ReadonlyArray<ActiveSessionRow> = [];
+      let latestTasks: ReadonlyArray<TaskRowLite> = [];
+
+      const push = () => {
+        const liveSessions = (latestSessions as ReadonlyArray<ActiveSessionRow>).filter(
+          (row) => row.endedAt === null || row.endedAt === undefined,
+        );
+        if (liveSessions.length === 0) {
+          Queue.offerUnsafe(queue, Message.GotActiveSession({ activeSession: null }));
+          return;
+        }
+        // Most recent live session by startedAt desc
+        const sorted = [...liveSessions].sort(
+          (a, b) => toEpoch(b.startedAt) - toEpoch(a.startedAt),
+        );
+        const active = sorted[0] as ActiveSessionRow;
+        const completedCount = (latestTasks as ReadonlyArray<TaskRowLite>).filter(
+          (task) =>
+            task.sessionId === active.id && task.endDate !== null && task.endDate !== undefined,
+        ).length;
+        Queue.offerUnsafe(
+          queue,
+          Message.GotActiveSession({
+            activeSession: {
+              id: active.id,
+              templateId: active.templateId,
+              templateName: active.templateName,
+              sessionName: active.sessionName,
+              startedAt: toEpoch(active.startedAt),
+              completedCount,
+            },
+          }),
+        );
+      };
+
+      const unsubscribeSessions = store.subscribe(tables.sessions.select(), (rows) => {
+        latestSessions = rows as unknown as ReadonlyArray<ActiveSessionRow>;
+        push();
+      });
+      const unsubscribeTasks = store.subscribe(tables.sessionTasks.select(), (rows) => {
+        latestTasks = rows as unknown as ReadonlyArray<TaskRowLite>;
+        push();
+      });
+      return [unsubscribeSessions, unsubscribeTasks] as const;
+    }),
+    (unsubs) => Effect.sync(() => unsubs.forEach((unsubscribe) => unsubscribe())),
+  ).pipe(
+    Effect.asVoid,
+    Effect.flatMap(() => Effect.never),
+  ),
+);
+
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   templates: entry(
     { live: S.Boolean },
@@ -723,6 +912,17 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
             ),
     },
   ),
+  activeSession: entry(
+    { live: S.Boolean },
+    {
+      modelToDependencies: () => ({ live: true }),
+      dependenciesToStream: () =>
+        Stream.when(
+          activeSessionStream,
+          Effect.sync(() => true),
+        ),
+    },
+  ),
 }));
 
 // VIEW — app shell: top bar, routed page, bottom tab bar
@@ -747,29 +947,7 @@ const pageTitle = (route: Route): string => {
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   switch (model.route._tag) {
     case "StartTab":
-      return h.div(
-        [h.Class("flex h-full flex-col")],
-        [
-          h.div(
-            [h.Class("flex flex-1 flex-col items-center justify-center px-6 text-center")],
-            [
-              h.div(
-                [
-                  h.Class(
-                    "flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-3xl font-serif text-primary shadow-sm",
-                  ),
-                ],
-                ["θ"],
-              ),
-              h.p([h.Class("mt-4 text-lg font-semibold tracking-tight")], ["optio"]),
-              h.p(
-                [h.Class("mt-1 max-w-xs text-sm leading-relaxed text-base-content/60")],
-                ["Time & motion studies — recorded locally, never leaving your device."],
-              ),
-            ],
-          ),
-        ],
-      );
+      return startView(model, h);
     case "TemplatesTab":
       return templatesPage(model, h);
     case "HistoryTab":
