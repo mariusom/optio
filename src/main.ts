@@ -185,19 +185,21 @@ export const subscriptions = Subscription.make<Model, Message>()(entry => ({
 const editInputClasses =
   'input input-ghost join-item w-full bg-base-300/40 focus:bg-base-300/70 transition-colors'
 
+const githubUrl = 'https://github.com/mariusom/optio'
+
 export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
   ({
-    title: 'optio — ox-alpha experiment',
-    body: h.div([], [
-      h.div(
-        [h.Class('hero min-h-screen bg-base-200')],
+    title: 'optio',
+    body: h.div([h.Class('flex min-h-dvh flex-col bg-base-200')], [
+      h.main(
+        [h.Class('hero flex-1')],
         [
           h.div([h.Class('hero-content')], [
             h.div([h.Class('flex w-full max-w-md flex-col gap-6 text-center')], [
-              h.h1([h.Class('text-4xl font-bold')], ['Hello from ox-alpha']),
-              h.p([h.Class('text-sm text-base-content/70')], [
-                'FoldKit · LiveStore · Effect RC · Vite+ · pnpm — persisted locally, works offline.',
-              ]),
+              h.h1(
+                [h.Class('flex items-baseline justify-center gap-2 text-4xl font-bold tracking-tight')],
+                [h.span([h.Class('font-serif text-primary')], ['θ']), 'optio'],
+              ),
               h.div([h.Class('card bg-base-100 shadow-xl')], [
                 h.div([h.Class('card-body gap-3')], [
                   h.div([h.Class('join w-full')], [
@@ -228,7 +230,6 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
                         ),
                       ]
                     : []),
-                  h.div([h.Class('divider my-1 text-xs')], ['stored in SQLite via OPFS']),
                   ...(model.greetings.length === 0
                     ? [h.p([h.Class('text-sm text-base-content/50')], ['No greetings yet.'])]
                     : model.greetings.map(greeting =>
@@ -269,6 +270,25 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
               ]),
             ]),
           ]),
+        ],
+      ),
+      h.footer(
+        [
+          h.Class(
+            'footer footer-center gap-1 border-t border-base-content/10 px-4 py-6 text-base-content/60',
+          ),
+        ],
+        [
+          h.p([h.Class('text-sm')], ['Your data never leaves your device.']),
+          h.a(
+            [
+              h.Class('link link-hover inline-flex items-center gap-1.5 text-sm'),
+              h.Attribute('href', githubUrl),
+              h.Attribute('target', '_blank'),
+              h.Attribute('rel', 'noreferrer'),
+            ],
+            ['GitHub'],
+          ),
         ],
       ),
       ...(model.editing === null
