@@ -115,7 +115,7 @@ const checkIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
 
 // ── SessionTimerView ────────────────────────────────────────────────────────
 
-const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const task = currentTask(runner);
   const isEditing = task !== null && task.isBeingEdited;
   const taskStart = task !== null ? taskStartDate(task) : null;
@@ -380,7 +380,11 @@ const formSectionView = (
 
 // ── FormSectionsView (canvas) ───────────────────────────────────────────────
 
-const formSectionsView = (runner: RunnerState, task: RunnerTask, h: HtmlBuilder<Message>) => {
+export const formSectionsView = (
+  runner: RunnerState,
+  task: RunnerTask,
+  h: HtmlBuilder<Message>,
+) => {
   const sections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
     [h.Class("flex flex-col")],
@@ -401,7 +405,7 @@ const formSectionsView = (runner: RunnerState, task: RunnerTask, h: HtmlBuilder<
 
 // ── BottomFadeGradient ──────────────────────────────────────────────────────
 
-const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
+export const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
   h.div(
     [
       h.Class(
@@ -414,7 +418,7 @@ const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
 
 // ── SessionBottomBar ────────────────────────────────────────────────────────
 
-const sessionBottomBar = (
+export const sessionBottomBar = (
   runner: RunnerState,
   task: RunnerTask | null,
   h: HtmlBuilder<Message>,
@@ -678,7 +682,7 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) => {
 
 // ── End confirmation modal ──────────────────────────────────────────────────
 
-const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const elapsed = formatClock(Math.max(0, runner.now - runner.startedAt));
   const count = runner.completedCount;
   const message =
@@ -719,7 +723,7 @@ const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   );
 };
 
-const errorAlert = (msg: string, h: HtmlBuilder<Message>) =>
+export const errorAlert = (msg: string, h: HtmlBuilder<Message>) =>
   h.div(
     [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
     [

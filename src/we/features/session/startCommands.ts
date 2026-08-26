@@ -3,7 +3,7 @@ import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
-import { events, tables, type FieldDef } from "../../../livestore/schema";
+import { events, tables, FieldDef } from "../../../livestore/schema";
 
 const safeArray = (json: string): ReadonlyArray<string> => {
   try {

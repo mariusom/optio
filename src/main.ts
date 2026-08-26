@@ -15,7 +15,7 @@ import {
   SelectTask,
   UpdateFieldValue,
 } from "./we/features/session/runnerCommands";
-import { runnerView } from "./we/features/session/runnerView";
+import { sessionView } from "./we/features/session/sessionView";
 import {
   findNextUnfulfilledSectionId,
   isSectionDone,
@@ -165,11 +165,12 @@ export const Model = S.Struct({
       focusedSectionId: S.Union([S.Null, S.String]),
       showTaskList: S.Boolean,
       showEndConfirm: S.Boolean,
+      showSidebar: S.Boolean,
       lastError: S.Union([S.Null, S.String]),
       now: S.Number,
       editBackup: S.Union([
         S.Null,
-        S.Struct({ taskId: S.String, values: S.Record({ key: S.String, value: S.String }) }),
+        S.Struct({ taskId: S.String, values: S.Record(S.String, S.String) }),
       ]),
     }),
   ]),
@@ -714,6 +715,7 @@ export const update = (model: Model, message: Message) =>
         focusedSectionId: isNewSession ? null : (existing?.focusedSectionId ?? null),
         showTaskList: isNewSession ? false : (existing?.showTaskList ?? false),
         showEndConfirm: isNewSession ? false : (existing?.showEndConfirm ?? false),
+        showSidebar: isNewSession ? true : (existing?.showSidebar ?? true),
         lastError: isNewSession ? null : (existing?.lastError ?? null),
         now: isNewSession ? Date.now() : (existing?.now ?? Date.now()),
         editBackup: isNewSession ? null : (existing?.editBackup ?? null),
@@ -982,6 +984,12 @@ export const update = (model: Model, message: Message) =>
     DismissedRunnerError: () => {
       if (model.runner === null) return { model: { ...model, lastError: null } };
       return { model: { ...model, runner: { ...model.runner, lastError: null } } };
+    },
+    ToggledSidebar: () => {
+      if (model.runner === null) return { model };
+      return {
+        model: { ...model, runner: { ...model.runner, showSidebar: !model.runner.showSidebar } },
+      };
     },
   });
 
@@ -1525,7 +1533,7 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
         h,
       );
     case "SessionRunner":
-      return runnerView(model as unknown as Parameters<typeof runnerView>[0], h);
+      return sessionView(model as unknown as Parameters<typeof sessionView>[0], h);
     case "TemplateEditor":
       return templateEditorPage(model as Parameters<typeof templateEditorPage>[0], h);
     case "SessionDetail":

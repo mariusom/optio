@@ -145,5 +145,6 @@ export const Message = defineMessageUnion({
   TaskEditFinished: {},
   FailedRunnerOp: { error: S.String },
   DismissedRunnerError: {},
+  ToggledSidebar: {},
 });
 export type Message = typeof Message.Type;

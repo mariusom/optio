@@ -251,7 +251,7 @@ export const SelectTask = Command.define("SelectTask", {
 });
 
 export const CancelEdit = Command.define("CancelEdit", {
-  args: { taskId: S.String, backup: S.Record({ key: S.String, value: S.String }) },
+  args: { taskId: S.String, backup: S.Record(S.String, S.String) },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ taskId, backup }) =>
     Effect.gen(function* () {
