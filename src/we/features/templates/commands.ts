@@ -4,7 +4,7 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, type FieldDef } from "../../../livestore/schema";
-import { fieldRowsToDefs, safeArray } from "../../fieldRows";
+import { fieldRowsToDefs } from "../../fieldRows";
 import { nextDuplicateName } from "./naming";
 
 // Commands for the Templates tab. Each awaits the store handle (FoldKit has
@@ -162,7 +162,7 @@ export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
         }),
       );
       return Message.TemplatesSeededCheck();
-    }).pipe(Effect.catch((error) => Effect.succeed(Message.TemplatesSeededCheck()))),
+    }).pipe(Effect.catch((_error) => Effect.succeed(Message.TemplatesSeededCheck()))),
 });
 
 const effectFailure = (message: string) => Effect.fail(new Error(message));

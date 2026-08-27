@@ -224,17 +224,21 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
   const _hasChanges = hasChanges(editor as unknown as Parameters<typeof hasChanges>[0]);
 
   return h.div(
-    [h.Class("flex min-h-full flex-col")],
+    [h.Class("flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))]")],
     [
       h.div(
-        [h.Class("mx-auto w-full max-w-3xl px-4 pt-4 pb-4 space-y-4 flex-1")],
+        [
+          h.Class(
+            "mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-6 space-y-6 flex-1",
+          ),
+        ],
         [
           // Template Info card
           h.div(
-            [h.Class("rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden")],
+            [h.Class("rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden")],
             [
               h.div(
-                [h.Class("px-4 py-2 bg-base-100 border-b border-base-200")],
+                [h.Class("px-4 py-2.5 bg-base-200/60 border-b border-base-200")],
                 [
                   h.span(
                     [
@@ -247,7 +251,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                 ],
               ),
               h.div(
-                [h.Class("p-4 space-y-4")],
+                [h.Class("p-4 sm:p-5 space-y-4")],
                 [
                   h.fieldset(
                     [h.Class("fieldset p-0 gap-1.5 w-full")],
@@ -266,20 +270,25 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                         ),
                         h.Value(editor.name),
                         h.Placeholder("Template Name"),
+                        h.AriaLabel("Template Name"),
                         h.Autofocus(false),
                         h.OnInput((value) => Message.ChangedEditorName({ text: value })),
                       ]),
                     ],
                   ),
-                  h.label(
-                    [h.Class("flex items-center justify-between py-2 cursor-pointer select-none")],
+                  h.div(
                     [
-                      h.div(
-                        [h.Class("flex flex-col pr-3 text-left")],
+                      h.Class(
+                        "flex items-center justify-between p-3.5 rounded-field border border-base-200 bg-base-100 hover:border-base-300 transition-colors select-none",
+                      ),
+                    ],
+                    [
+                      h.label(
+                        [h.Class("flex flex-col pr-3 cursor-pointer flex-1 text-left")],
                         [
                           h.span(
-                            [h.Class("text-sm font-medium text-base-content")],
-                            ["Set as Default"],
+                            [h.Class("text-sm font-semibold text-base-content")],
+                            ["Set as Default Template"],
                           ),
                           h.span(
                             [h.Class("text-xs leading-relaxed text-base-content/60")],
@@ -292,7 +301,10 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                       h.input([
                         h.Class("toggle toggle-primary checked:border-primary shrink-0"),
                         h.Type("checkbox"),
+                        h.Attribute("role", "switch"),
                         h.Checked(editor.isDefault),
+                        h.AriaChecked(editor.isDefault),
+                        h.AriaLabel("Set as default template"),
                         h.OnChange(() => Message.ToggledEditorDefault()),
                       ]),
                     ],
@@ -306,12 +318,12 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
           h.div(
             [
               h.Class(
-                "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden divide-y divide-base-200",
+                "rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden divide-y divide-base-200",
               ),
             ],
             [
               h.div(
-                [h.Class("flex items-center justify-between px-4 py-2 bg-base-100")],
+                [h.Class("flex items-center justify-between px-4 py-2.5 bg-base-200/60")],
                 [
                   h.span(
                     [
@@ -319,18 +331,22 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                         "text-xs font-semibold uppercase tracking-wider text-base-content/60",
                       ),
                     ],
-                    ["Fields"],
+                    ["Fields Schema"],
+                  ),
+                  h.span(
+                    [h.Class("badge badge-sm badge-neutral font-mono")],
+                    [`${editor.fields.length} fields`],
                   ),
                 ],
               ),
               ...(editor.fields.length === 0
                 ? [
                     h.div(
-                      [h.Class("px-4 py-6 text-center bg-base-100")],
+                      [h.Class("px-4 py-8 text-center bg-base-100")],
                       [
                         h.p(
                           [h.Class("text-sm italic text-base-content/50")],
-                          ["No fields added yet"],
+                          ["No fields added yet. Add fields below to capture study data."],
                         ),
                       ],
                     ),
@@ -344,29 +360,30 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                     ),
                   ]),
               h.div(
-                [h.Class("px-4 py-3 bg-base-100")],
+                [h.Class("px-4 py-3 bg-base-100 flex items-center justify-between")],
                 [
                   h.button(
                     [
                       h.Class(
-                        "btn btn-ghost btn-sm gap-1 text-primary font-semibold hover:bg-transparent active:opacity-60",
+                        "btn btn-ghost btn-sm gap-1.5 text-primary font-semibold hover:bg-primary/10 rounded-field",
                       ),
                       h.OnClick(Message.ClickedAddField()),
+                      h.AriaLabel("Add Field"),
                     ],
                     [h.span([h.Class("text-lg leading-none")], ["+"]), "Add Field"],
                   ),
+                  h.span(
+                    [h.Class("text-[11px] text-base-content/40 hidden sm:inline")],
+                    ["Use ↑↓ buttons to reorder fields"],
+                  ),
                 ],
-              ),
-              h.p(
-                [h.Class("px-4 py-2 text-[11px] text-base-content/40 bg-base-100")],
-                ["Fields define what information is captured for each task. Use ↑↓ to reorder."],
               ),
             ],
           ),
 
           ...(model.lastError === null
             ? []
-            : [h.div([h.Class("alert alert-warning py-2 text-sm")], [model.lastError])]),
+            : [h.div([h.Class("alert alert-warning py-2 text-sm shadow-xs")], [model.lastError])]),
         ],
       ),
 
@@ -374,27 +391,29 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
       h.div(
         [
           h.Class(
-            "sticky bottom-0 z-20 border-t border-base-300 bg-base-100/90 backdrop-blur-md px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
+            "sticky bottom-0 z-20 border-t border-base-300 bg-base-100/90 backdrop-blur-md px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg",
           ),
         ],
         [
           h.div(
-            [h.Class("mx-auto flex max-w-3xl gap-2")],
+            [h.Class("mx-auto flex max-w-4xl gap-3")],
             [
               h.button(
                 [
-                  h.Class("btn btn-ghost flex-1 rounded-field"),
+                  h.Class("btn btn-ghost flex-1 rounded-field font-medium"),
                   h.OnClick(Message.ClickedCancelEditTemplate()),
+                  h.AriaLabel("Cancel template editing"),
                 ],
                 ["Cancel"],
               ),
               h.button(
                 [
-                  h.Class("btn btn-primary flex-1 rounded-field"),
+                  h.Class("btn btn-primary flex-1 rounded-field font-semibold shadow-sm"),
                   h.Disabled(!isValid || !_hasChanges || editor.isSaving),
                   h.OnClick(Message.ClickedSaveTemplate()),
+                  h.AriaLabel("Save template changes"),
                 ],
-                [editor.isSaving ? "Saving…" : "Save"],
+                [editor.isSaving ? "Saving…" : "Save Template"],
               ),
             ],
           ),
@@ -508,19 +527,40 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
   const valid = isDraftValid(draft as unknown as Parameters<typeof isDraftValid>[0]);
 
   return h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "dialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel(title),
+    ],
     [
       h.div(
         [
           h.Class(
-            "modal-box max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-box sm:rounded-box bg-base-100 p-0 border border-base-300 flex flex-col",
+            "modal-box max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-box sm:rounded-box bg-base-100 p-0 border border-base-300 flex flex-col shadow-xl",
           ),
         ],
         [
           // Header
           h.div(
-            [h.Class("sticky top-0 z-10 bg-base-100 border-b border-base-200 px-5 py-4")],
-            [h.h3([h.Class("text-base font-bold")], [title])],
+            [
+              h.Class(
+                "sticky top-0 z-10 bg-base-100 border-b border-base-200 px-5 py-4 flex items-center justify-between",
+              ),
+            ],
+            [
+              h.h3([h.Class("text-base font-bold text-base-content")], [title]),
+              h.button(
+                [
+                  h.Class(
+                    "btn btn-ghost btn-xs btn-circle text-base-content/60 hover:text-base-content",
+                  ),
+                  h.OnClick(Message.CanceledAddField()),
+                  h.AriaLabel("Close"),
+                ],
+                ["✕"],
+              ),
+            ],
           ),
           // Body
           h.div(
@@ -554,7 +594,8 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                           "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
                         ),
                         h.Value(draft.name),
-                        h.Placeholder("Field Name"),
+                        h.Placeholder("e.g. Activity Type, Category"),
+                        h.AriaLabel("Field Name"),
                         h.Autofocus(true),
                         h.OnInput((value) => Message.ChangedFieldName({ text: value })),
                       ]),
@@ -572,22 +613,30 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                         ["Field Type"],
                       ),
                       h.div(
-                        [h.Class("grid grid-cols-2 gap-2")],
-                        FIELD_KINDS.map((candidate) =>
-                          h.button(
+                        [
+                          h.Class("grid grid-cols-2 sm:grid-cols-3 gap-2"),
+                          h.Attribute("role", "radiogroup"),
+                          h.AriaLabel("Field Type"),
+                        ],
+                        FIELD_KINDS.map((candidate) => {
+                          const active = candidate === kind;
+                          return h.button(
                             [
                               h.Class(
                                 `btn btn-sm rounded-field text-xs font-medium border transition-colors ${
-                                  candidate === kind
-                                    ? "btn-primary border-primary text-primary-content shadow-sm"
+                                  active
+                                    ? "btn-primary border-primary text-primary-content shadow-sm font-semibold"
                                     : "btn-ghost border-base-300 bg-base-100 hover:bg-base-200 text-base-content"
                                 }`,
                               ),
+                              h.Attribute("role", "radio"),
+                              h.AriaChecked(active),
+                              h.AriaLabel(fieldDisplayName(candidate as FieldKind)),
                               h.OnClick(Message.ChangedFieldKind({ kind: candidate })),
                             ],
                             [fieldDisplayName(candidate as FieldKind)],
-                          ),
-                        ),
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -597,27 +646,33 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
               // Required toggle
               ...(supportsRequired(kind)
                 ? [
-                    h.label(
+                    h.div(
                       [
                         h.Class(
-                          "flex items-center justify-between rounded-field border border-base-200 bg-base-100 px-3 py-2.5 cursor-pointer select-none",
+                          "flex items-center justify-between rounded-field border border-base-200 bg-base-100 p-3 select-none",
                         ),
                       ],
                       [
-                        h.div(
-                          [h.Class("flex flex-col pr-3 text-left")],
+                        h.label(
+                          [h.Class("flex flex-col pr-3 text-left cursor-pointer flex-1")],
                           [
-                            h.span([h.Class("text-sm font-medium")], ["Required"]),
+                            h.span(
+                              [h.Class("text-sm font-medium text-base-content")],
+                              ["Required Field"],
+                            ),
                             h.span(
                               [h.Class("text-xs text-base-content/60")],
-                              ["Required fields must be completed before a task can be saved."],
+                              ["Required fields must be completed before a task can be recorded."],
                             ),
                           ],
                         ),
                         h.input([
                           h.Class("toggle toggle-primary checked:border-primary shrink-0"),
                           h.Type("checkbox"),
+                          h.Attribute("role", "switch"),
                           h.Checked(draft.isRequired),
+                          h.AriaChecked(draft.isRequired),
+                          h.AriaLabel("Required Field"),
                           h.OnChange(() => Message.ToggledFieldRequired()),
                         ]),
                       ],
@@ -629,7 +684,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
               ...(hasOptions(kind)
                 ? [
                     h.div(
-                      [h.Class("space-y-3 rounded-box border border-base-200 bg-base-100 p-3")],
+                      [h.Class("space-y-3 rounded-box border border-base-200 bg-base-100 p-4")],
                       [
                         h.div(
                           [h.Class("flex items-center justify-between")],
@@ -640,15 +695,19 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                   "text-xs font-semibold uppercase tracking-wider text-base-content/60",
                                 ),
                               ],
-                              ["Options"],
+                              ["Options List"],
+                            ),
+                            h.span(
+                              [h.Class("text-xs font-mono text-base-content/50")],
+                              [`${draft.options.length} options`],
                             ),
                           ],
                         ),
                         ...(draft.options.length === 0
                           ? [
                               h.p(
-                                [h.Class("text-sm italic text-base-content/50 py-2 text-center")],
-                                ["No options added yet"],
+                                [h.Class("text-sm italic text-base-content/50 py-3 text-center")],
+                                ["No options added yet. Add at least 2 options below."],
                               ),
                             ]
                           : [
@@ -661,9 +720,12 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                 draft.options.map((option, optionIndex) =>
                                   h.keyed("div")(
                                     `opt-${optionIndex}-${option}`,
-                                    [h.Class("flex items-center gap-2 px-3 py-2 bg-base-100")],
+                                    [h.Class("flex items-center gap-2 px-3 py-2.5 bg-base-100")],
                                     [
-                                      h.span([h.Class("flex-1 truncate text-sm")], [option]),
+                                      h.span(
+                                        [h.Class("flex-1 truncate text-sm font-medium")],
+                                        [option],
+                                      ),
                                       ...(kind === "checkbox"
                                         ? [
                                             h.button(
@@ -671,13 +733,14 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                                 h.Class(
                                                   `btn btn-xs rounded-field text-xs font-medium border ${
                                                     draft.exclusiveOptions.includes(option)
-                                                      ? "btn-error text-error border-error/20 bg-error/10"
+                                                      ? "btn-error text-error border-error/20 bg-error/10 font-semibold"
                                                       : "btn-ghost border-base-300 text-base-content/60"
                                                   }`,
                                                 ),
                                                 h.Title(
                                                   "Exclusionary option clears other selections when chosen",
                                                 ),
+                                                h.AriaLabel(`Toggle exclusive for ${option}`),
                                                 h.OnClick(
                                                   Message.ToggledExclusiveOption({
                                                     index: optionIndex,
@@ -714,10 +777,11 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                           [
                             h.input([
                               h.Class(
-                                "input input-bordered flex-1 rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none",
+                                "input input-bordered flex-1 rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                               ),
                               h.Value(draft.newOptionText),
-                              h.Placeholder("Option name"),
+                              h.Placeholder("Add option name…"),
+                              h.AriaLabel("New option name"),
                               h.OnInput((value) => Message.ChangedNewOptionText({ text: value })),
                               h.OnKeyDownPreventDefault((key) =>
                                 key === "Enter" && draft.newOptionText.trim() !== ""
@@ -727,36 +791,31 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                             ]),
                             h.button(
                               [
-                                h.Class("btn btn-primary btn-sm rounded-field shrink-0"),
+                                h.Class(
+                                  "btn btn-primary btn-sm rounded-field shrink-0 font-semibold",
+                                ),
                                 h.Disabled(
                                   draft.newOptionText.trim() === "" ||
                                     draft.options.includes(draft.newOptionText.trim()),
                                 ),
                                 h.OnClick(Message.ConfirmedAddOption()),
+                                h.AriaLabel("Add option"),
                               ],
                               ["Add"],
                             ),
                           ],
                         ),
-                        ...(kind === "checkbox"
-                          ? [
-                              h.p(
-                                [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-                                ["Exclusionary options clear all other selections when chosen."],
-                              ),
-                            ]
-                          : []),
                       ],
                     ),
                   ]
                 : []),
 
-              // Default Value section — hidden for option types (radio/checkbox) per spec
+              // Default Value section
               ...(hasOptions(kind)
                 ? []
                 : [
                     h.div(
-                      [h.Class("space-y-2 rounded-box border border-base-200 bg-base-100 p-3")],
+                      [h.Class("space-y-2 rounded-box border border-base-200 bg-base-100 p-4")],
                       [
                         h.span(
                           [
@@ -768,28 +827,58 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                         ),
                         ...(kind === "boolean"
                           ? [
-                              h.label(
-                                [
-                                  h.Class(
-                                    "flex items-center justify-between py-1 cursor-pointer select-none",
-                                  ),
-                                ],
-                                [
-                                  h.span([h.Class("text-sm font-medium")], ["Default Value"]),
-                                  h.input([
+                              (() => {
+                                const isBoolDefaultOn = draft.defaultValue === "true";
+                                return h.div(
+                                  [
                                     h.Class(
-                                      "toggle toggle-primary checked:border-primary shrink-0",
+                                      "flex items-center justify-between p-3 rounded-field border border-base-200 bg-base-100 select-none",
                                     ),
-                                    h.Type("checkbox"),
-                                    h.Checked(draft.defaultValue === "true"),
-                                    h.OnChange(() => Message.ToggledFieldDefaultBoolean()),
-                                  ]),
-                                ],
-                              ),
+                                  ],
+                                  [
+                                    h.label(
+                                      [
+                                        h.Class(
+                                          "flex flex-col pr-3 text-left cursor-pointer flex-1",
+                                        ),
+                                      ],
+                                      [
+                                        h.span(
+                                          [h.Class("text-sm font-medium text-base-content")],
+                                          ["Default Toggle State"],
+                                        ),
+                                        h.span(
+                                          [
+                                            h.Class(
+                                              `text-xs ${isBoolDefaultOn ? "text-primary font-medium" : "text-base-content/60"}`,
+                                            ),
+                                          ],
+                                          [
+                                            isBoolDefaultOn
+                                              ? "Defaults to On (True)"
+                                              : "Defaults to Off (False)",
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    h.input([
+                                      h.Class(
+                                        "toggle toggle-primary checked:border-primary shrink-0",
+                                      ),
+                                      h.Type("checkbox"),
+                                      h.Attribute("role", "switch"),
+                                      h.Checked(isBoolDefaultOn),
+                                      h.AriaChecked(isBoolDefaultOn),
+                                      h.AriaLabel("Default toggle state"),
+                                      h.OnChange(() => Message.ToggledFieldDefaultBoolean()),
+                                    ]),
+                                  ],
+                                );
+                              })(),
                               h.p(
                                 [h.Class("text-[11px] leading-relaxed text-base-content/60")],
                                 [
-                                  "Toggle fields are never required and default to off unless specified here.",
+                                  "Toggle fields are never required and default to off unless enabled here.",
                                 ],
                               ),
                             ]
@@ -799,18 +888,13 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                   h.Class(
                                     "textarea textarea-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:textarea-primary focus-visible:outline-none min-h-[90px] leading-relaxed placeholder:text-base-content/40",
                                   ),
-                                  h.Placeholder("Default Value"),
+                                  h.Placeholder("Default Value (optional)"),
+                                  h.AriaLabel("Default Value"),
                                   h.Value(draft.defaultValue),
                                   h.OnInput((value) =>
                                     Message.ChangedFieldDefaultValue({ text: value }),
                                   ),
                                 ]),
-                                h.p(
-                                  [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-                                  [
-                                    "Optional. This value will be pre-filled when creating new tasks.",
-                                  ],
-                                ),
                               ]
                             : [
                                 h.input([
@@ -818,17 +902,12 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                     "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                                   ),
                                   h.Value(draft.defaultValue),
-                                  h.Placeholder("Default Value"),
+                                  h.Placeholder("Default Value (optional)"),
+                                  h.AriaLabel("Default Value"),
                                   h.OnInput((value) =>
                                     Message.ChangedFieldDefaultValue({ text: value }),
                                   ),
                                 ]),
-                                h.p(
-                                  [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-                                  [
-                                    "Optional. This value will be pre-filled when creating new tasks.",
-                                  ],
-                                ),
                               ]),
                       ],
                     ),
@@ -837,22 +916,24 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
           ),
           // Footer actions
           h.div(
-            [h.Class("sticky bottom-0 bg-base-100 border-t border-base-200 p-4 flex gap-2")],
+            [h.Class("sticky bottom-0 bg-base-100 border-t border-base-200 p-4 flex gap-2.5")],
             [
               h.button(
                 [
-                  h.Class("btn btn-ghost flex-1 rounded-field"),
+                  h.Class("btn btn-ghost flex-1 rounded-field font-medium"),
                   h.OnClick(Message.CanceledAddField()),
+                  h.AriaLabel("Cancel field editing"),
                 ],
                 ["Cancel"],
               ),
               h.button(
                 [
-                  h.Class("btn btn-primary flex-1 rounded-field"),
+                  h.Class("btn btn-primary flex-1 rounded-field font-semibold shadow-sm"),
                   h.Disabled(!valid),
                   h.OnClick(Message.ConfirmedSaveField()),
+                  h.AriaLabel("Save Field"),
                 ],
-                ["Save"],
+                ["Save Field"],
               ),
             ],
           ),
@@ -865,30 +946,41 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
 
 const discardModal = (h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "dialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Discard Changes Confirmation"),
+    ],
     [
       h.div(
-        [h.Class("modal-box max-w-sm rounded-box border border-base-300 p-5 bg-base-100")],
         [
-          h.h3([h.Class("text-base font-bold")], ["Discard Changes?"]),
+          h.Class(
+            "modal-box max-w-sm rounded-box border border-base-300 p-5 bg-base-100 shadow-xl",
+          ),
+        ],
+        [
+          h.h3([h.Class("text-base font-bold text-base-content")], ["Discard Changes?"]),
           h.p(
             [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/70")],
-            ["You have unsaved changes. Are you sure you want to discard them?"],
+            ["You have unsaved changes to this template. Are you sure you want to discard them?"],
           ),
           h.div(
-            [h.Class("modal-action mt-4 flex-col gap-2 sm:flex-row")],
+            [h.Class("modal-action mt-5 flex-col gap-2 sm:flex-row")],
             [
               h.button(
                 [
                   h.Class("btn btn-error btn-block rounded-field text-xs font-semibold sm:flex-1"),
-                  h.OnClick(Message.ConfirmedDiscard()),
+                  h.OnClick(Message.ConfirmedDiscardTemplate()),
+                  h.AriaLabel("Confirm discard changes"),
                 ],
                 ["Discard"],
               ),
               h.button(
                 [
                   h.Class("btn btn-ghost btn-block rounded-field text-xs sm:flex-1"),
-                  h.OnClick(Message.CanceledDiscard()),
+                  h.OnClick(Message.CanceledDiscardTemplate()),
+                  h.AriaLabel("Continue editing"),
                 ],
                 ["Keep Editing"],
               ),
@@ -896,6 +988,6 @@ const discardModal = (h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscard())], []),
+      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscardTemplate())], []),
     ],
   );

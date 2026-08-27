@@ -120,7 +120,17 @@ button {
     opacity: 0;
   }
   to {
+    transform: scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
   }
 }
 
@@ -135,6 +145,12 @@ button {
     transform: translate(-50%, 0);
     opacity: 1;
   }
+}
+
+/* Accessible focus ring style */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 /* ── PWA checklist: momentum scrolling on scrollable regions ────────────────

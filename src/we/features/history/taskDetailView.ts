@@ -169,10 +169,10 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
           ),
           // Recorded Data
           h.div(
-            [h.Class("rounded-box bg-base-100 border border-base-300 overflow-hidden")],
+            [h.Class("rounded-box bg-base-100 border border-base-300 overflow-hidden shadow-xs")],
             [
               h.div(
-                [h.Class("px-4 py-2 bg-base-100 border-b border-base-200")],
+                [h.Class("px-4 py-2.5 bg-base-200/60 border-b border-base-200")],
                 [
                   h.span(
                     [
@@ -188,16 +188,21 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
                 ? [
                     h.div(
                       [h.Class("px-4 py-6 text-center text-sm italic text-base-content/50")],
-                      ["No data"],
+                      ["No data recorded."],
                     ),
                   ]
                 : task.sections.map((section) => {
+                    const val = section.value.trim().toLowerCase();
+                    const isBool = val === "true" || val === "false";
+                    const isBoolOn = val === "true";
                     const hasValue = section.value !== "";
+                    const showCheck = isBool ? isBoolOn : hasValue;
+
                     return h.div(
                       [h.Class("px-4 py-3 border-b border-base-200 last:border-b-0")],
                       [
                         h.div(
-                          [h.Class("flex items-center gap-1")],
+                          [h.Class("flex items-center gap-1.5")],
                           [
                             h.span(
                               [h.Class("text-sm font-medium text-base-content/70")],
@@ -207,15 +212,36 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
                               ? [h.span([h.Class("text-error text-sm font-bold")], ["*"])]
                               : []),
                             h.div([h.Class("flex-1")], []),
-                            ...(hasValue ? [checkIcon(h)] : []),
+                            ...(showCheck ? [checkIcon(h)] : []),
                           ],
                         ),
                         h.div(
-                          [h.Class("mt-1")],
+                          [h.Class("mt-1.5")],
                           [
-                            hasValue
-                              ? h.span([h.Class("text-sm text-base-content")], [section.value])
-                              : h.span([h.Class("text-sm italic text-base-content/40")], ["—"]),
+                            isBool
+                              ? isBoolOn
+                                ? h.span(
+                                    [
+                                      h.Class(
+                                        "badge badge-success text-white badge-sm font-semibold",
+                                      ),
+                                    ],
+                                    ["Yes"],
+                                  )
+                                : h.span(
+                                    [
+                                      h.Class(
+                                        "badge badge-ghost badge-sm text-base-content/70 font-medium",
+                                      ),
+                                    ],
+                                    ["No"],
+                                  )
+                              : hasValue
+                                ? h.span(
+                                    [h.Class("text-sm text-base-content leading-relaxed")],
+                                    [section.value],
+                                  )
+                                : h.span([h.Class("text-sm italic text-base-content/40")], ["—"]),
                           ],
                         ),
                       ],

@@ -71,3 +71,8 @@ export const toggleCheckboxOption = (
   const nextSet = new Set(next);
   return options.filter((candidate) => nextSet.has(candidate)).join(",");
 };
+
+export const isBooleanTrue = (value: string): boolean => value.trim().toLowerCase() === "true";
+
+export const formatBooleanDisplay = (value: string): string =>
+  isBooleanTrue(value) ? "Yes" : "No";

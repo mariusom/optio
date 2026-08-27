@@ -128,14 +128,14 @@ const bottomToolbarChrome = <M>(children: ReturnType<HtmlBuilder<M>["div"]>[], h
   h.div(
     [
       h.Class(
-        "relative w-full bg-gradient-to-t from-base-200 via-base-200/80 to-transparent py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-5 sm:px-10",
+        "relative w-full py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 sm:px-6 lg:px-8",
       ),
     ],
     [
       h.div(
         [
           h.Class(
-            "mx-auto w-full max-w-[400px] rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden",
+            "mx-auto w-full max-w-[440px] md:max-w-[480px] rounded-box bg-base-100 border border-base-300 shadow-md overflow-hidden",
           ),
         ],
         children,
@@ -150,10 +150,10 @@ const bottomToolbarChromeNoCard = <M>(
   h.div(
     [
       h.Class(
-        "relative w-full bg-gradient-to-t from-base-200 via-base-200/80 to-transparent py-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-5 sm:px-10",
+        "relative w-full py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 sm:px-6 lg:px-8",
       ),
     ],
-    [h.div([h.Class("mx-auto w-full max-w-[400px]")], children)],
+    [h.div([h.Class("mx-auto w-full max-w-[440px] md:max-w-[480px]")], children)],
   );
 
 // ── ResumeSessionView ─────────────────────────────────────────────────────
@@ -184,32 +184,38 @@ const resumeView = (
       h.div(
         [
           h.Class(
-            "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md",
+            "rounded-box bg-base-100 border border-base-300 shadow-md overflow-hidden backdrop-blur-md",
           ),
         ],
         [
           // Header
           h.div(
-            [h.Class("flex items-center gap-2.5 px-4 py-3")],
+            [h.Class("flex items-center gap-2.5 px-5 py-3.5 bg-base-100 border-b border-base-200")],
             [
               missing
                 ? triangleIcon("h-5 w-5 text-error shrink-0", h)
                 : clockIcon("h-5 w-5 text-warning shrink-0", h),
               h.span(
-                [h.Class(`text-sm font-semibold ${missing ? "text-error" : "text-base-content"}`)],
+                [h.Class(`text-sm font-bold ${missing ? "text-error" : "text-base-content"}`)],
                 [title],
               ),
             ],
           ),
-          h.div([h.Class("h-px bg-base-200")], []),
           // Rows
           h.div(
             [h.Class("divide-y divide-base-200")],
             infoRows.map((row) =>
               h.div(
-                [h.Class("flex items-center justify-between px-4 py-2.5 text-sm")],
+                [h.Class("flex items-center justify-between px-5 py-3 text-sm")],
                 [
-                  h.span([h.Class("text-xs font-medium text-base-content/60")], [row.label]),
+                  h.span(
+                    [
+                      h.Class(
+                        "text-xs font-semibold uppercase tracking-wider text-base-content/60",
+                      ),
+                    ],
+                    [row.label],
+                  ),
                   h.span(
                     [h.Class("text-sm font-medium text-base-content truncate ml-3")],
                     [row.value],
@@ -222,10 +228,10 @@ const resumeView = (
           ...(missing
             ? [
                 h.div(
-                  [h.Class("px-4 py-3 bg-warning/10 border-t border-warning/20")],
+                  [h.Class("px-5 py-3 bg-warning/10 border-t border-warning/20")],
                   [
                     h.p(
-                      [h.Class("text-xs leading-relaxed text-warning-content/80")],
+                      [h.Class("text-xs leading-relaxed text-warning-content/90")],
                       [
                         "The template for this session is no longer available. You can finish the session to save existing tasks, or discard it.",
                       ],
@@ -236,23 +242,25 @@ const resumeView = (
             : []),
           // Buttons
           h.div(
-            [h.Class("flex gap-2 px-4 py-3 border-t border-base-200")],
+            [h.Class("flex gap-3 px-5 py-3.5 border-t border-base-200 bg-base-100/50")],
             [
               h.button(
                 [
                   h.Class(
-                    "btn btn-outline btn-error flex-1 rounded-field gap-1.5 text-sm font-medium border-error/40 hover:bg-error hover:text-error-content",
+                    "btn btn-outline btn-error flex-1 rounded-field gap-1.5 text-sm font-medium border-error/40 hover:bg-error hover:text-error-content active:scale-[0.98]",
                   ),
                   h.OnClick(Message.ClickedDiscardSession()),
+                  h.AriaLabel("Discard Session"),
                 ],
                 [trashIcon("h-4 w-4", h), "Discard"],
               ),
               h.button(
                 [
                   h.Class(
-                    "btn btn-primary flex-1 rounded-field gap-1.5 text-sm font-semibold shadow-sm",
+                    "btn btn-primary flex-1 rounded-field gap-1.5 text-sm font-semibold shadow-sm active:scale-[0.98]",
                   ),
                   h.OnClick(Message.ClickedResumeSession()),
+                  h.AriaLabel(missing ? "Finish Session" : "Resume Session"),
                 ],
                 [
                   missing ? checkIcon("h-4 w-4", h) : playIcon("h-4 w-4", h),
@@ -271,12 +279,17 @@ const resumeView = (
 
 const discardModal = (h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "dialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Discard Session"),
+    ],
     [
       h.div(
         [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
         [
-          h.h3([h.Class("text-base font-bold")], ["Discard Session?"]),
+          h.h3([h.Class("text-base font-bold text-base-content")], ["Discard Session?"]),
           h.p(
             [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/70")],
             [
@@ -290,6 +303,7 @@ const discardModal = (h: HtmlBuilder<Message>) =>
                 [
                   h.Class("btn btn-error btn-block rounded-field text-xs font-semibold sm:flex-1"),
                   h.OnClick(Message.ConfirmedDiscardSession()),
+                  h.AriaLabel("Confirm discard session"),
                 ],
                 ["Discard"],
               ),
@@ -297,6 +311,7 @@ const discardModal = (h: HtmlBuilder<Message>) =>
                 [
                   h.Class("btn btn-ghost btn-block rounded-field text-xs sm:flex-1"),
                   h.OnClick(Message.CanceledDiscardSession()),
+                  h.AriaLabel("Cancel discard"),
                 ],
                 ["Cancel"],
               ),
@@ -314,27 +329,28 @@ const noTemplatesView = (h: HtmlBuilder<Message>) =>
   bottomToolbarChrome(
     [
       h.div(
-        [h.Class("flex flex-col items-center p-6 text-center")],
+        [h.Class("flex flex-col items-center p-6 sm:p-8 text-center")],
         [
           h.div(
             [
               h.Class(
-                "mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-base-300/60 text-base-content/50",
+                "mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-base-300/60 text-base-content/50 shadow-xs",
               ),
             ],
             [docIcon("h-7 w-7", h)],
           ),
-          h.h3([h.Class("text-base font-semibold")], ["No Templates"]),
+          h.h3([h.Class("text-base font-bold text-base-content")], ["No Templates"]),
           h.p(
-            [h.Class("mt-1 text-xs leading-relaxed text-base-content/60 max-w-xs")],
+            [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/60 max-w-xs")],
             ["Create a template to define the fields for your time and motion study sessions."],
           ),
           h.a(
             [
               h.Class(
-                "btn btn-primary mt-5 rounded-field gap-1.5 text-sm font-semibold shadow-sm active:scale-[0.98] transition-transform",
+                "btn btn-primary mt-6 rounded-field gap-2 text-sm font-semibold shadow-sm active:scale-[0.98] transition-all px-6",
               ),
               h.Attribute("href", "#/templates"),
+              h.AriaLabel("Create Template"),
             ],
             [h.span([h.Class("text-lg leading-none")], ["+"]), "Create Template"],
           ),
@@ -359,18 +375,18 @@ const templatePicker = (
       : "Select Template";
 
   return h.div(
-    [
-      h.Class("dropdown dropdown-top w-full"),
-      // Use daisyUI dropdown via tabindex focus; no JS state needed
-    ],
+    [h.Class("dropdown dropdown-top w-full")],
     [
       h.div(
         [
           h.Tabindex(0),
           h.Class(
-            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-100 focus-visible:outline-none focus-visible:border-primary",
+            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-200/50 hover:border-base-300/80 focus-visible:border-primary transition-all",
           ),
-          h.Attribute("role", "button"),
+          h.Attribute("role", "combobox"),
+          h.Attribute("aria-expanded", "false"),
+          h.Attribute("aria-haspopup", "listbox"),
+          h.AriaLabel("Select Template"),
         ],
         [
           h.span([h.Class("truncate text-left")], [label]),
@@ -381,25 +397,43 @@ const templatePicker = (
         [
           h.Tabindex(0),
           h.Class(
-            "dropdown-content menu z-40 mt-1 max-h-56 w-full overflow-auto rounded-box border border-base-300 bg-base-100 p-1.5 shadow-lg",
+            "dropdown-content menu z-40 mb-1 max-h-60 w-full overflow-auto rounded-box border border-base-300 bg-base-100 p-1.5 shadow-xl",
           ),
+          h.Attribute("role", "listbox"),
+          h.AriaLabel("Templates list"),
         ],
         sorted.map((t) => {
           const isSelected = t.id === selectedId;
           const nameWithSuffix = `${t.name}${t.isDefault ? " (Default)" : ""}`;
           return h.li(
-            [],
+            [h.Attribute("role", "none")],
             [
               h.button(
                 [
                   h.Class(
-                    `flex w-full items-center justify-between rounded-field px-3 py-2 text-left text-sm ${isSelected ? "bg-primary/10 text-primary font-medium" : "text-base-content"}`,
+                    `flex w-full items-center justify-between rounded-field px-3.5 py-2.5 text-left text-sm transition-colors ${
+                      isSelected
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-base-content hover:bg-base-200/60"
+                    }`,
                   ),
+                  h.Attribute("role", "option"),
+                  h.Attribute("aria-selected", isSelected ? "true" : "false"),
+                  h.AriaLabel(nameWithSuffix),
                   h.OnClick(Message.SelectedTemplate({ id: t.id })),
                 ],
                 [
-                  h.span([h.Class("truncate")], [nameWithSuffix]),
-                  ...(isSelected ? [checkSmallIcon("h-4 w-4 text-primary", h)] : []),
+                  h.div(
+                    [h.Class("flex flex-col min-w-0 pr-2")],
+                    [
+                      h.span([h.Class("truncate")], [nameWithSuffix]),
+                      h.span(
+                        [h.Class("text-[11px] text-base-content/50 font-normal mt-0.5")],
+                        [`${t.fieldCount} fields`],
+                      ),
+                    ],
+                  ),
+                  ...(isSelected ? [checkSmallIcon("h-4 w-4 text-primary shrink-0", h)] : []),
                 ],
               ),
             ],
@@ -432,6 +466,7 @@ const sessionNameField = (
         ),
         h.Value(sessionNameInput),
         h.Placeholder(placeholderName),
+        h.AriaLabel("Session Name"),
         h.OnInput((value) => Message.ChangedSessionNameInput({ text: value })),
         h.OnKeyDownPreventDefault((key) =>
           key === "Enter" ? Option.some(Message.ClickedStartSession()) : Option.none(),
@@ -442,12 +477,12 @@ const sessionNameField = (
             h.button(
               [
                 h.Class(
-                  "btn btn-ghost btn-xs self-start gap-1 text-base-content/60 hover:text-base-content px-1 h-6 min-h-0",
+                  "btn btn-ghost btn-xs self-start gap-1 text-base-content/60 hover:text-base-content px-1.5 h-6 min-h-0 rounded-field",
                 ),
                 h.OnClick(Message.ChangedSessionNameInput({ text: "" })),
                 h.AriaLabel("Clear session name"),
               ],
-              [xIcon("h-3.5 w-3.5", h), "Clear"],
+              [xIcon("h-3 w-3", h), "Clear"],
             ),
           ]
         : []),
@@ -466,7 +501,7 @@ const startFormView = (
   return bottomToolbarChrome(
     [
       h.div(
-        [h.Class("p-4 space-y-4")],
+        [h.Class("p-5 sm:p-6 space-y-5")],
         [
           h.fieldset(
             [h.Class("fieldset p-0 gap-1.5 w-full")],
@@ -486,10 +521,11 @@ const startFormView = (
           h.button(
             [
               h.Class(
-                "btn btn-primary btn-block rounded-field h-12 text-sm font-semibold shadow-sm gap-1.5 active:scale-[0.98] transition-transform disabled:opacity-50",
+                "btn btn-primary btn-block rounded-field h-12 text-sm font-semibold shadow-sm gap-2 active:scale-[0.98] transition-all disabled:opacity-50",
               ),
               h.Disabled(!canStart),
               h.OnClick(Message.ClickedStartSession()),
+              h.AriaLabel("Start Session"),
             ],
             [playIcon("h-4 w-4", h), "Start Session"],
           ),

@@ -122,7 +122,7 @@ const sidebarTaskListView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const sorted = [...runner.tasks].sort((a, b) => b.orderIndex - a.orderIndex);
   const curId = currentTask(runner)?.id ?? runner.currentTaskId;
   return h.div(
-    [h.Class("flex flex-col gap-1")],
+    [h.Class("flex flex-col gap-1.5")],
     sorted.map((task) => {
       const isSelected = task.id === curId;
       const timeLabel =
@@ -133,9 +133,13 @@ const sidebarTaskListView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
         if (start !== null && end !== null) return formatDurationHms(end - start);
         return null;
       })();
+      const previewSections = [...task.sections]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .slice(0, 2);
+
       return h.button(
         [
-          h.Class("w-full text-left"),
+          h.Class("w-full text-left rounded-box focus-visible:outline-none"),
           h.OnClick(Message.ClickedSelectTask({ taskId: task.id })),
           h.AriaLabel(
             `Task ${task.orderIndex} ${task.endDate === null ? "in progress" : task.isBeingEdited ? "editing" : "completed"}`,
@@ -145,46 +149,69 @@ const sidebarTaskListView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
           h.div(
             [
               h.Class(
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors border ${
+                `flex flex-col gap-1 rounded-box p-3 transition-all duration-150 border ${
                   isSelected
-                    ? "bg-accent/15 border-accent/35"
-                    : "bg-transparent border-transparent hover:bg-base-200"
+                    ? "bg-primary/10 border-primary/40 shadow-xs"
+                    : "bg-base-100/70 border-base-200 hover:bg-base-200/60 hover:border-base-300"
                 }`,
               ),
             ],
             [
-              sidebarStateIndicator(task, h),
               h.div(
-                [h.Class("flex min-w-0 flex-1 flex-col")],
+                [h.Class("flex items-center gap-2.5")],
                 [
-                  h.div(
-                    [h.Class("flex items-baseline gap-2")],
+                  sidebarStateIndicator(task, h),
+                  h.span(
                     [
-                      h.span(
-                        [
-                          h.Class(
-                            `truncate text-sm ${isSelected ? "font-semibold text-base-content" : "font-medium text-base-content"}`,
-                          ),
-                        ],
-                        [`Task ${task.orderIndex}`],
+                      h.Class(
+                        `truncate text-sm ${isSelected ? "font-bold text-primary" : "font-semibold text-base-content"}`,
                       ),
-                      ...(timeLabel
-                        ? [h.span([h.Class("shrink-0 text-xs text-base-content/60")], [timeLabel])]
-                        : []),
                     ],
+                    [`Task ${task.orderIndex}`],
                   ),
+                  h.div([h.Class("flex-1")], []),
+                  ...(timeLabel
+                    ? [
+                        h.span(
+                          [h.Class("shrink-0 text-xs font-mono text-base-content/60")],
+                          [timeLabel],
+                        ),
+                      ]
+                    : []),
                   ...(duration
                     ? [
                         h.div(
-                          [h.Class("flex items-center gap-1 text-xs text-base-content/60")],
+                          [
+                            h.Class(
+                              "flex items-center gap-1 text-[11px] font-mono text-base-content/70 bg-base-200 px-1.5 py-0.5 rounded-field",
+                            ),
+                          ],
                           [clockTinyIcon("h-3 w-3", h), h.span([], [duration])],
                         ),
                       ]
                     : []),
                 ],
               ),
-              // trailing duration already shown; keep right-aligned duration as caption2 alternative
-              // (duplicate removed — duration shown inside column)
+              ...(previewSections.length > 0
+                ? [
+                    h.div(
+                      [h.Class("flex flex-col gap-0.5 pl-6 pt-0.5 text-[11px]")],
+                      previewSections.map((s) => {
+                        const hasVal = s.value !== "";
+                        return h.div(
+                          [h.Class("flex items-baseline gap-1.5 truncate text-base-content/60")],
+                          [
+                            h.span(
+                              [h.Class("font-medium shrink-0 text-base-content/50")],
+                              [`${s.name}:`],
+                            ),
+                            h.span([h.Class("truncate")], [hasVal ? s.value : "—"]),
+                          ],
+                        );
+                      }),
+                    ),
+                  ]
+                : []),
             ],
           ),
         ],
@@ -216,46 +243,52 @@ const tabletSessionBottomBar = (
   const canRecord = task.sections.every((s) => (s.isRequired ? s.value !== "" : true));
   const canSave = isEditing ? canRecord : true;
 
-  // Absolute inside section: bottom-0 inset-x-0, pb includes safe-area on md
   const outerClass =
-    "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2";
+    "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3";
   if (isEditing) {
     return h.div(
       [h.Class(outerClass)],
       [
         h.div(
-          [h.Class("flex w-full items-end justify-between gap-2 pointer-events-auto")],
+          [
+            h.Class(
+              "flex w-full items-end justify-between gap-3 pointer-events-auto max-w-2xl mx-auto",
+            ),
+          ],
           [
             h.button(
               [
                 h.Class(
-                  "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98] transition-transform",
+                  "btn btn-sm md:btn-md rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-2 shadow-sm active:scale-[0.98] transition-all font-semibold",
                 ),
                 h.OnClick(Message.ClickedEndSession()),
+                h.AriaLabel("End Session"),
               ],
-              [h.span([h.Class("text-sm")], ["■"]), "End"],
+              [h.span([h.Class("text-sm")], ["■"]), "End Session"],
             ),
             h.div(
-              [h.Class("flex gap-2")],
+              [h.Class("flex gap-2.5")],
               [
                 h.button(
                   [
                     h.Class(
-                      "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98]",
+                      "btn btn-sm md:btn-md rounded-full bg-base-100 backdrop-blur-md border border-base-300 text-base-content hover:bg-base-200 shadow-sm active:scale-[0.98] px-5",
                     ),
                     h.OnClick(Message.ClickedCancelEdit()),
+                    h.AriaLabel("Cancel Editing"),
                   ],
                   ["Cancel"],
                 ),
                 h.button(
                   [
                     h.Class(
-                      "btn btn-sm rounded-full bg-success text-white border border-success gap-1.5 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300",
+                      "btn btn-sm md:btn-md rounded-full btn-success text-white gap-2 shadow-sm active:scale-[0.98] px-6 font-semibold disabled:opacity-50",
                     ),
                     h.Disabled(!canSave),
                     h.OnClick(Message.ClickedSaveEdit()),
+                    h.AriaLabel("Save Task Changes"),
                   ],
-                  ["Save"],
+                  ["Save Changes"],
                 ),
               ],
             ),
@@ -267,28 +300,35 @@ const tabletSessionBottomBar = (
   return h.div(
     [h.Class(outerClass)],
     [
-      h.button(
+      h.div(
+        [h.Class("flex w-full items-end justify-between gap-3 max-w-2xl mx-auto")],
         [
-          h.Class(
-            "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98] transition-transform",
+          h.button(
+            [
+              h.Class(
+                "btn btn-sm md:btn-md rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-2 shadow-sm active:scale-[0.98] transition-all font-semibold",
+              ),
+              h.OnClick(Message.ClickedEndSession()),
+              h.AriaLabel("End Session"),
+            ],
+            [h.span([h.Class("text-sm")], ["■"]), "End Session"],
           ),
-          h.OnClick(Message.ClickedEndSession()),
-        ],
-        [h.span([h.Class("text-sm")], ["■"]), "End"],
-      ),
-      h.button(
-        [
-          h.Class(
-            `btn btn-sm rounded-full gap-1.5 shadow-sm active:scale-[0.98] transition-colors ${
-              canRecord
-                ? "bg-success text-white border border-success hover:bg-success/90"
-                : "bg-base-300 text-base-content/40 border border-base-300 cursor-not-allowed"
-            }`,
+          h.button(
+            [
+              h.Class(
+                `btn btn-sm md:btn-md rounded-full gap-2 shadow-sm active:scale-[0.98] transition-all px-8 font-semibold ${
+                  canRecord
+                    ? "btn-primary shadow-primary/25 shadow-md hover:scale-[1.02]"
+                    : "bg-base-300 text-base-content/40 border border-base-300 cursor-not-allowed"
+                }`,
+              ),
+              h.Disabled(!canRecord),
+              h.OnClick(Message.ClickedRecord()),
+              h.AriaLabel("Record Task and Next"),
+            ],
+            [checkIcon("h-4 w-4", h), h.span([], ["Record Task"])],
           ),
-          h.Disabled(!canRecord),
-          h.OnClick(Message.ClickedRecord()),
         ],
-        ["Record"],
       ),
     ],
   );
@@ -317,31 +357,42 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
   const headerBar = h.header(
     [
       h.Class(
-        "flex items-center justify-between bg-base-100 border-b border-base-300 px-3 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 shrink-0",
+        "flex items-center justify-between bg-base-100 border-b border-base-300 px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2.5 shrink-0 shadow-xs",
       ),
     ],
     [
       h.div(
-        [h.Class("flex items-center gap-2 min-w-0")],
+        [h.Class("flex items-center gap-3 min-w-0")],
         [
           h.button(
             [
               h.Class(
-                "btn btn-ghost btn-xs h-7 min-h-0 px-2 gap-1.5 rounded-field text-base-content hover:bg-base-200 active:scale-[0.97]",
+                "btn btn-ghost btn-sm h-8 min-h-0 px-2.5 gap-2 rounded-field text-base-content hover:bg-base-200 active:scale-[0.97] transition-all",
               ),
               h.OnClick(Message.ToggledSidebar()),
-              h.AriaLabel("Toggle sidebar"),
+              h.AriaLabel(runner.showSidebar ? "Collapse sidebar" : "Expand sidebar"),
             ],
-            [sidebarLeftIcon("h-3.5 w-3.5", h)],
+            [
+              sidebarLeftIcon("h-4 w-4", h),
+              h.span(
+                [h.Class("text-xs font-semibold hidden sm:inline")],
+                [runner.showSidebar ? "Hide Tasks" : "Show Tasks"],
+              ),
+            ],
           ),
-          ...(!runner.showSidebar
-            ? [
-                h.span(
-                  [h.Class("text-xs font-medium text-base-content/70 font-mono")],
-                  [`${runner.completedCount} recorded`],
-                ),
-              ]
-            : []),
+          h.div(
+            [h.Class("flex items-center gap-2 border-l border-base-300 pl-3")],
+            [
+              h.span(
+                [h.Class("text-sm font-bold tracking-tight text-base-content truncate max-w-xs")],
+                [runner.sessionName || runner.templateName],
+              ),
+              h.span(
+                [h.Class("badge badge-sm badge-neutral font-mono")],
+                [`${runner.templateName}`],
+              ),
+            ],
+          ),
         ],
       ),
       sessionTimerView(runner, h),
@@ -354,24 +405,33 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
         `bg-base-100 border-r border-base-300 flex flex-col shrink-0 overflow-hidden transition-all duration-250 ease-in-out ${runner.showSidebar ? "translate-x-0 w-80 lg:w-96" : "-translate-x-full w-0 overflow-hidden border-r-0"}`,
       ),
       h.Attribute("style", "transition: transform 0.25s ease-in-out, width 0.25s ease-in-out"),
+      h.AriaLabel("Task navigation sidebar"),
     ],
     [
       h.div(
         [
           h.Class(
-            "flex items-center justify-between px-3 py-2.5 border-b border-base-200 shrink-0",
+            "flex flex-col px-4 py-3 border-b border-base-200 shrink-0 bg-base-100/90 gap-1.5",
           ),
         ],
         [
-          h.h2([h.Class("text-sm font-semibold text-base-content")], ["Tasks"]),
-          h.span(
-            [h.Class("text-xs font-mono text-base-content/60")],
-            [`${runner.completedCount} recorded`],
+          h.div(
+            [h.Class("flex items-center justify-between")],
+            [
+              h.h2(
+                [h.Class("text-xs font-bold uppercase tracking-wider text-base-content/70")],
+                ["Session Tasks"],
+              ),
+              h.span(
+                [h.Class("text-xs font-mono font-semibold text-primary")],
+                [`${runner.completedCount} completed`],
+              ),
+            ],
           ),
         ],
       ),
       h.div(
-        [h.Class("flex-1 overflow-y-auto overscroll-y-contain p-2")],
+        [h.Class("flex-1 overflow-y-auto overscroll-y-contain p-3 space-y-1")],
         [sidebarTaskListView(runner, h)],
       ),
     ],
@@ -380,11 +440,12 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
   const mainSection = h.section(
     [
       h.Class(
-        "flex-1 overflow-y-auto overscroll-y-contain bg-base-200 p-6 flex justify-center relative",
+        "flex-1 overflow-y-auto overscroll-y-contain bg-base-200 p-6 md:p-8 flex justify-center relative",
       ),
+      h.AriaLabel("Active task form"),
     ],
     [
-      h.div([h.Class("w-full max-w-xl pb-24")], [formSectionsView(runner, task, h)]),
+      h.div([h.Class("w-full max-w-2xl xl:max-w-3xl pb-28")], [formSectionsView(runner, task, h)]),
       tabletBottomFadeGradient(h),
       tabletSessionBottomBar(runner, task, h),
     ],
@@ -395,7 +456,6 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
     [
       headerBar,
       h.div([h.Class("flex-1 flex overflow-hidden")], [sidebar, mainSection]),
-      // overlays that should be global (modals)
       ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
       ...(runner.lastError !== null ? [errorAlert(runner.lastError, h)] : []),
     ],

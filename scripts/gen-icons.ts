@@ -83,7 +83,7 @@ const makePixel = (size: number) => {
     const px = x + 0.5,
       py = y + 0.5;
     // Rounded-rect mask
-    const rect = Math.min(
+    const _rect = Math.min(
       coverage(px, py, radius, 0, size - radius, size),
       coverage(px, py, 0, radius, size, size - radius),
     );
