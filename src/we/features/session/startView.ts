@@ -8,6 +8,30 @@ import type { TemplateSummary } from "../../types";
 import type { ActiveSession } from "./startHelpers";
 import { displaySessionName, isTemplateMissing } from "./startHelpers";
 
+// ── Icons ──────────────────────────────────────────────────────────────────
+
+const tagIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
+  svgIcon(classes, h, [
+    h.path(
+      [
+        h.Attribute(
+          "d",
+          "M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z",
+        ),
+      ],
+      [],
+    ),
+    h.line(
+      [
+        h.Attribute("x1", "7"),
+        h.Attribute("y1", "7"),
+        h.Attribute("x2", "7.01"),
+        h.Attribute("y2", "7"),
+      ],
+      [],
+    ),
+  ]);
+
 const playIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
   svgIcon(classes, h, [h.polygon([h.Attribute("points", "5 3 19 12 5 21 5 3")], [])]);
 
@@ -107,7 +131,7 @@ const resumeView = (
   ];
 
   return h.div(
-    [h.Class("w-full max-w-2xl mx-auto space-y-4")],
+    [h.Class("w-full max-w-xl mx-auto space-y-4")],
     [
       h.div(
         [
@@ -360,7 +384,7 @@ const templatePicker = (
         ],
         [
           h.div(
-            [h.Class("flex items-center gap-2 truncate")],
+            [h.Class("flex items-center gap-2.5 truncate")],
             [
               docIcon("h-4 w-4 text-primary shrink-0", h),
               h.span([h.Class("truncate text-left font-semibold text-base-content")], [label]),
@@ -442,12 +466,18 @@ const sessionNameField = (
           h.span([h.Class("text-[11px] text-base-content/40 font-mono")], ["Auto-timestamped"]),
         ],
       ),
-      h.div(
-        [h.Class("relative flex items-center w-full")],
+      // DaisyUI 5 Input Group container with leading icon, text input, and inline clear button
+      h.label(
         [
+          h.Class(
+            "input input-bordered flex items-center gap-2.5 w-full h-12 rounded-field bg-base-100 focus-within:input-primary transition-all shadow-2xs cursor-text",
+          ),
+        ],
+        [
+          tagIcon("h-4 w-4 text-base-content/40 shrink-0", h),
           h.input([
             h.Class(
-              "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40 pr-16 h-12 shadow-2xs",
+              "grow bg-transparent text-base md:text-sm focus:outline-none placeholder:text-base-content/40 h-full",
             ),
             h.Value(sessionNameInput),
             h.Placeholder(placeholderName),
@@ -462,12 +492,12 @@ const sessionNameField = (
                 h.button(
                   [
                     h.Class(
-                      "btn btn-ghost btn-xs absolute right-2 text-base-content/50 hover:text-base-content px-2 h-7 min-h-0 rounded-field",
+                      "btn btn-ghost btn-circle btn-xs text-base-content/40 hover:text-base-content hover:bg-base-200 transition-colors shrink-0",
                     ),
                     h.OnClick(Message.ChangedSessionNameInput({ text: "" })),
                     h.AriaLabel("Clear session name"),
                   ],
-                  [xIcon("h-3.5 w-3.5", h), "Clear"],
+                  [xIcon("h-3.5 w-3.5", h)],
                 ),
               ]
             : []),
@@ -487,16 +517,15 @@ const startFormCard = (
 ) => {
   const canStart =
     selectedTemplateId !== null && templates.some((t) => t.id === selectedTemplateId);
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
 
   return h.div(
     [
       h.Class(
-        "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md",
+        "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md w-full",
       ),
     ],
     [
-      // Card Header
+      // Card Header with Local-First tag
       h.div(
         [
           h.Class(
@@ -518,14 +547,18 @@ const startFormCard = (
               h.h2([h.Class("text-sm font-bold text-base-content")], ["Launch Study Session"]),
             ],
           ),
-          ...(selectedTemplate !== null
-            ? [
-                h.span(
-                  [h.Class("badge badge-sm badge-neutral font-mono text-[10px]")],
-                  [`${selectedTemplate.fieldCount} fields`],
-                ),
-              ]
-            : []),
+          // Tag moved to the card
+          h.div(
+            [
+              h.Class(
+                "inline-flex items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-0.5 text-[11px] font-medium text-base-content/80 shadow-2xs font-mono select-none",
+              ),
+            ],
+            [
+              h.div([h.Class("h-1.5 w-1.5 rounded-full bg-success")], []),
+              h.span([], ["Local-First · OPFS SQLite"]),
+            ],
+          ),
         ],
       ),
 
@@ -565,27 +598,15 @@ const startFormCard = (
   );
 };
 
-// ── Hero & Highlights ──────────────────────────────────────────────────────
+// ── Hero Branding Header ───────────────────────────────────────────────────
 
 const heroHeader = (h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("flex flex-col items-center md:items-start text-center md:text-left gap-3")],
+    [h.Class("flex flex-col items-center text-center gap-2.5")],
     [
-      // Top status pill badge
-      h.div(
-        [
-          h.Class(
-            "inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100/90 px-3.5 py-1 text-xs font-medium text-base-content/80 shadow-2xs backdrop-blur-xs",
-          ),
-        ],
-        [
-          h.div([h.Class("h-2 w-2 rounded-full bg-success")], []),
-          h.span([h.Class("font-mono text-[11px]")], ["Local-First · OPFS SQLite"]),
-        ],
-      ),
       // App logo mark + Title
       h.div(
-        [h.Class("flex items-center gap-3.5 mt-1")],
+        [h.Class("flex items-center gap-3")],
         [
           h.div(
             [
@@ -596,7 +617,7 @@ const heroHeader = (h: HtmlBuilder<Message>) =>
             ["θ"],
           ),
           h.div(
-            [h.Class("flex flex-col")],
+            [h.Class("flex flex-col text-left")],
             [
               h.h1(
                 [
@@ -615,9 +636,9 @@ const heroHeader = (h: HtmlBuilder<Message>) =>
         ],
       ),
       h.p(
-        [h.Class("text-xs sm:text-sm leading-relaxed text-base-content/70 max-w-md mt-1")],
+        [h.Class("text-xs sm:text-sm leading-relaxed text-base-content/70 max-w-sm mt-0.5")],
         [
-          "High-precision, sub-second task timing designed for industrial engineering, healthcare workflows, and operational observations.",
+          "Sub-second task timing designed for industrial engineering, healthcare observations, and continuous workflow studies.",
         ],
       ),
     ],
@@ -625,46 +646,31 @@ const heroHeader = (h: HtmlBuilder<Message>) =>
 
 const featureHighlights = (h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full pt-2")],
+    [h.Class("flex flex-wrap items-center justify-center gap-2 pt-1 text-center")],
     [
       h.div(
-        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
         [
-          h.div(
-            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
-            [h.span([h.Class("text-primary font-bold")], ["⏱"]), "Sub-Second Precision"],
-          ),
-          h.p(
-            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-            ["Continuous lap stopwatch with instantaneous recording and backward task edits."],
+          h.Class(
+            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
           ),
         ],
+        [h.span([h.Class("text-primary font-bold")], ["⏱"]), "Sub-Second Precision"],
       ),
       h.div(
-        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
         [
-          h.div(
-            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
-            [h.span([h.Class("text-primary font-bold")], ["🎛"]), "Dynamic Schemas"],
-          ),
-          h.p(
-            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-            ["Radios, exclusionary multi-select checkboxes, switches, and rich notes."],
+          h.Class(
+            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
           ),
         ],
+        [h.span([h.Class("text-primary font-bold")], ["🎛"]), "Dynamic Schemas"],
       ),
       h.div(
-        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
         [
-          h.div(
-            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
-            [h.span([h.Class("text-primary font-bold")], ["🔒"]), "Private & Exportable"],
-          ),
-          h.p(
-            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
-            ["Runs 100% offline in browser with instant single-click CSV export."],
+          h.Class(
+            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
           ),
         ],
+        [h.span([h.Class("text-primary font-bold")], ["🔒"]), "100% Offline & Private"],
       ),
     ],
   );
@@ -686,7 +692,7 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
   return h.div(
     [
       h.Class(
-        "min-h-full flex flex-col justify-start py-6 sm:py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
+        "min-h-full flex flex-col items-center justify-center py-6 sm:py-10 px-4 sm:px-6 max-w-xl mx-auto w-full pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
       ),
     ],
     [
@@ -694,7 +700,7 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
         ? h.div(
             [h.Class("space-y-6 w-full my-auto")],
             [
-              h.div([h.Class("flex justify-center")], [heroHeader(h)]),
+              heroHeader(h),
               resumeView(
                 model.activeSession as ActiveSession,
                 model.templates,
@@ -704,37 +710,19 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
             ],
           )
         : model.templates.length === 0
-          ? h.div(
-              [h.Class("space-y-6 w-full my-auto")],
-              [h.div([h.Class("flex justify-center")], [heroHeader(h)]), noTemplatesView(h)],
-            )
+          ? h.div([h.Class("space-y-6 w-full my-auto")], [heroHeader(h), noTemplatesView(h)])
           : h.div(
-              [h.Class("space-y-8 w-full")],
+              [h.Class("space-y-6 w-full my-auto flex flex-col items-center")],
               [
-                // Main split on desktop / stacked on mobile
-                h.div(
-                  [h.Class("grid grid-cols-1 md:grid-cols-12 gap-8 items-center")],
-                  [
-                    // Left Column: Branding & Value prop
-                    h.div(
-                      [h.Class("md:col-span-6 flex flex-col gap-5")],
-                      [heroHeader(h), featureHighlights(h)],
-                    ),
-                    // Right Column: Start Study Session Card
-                    h.div(
-                      [h.Class("md:col-span-6 w-full")],
-                      [
-                        startFormCard(
-                          model.templates,
-                          model.selectedTemplateId,
-                          model.placeholderName,
-                          model.sessionNameInput,
-                          h,
-                        ),
-                      ],
-                    ),
-                  ],
+                heroHeader(h),
+                startFormCard(
+                  model.templates,
+                  model.selectedTemplateId,
+                  model.placeholderName,
+                  model.sessionNameInput,
+                  h,
                 ),
+                featureHighlights(h),
               ],
             ),
     ],
