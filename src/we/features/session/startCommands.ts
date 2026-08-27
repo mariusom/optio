@@ -4,7 +4,7 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, FieldDef } from "../../../livestore/schema";
-import { fieldRowsToDefs, safeArray } from "../../fieldRows";
+import { fieldRowsToDefs } from "../../fieldRows";
 
 export const StartSession = Command.define("StartSession", {
   args: {

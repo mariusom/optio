@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { parseJsonArray, toggleCheckboxOption } from "./fields";
+import {
+  formatBooleanDisplay,
+  isBooleanTrue,
+  parseJsonArray,
+  toggleCheckboxOption,
+} from "./fields";
 
 const OPTIONS = ["A", "B", "C", "D"];
 
@@ -80,5 +85,24 @@ describe("exclusive options", () => {
     const ALL = ["X", "Y"];
     expect(toggleCheckboxOption("X", "Y", ALL, ALL)).toBe("Y");
     expect(toggleCheckboxOption("Y", "X", ALL, ALL)).toBe("X");
+  });
+});
+
+describe("boolean helpers", () => {
+  it("isBooleanTrue recognizes case-insensitive true strings", () => {
+    expect(isBooleanTrue("true")).toBe(true);
+    expect(isBooleanTrue("True")).toBe(true);
+    expect(isBooleanTrue(" TRUE ")).toBe(true);
+    expect(isBooleanTrue("false")).toBe(false);
+    expect(isBooleanTrue("False")).toBe(false);
+    expect(isBooleanTrue("")).toBe(false);
+    expect(isBooleanTrue("anything else")).toBe(false);
+  });
+
+  it("formatBooleanDisplay returns Yes for true and No for false or empty", () => {
+    expect(formatBooleanDisplay("true")).toBe("Yes");
+    expect(formatBooleanDisplay("True")).toBe("Yes");
+    expect(formatBooleanDisplay("false")).toBe("No");
+    expect(formatBooleanDisplay("")).toBe("No");
   });
 });

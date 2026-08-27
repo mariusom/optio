@@ -86,14 +86,15 @@ const taskRowView = (
   const preview = nonEmpty.slice(0, 3);
   const more = nonEmpty.length > 3 ? nonEmpty.length - 3 : 0;
   return h.div(
-    [h.Class("flex items-stretch bg-base-100")],
+    [h.Class("flex items-stretch bg-base-100 hover:bg-base-200/40 transition-colors")],
     [
       h.button(
         [
           h.Class(
-            "flex min-w-0 grow cursor-pointer items-center gap-3 px-4 py-3 text-left select-none active:bg-base-200/50 transition-colors",
+            "flex min-w-0 grow cursor-pointer items-center gap-3 px-4 py-3.5 text-left select-none active:bg-base-200/60 transition-colors",
           ),
           h.OnClick(Message.ClickedHistoryTask({ taskId: t.id })),
+          h.AriaLabel(`View details for Task ${t.taskId}`),
         ],
         [
           badge(t.taskId, h),
@@ -103,16 +104,24 @@ const taskRowView = (
               h.div(
                 [h.Class("flex items-center gap-2")],
                 [
-                  h.span([h.Class("text-sm font-semibold")], [`Task ${t.taskId}`]),
+                  h.span(
+                    [h.Class("text-sm font-semibold text-base-content")],
+                    [`Task ${t.taskId}`],
+                  ),
                   ...(startLabel
-                    ? [h.span([h.Class("text-xs text-base-content/60 ml-auto")], [startLabel])]
+                    ? [
+                        h.span(
+                          [h.Class("text-xs font-mono text-base-content/60 ml-auto")],
+                          [startLabel],
+                        ),
+                      ]
                     : []),
                   ...(duration
                     ? [
                         h.span(
                           [
                             h.Class(
-                              "flex items-center gap-1 text-xs text-base-content/60 border border-base-300 rounded-full px-2 py-0.5 ml-1",
+                              "flex items-center gap-1 text-xs font-mono text-base-content/70 border border-base-300 rounded-full px-2 py-0.5 ml-1 bg-base-200/50",
                             ),
                           ],
                           [clockTinyIcon(h), duration],
@@ -124,24 +133,32 @@ const taskRowView = (
               ...(preview.length > 0
                 ? [
                     h.div(
-                      [h.Class("flex flex-col gap-0.5")],
-                      preview.map((s) =>
-                        h.div(
-                          [h.Class("flex gap-2 text-xs")],
+                      [h.Class("flex flex-col gap-0.5 pt-0.5")],
+                      preview.map((s) => {
+                        const valLower = s.value.trim().toLowerCase();
+                        const displayVal =
+                          valLower === "true" ? "Yes" : valLower === "false" ? "No" : s.value;
+                        return h.div(
+                          [h.Class("flex items-baseline gap-2 text-xs")],
                           [
                             h.span(
-                              [h.Class("min-w-[60px] shrink-0 text-base-content/50")],
+                              [h.Class("min-w-[60px] shrink-0 text-base-content/50 font-medium")],
                               [s.sectionName],
                             ),
-                            h.span([h.Class("truncate text-base-content/70")], [s.value]),
+                            h.span([h.Class("truncate text-base-content/80")], [displayVal]),
                           ],
-                        ),
-                      ),
+                        );
+                      }),
                     ),
                   ]
                 : []),
               ...(more > 0
-                ? [h.span([h.Class("text-[11px] text-base-content/50")], [`+${more} more`])]
+                ? [
+                    h.span(
+                      [h.Class("text-[11px] text-base-content/50 font-medium")],
+                      [`+${more} more fields`],
+                    ),
+                  ]
                 : []),
             ],
           ),
@@ -167,7 +184,7 @@ const taskRowView = (
                 [
                   h.Tabindex(0),
                   h.Class(
-                    "dropdown-content menu z-40 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-1.5 text-sm shadow-lg",
+                    "dropdown-content menu z-40 mt-1 w-44 rounded-box border border-base-300 bg-base-100 p-1.5 text-sm shadow-xl",
                   ),
                 ],
                 [
@@ -175,7 +192,10 @@ const taskRowView = (
                     [],
                     [
                       h.button(
-                        [h.OnClick(Message.ClickedHistoryTask({ taskId: t.id }))],
+                        [
+                          h.OnClick(Message.ClickedHistoryTask({ taskId: t.id })),
+                          h.AriaLabel(`View details for Task ${t.taskId}`),
+                        ],
                         ["View Details"],
                       ),
                     ],
@@ -194,9 +214,9 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
   const detail = model.selectedHistorySession;
   if (detail === null) {
     return h.div(
-      [h.Class("flex h-full items-center justify-center p-8 text-center")],
+      [h.Class("flex min-h-full flex-col items-center justify-center p-8 text-center")],
       [
-        h.div([h.Class("loading loading-spinner loading-sm text-base-content/40")], []),
+        h.div([h.Class("loading loading-spinner loading-md text-base-content/40")], []),
         h.p([h.Class("mt-3 text-sm text-base-content/60")], ["Loading session…"]),
         ...(model.csvError
           ? [h.div([h.Class("alert alert-warning mt-4 max-w-sm py-2 text-sm")], [model.csvError])]
@@ -226,162 +246,223 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
     [h.Class("min-h-full pb-[calc(4rem+env(safe-area-inset-bottom))] flex flex-col")],
     [
       h.div(
-        [h.Class("mx-auto w-full max-w-3xl px-4 pt-4 space-y-4 flex-1")],
+        [h.Class("mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-6 flex-1")],
         [
-          // Session Info card
+          // Responsive Grid on lg screens
           h.div(
-            [h.Class("rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden")],
+            [h.Class("grid grid-cols-1 lg:grid-cols-3 gap-6 items-start")],
             [
+              // Left: Session Info card & Actions (1 col on lg)
               h.div(
-                [h.Class("px-4 py-2 bg-base-100 border-b border-base-200")],
+                [h.Class("space-y-4 lg:col-span-1")],
                 [
-                  h.span(
+                  h.div(
                     [
                       h.Class(
-                        "text-xs font-semibold uppercase tracking-wider text-base-content/60",
+                        "rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden",
                       ),
                     ],
-                    ["Session Info"],
-                  ),
-                ],
-              ),
-              h.div(
-                [h.Class("divide-y divide-base-200")],
-                [
-                  // Name row — button to edit
-                  h.button(
                     [
-                      h.Class(
-                        "flex w-full items-center justify-between px-4 py-3 text-left hover:bg-base-200/40 active:bg-base-200/70 transition-colors",
-                      ),
-                      h.OnClick(Message.ClickedEditHistoryName()),
-                      h.AriaLabel("Edit session name"),
-                    ],
-                    [
-                      h.span([h.Class("text-sm text-base-content/60")], ["Name"]),
-                      h.span(
-                        [h.Class("flex items-center gap-1 text-sm font-medium")],
+                      h.div(
+                        [h.Class("px-4 py-2.5 bg-base-200/60 border-b border-base-200")],
                         [
                           h.span(
-                            [h.Class(isCustomName ? "text-base-content" : "text-primary")],
-                            [isCustomName ? displayName : "Add Name"],
+                            [
+                              h.Class(
+                                "text-xs font-semibold uppercase tracking-wider text-base-content/60",
+                              ),
+                            ],
+                            ["Session Info"],
                           ),
-                          h.span([h.Class("text-base-content/30 text-xs")], ["›"]),
+                        ],
+                      ),
+                      h.div(
+                        [h.Class("divide-y divide-base-200")],
+                        [
+                          // Name row — button to edit
+                          h.button(
+                            [
+                              h.Class(
+                                "flex w-full items-center justify-between px-4 py-3 text-left hover:bg-base-200/40 active:bg-base-200/70 transition-colors",
+                              ),
+                              h.OnClick(Message.ClickedEditHistoryName()),
+                              h.AriaLabel("Edit session name"),
+                            ],
+                            [
+                              h.span([h.Class("text-sm text-base-content/60")], ["Name"]),
+                              h.span(
+                                [h.Class("flex items-center gap-1 text-sm font-medium")],
+                                [
+                                  h.span(
+                                    [
+                                      h.Class(
+                                        isCustomName
+                                          ? "text-base-content font-semibold"
+                                          : "text-primary",
+                                      ),
+                                    ],
+                                    [isCustomName ? displayName : "Add Name"],
+                                  ),
+                                  h.span([h.Class("text-base-content/30 text-xs")], ["›"]),
+                                ],
+                              ),
+                            ],
+                          ),
+                          h.div(
+                            [h.Class("flex items-center justify-between px-4 py-3")],
+                            [
+                              h.span([h.Class("text-sm text-base-content/60")], ["Template"]),
+                              h.span(
+                                [h.Class("text-sm font-semibold text-base-content")],
+                                [detail.templateName],
+                              ),
+                            ],
+                          ),
+                          h.div(
+                            [h.Class("flex items-center justify-between px-4 py-3")],
+                            [
+                              h.span([h.Class("text-sm text-base-content/60")], ["Started"]),
+                              h.span(
+                                [h.Class("text-xs font-mono text-base-content/80")],
+                                [formatTimestamp(detail.startedAt)],
+                              ),
+                            ],
+                          ),
+                          ...(detail.endedAt !== null
+                            ? [
+                                h.div(
+                                  [h.Class("flex items-center justify-between px-4 py-3")],
+                                  [
+                                    h.span([h.Class("text-sm text-base-content/60")], ["Ended"]),
+                                    h.span(
+                                      [h.Class("text-xs font-mono text-base-content/80")],
+                                      [formatTimestamp(detail.endedAt)],
+                                    ),
+                                  ],
+                                ),
+                                ...(duration
+                                  ? [
+                                      h.div(
+                                        [h.Class("flex items-center justify-between px-4 py-3")],
+                                        [
+                                          h.span(
+                                            [h.Class("text-sm text-base-content/60")],
+                                            ["Duration"],
+                                          ),
+                                          h.span(
+                                            [h.Class("text-sm font-semibold text-base-content")],
+                                            [duration],
+                                          ),
+                                        ],
+                                      ),
+                                    ]
+                                  : []),
+                              ]
+                            : []),
+                          h.div(
+                            [h.Class("flex items-center justify-between px-4 py-3")],
+                            [
+                              h.span([h.Class("text-sm text-base-content/60")], ["Total Tasks"]),
+                              h.span(
+                                [h.Class("badge badge-sm badge-neutral font-mono")],
+                                [String(detail.taskCount)],
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ],
                   ),
-                  h.div(
-                    [h.Class("flex items-center justify-between px-4 py-3")],
-                    [
-                      h.span([h.Class("text-sm text-base-content/60")], ["Template"]),
-                      h.span([h.Class("text-sm font-medium")], [detail.templateName]),
-                    ],
-                  ),
-                  h.div(
-                    [h.Class("flex items-center justify-between px-4 py-3")],
-                    [
-                      h.span([h.Class("text-sm text-base-content/60")], ["Started"]),
-                      h.span([h.Class("text-sm")], [formatTimestamp(detail.startedAt)]),
-                    ],
-                  ),
-                  ...(detail.endedAt !== null
+                  // Toolbar Export CSV
+                  ...(canExport
                     ? [
-                        h.div(
-                          [h.Class("flex items-center justify-between px-4 py-3")],
+                        h.button(
                           [
-                            h.span([h.Class("text-sm text-base-content/60")], ["Ended"]),
-                            h.span([h.Class("text-sm")], [formatTimestamp(detail.endedAt)]),
+                            h.Class(
+                              "btn btn-primary btn-block rounded-field gap-2 text-sm font-semibold shadow-xs active:scale-[0.98]",
+                            ),
+                            h.OnClick(Message.ClickedExportHistoryCsv({ sessionId: detail.id })),
+                            h.AriaLabel("Export Session CSV"),
                           ],
+                          ["Export Session CSV"],
                         ),
-                        ...(duration
-                          ? [
-                              h.div(
-                                [h.Class("flex items-center justify-between px-4 py-3")],
-                                [
-                                  h.span([h.Class("text-sm text-base-content/60")], ["Duration"]),
-                                  h.span([h.Class("text-sm")], [duration]),
-                                ],
-                              ),
-                            ]
-                          : []),
                       ]
                     : []),
-                  h.div(
-                    [h.Class("flex items-center justify-between px-4 py-3")],
-                    [
-                      h.span([h.Class("text-sm text-base-content/60")], ["Total Tasks"]),
-                      h.span([h.Class("text-sm font-medium")], [String(detail.taskCount)]),
-                    ],
-                  ),
                 ],
               ),
-            ],
-          ),
-          // Tasks section
-          h.div(
-            [h.Class("rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden")],
-            [
+
+              // Right: Tasks List (2 cols on lg)
               h.div(
+                [h.Class("space-y-4 lg:col-span-2")],
                 [
-                  h.Class(
-                    "flex items-center justify-between px-4 py-2 bg-base-100 border-b border-base-200",
-                  ),
-                ],
-                [
-                  h.span(
+                  h.div(
                     [
                       h.Class(
-                        "text-xs font-semibold uppercase tracking-wider text-base-content/60",
+                        "rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden",
                       ),
                     ],
-                    ["Tasks"],
+                    [
+                      h.div(
+                        [
+                          h.Class(
+                            "flex items-center justify-between px-4 py-2.5 bg-base-200/60 border-b border-base-200",
+                          ),
+                        ],
+                        [
+                          h.span(
+                            [
+                              h.Class(
+                                "text-xs font-semibold uppercase tracking-wider text-base-content/60",
+                              ),
+                            ],
+                            ["Recorded Tasks"],
+                          ),
+                          h.span(
+                            [h.Class("badge badge-sm badge-neutral font-mono")],
+                            [`${detail.taskCount} tasks`],
+                          ),
+                        ],
+                      ),
+                      ...(sortedTasks.length === 0
+                        ? [
+                            h.div(
+                              [
+                                h.Class(
+                                  "px-4 py-8 text-center text-sm italic text-base-content/50",
+                                ),
+                              ],
+                              ["No tasks recorded in this session."],
+                            ),
+                          ]
+                        : [
+                            h.div(
+                              [h.Class("divide-y divide-base-200")],
+                              sortedTasks.map((task) => taskRowView(task as any, h)),
+                            ),
+                          ]),
+                    ],
                   ),
-                  h.span([h.Class("text-xs text-base-content/50")], [`${detail.taskCount}`]),
                 ],
               ),
-              ...(sortedTasks.length === 0
-                ? [
-                    h.div(
-                      [h.Class("px-4 py-6 text-center text-sm italic text-base-content/50")],
-                      ["No tasks recorded"],
-                    ),
-                  ]
-                : [
-                    h.div(
-                      [h.Class("divide-y divide-base-200")],
-                      sortedTasks.map((task) => taskRowView(task as any, h)),
-                    ),
-                  ]),
             ],
           ),
-          // Toolbar Export CSV (only when ended && has tasks)
-          ...(canExport
-            ? [
-                h.div(
-                  [h.Class("flex justify-center pt-2")],
-                  [
-                    h.button(
-                      [
-                        h.Class(
-                          "btn btn-primary rounded-field gap-1.5 text-sm font-semibold shadow-sm",
-                        ),
-                        h.OnClick(Message.ClickedExportHistoryCsv({ sessionId: detail.id })),
-                      ],
-                      ["Export CSV"],
-                    ),
-                  ],
-                ),
-              ]
-            : []),
+
           ...(model.csvError
             ? [
                 h.div(
-                  [h.Class("alert alert-warning py-2 text-sm flex items-center justify-between")],
+                  [
+                    h.Class(
+                      "alert alert-warning py-2 text-sm flex items-center justify-between shadow-xs",
+                    ),
+                  ],
                   [
                     h.span([], [model.csvError]),
                     h.button(
-                      [h.Class("btn btn-ghost btn-xs"), h.OnClick(Message.DismissedCsvError())],
+                      [
+                        h.Class("btn btn-ghost btn-xs"),
+                        h.OnClick(Message.DismissedCsvError()),
+                        h.AriaLabel("Dismiss error"),
+                      ],
                       ["✕"],
                     ),
                   ],

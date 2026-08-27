@@ -3,7 +3,7 @@ import type { HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../../../messages";
 import { formatClock, formatTimeOnly, formatDurationHms } from "../../format";
-import { toggleCheckboxOption } from "../../fields";
+import { isBooleanTrue, toggleCheckboxOption } from "../../fields";
 import {
   canRecordTask,
   currentTask,
@@ -113,6 +113,7 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
         [
           h.Class(`h-2.5 w-2.5 rounded-full shrink-0 ${dotColor}${dotPulse}`),
           h.Attribute("style", `background:currentColor`),
+          h.Attribute("aria-hidden", "true"),
         ],
         [],
       ),
@@ -122,7 +123,7 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
           ? [
               h.span([h.Class("text-sm font-bold text-warning tracking-wide")], ["EDITING"]),
               h.span(
-                [h.Class("text-[11px] text-base-content/60")],
+                [h.Class("text-[11px] text-base-content/60 font-mono")],
                 [`Session ${sessionClock} · ${runner.completedCount} recorded`],
               ),
             ]
@@ -130,14 +131,14 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
               h.span(
                 [
                   h.Class(
-                    "font-mono text-[1.35rem] font-semibold leading-none tracking-tight tabular-nums",
+                    "font-mono text-[1.35rem] font-semibold leading-none tracking-tight tabular-nums text-base-content",
                   ),
                   h.Attribute("style", "font-variant-numeric: tabular-nums"),
                 ],
                 [taskClock],
               ),
               h.span(
-                [h.Class("text-[11px] text-base-content/60")],
+                [h.Class("text-[11px] text-base-content/60 font-mono")],
                 [`Session ${sessionClock} · ${runner.completedCount} recorded`],
               ),
             ],
@@ -148,25 +149,60 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
 
 // ── FormSelectionButton ─────────────────────────────────────────────────────
 
-const selectionButton = (value: string, active: boolean, h: HtmlBuilder<Message>) =>
+const selectionButton = (
+  value: string,
+  active: boolean,
+  h: HtmlBuilder<Message>,
+  type: "radio" | "checkbox" = "radio",
+  isExclusive = false,
+) =>
   h.div(
     [
       h.Class(
-        `flex min-h-[44px] w-full items-center justify-center rounded-[12px] md:rounded-[14px] px-4 py-3 text-sm font-medium text-center leading-tight transition-all duration-150 active:scale-[0.97] active:opacity-90 select-none ${
+        `flex min-h-[48px] w-full items-center justify-between rounded-field px-4 py-3 text-sm font-medium leading-tight transition-all duration-150 active:scale-[0.98] select-none border ${
           active
-            ? "bg-success text-white border border-white/25 shadow-sm bg-gradient-to-br from-success to-success/90"
-            : "bg-base-100 border border-base-300 shadow-sm text-base-content"
+            ? "bg-primary text-primary-content border-primary shadow-sm"
+            : "bg-base-100 border-base-300 shadow-xs text-base-content hover:border-base-300/80 hover:bg-base-200/50"
         }`,
       ),
     ],
-    [value],
+    [
+      h.span([h.Class("truncate flex-1 text-left")], [value]),
+      ...(isExclusive && !active
+        ? [
+            h.span(
+              [h.Class("badge badge-xs badge-neutral shrink-0 ml-1.5 opacity-60 text-[10px]")],
+              ["Exclusive"],
+            ),
+          ]
+        : []),
+      h.div(
+        [
+          h.Class(
+            `flex h-5 w-5 shrink-0 items-center justify-center rounded-${
+              type === "radio" ? "full" : "selector"
+            } border transition-colors ml-2 ${
+              active
+                ? "bg-white/20 border-white text-white"
+                : "bg-transparent border-base-300 text-transparent"
+            }`,
+          ),
+          h.Attribute("aria-hidden", "true"),
+        ],
+        [
+          type === "radio"
+            ? h.div([h.Class(`h-2 w-2 rounded-full ${active ? "bg-white" : "bg-transparent"}`)], [])
+            : checkIcon("h-3 w-3", h),
+        ],
+      ),
+    ],
   );
 
 // ── FormSectionHeader ───────────────────────────────────────────────────────
 
 const formSectionHeader = (
   section: RunnerSection,
-  isDone: boolean,
+  done: boolean,
   showCheck: boolean,
   h: HtmlBuilder<Message>,
 ) =>
@@ -177,13 +213,16 @@ const formSectionHeader = (
         [h.Class("text-xs font-semibold uppercase tracking-wider text-base-content/60")],
         [section.name.toUpperCase()],
       ),
-      ...(section.isRequired ? [h.span([h.Class("text-xs font-bold text-error")], ["*"])] : []),
+      ...(section.isRequired
+        ? [h.span([h.Class("text-xs font-bold text-error ml-0.5")], ["*"])]
+        : []),
       ...(showCheck
         ? [
             h.span(
               [
-                h.Class("ml-1 text-success font-bold text-xs transition-transform duration-300"),
+                h.Class("ml-1.5 text-success font-bold text-xs transition-transform duration-300"),
                 h.Attribute("style", "animation: scale-in 0.3s cubic-bezier(0.34,1.56,0.64,1)"),
+                h.AriaLabel("Completed"),
               ],
               ["✓"],
             ),
@@ -203,20 +242,22 @@ const formRadioGroup = (
 ) =>
   h.div(
     [
-      h.Class("grid gap-2"),
+      h.Class("grid gap-2.5"),
       h.Attribute("style", "grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))"),
+      h.Attribute("role", "radiogroup"),
+      h.AriaLabel(section.name),
     ],
     section.options.map((option) => {
       const active = section.value === option;
-      // auto-advance logic will be handled in update's ChangedFieldValue for radio,
-      // but we still need to dispatch the value change
       return h.button(
         [
-          h.Class("w-full text-left"),
+          h.Class("w-full text-left focus-visible:outline-none rounded-field"),
+          h.Attribute("role", "radio"),
+          h.AriaChecked(active),
           h.AriaLabel(option),
           h.OnClick(Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
         ],
-        [selectionButton(option, active, h)],
+        [selectionButton(option, active, h, "radio")],
       );
     }),
   );
@@ -224,21 +265,23 @@ const formRadioGroup = (
 const formCheckboxGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
     [
-      h.Class("grid gap-2"),
+      h.Class("grid gap-2.5"),
       h.Attribute("style", "grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))"),
+      h.Attribute("role", "group"),
+      h.AriaLabel(section.name),
     ],
     section.options.map((option) => {
       const selectedSet = new Set(section.value.split(",").filter((v) => v !== ""));
       const isSelected = selectedSet.has(option);
       const isExclusive = section.exclusiveOptions.includes(option);
       const hint = isSelected
-        ? "Selected. Double tap to deselect"
+        ? "Selected. Tap to deselect"
         : isExclusive
-          ? "Double tap to select. This will clear all other selections"
+          ? "Tap to select. This will clear all other selections"
           : selectedSet.size > 0 &&
               [...selectedSet].some((v) => section.exclusiveOptions.includes(v))
-            ? "Double tap to select. This will clear the exclusive option"
-            : "Double tap to select";
+            ? "Tap to select. This will clear the exclusive option"
+            : "Tap to select";
       const nextValue = toggleCheckboxOption(
         section.value,
         option,
@@ -247,22 +290,24 @@ const formCheckboxGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
       );
       return h.button(
         [
-          h.Class("w-full text-left"),
+          h.Class("w-full text-left focus-visible:outline-none rounded-field"),
+          h.Attribute("role", "checkbox"),
+          h.AriaChecked(isSelected),
           h.AriaLabel(option),
           h.Title(hint),
           h.OnClick(Message.ChangedFieldValue({ taskFieldId: section.id, value: nextValue })),
         ],
-        [selectionButton(option, isSelected, h)],
+        [selectionButton(option, isSelected, h, "checkbox", isExclusive)],
       );
     }),
   );
 
 const formFieldChromeClass =
-  "rounded-field border bg-base-100 px-3 py-3 shadow-sm transition-all duration-150 focus-within:focus-visible:border-primary focus-within:focus-visible:ring-2 focus-within:focus-visible:ring-primary/20 border-base-300 hover:border-base-300/80 focus-visible:outline-none";
+  "rounded-field border bg-base-100 px-3.5 py-3 shadow-xs transition-all duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 border-base-300 hover:border-base-300/80";
 
 const formTextField = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class(formFieldChromeClass), h.Attribute("style", "border-radius: 0.625rem")],
+    [h.Class(formFieldChromeClass)],
     [
       h.input([
         h.Class(
@@ -270,6 +315,8 @@ const formTextField = (section: RunnerSection, h: HtmlBuilder<Message>) =>
         ),
         h.Value(section.value),
         h.Placeholder(section.name),
+        h.AriaLabel(section.name),
+        h.Attribute("aria-required", section.isRequired ? "true" : "false"),
         h.OnInput((v) => Message.ChangedFieldValue({ taskFieldId: section.id, value: v })),
         h.Attribute("autocomplete", "off"),
         h.Attribute("autocorrect", "off"),
@@ -287,6 +334,8 @@ const formTextArea = (section: RunnerSection, h: HtmlBuilder<Message>) =>
         ),
         h.Value(section.value),
         h.Placeholder(`Add ${section.name.toLowerCase()}…`),
+        h.AriaLabel(section.name),
+        h.Attribute("aria-required", section.isRequired ? "true" : "false"),
         h.OnInput((v) => Message.ChangedFieldValue({ taskFieldId: section.id, value: v })),
         h.Attribute("rows", "3"),
         h.Attribute("autocomplete", "off"),
@@ -295,16 +344,40 @@ const formTextArea = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   );
 
 const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
-  const isOn = section.value.toLowerCase() === "true";
+  const isOn = isBooleanTrue(section.value);
   const next = isOn ? "false" : "true";
-  return h.label(
-    [h.Class("flex items-center justify-between py-2 cursor-pointer select-none")],
+  return h.div(
     [
-      h.span([h.Class("text-sm font-medium text-base-content")], [section.name]),
+      h.Class(
+        `flex items-center justify-between p-3.5 rounded-field border transition-all duration-150 select-none ${
+          isOn
+            ? "bg-primary/10 border-primary/40 shadow-xs"
+            : "bg-base-100 border-base-300 shadow-xs hover:border-base-300/80"
+        }`,
+      ),
+    ],
+    [
+      h.label(
+        [h.Class("flex flex-col pr-3 cursor-pointer flex-1")],
+        [
+          h.span([h.Class("text-sm font-medium text-base-content")], [section.name]),
+          h.span(
+            [
+              h.Class(
+                `text-xs mt-0.5 ${isOn ? "text-primary font-medium" : "text-base-content/60"}`,
+              ),
+            ],
+            [isOn ? "Active / Enabled" : "Off / Disabled"],
+          ),
+        ],
+      ),
       h.input([
-        h.Class("toggle toggle-primary shrink-0"),
+        h.Class("toggle toggle-primary checked:border-primary shrink-0"),
         h.Type("checkbox"),
+        h.Attribute("role", "switch"),
         h.Checked(isOn),
+        h.AriaChecked(isOn),
+        h.AriaLabel(section.name),
         h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: next })),
       ]),
     ],
@@ -325,7 +398,6 @@ const formSectionContent = (
   if (kind === "textArea") return formTextArea(section, h);
   if (kind === "textInput") return formTextField(section, h);
   if (kind === "boolean") return formToggle(section, h);
-  // fallback textInput
   return formTextField(section, h);
 };
 
@@ -338,7 +410,8 @@ const formSectionView = (
   h: HtmlBuilder<Message>,
 ) => {
   const done = isSectionDone(section);
-  const showCheck = done && section.value !== "";
+  const isBool = section.kind === "boolean";
+  const showCheck = isBool ? isBooleanTrue(section.value) : done && section.value !== "";
   return h.div(
     [h.Class("flex flex-col bg-base-200"), h.Attribute("id", section.id)],
     [
@@ -358,6 +431,7 @@ export const formSectionsView = (
   const sections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
     [h.Class("flex flex-col")],
+
     [
       // invisible anchor formTop
       h.div([h.Class("h-0 w-full"), h.Attribute("id", "formTop")], []),
@@ -536,36 +610,49 @@ const formEntry = (task: RunnerTask, isSelected: boolean, h: HtmlBuilder<Message
     return null;
   })();
 
-  // Show up to 2-line preview? We show all sections but limited? Spec says up to 2-line previews, we show all but truncated
+  // Show up to 4-line preview
   const previewSections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 4);
 
   return h.div(
     [
       h.Class(
-        `flex gap-3 rounded-[12px] p-3 transition-colors ${isSelected ? "bg-primary/10 border border-primary/20" : "bg-base-100 border border-base-300"}`,
+        `flex gap-3 rounded-box p-3.5 transition-all duration-150 border ${
+          isSelected
+            ? "bg-primary/10 border-primary/40 shadow-xs"
+            : "bg-base-100 border-base-300 shadow-xs hover:border-base-300/80"
+        }`,
       ),
     ],
     [
       taskStateIndicator(task, h),
       h.div(
-        [h.Class("flex min-w-0 flex-1 flex-col gap-1")],
+        [h.Class("flex min-w-0 flex-1 flex-col gap-1.5")],
         [
           h.div(
             [h.Class("flex items-center justify-between gap-2")],
             [
               h.span(
-                [h.Class(`truncate text-sm ${isSelected ? "font-semibold" : "font-medium"}`)],
+                [
+                  h.Class(
+                    `truncate text-sm ${isSelected ? "font-bold text-primary" : "font-semibold text-base-content"}`,
+                  ),
+                ],
                 [`Task ${task.orderIndex}`],
               ),
               ...(timeLabel
-                ? [h.span([h.Class("shrink-0 text-xs text-base-content/60")], [timeLabel])]
+                ? [
+                    h.span(
+                      [h.Class("shrink-0 text-xs font-mono text-base-content/60")],
+                      [timeLabel],
+                    ),
+                  ]
                 : []),
             ],
           ),
           ...(duration
             ? [
                 h.div(
-                  [h.Class("flex items-center gap-1 text-xs text-base-content/60")],
+                  [h.Class("flex items-center gap-1 text-xs font-mono text-base-content/60")],
                   [clockTinyIcon("h-3 w-3", h), h.span([], [duration])],
                 ),
               ]
@@ -573,20 +660,29 @@ const formEntry = (task: RunnerTask, isSelected: boolean, h: HtmlBuilder<Message
           ...(previewSections.length > 0
             ? [
                 h.div(
-                  [h.Class("flex flex-col gap-0.5 pt-1")],
+                  [h.Class("flex flex-col gap-1 pt-1 border-t border-base-200/60")],
                   previewSections.map((s) => {
                     const hasValue = s.value !== "";
+                    const displayVal =
+                      s.kind === "boolean" && hasValue
+                        ? isBooleanTrue(s.value)
+                          ? "Yes / Active"
+                          : "No / Off"
+                        : s.value;
                     return h.div(
-                      [h.Class("flex gap-2 text-xs")],
+                      [h.Class("flex items-baseline gap-2 text-xs")],
                       [
-                        h.span([h.Class("min-w-[60px] shrink-0 text-base-content/60")], [s.name]),
+                        h.span(
+                          [h.Class("min-w-[60px] shrink-0 text-base-content/50 font-medium")],
+                          [s.name],
+                        ),
                         h.span(
                           [
                             h.Class(
                               `truncate ${hasValue ? "text-base-content" : "text-base-content/40 italic"}`,
                             ),
                           ],
-                          [hasValue ? s.value : "-"],
+                          [hasValue ? displayVal : "—"],
                         ),
                       ],
                     );
@@ -607,36 +703,56 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const curId = currentTask(runner)?.id ?? runner.currentTaskId;
   return h.div(
     [
-      h.Class("fixed inset-0 z-40 flex flex-col bg-base-200"),
+      h.Class("fixed inset-0 z-40 flex flex-col bg-base-200 animate-[slide-up_0.25s_ease-out]"),
       h.Attribute("role", "dialog"),
       h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Tasks"),
     ],
     [
       // header
       h.div(
         [
           h.Class(
-            "flex items-center justify-between border-b border-base-300 bg-base-100 px-4 py-3 pt-[calc(0.5rem+env(safe-area-inset-top))] shrink-0",
+            "flex flex-col border-b border-base-300 bg-base-100 px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-3 shrink-0 shadow-xs",
           ),
         ],
         [
-          h.h2([h.Class("text-base font-semibold")], ["Tasks"]),
-          h.button(
-            [h.Class("btn btn-ghost btn-sm rounded-field"), h.OnClick(Message.ToggledTaskList())],
-            ["Done"],
+          h.div([h.Class("mx-auto h-1 w-10 rounded-full bg-base-content/20 mb-2")], []),
+          h.div(
+            [h.Class("flex items-center justify-between")],
+            [
+              h.div(
+                [h.Class("flex items-center gap-2")],
+                [
+                  h.h2([h.Class("text-base font-bold text-base-content")], ["Tasks"]),
+                  h.span(
+                    [h.Class("badge badge-sm badge-neutral font-mono")],
+                    [`${runner.completedCount} completed`],
+                  ),
+                ],
+              ),
+              h.button(
+                [
+                  h.Class("btn btn-primary btn-sm rounded-field font-semibold px-4 shadow-xs"),
+                  h.OnClick(Message.ToggledTaskList()),
+                  h.AriaLabel("Done"),
+                ],
+                ["Done"],
+              ),
+            ],
           ),
         ],
       ),
       h.div(
         [
           h.Class(
-            "flex-1 overflow-y-auto overscroll-y-contain p-3 space-y-2 pb-[env(safe-area-inset-bottom)]",
+            "flex-1 overflow-y-auto overscroll-y-contain p-4 space-y-2.5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
           ),
         ],
         sorted.map((task) =>
           h.button(
             [
-              h.Class("w-full text-left"),
+              h.Class("w-full text-left rounded-box focus-visible:outline-none"),
               h.OnClick(Message.ClickedSelectTask({ taskId: task.id })),
               h.AriaLabel(
                 `Task ${task.orderIndex} ${task.endDate === null ? "in progress" : task.isBeingEdited ? "editing" : "completed"}`,

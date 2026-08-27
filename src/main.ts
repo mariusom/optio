@@ -48,7 +48,7 @@ import { templatesPage } from "./we/features/templates/view";
 import { DiscardLiveSession, StartSession } from "./we/features/session/startCommands";
 import { effectiveTemplateId, resolveSelectedTemplate } from "./we/features/session/startHelpers";
 import { startView } from "./we/features/session/startView";
-import { hasOptions, supportsRequired } from "./we/fields";
+import { supportsRequired } from "./we/fields";
 import {
   isFullScreenRoute,
   parseRoute,
@@ -1685,23 +1685,20 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   }
 };
 
-const comingSoon = (label: string, h: HtmlBuilder<Message>) =>
-  h.div(
-    [h.Class("flex h-full items-center justify-center text-sm text-base-content/50")],
-    [`${label} — coming soon.`],
-  );
-
 const trailingFor = (model: Model, h: HtmlBuilder<Message>) =>
   model.route._tag === "TemplatesTab" && model.templates.length > 0
     ? h.button(
         [
           h.Class(
-            "-mr-2 btn btn-ghost btn-sm text-primary font-semibold hover:bg-transparent active:opacity-60",
+            "btn btn-primary btn-sm rounded-field font-semibold text-xs gap-1 shadow-xs active:scale-[0.98] transition-all",
           ),
           h.AriaLabel("Create new template"),
           h.OnClick(Message.ClickedNewTemplate()),
         ],
-        ["+"],
+        [
+          h.span([h.Class("text-base leading-none")], ["+"]),
+          h.span([h.Class("hidden sm:inline")], ["New Template"]),
+        ],
       )
     : null;
 
@@ -1711,7 +1708,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
     body: h.div(
       [h.Class("flex h-dvh w-full flex-col overflow-hidden bg-base-200 text-base-content")],
       [
-        topBar(pageTitle(model.route), trailingFor(model, h), h),
+        topBar(pageTitle(model.route), model.route, trailingFor(model, h), h),
         h.main(
           [h.Class("relative flex-1 overflow-y-auto overscroll-y-contain")],
           [
