@@ -8,44 +8,6 @@ import type { TemplateSummary } from "../../types";
 import type { ActiveSession } from "./startHelpers";
 import { displaySessionName, isTemplateMissing } from "./startHelpers";
 
-// Icons — small SVGs mirrored from we/ui icon set (generic SVGs; SF Symbols-accurate variants deferred to S7 polish)
-const clockIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [
-    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-    h.polyline([h.Attribute("points", "12 7 12 12 15.5 13.5")], []),
-  ]);
-
-const triangleIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [
-    h.path(
-      [
-        h.Attribute(
-          "d",
-          "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
-        ),
-      ],
-      [],
-    ),
-    h.line(
-      [
-        h.Attribute("x1", "12"),
-        h.Attribute("y1", "9"),
-        h.Attribute("x2", "12"),
-        h.Attribute("y2", "13"),
-      ],
-      [],
-    ),
-    h.line(
-      [
-        h.Attribute("x1", "12"),
-        h.Attribute("y1", "17"),
-        h.Attribute("x2", "12.01"),
-        h.Attribute("y2", "17"),
-      ],
-      [],
-    ),
-  ]);
-
 const playIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
   svgIcon(classes, h, [h.polygon([h.Attribute("points", "5 3 19 12 5 21 5 3")], [])]);
 
@@ -121,41 +83,6 @@ const trashIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
     ),
   ]);
 
-// ── BottomToolbar chrome wrapper ──────────────────────────────────────────
-// Gradient + safe-area aware container per spec §BottomToolbarView
-
-const bottomToolbarChrome = <M>(children: ReturnType<HtmlBuilder<M>["div"]>[], h: HtmlBuilder<M>) =>
-  h.div(
-    [
-      h.Class(
-        "relative w-full py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 sm:px-6 lg:px-8",
-      ),
-    ],
-    [
-      h.div(
-        [
-          h.Class(
-            "mx-auto w-full max-w-[440px] md:max-w-[480px] rounded-box bg-base-100 border border-base-300 shadow-md overflow-hidden",
-          ),
-        ],
-        children,
-      ),
-    ],
-  );
-
-const bottomToolbarChromeNoCard = <M>(
-  children: ReturnType<HtmlBuilder<M>["div"]>[],
-  h: HtmlBuilder<M>,
-) =>
-  h.div(
-    [
-      h.Class(
-        "relative w-full py-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] px-4 sm:px-6 lg:px-8",
-      ),
-    ],
-    [h.div([h.Class("mx-auto w-full max-w-[440px] md:max-w-[480px]")], children)],
-  );
-
 // ── ResumeSessionView ─────────────────────────────────────────────────────
 
 const resumeView = (
@@ -169,35 +96,63 @@ const resumeView = (
   const startedLabel = formatTimestamp(active.startedAt);
   const durationLabel = formatDurationHm(Date.now() - active.startedAt);
 
-  const title = missing ? "Template Missing" : "Session In Progress";
+  const title = missing ? "Template Missing" : "Active Session In Progress";
 
-  const infoRows: Array<{ label: string; value: string }> = [
-    { label: "Name", value: nameDisplay },
+  const infoRows: Array<{ label: string; value: string; mono?: boolean }> = [
+    { label: "Session Name", value: nameDisplay },
     { label: "Template", value: active.templateName },
-    { label: "Started", value: startedLabel },
-    { label: "Duration", value: durationLabel },
-    { label: "Tasks", value: `${active.completedCount} completed` },
+    { label: "Started At", value: startedLabel, mono: true },
+    { label: "Elapsed Time", value: durationLabel, mono: true },
+    { label: "Tasks Recorded", value: `${active.completedCount} completed`, mono: true },
   ];
 
-  return bottomToolbarChromeNoCard(
+  return h.div(
+    [h.Class("w-full max-w-2xl mx-auto space-y-4")],
     [
       h.div(
         [
           h.Class(
-            "rounded-box bg-base-100 border border-base-300 shadow-md overflow-hidden backdrop-blur-md",
+            "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md",
           ),
         ],
         [
-          // Header
+          // Header with pulsing status
           h.div(
-            [h.Class("flex items-center gap-2.5 px-5 py-3.5 bg-base-100 border-b border-base-200")],
             [
-              missing
-                ? triangleIcon("h-5 w-5 text-error shrink-0", h)
-                : clockIcon("h-5 w-5 text-warning shrink-0", h),
+              h.Class(
+                `flex items-center justify-between px-5 py-4 border-b ${
+                  missing ? "bg-error/10 border-error/20" : "bg-warning/10 border-warning/20"
+                }`,
+              ),
+            ],
+            [
+              h.div(
+                [h.Class("flex items-center gap-3")],
+                [
+                  h.div(
+                    [
+                      h.Class(
+                        `h-3 w-3 rounded-full shrink-0 ${
+                          missing ? "bg-error" : "bg-warning animate-pulse"
+                        }`,
+                      ),
+                      h.Attribute("aria-hidden", "true"),
+                    ],
+                    [],
+                  ),
+                  h.span(
+                    [
+                      h.Class(
+                        `text-base font-bold ${missing ? "text-error" : "text-base-content"}`,
+                      ),
+                    ],
+                    [title],
+                  ),
+                ],
+              ),
               h.span(
-                [h.Class(`text-sm font-bold ${missing ? "text-error" : "text-base-content"}`)],
-                [title],
+                [h.Class("badge badge-sm badge-neutral font-mono text-xs")],
+                [`${active.completedCount} tasks`],
               ),
             ],
           ),
@@ -206,7 +161,7 @@ const resumeView = (
             [h.Class("divide-y divide-base-200")],
             infoRows.map((row) =>
               h.div(
-                [h.Class("flex items-center justify-between px-5 py-3 text-sm")],
+                [h.Class("flex items-center justify-between px-5 py-3.5 text-sm")],
                 [
                   h.span(
                     [
@@ -217,7 +172,13 @@ const resumeView = (
                     [row.label],
                   ),
                   h.span(
-                    [h.Class("text-sm font-medium text-base-content truncate ml-3")],
+                    [
+                      h.Class(
+                        `text-sm font-semibold text-base-content truncate ml-4 ${
+                          row.mono ? "font-mono" : ""
+                        }`,
+                      ),
+                    ],
                     [row.value],
                   ),
                 ],
@@ -228,7 +189,7 @@ const resumeView = (
           ...(missing
             ? [
                 h.div(
-                  [h.Class("px-5 py-3 bg-warning/10 border-t border-warning/20")],
+                  [h.Class("px-5 py-3.5 bg-warning/10 border-t border-warning/20")],
                   [
                     h.p(
                       [h.Class("text-xs leading-relaxed text-warning-content/90")],
@@ -242,29 +203,29 @@ const resumeView = (
             : []),
           // Buttons
           h.div(
-            [h.Class("flex gap-3 px-5 py-3.5 border-t border-base-200 bg-base-100/50")],
+            [h.Class("flex gap-3 px-5 py-4 border-t border-base-200 bg-base-200/30")],
             [
               h.button(
                 [
                   h.Class(
-                    "btn btn-outline btn-error flex-1 rounded-field gap-1.5 text-sm font-medium border-error/40 hover:bg-error hover:text-error-content active:scale-[0.98]",
+                    "btn btn-outline btn-error flex-1 rounded-field gap-2 text-sm font-semibold border-error/30 hover:bg-error hover:text-white active:scale-[0.98] transition-all",
                   ),
                   h.OnClick(Message.ClickedDiscardSession()),
                   h.AriaLabel("Discard Session"),
                 ],
-                [trashIcon("h-4 w-4", h), "Discard"],
+                [trashIcon("h-4 w-4", h), "Discard Session"],
               ),
               h.button(
                 [
                   h.Class(
-                    "btn btn-primary flex-1 rounded-field gap-1.5 text-sm font-semibold shadow-sm active:scale-[0.98]",
+                    "btn btn-primary flex-1 rounded-field gap-2 text-sm font-semibold shadow-sm active:scale-[0.98] transition-all",
                   ),
                   h.OnClick(Message.ClickedResumeSession()),
                   h.AriaLabel(missing ? "Finish Session" : "Resume Session"),
                 ],
                 [
                   missing ? checkIcon("h-4 w-4", h) : playIcon("h-4 w-4", h),
-                  missing ? "Finish" : "Resume",
+                  missing ? "Finish Session" : "Resume Session",
                 ],
               ),
             ],
@@ -273,7 +234,6 @@ const resumeView = (
       ),
       ...(pendingDiscard ? [discardModal(h)] : []),
     ],
-    h,
   );
 };
 
@@ -283,11 +243,15 @@ const discardModal = (h: HtmlBuilder<Message>) =>
       h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
       h.Attribute("role", "dialog"),
       h.Attribute("aria-modal", "true"),
-      h.AriaLabel("Discard Session"),
+      h.AriaLabel("Discard Session Confirmation"),
     ],
     [
       h.div(
-        [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
+        [
+          h.Class(
+            "modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5 shadow-xl",
+          ),
+        ],
         [
           h.h3([h.Class("text-base font-bold text-base-content")], ["Discard Session?"]),
           h.p(
@@ -326,41 +290,47 @@ const discardModal = (h: HtmlBuilder<Message>) =>
 // ── NoTemplatesView ───────────────────────────────────────────────────────
 
 const noTemplatesView = (h: HtmlBuilder<Message>) =>
-  bottomToolbarChrome(
+  h.div(
+    [h.Class("w-full max-w-lg mx-auto")],
     [
       h.div(
-        [h.Class("flex flex-col items-center p-6 sm:p-8 text-center")],
+        [
+          h.Class(
+            "rounded-box bg-base-100 border border-base-300 shadow-xs p-6 sm:p-8 text-center flex flex-col items-center",
+          ),
+        ],
         [
           h.div(
             [
               h.Class(
-                "mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-base-300/60 text-base-content/50 shadow-xs",
+                "mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-xs",
               ),
             ],
-            [docIcon("h-7 w-7", h)],
+            [docIcon("h-8 w-8", h)],
           ),
-          h.h3([h.Class("text-base font-bold text-base-content")], ["No Templates"]),
+          h.h3([h.Class("text-lg font-bold text-base-content")], ["No Templates Configured"]),
           h.p(
-            [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/60 max-w-xs")],
-            ["Create a template to define the fields for your time and motion study sessions."],
+            [h.Class("mt-2 text-xs sm:text-sm leading-relaxed text-base-content/60 max-w-sm")],
+            [
+              "Create a template to define the form schema, field types, and questions captured during your time and motion studies.",
+            ],
           ),
           h.a(
             [
               h.Class(
-                "btn btn-primary mt-6 rounded-field gap-2 text-sm font-semibold shadow-sm active:scale-[0.98] transition-all px-6",
+                "btn btn-primary mt-6 rounded-field gap-2 text-sm font-semibold shadow-sm active:scale-[0.98] transition-all px-8",
               ),
               h.Attribute("href", "#/templates"),
               h.AriaLabel("Create Template"),
             ],
-            [h.span([h.Class("text-lg leading-none")], ["+"]), "Create Template"],
+            [h.span([h.Class("text-lg leading-none")], ["+"]), "Create Your First Template"],
           ),
         ],
       ),
     ],
-    h,
   );
 
-// ── Start form ────────────────────────────────────────────────────────────
+// ── Start Form Controls ────────────────────────────────────────────────────
 
 const templatePicker = (
   templates: ReadonlyArray<TemplateSummary>,
@@ -375,13 +345,13 @@ const templatePicker = (
       : "Select Template";
 
   return h.div(
-    [h.Class("dropdown dropdown-top w-full")],
+    [h.Class("dropdown dropdown-bottom w-full")],
     [
       h.div(
         [
           h.Tabindex(0),
           h.Class(
-            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-200/50 hover:border-base-300/80 focus-visible:border-primary transition-all",
+            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-200/50 hover:border-base-300/80 focus-visible:border-primary transition-all h-12 shadow-2xs",
           ),
           h.Attribute("role", "combobox"),
           h.Attribute("aria-expanded", "false"),
@@ -389,7 +359,13 @@ const templatePicker = (
           h.AriaLabel("Select Template"),
         ],
         [
-          h.span([h.Class("truncate text-left")], [label]),
+          h.div(
+            [h.Class("flex items-center gap-2 truncate")],
+            [
+              docIcon("h-4 w-4 text-primary shrink-0", h),
+              h.span([h.Class("truncate text-left font-semibold text-base-content")], [label]),
+            ],
+          ),
           chevronIcon("h-4 w-4 text-base-content/50 shrink-0", h),
         ],
       ),
@@ -397,7 +373,7 @@ const templatePicker = (
         [
           h.Tabindex(0),
           h.Class(
-            "dropdown-content menu z-40 mb-1 max-h-60 w-full overflow-auto rounded-box border border-base-300 bg-base-100 p-1.5 shadow-xl",
+            "dropdown-content menu z-40 mt-1 max-h-64 w-full overflow-auto rounded-box border border-base-300 bg-base-100 p-1.5 shadow-xl",
           ),
           h.Attribute("role", "listbox"),
           h.AriaLabel("Templates list"),
@@ -426,10 +402,10 @@ const templatePicker = (
                   h.div(
                     [h.Class("flex flex-col min-w-0 pr-2")],
                     [
-                      h.span([h.Class("truncate")], [nameWithSuffix]),
+                      h.span([h.Class("truncate font-medium")], [nameWithSuffix]),
                       h.span(
                         [h.Class("text-[11px] text-base-content/50 font-normal mt-0.5")],
-                        [`${t.fieldCount} fields`],
+                        [`${t.fieldCount} fields · ${t.requiredCount} required`],
                       ),
                     ],
                   ),
@@ -452,44 +428,57 @@ const sessionNameField = (
   h.fieldset(
     [h.Class("fieldset p-0 gap-1.5 w-full")],
     [
-      h.legend(
+      h.div(
+        [h.Class("flex items-center justify-between")],
         [
-          h.Class(
-            "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
+          h.legend(
+            [
+              h.Class(
+                "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
+              ),
+            ],
+            ["Session Name (Optional)"],
           ),
+          h.span([h.Class("text-[11px] text-base-content/40 font-mono")], ["Auto-timestamped"]),
         ],
-        ["Session Name"],
       ),
-      h.input([
-        h.Class(
-          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
-        ),
-        h.Value(sessionNameInput),
-        h.Placeholder(placeholderName),
-        h.AriaLabel("Session Name"),
-        h.OnInput((value) => Message.ChangedSessionNameInput({ text: value })),
-        h.OnKeyDownPreventDefault((key) =>
-          key === "Enter" ? Option.some(Message.ClickedStartSession()) : Option.none(),
-        ),
-      ]),
-      ...(sessionNameInput.length > 0
-        ? [
-            h.button(
-              [
-                h.Class(
-                  "btn btn-ghost btn-xs self-start gap-1 text-base-content/60 hover:text-base-content px-1.5 h-6 min-h-0 rounded-field",
-                ),
-                h.OnClick(Message.ChangedSessionNameInput({ text: "" })),
-                h.AriaLabel("Clear session name"),
-              ],
-              [xIcon("h-3 w-3", h), "Clear"],
+      h.div(
+        [h.Class("relative flex items-center w-full")],
+        [
+          h.input([
+            h.Class(
+              "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40 pr-16 h-12 shadow-2xs",
             ),
-          ]
-        : []),
+            h.Value(sessionNameInput),
+            h.Placeholder(placeholderName),
+            h.AriaLabel("Session Name"),
+            h.OnInput((value) => Message.ChangedSessionNameInput({ text: value })),
+            h.OnKeyDownPreventDefault((key) =>
+              key === "Enter" ? Option.some(Message.ClickedStartSession()) : Option.none(),
+            ),
+          ]),
+          ...(sessionNameInput.length > 0
+            ? [
+                h.button(
+                  [
+                    h.Class(
+                      "btn btn-ghost btn-xs absolute right-2 text-base-content/50 hover:text-base-content px-2 h-7 min-h-0 rounded-field",
+                    ),
+                    h.OnClick(Message.ChangedSessionNameInput({ text: "" })),
+                    h.AriaLabel("Clear session name"),
+                  ],
+                  [xIcon("h-3.5 w-3.5", h), "Clear"],
+                ),
+              ]
+            : []),
+        ],
+      ),
     ],
   );
 
-const startFormView = (
+// ── Start Form Launcher Card ───────────────────────────────────────────────
+
+const startFormCard = (
   templates: ReadonlyArray<TemplateSummary>,
   selectedTemplateId: string | null,
   placeholderName: string,
@@ -498,8 +487,49 @@ const startFormView = (
 ) => {
   const canStart =
     selectedTemplateId !== null && templates.some((t) => t.id === selectedTemplateId);
-  return bottomToolbarChrome(
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
+
+  return h.div(
     [
+      h.Class(
+        "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md",
+      ),
+    ],
+    [
+      // Card Header
+      h.div(
+        [
+          h.Class(
+            "flex items-center justify-between px-5 py-3.5 bg-base-200/50 border-b border-base-200",
+          ),
+        ],
+        [
+          h.div(
+            [h.Class("flex items-center gap-2")],
+            [
+              h.div(
+                [
+                  h.Class(
+                    "flex h-6 w-6 items-center justify-center rounded-md bg-primary text-white text-xs",
+                  ),
+                ],
+                [playIcon("h-3 w-3", h)],
+              ),
+              h.h2([h.Class("text-sm font-bold text-base-content")], ["Launch Study Session"]),
+            ],
+          ),
+          ...(selectedTemplate !== null
+            ? [
+                h.span(
+                  [h.Class("badge badge-sm badge-neutral font-mono text-[10px]")],
+                  [`${selectedTemplate.fieldCount} fields`],
+                ),
+              ]
+            : []),
+        ],
+      ),
+
+      // Card Body
       h.div(
         [h.Class("p-5 sm:p-6 space-y-5")],
         [
@@ -512,7 +542,7 @@ const startFormView = (
                     "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
                   ),
                 ],
-                ["Template"],
+                ["Study Template"],
               ),
               templatePicker(templates, selectedTemplateId, h),
             ],
@@ -521,20 +551,123 @@ const startFormView = (
           h.button(
             [
               h.Class(
-                "btn btn-primary btn-block rounded-field h-12 text-sm font-semibold shadow-sm gap-2 active:scale-[0.98] transition-all disabled:opacity-50",
+                "btn btn-primary btn-block rounded-field h-13 text-base font-semibold shadow-md shadow-primary/20 gap-2.5 active:scale-[0.98] transition-all disabled:opacity-50 hover:brightness-105",
               ),
               h.Disabled(!canStart),
               h.OnClick(Message.ClickedStartSession()),
               h.AriaLabel("Start Session"),
             ],
-            [playIcon("h-4 w-4", h), "Start Session"],
+            [playIcon("h-4 w-4", h), h.span([], ["Start Study Session"])],
           ),
         ],
       ),
     ],
-    h,
   );
 };
+
+// ── Hero & Highlights ──────────────────────────────────────────────────────
+
+const heroHeader = (h: HtmlBuilder<Message>) =>
+  h.div(
+    [h.Class("flex flex-col items-center md:items-start text-center md:text-left gap-3")],
+    [
+      // Top status pill badge
+      h.div(
+        [
+          h.Class(
+            "inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100/90 px-3.5 py-1 text-xs font-medium text-base-content/80 shadow-2xs backdrop-blur-xs",
+          ),
+        ],
+        [
+          h.div([h.Class("h-2 w-2 rounded-full bg-success")], []),
+          h.span([h.Class("font-mono text-[11px]")], ["Local-First · OPFS SQLite"]),
+        ],
+      ),
+      // App logo mark + Title
+      h.div(
+        [h.Class("flex items-center gap-3.5 mt-1")],
+        [
+          h.div(
+            [
+              h.Class(
+                "flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-white font-serif text-2xl sm:text-3xl shadow-sm select-none shrink-0",
+              ),
+            ],
+            ["θ"],
+          ),
+          h.div(
+            [h.Class("flex flex-col")],
+            [
+              h.h1(
+                [
+                  h.Class(
+                    "text-2xl sm:text-3xl font-bold tracking-tight text-base-content leading-none",
+                  ),
+                ],
+                ["optio"],
+              ),
+              h.span(
+                [h.Class("text-xs sm:text-sm font-medium text-primary mt-1 tracking-tight")],
+                ["Time & Motion Study Recorder"],
+              ),
+            ],
+          ),
+        ],
+      ),
+      h.p(
+        [h.Class("text-xs sm:text-sm leading-relaxed text-base-content/70 max-w-md mt-1")],
+        [
+          "High-precision, sub-second task timing designed for industrial engineering, healthcare workflows, and operational observations.",
+        ],
+      ),
+    ],
+  );
+
+const featureHighlights = (h: HtmlBuilder<Message>) =>
+  h.div(
+    [h.Class("grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full pt-2")],
+    [
+      h.div(
+        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
+        [
+          h.div(
+            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
+            [h.span([h.Class("text-primary font-bold")], ["⏱"]), "Sub-Second Precision"],
+          ),
+          h.p(
+            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
+            ["Continuous lap stopwatch with instantaneous recording and backward task edits."],
+          ),
+        ],
+      ),
+      h.div(
+        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
+        [
+          h.div(
+            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
+            [h.span([h.Class("text-primary font-bold")], ["🎛"]), "Dynamic Schemas"],
+          ),
+          h.p(
+            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
+            ["Radios, exclusionary multi-select checkboxes, switches, and rich notes."],
+          ),
+        ],
+      ),
+      h.div(
+        [h.Class("rounded-box border border-base-300 bg-base-100/70 p-4 shadow-2xs")],
+        [
+          h.div(
+            [h.Class("flex items-center gap-2 font-semibold text-xs text-base-content mb-1")],
+            [h.span([h.Class("text-primary font-bold")], ["🔒"]), "Private & Exportable"],
+          ),
+          h.p(
+            [h.Class("text-[11px] leading-relaxed text-base-content/60")],
+            ["Runs 100% offline in browser with instant single-click CSV export."],
+          ),
+        ],
+      ),
+    ],
+  );
 
 // ── Public entry ──────────────────────────────────────────────────────────
 
@@ -549,94 +682,61 @@ type StartModel = {
 
 export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
   const hasActive = model.activeSession !== null;
-  if (hasActive) {
-    return h.div(
-      [h.Class("flex h-full flex-col")],
-      [
-        // Centered logo
-        h.div(
-          [h.Class("flex flex-1 flex-col items-center justify-center px-6 text-center")],
-          [
-            h.div(
-              [
-                h.Class(
-                  "flex h-[150px] w-[150px] items-center justify-center rounded-[30px] bg-primary/10 text-5xl font-serif text-primary shadow-md select-none",
-                ),
-              ],
-              ["θ"],
-            ),
-            h.p([h.Class("mt-4 text-lg font-semibold tracking-tight")], ["optio"]),
-            h.p(
-              [h.Class("mt-1 max-w-xs text-sm leading-relaxed text-base-content/60")],
-              ["Time & motion studies — recorded locally, never leaving your device."],
-            ),
-          ],
-        ),
-        resumeView(
-          model.activeSession as ActiveSession,
-          model.templates,
-          model.pendingDiscardSession,
-          h,
-        ),
-      ],
-    );
-  }
-
-  if (model.templates.length === 0) {
-    return h.div(
-      [h.Class("flex h-full flex-col")],
-      [
-        h.div(
-          [h.Class("flex flex-1 flex-col items-center justify-center px-6 text-center")],
-          [
-            h.div(
-              [
-                h.Class(
-                  "flex h-[150px] w-[150px] items-center justify-center rounded-[30px] bg-primary/10 text-5xl font-serif text-primary shadow-md select-none",
-                ),
-              ],
-              ["θ"],
-            ),
-            h.p([h.Class("mt-4 text-lg font-semibold tracking-tight")], ["optio"]),
-            h.p(
-              [h.Class("mt-1 max-w-xs text-sm leading-relaxed text-base-content/60")],
-              ["Time & motion studies — recorded locally, never leaving your device."],
-            ),
-          ],
-        ),
-        noTemplatesView(h),
-      ],
-    );
-  }
 
   return h.div(
-    [h.Class("flex h-full flex-col")],
     [
-      h.div(
-        [h.Class("flex flex-1 flex-col items-center justify-center px-6 text-center")],
-        [
-          h.div(
+      h.Class(
+        "min-h-full flex flex-col justify-start py-6 sm:py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
+      ),
+    ],
+    [
+      hasActive
+        ? h.div(
+            [h.Class("space-y-6 w-full my-auto")],
             [
-              h.Class(
-                "flex h-[150px] w-[150px] items-center justify-center rounded-[30px] bg-primary/10 text-5xl font-serif text-primary shadow-md select-none",
+              h.div([h.Class("flex justify-center")], [heroHeader(h)]),
+              resumeView(
+                model.activeSession as ActiveSession,
+                model.templates,
+                model.pendingDiscardSession,
+                h,
               ),
             ],
-            ["θ"],
-          ),
-          h.p([h.Class("mt-4 text-lg font-semibold tracking-tight")], ["optio"]),
-          h.p(
-            [h.Class("mt-1 max-w-xs text-sm leading-relaxed text-base-content/60")],
-            ["Time & motion studies — recorded locally, never leaving your device."],
-          ),
-        ],
-      ),
-      startFormView(
-        model.templates,
-        model.selectedTemplateId,
-        model.placeholderName,
-        model.sessionNameInput,
-        h,
-      ),
+          )
+        : model.templates.length === 0
+          ? h.div(
+              [h.Class("space-y-6 w-full my-auto")],
+              [h.div([h.Class("flex justify-center")], [heroHeader(h)]), noTemplatesView(h)],
+            )
+          : h.div(
+              [h.Class("space-y-8 w-full")],
+              [
+                // Main split on desktop / stacked on mobile
+                h.div(
+                  [h.Class("grid grid-cols-1 md:grid-cols-12 gap-8 items-center")],
+                  [
+                    // Left Column: Branding & Value prop
+                    h.div(
+                      [h.Class("md:col-span-6 flex flex-col gap-5")],
+                      [heroHeader(h), featureHighlights(h)],
+                    ),
+                    // Right Column: Start Study Session Card
+                    h.div(
+                      [h.Class("md:col-span-6 w-full")],
+                      [
+                        startFormCard(
+                          model.templates,
+                          model.selectedTemplateId,
+                          model.placeholderName,
+                          model.sessionNameInput,
+                          h,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
     ],
   );
 };
