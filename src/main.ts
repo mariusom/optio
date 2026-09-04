@@ -16,7 +16,6 @@ import {
   UpdateFieldValue,
 } from "./we/features/session/runnerCommands";
 import { sessionView } from "./we/features/session/sessionView";
-import {} from "./we/features/session/runner";
 import { planSession, type SessionEmission } from "./machine/session/plan";
 import { safeArray } from "./we/fieldRows";
 import type { SessionEvent } from "./machine/session/sessionMachine";

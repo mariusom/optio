@@ -5,6 +5,20 @@ import { formatDurationHm, formatTimestamp, formatTimeOnly, formatDurationHms } 
 import { editSessionNameSheet } from "./editSessionNameSheet";
 import { taskDetailView } from "./taskDetailView";
 
+type SessionDetailTask = {
+  readonly id: string;
+  readonly taskId: number;
+  readonly startedAt: number | null;
+  readonly endedAt: number | null;
+  readonly sections: ReadonlyArray<{
+    readonly sectionName: string;
+    readonly value: string;
+    readonly sectionType: string;
+    readonly isRequired: boolean;
+    readonly startedAt: number | null;
+  }>;
+};
+
 type SessionDetailModel = {
   readonly selectedHistorySession: {
     readonly id: string;
@@ -13,19 +27,7 @@ type SessionDetailModel = {
     readonly startedAt: number;
     readonly endedAt: number | null;
     readonly taskCount: number;
-    readonly tasks: ReadonlyArray<{
-      readonly id: string;
-      readonly taskId: number;
-      readonly startedAt: number | null;
-      readonly endedAt: number | null;
-      readonly sections: ReadonlyArray<{
-        readonly sectionName: string;
-        readonly value: string;
-        readonly sectionType: string;
-        readonly isRequired: boolean;
-        readonly startedAt: number | null;
-      }>;
-    }>;
+    readonly tasks: ReadonlyArray<SessionDetailTask>;
   } | null;
   readonly showEditHistoryName: boolean;
   readonly editHistoryNameInput: string;
@@ -63,22 +65,7 @@ const badge = (taskId: number, h: HtmlBuilder<Message>) =>
     [String(taskId)],
   );
 
-const taskRowView = (
-  task: SessionDetailModel["selectedHistorySession"] extends infer S
-    ? S extends { tasks: ReadonlyArray<infer T> }
-      ? T
-      : never
-    : never,
-  h: HtmlBuilder<Message>,
-) => {
-  // task is generic; cast via any
-  const t = task as unknown as {
-    id: string;
-    taskId: number;
-    startedAt: number | null;
-    endedAt: number | null;
-    sections: ReadonlyArray<{ sectionName: string; value: string }>;
-  };
+const taskRowView = (t: SessionDetailTask, h: HtmlBuilder<Message>) => {
   const duration =
     t.startedAt !== null && t.endedAt !== null ? formatDurationHms(t.endedAt - t.startedAt) : null;
   const startLabel = t.startedAt !== null ? formatTimeOnly(t.startedAt) : null;
@@ -437,7 +424,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                         : [
                             h.div(
                               [h.Class("divide-y divide-base-200")],
-                              sortedTasks.map((task) => taskRowView(task as any, h)),
+                              sortedTasks.map((task) => taskRowView(task, h)),
                             ),
                           ]),
                     ],
@@ -472,22 +459,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
         ],
       ),
       // Task detail sheet
-      ...(selectedTask
-        ? [
-            taskDetailView(
-              {
-                task: {
-                  id: selectedTask.id,
-                  taskId: selectedTask.taskId,
-                  startedAt: selectedTask.startedAt,
-                  endedAt: selectedTask.endedAt,
-                  sections: selectedTask.sections,
-                },
-              } as any,
-              h,
-            ),
-          ]
-        : []),
+      ...(selectedTask ? [taskDetailView({ task: selectedTask }, h)] : []),
       // Edit name sheet
       editSessionNameSheet(
         {

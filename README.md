@@ -34,14 +34,14 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 
 | Layer              | Tool                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| UI framework       | [FoldKit](https://foldkit.dev) 0.151 — Elm architecture on Effect (Model / Message / update / view)                            |
+| UI framework       | [FoldKit](https://foldkit.dev) 0.157 — Elm architecture on Effect (Model / Message / update / view)                            |
 | Styling            | Tailwind CSS 4 + daisyUI 5 (`optio-light` / `optio-dark` themes, grouped surfaces)                                             |
 | Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`     |
-| Session logic      | `@typeonce/effect-machine` 0.25 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously |
-| Runtime validation | Effect `4.0.0-rc.111` Schema (`decodeUnknownEffect` before every commit)                                                       |
+| Session logic      | `@typeonce/effect-machine` 0.31 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously |
+| Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                       |
 | Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                |
 | PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                        |
-| Package manager    | pnpm ≥ 11.22 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                          |
+| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                          |
 | Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                             |
 
 ## Standalone-PWA hardening
@@ -52,7 +52,8 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 none` on form controls, transparent `-webkit-tap-highlight-color`.
 - `overscroll-behavior-y: contain` + `-webkit-overflow-scrolling: touch` on
   scrollable regions; `env(safe-area-inset-*)` on header, tab bar and modals.
-- `focus-visible`-only focus rings; no persistent touch focus outlines.
+- `focus-visible`-only focus rings, decorative icons hidden from assistive
+  technology, and reduced-motion support.
 - PWA manifest with PNG icons (192/512 + maskable) and a home-screen icon;
   service worker updates never reload the page under you — an unobtrusive
   "Update available — tap to refresh" toast asks first.

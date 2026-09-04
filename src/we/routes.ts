@@ -1,33 +1,22 @@
 import { Effect, Option, pipe, Schema as S } from "effect";
-import { literal, mapTo, oneOf, r, slash, string } from "foldkit/route";
+import { defineRouteUnion, literal, mapTo, oneOf, slash, string } from "foldkit/route";
 import type { Url } from "foldkit/url";
 
 // ROUTE VALUES — tagged schemas, usable as Model fields and Message payloads
 
-export const StartTab = r("StartTab");
-export const HistoryTab = r("HistoryTab");
-export const TemplatesTab = r("TemplatesTab");
-export const SessionRunner = r("SessionRunner", { sessionId: S.String });
-export const TemplateEditor = r("TemplateEditor", { templateId: S.String });
-export const SessionDetail = r("SessionDetail", { sessionId: S.String });
+export const RouteSchema = defineRouteUnion({
+  StartTab: {},
+  HistoryTab: {},
+  TemplatesTab: {},
+  SessionRunner: { sessionId: S.String },
+  TemplateEditor: { templateId: S.String },
+  SessionDetail: { sessionId: S.String },
+});
 
-export type Route =
-  | typeof StartTab.Type
-  | typeof HistoryTab.Type
-  | typeof TemplatesTab.Type
-  | typeof SessionRunner.Type
-  | typeof TemplateEditor.Type
-  | typeof SessionDetail.Type;
+export const { StartTab, HistoryTab, TemplatesTab, SessionRunner, TemplateEditor, SessionDetail } =
+  RouteSchema;
 
-/** Union schema of every route — attach this to Model/Message structs. */
-export const RouteSchema = S.Union([
-  StartTab,
-  HistoryTab,
-  TemplatesTab,
-  SessionRunner,
-  TemplateEditor,
-  SessionDetail,
-]);
+export type Route = typeof RouteSchema.Type;
 
 // ROUTERS — bidirectional: parse URL segments AND build href strings
 

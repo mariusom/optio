@@ -3,7 +3,7 @@ import type { HtmlBuilder } from "foldkit/html";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp } from "../../format";
 
-type TaskDetailModel = {
+export type TaskDetailModel = {
   readonly task: {
     readonly id: string;
     readonly taskId: number;

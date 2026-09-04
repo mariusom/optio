@@ -4,7 +4,7 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables } from "../../../livestore/schema";
-import { buildArchiveCsv, filenameForArchive } from "./helpers";
+import { buildArchiveCsv, filenameForArchive, type ArchiveTask } from "./helpers";
 
 // DeleteHistorySession → sessionDeleted
 export const DeleteHistorySession = Command.define("DeleteHistorySession", {
@@ -83,14 +83,14 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
         startedAt: Date | number | null;
       }>;
 
-      const sectionsByRecord = new Map<string, typeof allSectionRows>();
-      for (const r of allSectionRows) {
-        const arr = sectionsByRecord.get(r.taskRecordId) ?? [];
-        const map = sectionsByRecord as Map<string, Array<(typeof allSectionRows)[number]>>;
-        map.set(r.taskRecordId, [...arr, r]);
+      const sectionsByRecord = new Map<string, Array<(typeof allSectionRows)[number]>>();
+      for (const section of allSectionRows) {
+        const sections = sectionsByRecord.get(section.taskRecordId) ?? [];
+        sections.push(section);
+        sectionsByRecord.set(section.taskRecordId, sections);
       }
 
-      const records = taskRows.map((tr) => {
+      const records: ReadonlyArray<ArchiveTask> = taskRows.map((tr) => {
         const secs = sectionsByRecord.get(tr.id) ?? [];
         const startedAt =
           tr.startedAt === null || tr.startedAt === undefined
@@ -113,7 +113,7 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
       });
 
       // Use helper to build CSV
-      const csv = buildArchiveCsv(records as any);
+      const csv = buildArchiveCsv(records);
 
       const filename = filenameForArchive(displayName, new Date());
 

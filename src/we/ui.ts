@@ -40,6 +40,8 @@ export const svgIcon = <M>(
       h.Attribute("stroke-width", strokeWidth),
       h.Attribute("stroke-linecap", "round"),
       h.Attribute("stroke-linejoin", "round"),
+      h.Attribute("aria-hidden", "true"),
+      h.Attribute("focusable", "false"),
     ],
     children,
   );
@@ -53,6 +55,8 @@ export const icon = <M>({ name, class: classes = "h-5 w-5" }: IconProps, h: Html
     h.Attribute("stroke-width", "2"),
     h.Attribute("stroke-linecap", "round"),
     h.Attribute("stroke-linejoin", "round"),
+    h.Attribute("aria-hidden", "true"),
+    h.Attribute("focusable", "false"),
   ];
   switch (name) {
     case "play":
