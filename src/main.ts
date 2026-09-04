@@ -1707,7 +1707,13 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
     body: h.div(
       [h.Class("flex h-dvh w-full flex-col overflow-hidden bg-base-200 text-base-content")],
       [
-        topBar(pageTitle(model.route), model.route, trailingFor(model, h), h),
+        topBar(
+          pageTitle(model.route),
+          model.route,
+          model.history.length > 0,
+          trailingFor(model, h),
+          h,
+        ),
         h.main(
           [h.Class("relative flex-1 overflow-y-auto overscroll-y-contain")],
           [
@@ -1717,7 +1723,9 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
               : [h.div([h.Class("h-[calc(4rem+env(safe-area-inset-bottom))]")], [])]),
           ],
         ),
-        ...(isFullScreenRoute(model.route) ? [] : [bottomTabBar(model.route, h)]),
+        ...(isFullScreenRoute(model.route)
+          ? []
+          : [bottomTabBar(model.route, model.history.length > 0, h)]),
       ],
     ),
   }) satisfies Document;

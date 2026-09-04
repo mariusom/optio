@@ -344,17 +344,22 @@ type TabDef = {
 };
 
 const TABS: ReadonlyArray<TabDef> = [
+  { tag: "TemplatesTab", label: "Templates", icon: "doc" },
   { tag: "StartTab", label: "Session", icon: "play" },
   { tag: "HistoryTab", label: "History", icon: "clock" },
-  { tag: "TemplatesTab", label: "Templates", icon: "doc" },
 ];
+
+export const navigationTabs = (hasHistory: boolean): ReadonlyArray<TabDef> =>
+  hasHistory ? TABS : TABS.filter((tab) => tab.tag !== "HistoryTab");
 
 /**
  * Bottom tab bar for mobile viewports (< md). Safe-area aware; hidden on full-screen routes and md+.
  * Anchors drive hash routing — no JS navigation needed.
  */
-export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
-  h.nav(
+export const bottomTabBar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>) => {
+  const tabs = navigationTabs(hasHistory);
+
+  return h.nav(
     [
       h.Class(
         "md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-base-300 bg-base-100/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg select-none shadow-lg",
@@ -363,8 +368,12 @@ export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
     ],
     [
       h.div(
-        [h.Class("mx-auto grid h-14 max-w-md grid-cols-3 items-center px-2")],
-        TABS.map((tab) => {
+        [
+          h.Class(
+            `mx-auto grid h-14 max-w-md ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"} items-center px-2`,
+          ),
+        ],
+        tabs.map((tab) => {
           const active = route._tag === tab.tag;
           const href = hrefFor({ _tag: tab.tag });
           return h.a(
@@ -398,6 +407,7 @@ export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
       ),
     ],
   );
+};
 
 /**
  * Unified Top Bar:
@@ -407,9 +417,11 @@ export const bottomTabBar = <M>(route: Route, h: HtmlBuilder<M>) =>
 export const topBar = <M>(
   title: string,
   route: Route,
+  hasHistory: boolean,
   trailing: ReturnType<HtmlBuilder<M>["div"]> | null,
   h: HtmlBuilder<M>,
 ) => {
+  const tabs = navigationTabs(hasHistory);
   const backTarget = (() => {
     if (route._tag === "TemplateEditor") return hrefFor({ _tag: "TemplatesTab" });
     if (route._tag === "SessionDetail") return hrefFor({ _tag: "HistoryTab" });
@@ -497,7 +509,7 @@ export const topBar = <M>(
                         ),
                         h.AriaLabel("Desktop navigation"),
                       ],
-                      TABS.map((tab) => {
+                      tabs.map((tab) => {
                         const active = route._tag === tab.tag;
                         const href = hrefFor({ _tag: tab.tag });
                         return h.a(
