@@ -210,6 +210,26 @@ describe("deleteField", () => {
   });
 });
 
+describe.each([
+  ["textInput", "textArea"],
+  ["textArea", "textInput"],
+] as const)("withKindChanged from %s to %s", (kind, nextKind) => {
+  it.each(["true", "false"])("preserves literal text default %s", (defaultValue) => {
+    const draft = { ...makeEmptyDraft(0), kind, defaultValue };
+    expect(withKindChanged(draft, nextKind).defaultValue).toBe(defaultValue);
+  });
+});
+
+describe.each(["textInput", "textArea"] as const)(
+  "withKindChanged from boolean to %s",
+  (nextKind) => {
+    it.each(["true", "false"])("clears boolean default %s", (defaultValue) => {
+      const draft = { ...makeEmptyDraft(0), kind: "boolean" as const, defaultValue };
+      expect(withKindChanged(draft, nextKind).defaultValue).toBe("");
+    });
+  },
+);
+
 describe("draftToFieldDef normalization", () => {
   it.each(["radio", "checkbox"] as const)(
     "clears stale %s defaults and preserves valid ones",

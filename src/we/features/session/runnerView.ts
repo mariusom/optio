@@ -234,12 +234,7 @@ const formSectionHeader = (
 
 // ── Form groups ─────────────────────────────────────────────────────────────
 
-const formRadioGroup = (
-  section: RunnerSection,
-  task: RunnerTask,
-  sections: ReadonlyArray<RunnerSection>,
-  h: HtmlBuilder<Message>,
-) =>
+const formRadioGroup = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
   h.div(
     [
       h.Class("grid gap-2.5"),
@@ -249,15 +244,25 @@ const formRadioGroup = (
     ],
     section.options.map((option) => {
       const active = section.value === option;
-      return h.button(
+      return h.label(
         [
-          h.Class("w-full text-left focus-visible:outline-none rounded-field"),
-          h.Attribute("role", "radio"),
-          h.AriaChecked(active),
-          h.AriaLabel(option),
-          h.OnClick(Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
+          h.Class(
+            "relative block w-full cursor-pointer text-left rounded-field has-[:focus-visible]:outline has-[:focus-visible]:outline-primary has-[:focus-visible]:outline-offset-2",
+          ),
         ],
-        [selectionButton(option, active, h, "radio")],
+        [
+          h.input([
+            h.Class("sr-only"),
+            h.Type("radio"),
+            // Both responsive views are mounted; keep their native groups independent.
+            h.Name(`${scope}-${section.id}`),
+            h.Value(option),
+            h.Checked(active),
+            h.AriaLabel(option),
+            h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
+          ]),
+          selectionButton(option, active, h, "radio"),
+        ],
       );
     }),
   );
@@ -343,7 +348,7 @@ const formTextArea = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     ],
   );
 
-const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
+const formToggle = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
   const isOn = isBooleanTrue(section.value);
   const next = isOn ? "false" : "true";
   return h.div(
@@ -360,7 +365,7 @@ const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
       h.label(
         [
           h.Class("flex flex-col pr-3 cursor-pointer flex-1"),
-          h.Attribute("for", `runner-toggle-${section.id}`),
+          h.Attribute("for", `${scope}-runner-toggle-${section.id}`),
         ],
         [
           h.span([h.Class("text-sm font-medium text-base-content")], [section.name]),
@@ -376,7 +381,7 @@ const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
       ),
       h.input([
         h.Class("toggle toggle-primary checked:border-primary shrink-0"),
-        h.Id(`runner-toggle-${section.id}`),
+        h.Id(`${scope}-runner-toggle-${section.id}`),
         h.Type("checkbox"),
         h.Attribute("role", "switch"),
         h.Checked(isOn),
@@ -390,37 +395,27 @@ const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
 
 // ── FormSectionContent ──────────────────────────────────────────────────────
 
-const formSectionContent = (
-  section: RunnerSection,
-  task: RunnerTask,
-  sections: ReadonlyArray<RunnerSection>,
-  h: HtmlBuilder<Message>,
-) => {
+const formSectionContent = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
   const kind = section.kind;
-  if (kind === "radio") return formRadioGroup(section, task, sections, h);
+  if (kind === "radio") return formRadioGroup(section, scope, h);
   if (kind === "checkbox") return formCheckboxGroup(section, h);
   if (kind === "textArea") return formTextArea(section, h);
   if (kind === "textInput") return formTextField(section, h);
-  if (kind === "boolean") return formToggle(section, h);
+  if (kind === "boolean") return formToggle(section, scope, h);
   return formTextField(section, h);
 };
 
 // ── FormSectionView ─────────────────────────────────────────────────────────
 
-const formSectionView = (
-  section: RunnerSection,
-  task: RunnerTask,
-  sections: ReadonlyArray<RunnerSection>,
-  h: HtmlBuilder<Message>,
-) => {
+const formSectionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
   const done = isSectionDone(section);
   const isBool = section.kind === "boolean";
   const showCheck = isBool ? isBooleanTrue(section.value) : done && section.value !== "";
   return h.div(
-    [h.Class("flex flex-col bg-base-200"), h.Attribute("id", section.id)],
+    [h.Class("flex flex-col bg-base-200"), h.Id(`${scope}-${section.id}`)],
     [
       formSectionHeader(section, done, showCheck, h),
-      h.div([h.Class("px-4 pb-4")], [formSectionContent(section, task, sections, h)]),
+      h.div([h.Class("px-4 pb-4")], [formSectionContent(section, scope, h)]),
     ],
   );
 };
@@ -431,6 +426,7 @@ export const formSectionsView = (
   runner: RunnerState,
   task: RunnerTask,
   h: HtmlBuilder<Message>,
+  scope = "mobile",
 ) => {
   const sections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
@@ -438,9 +434,9 @@ export const formSectionsView = (
 
     [
       // invisible anchor formTop
-      h.div([h.Class("h-0 w-full"), h.Attribute("id", "formTop")], []),
+      h.div([h.Class("h-0 w-full"), h.Id(`${scope}-formTop`)], []),
       ...sections.flatMap((section, idx) => {
-        const view = formSectionView(section, task, sections, h);
+        const view = formSectionView(section, scope, h);
         const divider =
           idx < sections.length - 1 ? h.div([h.Class("mx-4 h-px bg-base-300")], []) : null;
         return divider ? [view, divider] : [view];

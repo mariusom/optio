@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Cause, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -16,7 +16,7 @@ export const DeleteHistorySession = Command.define("DeleteHistorySession", {
       store.commit(events.sessionDeleted({ id }));
       return Message.HistoryDeleted();
     }).pipe(
-      Effect.catch(() =>
+      Effect.catchCause(() =>
         Effect.succeed(
           Message.FailedCsvExport({ error: "Failed to delete session. Please try again." }),
         ),
@@ -33,7 +33,11 @@ export const RenameHistorySession = Command.define("RenameHistorySession", {
       const store = yield* Effect.promise(getStore);
       store.commit(events.sessionRenamed({ id, sessionName }));
       return Message.HistoryNameUpdated();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedCsvExport({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedCsvExport({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 // ExportSessionCsv — archive format only (history is archive)
@@ -138,5 +142,9 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
       }
 
       return Message.CsvExported({ filename });
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedCsvExport({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedCsvExport({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });

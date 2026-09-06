@@ -371,6 +371,8 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
               ),
               h.OnClick(Message.ToggledSidebar()),
               h.AriaLabel(runner.showSidebar ? "Collapse sidebar" : "Expand sidebar"),
+              h.Attribute("aria-expanded", String(runner.showSidebar)),
+              h.Attribute("aria-controls", "runner-task-sidebar"),
             ],
             [
               sidebarLeftIcon("h-4 w-4", h),
@@ -410,6 +412,8 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
       ),
       h.Attribute("style", "transition: transform 0.25s ease-in-out, width 0.25s ease-in-out"),
       h.AriaLabel("Task navigation sidebar"),
+      h.Id("runner-task-sidebar"),
+      ...(runner.showSidebar ? [] : [h.Attribute("inert", "")]),
     ],
     [
       h.div(
@@ -456,7 +460,7 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
         [
           h.div(
             [h.Class("w-full max-w-2xl xl:max-w-3xl pb-28")],
-            [formSectionsView(runner, task, h)],
+            [formSectionsView(runner, task, h, "tablet")],
           ),
         ],
       ),

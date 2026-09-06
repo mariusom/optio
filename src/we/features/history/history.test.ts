@@ -223,6 +223,46 @@ describe("buildArchiveCsv", () => {
     expect(csv).toBe("id,startTime,endTime\n1,,");
   });
 
+  it("preserves duplicate values in occurrence columns shared across tasks", () => {
+    const records = [
+      {
+        taskId: 2,
+        startedAt: null,
+        endedAt: null,
+        sections: [
+          { sectionName: "A", value: "first" },
+          { sectionName: "A", value: "second" },
+          { sectionName: "A", value: "third" },
+        ],
+      },
+      {
+        taskId: 1,
+        startedAt: null,
+        endedAt: null,
+        sections: [{ sectionName: "A", value: "only" }],
+      },
+    ];
+    expect(buildArchiveCsv(records)).toBe(
+      'id,A,"A (2)","A (3)",startTime,endTime\n1,only,,,,\n2,first,second,third,,',
+    );
+    expect(buildArchiveCsv([...records].reverse())).toBe(buildArchiveCsv(records));
+  });
+
+  it("avoids collisions with literal suffixed names and reserved CSV headers", () => {
+    const names = ["A", "A", "A (2)", "id", "startTime", "endTime"];
+    const csv = buildArchiveCsv([
+      {
+        taskId: 1,
+        startedAt: null,
+        endedAt: null,
+        sections: names.map((sectionName, i) => ({ sectionName, value: `value-${i}` })),
+      },
+    ]);
+    expect(csv).toBe(
+      'id,A,"A (3)","A (2)","endTime (1)","id (1)","startTime (1)",startTime,endTime\n1,value-0,value-1,value-2,value-5,value-3,value-4,,',
+    );
+  });
+
   it("taskCount derived elsewhere but header union respects duplicate names", () => {
     // union should deduplicate
     const records = [
@@ -230,7 +270,7 @@ describe("buildArchiveCsv", () => {
       { taskId: 2, startedAt: null, endedAt: null, sections: [{ sectionName: "A", value: "2" }] },
     ];
     const csv = buildArchiveCsv(records);
-    expect(csv.split("\n")[0]).toBe("id,A,startTime,endTime");
+    expect(csv).toBe("id,A,startTime,endTime\n1,1,,\n2,2,,");
   });
 });
 

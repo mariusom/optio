@@ -9,7 +9,8 @@
     "build": "vp build",
     "preview": "vp preview",
     "check": "vp check",
-    "test": "vp test run"
+    "test": "vp test run && pnpm test:browser",
+    "test:browser": "vp test run --config vitest.browser.config.ts"
   },
   "dependencies": {
     "@foldkit/ui": "^0.157.0",
@@ -27,8 +28,10 @@
     "@effect/vitest": "4.0.0-rc.112",
     "@foldkit/vite-plugin": "^0.20.1",
     "@tailwindcss/vite": "^4.0.0",
+    "@vitest/browser-playwright": "4.1.11",
     "daisyui": "^5.7.28",
     "fallow": "^3.22.0",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^7.0.2",
     "vite-plugin-pwa": "^0.21.0 || ^1.0.0",

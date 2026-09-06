@@ -73,7 +73,9 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
       );
       return Message.DuplicatedTemplate({ id: copyId });
     }).pipe(
-      Effect.catch((error) => Effect.succeed(Message.FailedTemplateOp({ error: String(error) }))),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
     ),
 });
 
@@ -105,7 +107,9 @@ export const DeleteTemplate = Command.define("DeleteTemplate", {
       store.commit(...promote, events.templateDeleted({ id }));
       return Message.TemplateOpDone();
     }).pipe(
-      Effect.catch((error) => Effect.succeed(Message.FailedTemplateOp({ error: String(error) }))),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
     ),
 });
 

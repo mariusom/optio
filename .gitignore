@@ -2,6 +2,8 @@ node_modules/
 dist/
 dev-dist/
 coverage/
+.vitest-attachments/
+__screenshots__/
 *.log
 .DS_Store
 .amp/portals/*

@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Cause, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -45,6 +45,8 @@ export const SaveTemplate = Command.define("SaveTemplate", {
       }
       return Message.TemplateSaved();
     }).pipe(
-      Effect.catch((error) => Effect.succeed(Message.FailedTemplateOp({ error: String(error) }))),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
     ),
 });

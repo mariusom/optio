@@ -208,6 +208,51 @@ describe("sessionMachine task selection + edit", () => {
     expect(runner!.currentTaskId).toBe("task-2");
   });
 
+  it("select → sync → change → sync → reselect → cancel restores the original backup", () => {
+    const selected = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
+    const editing = data({
+      currentTaskId: "task-2",
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        isBeingEdited: task.id === "task-2",
+      })),
+    });
+    const synced = plan(selected.runner, { _tag: "DataSynced", data: editing });
+    const changed = plan(synced.runner, {
+      _tag: "FieldChanged",
+      taskFieldId: "f-note",
+      value: "Changed",
+    });
+    expect(changed.emissions).toEqual([
+      { _tag: "CommitFieldValue", taskFieldId: "f-note", value: "Changed" },
+    ]);
+    const changedData = {
+      ...editing,
+      tasks: editing.tasks.map((task) => ({
+        ...task,
+        sections: task.sections.map((field) =>
+          field.id === "f-note" ? { ...field, value: "Changed" } : field,
+        ),
+      })),
+    };
+    const refreshed = plan(changed.runner, { _tag: "DataSynced", data: changedData });
+    const reselected = plan(refreshed.runner, { _tag: "TaskSelected", taskId: "task-2" });
+    expect(reselected.runner!.editBackup).toEqual(selected.runner!.editBackup);
+    const resynced = plan(reselected.runner, { _tag: "DataSynced", data: changedData });
+    const cancelled = plan(resynced.runner, { _tag: "EditCancelled" });
+    expect(cancelled.emissions).toEqual([
+      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
+    ]);
+    const restored = plan(cancelled.runner, {
+      _tag: "DataSynced",
+      data: data({ currentTaskId: "task-1" }),
+    });
+    const acked = plan(restored.runner, { _tag: "EditAcked" });
+    expect(acked.runner!.tasks[1]!.sections[0]!.value).toBe("Old note");
+    expect(acked.runner!.editBackup).toBeNull();
+    expect(acked.runner!.currentTaskId).toBe("task-1");
+  });
+
   it("selecting an open task just switches current task", () => {
     const { runner } = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-1" });
     expect(runner!.editBackup).toBeNull();

@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Cause, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -23,7 +23,11 @@ export const UpdateFieldValue = Command.define("UpdateFieldValue", {
       const store = yield* Effect.promise(getStore);
       store.commit(events.taskFieldValueChanged({ id: taskFieldId, value, now: new Date() }));
       return Message.UpdatedFieldValue();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 // ── RecordTask → taskFinished + taskSpawned ─────────────────────────────────
@@ -110,7 +114,11 @@ export const RecordTask = Command.define("RecordTask", {
         }),
       );
       return Message.TaskRecorded();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 // ── EndSession → archive or delete then clear live graph, navigate ─────────
@@ -209,7 +217,11 @@ export const EndSession = Command.define("EndSession", {
         events.sessionLiveGraphCleared({ sessionId }),
       );
       return Message.SessionEnded();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 // ── SelectTask → taskEditStarted / taskEditFinished ─────────────────────────
@@ -239,7 +251,11 @@ export const SelectTask = Command.define("SelectTask", {
         // Return finished to trigger UI update
         return Message.TaskEditFinished();
       }
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 export const CancelEdit = Command.define("CancelEdit", {
@@ -254,7 +270,11 @@ export const CancelEdit = Command.define("CancelEdit", {
       );
       store.commit(...restores, events.taskEditFinished({ id: taskId }));
       return Message.TaskEditFinished();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 export const SaveEdit = Command.define("SaveEdit", {
@@ -265,5 +285,9 @@ export const SaveEdit = Command.define("SaveEdit", {
       const store = yield* Effect.promise(getStore);
       store.commit(events.taskEditFinished({ id: taskId }));
       return Message.TaskEditFinished();
-    }).pipe(Effect.catch((e) => Effect.succeed(Message.FailedRunnerOp({ error: String(e) })))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });

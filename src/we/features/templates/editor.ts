@@ -48,7 +48,10 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
   if (nextKind === "boolean") {
     const current = next.defaultValue;
     next = { ...next, defaultValue: current === "true" ? "true" : "false" };
-  } else if (next.defaultValue === "true" || next.defaultValue === "false") {
+  } else if (
+    draft.kind === "boolean" &&
+    (next.defaultValue === "true" || next.defaultValue === "false")
+  ) {
     // Coming from boolean to text types, clear boolean-style default
     next = { ...next, defaultValue: "" };
   }

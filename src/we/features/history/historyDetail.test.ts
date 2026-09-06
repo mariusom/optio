@@ -62,6 +62,51 @@ const model = () => ({
 beforeEach(() => vi.resetAllMocks());
 
 describe("history detail regressions", () => {
+  it.each(["subscription", "delete"])(
+    "clears open detail UI after %s disappearance before opening another session",
+    (source) => {
+      let state = update(model(), Message.ClickedEditHistoryName()).model;
+      state = update(state, Message.ChangedEditHistoryName({ text: "Unsaved rename" })).model;
+      state = update(state, Message.ClickedHistoryTask({ taskId: "task-1" })).model;
+      expect(state.showEditHistoryName).toBe(true);
+      expect(state.selectedHistoryTaskId).toBe("task-1");
+      const openUi = JSON.stringify(render((h) => sessionDetailPage(state, h)));
+      expect(openUi).toContain('"role":"dialog"');
+      expect(openUi).toContain('"aria-label":"Edit Session"');
+      expect(openUi).toContain('"aria-label":"Task Details"');
+      state = update(
+        state,
+        source === "subscription"
+          ? Message.GotHistoryDetail({ detail: null })
+          : Message.HistoryDeleted(),
+      ).model;
+      expect(state).toMatchObject({
+        selectedHistorySession: null,
+        selectedHistoryTaskId: null,
+        showEditHistoryName: false,
+        editHistoryNameInput: "",
+      });
+      state = update(state, Message.GotRoute({ route: { _tag: "HistoryTab" } })).model;
+      state = update(
+        state,
+        Message.GotRoute({ route: { _tag: "SessionDetail", sessionId: "s2" } }),
+      ).model;
+      state = update(
+        state,
+        Message.GotHistoryDetail({ detail: { ...detail, id: "s2", sessionName: "Next" } }),
+      ).model;
+      expect(state).toMatchObject({
+        selectedHistorySession: { id: "s2" },
+        selectedHistoryTaskId: null,
+        showEditHistoryName: false,
+        editHistoryNameInput: "Next",
+      });
+      const rendered = JSON.stringify(render((h) => sessionDetailPage(state, h)));
+      expect(rendered).not.toContain("Unsaved rename");
+      expect(rendered).not.toContain('"role":"dialog"');
+    },
+  );
+
   it.each([null, detail])(
     "redirects missing or deleted detail to history (previous: %s)",
     (previous) => {

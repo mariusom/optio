@@ -395,9 +395,11 @@ export const SessionMachine = Machine.make({
                   lastError: current.lastError,
                 };
                 const editBackup =
-                  picked.endDate !== null
-                    ? { taskId: event.taskId, values: sectionValues(picked) }
-                    : null;
+                  current.editBackup?.taskId === event.taskId
+                    ? current.editBackup
+                    : picked.endDate !== null
+                      ? { taskId: event.taskId, values: sectionValues(picked) }
+                      : null;
                 return target.from().update(owner.decoded({ ...base, data, editBackup }));
               }),
 

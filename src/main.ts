@@ -882,7 +882,13 @@ export const update = (model: Model, message: Message) =>
     GotHistoryDetail: ({ detail }) => {
       if (detail === null)
         return {
-          model: { ...model, selectedHistorySession: null },
+          model: {
+            ...model,
+            selectedHistorySession: null,
+            selectedHistoryTaskId: null,
+            showEditHistoryName: false,
+            editHistoryNameInput: "",
+          },
           commands:
             model.route._tag === "SessionDetail"
               ? [NavigateInternal({ url: `#${historyRouter()}` })]
@@ -932,6 +938,8 @@ export const update = (model: Model, message: Message) =>
             pendingHistoryDelete: null,
             selectedHistorySession: null,
             selectedHistoryTaskId: null,
+            showEditHistoryName: false,
+            editHistoryNameInput: "",
           },
           commands: [NavigateInternal({ url: "#/history" })],
         };
@@ -1645,8 +1653,9 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           Effect.sync(() => {
             setTimeout(() => {
               if (typeof document !== "undefined") {
-                document
-                  .getElementById(focusedSectionId)
+                ["mobile", "tablet"]
+                  .map((scope) => document.getElementById(`${scope}-${focusedSectionId}`))
+                  .find((element) => element && element.getClientRects().length > 0)
                   ?.scrollIntoView({ behavior: "smooth", block: "center" });
               }
             }, 0);
@@ -1667,8 +1676,9 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           Effect.sync(() => {
             setTimeout(() => {
               if (typeof document !== "undefined") {
-                document
-                  .getElementById("formTop")
+                ["mobile", "tablet"]
+                  .map((scope) => document.getElementById(`${scope}-formTop`))
+                  .find((element) => element && element.getClientRects().length > 0)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }
             }, 0);

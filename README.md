@@ -100,6 +100,29 @@ The base registry currently requests Effect `4.0.0-rc.109`; this app keeps
 registry update. Run `pnpm check`, `pnpm exec tsc --noEmit`, `pnpm test`, and
 `pnpm build` after adding or updating components.
 
+## Keyboard regression tests
+
+Install Chromium once with `pnpm exec playwright install chromium` (on a fresh
+Linux CI host, use `pnpm exec playwright install --with-deps chromium`).
+`pnpm test` runs the unit suite followed by the Chromium component suite;
+`pnpm test:browser` runs only the latter.
+
+The browser tests mount the production responsive session view in Foldkit and
+dispatch through the production `update`/session machine. They cover radio
+selection, Space, all four arrow keys with wrapping, forward/backward Tab,
+independent mobile/tablet native groups, and collapsed/expanded sidebar focus
+and Chromium accessibility-tree exposure at 390, 820, and 1440px as applicable.
+
+These are component tests, **not LiveStore persistence end-to-end tests**:
+the OPFS/worker client is mocked, emitted `UpdateFieldValue` command arguments
+are checked, and store snapshots are simulated through production `GotRunnerData`.
+The production focused-section scroll subscription remains enabled. They do not
+prove worker startup, persistence, reload recovery, or asynchronous store timing.
+Section, switch and scroll-anchor IDs and radio `name` values are independently
+scoped to avoid conflicts between responsive copies. Scroll subscriptions target
+the visible copy. The deployment workflow installs Chromium and its Linux
+dependencies and runs checks, typechecking and both test suites before building.
+
 ## Deployment
 
 Pushes to `main` trigger `.github/workflows/deploy.yml`, which builds with

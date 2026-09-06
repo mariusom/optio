@@ -38,22 +38,48 @@ export type ArchiveTask = {
 
 /** Builds archive CSV string per spec Appendix B */
 export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => {
-  // Union of section names sorted alphabetical
-  const namesSet = new Set<string>();
-  for (const r of records) for (const s of r.sections) namesSet.add(s.sectionName);
-  const sortedNames = [...namesSet].sort((a, b) => a.localeCompare(b));
-
-  const header = ["id", ...sortedNames, "startTime", "endTime"];
+  // Align same-name fields across tasks by occurrence in section order.
+  // Keep enough columns for the largest number of occurrences in any task.
+  const counts = new Map<string, number>();
+  for (const task of records) {
+    const occurrences = new Map<string, number>();
+    for (const { sectionName } of task.sections) {
+      const count = (occurrences.get(sectionName) ?? 0) + 1;
+      occurrences.set(sectionName, count);
+      counts.set(sectionName, Math.max(counts.get(sectionName) ?? 0, count));
+    }
+  }
+  const sortedNames = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  const reserved = new Set(["id", "startTime", "endTime"]);
+  const used = new Set([...reserved, ...sortedNames]);
+  const columns = sortedNames.flatMap((name) =>
+    Array.from({ length: counts.get(name)! }, (_, occurrence) => {
+      let header = name;
+      if (occurrence > 0 || reserved.has(name)) {
+        let suffix = occurrence + 1;
+        do {
+          header = `${name} (${suffix++})`;
+        } while (used.has(header));
+        used.add(header);
+      }
+      return { name, occurrence, header };
+    }),
+  );
+  const header = ["id", ...columns.map((column) => column.header), "startTime", "endTime"];
 
   const sortedTasks = [...records].sort((a, b) => a.taskId - b.taskId);
 
   const rows = sortedTasks.map((task) => {
-    const valueByName = new Map<string, string>();
-    for (const s of task.sections) valueByName.set(s.sectionName, s.value);
+    const valueByName = new Map<string, string[]>();
+    for (const s of task.sections) {
+      const values = valueByName.get(s.sectionName) ?? [];
+      values.push(s.value);
+      valueByName.set(s.sectionName, values);
+    }
     const cells: string[] = [];
     cells.push(csvEscaped(String(task.taskId)));
-    for (const name of sortedNames) {
-      const v = valueByName.get(name) ?? "";
+    for (const { name, occurrence } of columns) {
+      const v = valueByName.get(name)?.[occurrence] ?? "";
       cells.push(csvEscaped(v));
     }
     const startStr = task.startedAt ? formatCsvDate(task.startedAt) : "";
