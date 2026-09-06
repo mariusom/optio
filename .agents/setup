@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+step() {
+  printf '\n[%s] %s\n' "$(date --iso-8601=seconds)" "$1"
+}
+
+step "Preparing Node.js 24"
+export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+export PATH="$PNPM_HOME/bin:$PATH"
+mkdir -p "$PNPM_HOME/bin"
+
+if [[ ! -x "$PNPM_HOME/bin/node" ]] || [[ "$($PNPM_HOME/bin/node --version)" != v24.* ]]; then
+  pnpm runtime set node 24 --global
+fi
+
+profile_marker="# optio pnpm-managed Node.js runtime"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# optio pnpm-managed Node.js runtime
+export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
+case ":$PATH:" in
+  *":$PNPM_HOME/bin:"*) ;;
+  *) export PATH="$PNPM_HOME/bin:$PATH" ;;
+esac
+EOF
+fi
+
+step "Installing pnpm dependencies"
+pnpm install --frozen-lockfile
+
+step "Orb setup complete"
+printf 'Node.js %s, pnpm %s\n' "$(node --version)" "$(pnpm --version)"
