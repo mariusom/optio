@@ -303,7 +303,14 @@ const discardModal = (h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscardSession())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel discarding session"),
+          h.OnClick(Message.CanceledDiscardSession()),
+        ],
+        [],
+      ),
     ],
   );
 
@@ -566,6 +573,7 @@ type StartModel = {
   readonly placeholderName: string;
   readonly activeSession: ActiveSession | null;
   readonly pendingDiscardSession: boolean;
+  readonly lastError?: string | null;
 };
 
 export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
@@ -581,6 +589,14 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
           h.div(
             [h.Class("start-action")],
             [
+              ...(model.lastError
+                ? [
+                    h.div(
+                      [h.Class("alert alert-error mb-4 text-sm"), h.Attribute("role", "alert")],
+                      [model.lastError],
+                    ),
+                  ]
+                : []),
               hasActive
                 ? resumeView(
                     model.activeSession as ActiveSession,

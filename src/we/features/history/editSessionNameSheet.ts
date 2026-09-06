@@ -13,7 +13,12 @@ type EditModel = {
 export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) => {
   if (!model.showEditHistoryName) return h.div([], []);
   return h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "dialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Edit Session"),
+    ],
     [
       h.div(
         [
@@ -49,8 +54,9 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
                   h.div(
                     [h.Class("px-4 py-2 bg-base-100 border-b border-base-200")],
                     [
-                      h.span(
+                      h.label(
                         [
+                          h.Attribute("for", "edit-session-name"),
                           h.Class(
                             "text-xs font-semibold uppercase tracking-wider text-base-content/60",
                           ),
@@ -72,6 +78,7 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
                           "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                         ),
                         h.Value(model.editHistoryNameInput),
+                        h.Id("edit-session-name"),
                         h.Placeholder("Session Name"),
                         h.Autofocus(true),
                         h.OnInput((value) => Message.ChangedEditHistoryName({ text: value })),
@@ -137,7 +144,14 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledEditHistoryName())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel editing session"),
+          h.OnClick(Message.CanceledEditHistoryName()),
+        ],
+        [],
+      ),
     ],
   );
 };

@@ -4,6 +4,7 @@ import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp, formatTimeOnly, formatDurationHms } from "../../format";
 import { editSessionNameSheet } from "./editSessionNameSheet";
 import { taskDetailView } from "./taskDetailView";
+import { formatBooleanDisplay } from "../../fields";
 
 type SessionDetailTask = {
   readonly id: string;
@@ -122,9 +123,8 @@ const taskRowView = (t: SessionDetailTask, h: HtmlBuilder<Message>) => {
                     h.div(
                       [h.Class("flex flex-col gap-0.5 pt-0.5")],
                       preview.map((s) => {
-                        const valLower = s.value.trim().toLowerCase();
                         const displayVal =
-                          valLower === "true" ? "Yes" : valLower === "false" ? "No" : s.value;
+                          s.sectionType === "boolean" ? formatBooleanDisplay(s.value) : s.value;
                         return h.div(
                           [h.Class("flex items-baseline gap-2 text-xs")],
                           [
@@ -216,11 +216,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
     detail.endedAt !== null ? formatDurationHm(detail.endedAt - detail.startedAt) : null;
   const displayName = detail.sessionName !== "" ? detail.sessionName : detail.templateName;
   const isCustomName = detail.sessionName !== "";
-  const sortedTasks = [...detail.tasks].sort((a, b) => {
-    const aStart = a.startedAt ?? Date.now();
-    const bStart = b.startedAt ?? Date.now();
-    return aStart - bStart;
-  });
+  const sortedTasks = [...detail.tasks].sort((a, b) => a.taskId - b.taskId);
 
   const selectedTask =
     model.selectedHistoryTaskId !== null

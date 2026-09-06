@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Cause, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -19,14 +19,14 @@ export const StartSession = Command.define("StartSession", {
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
 
-      // Resolve fields: if caller passed non-empty, use them; otherwise fetch from store
-      // with id -> name fallback (spec).
+      // An explicit template ID is authoritative, including zero-field templates.
+      // Name lookup is only for callers without an ID.
       let resolvedFields: ReadonlyArray<FieldDef> = fields;
       let resolvedTemplateId: string | null = templateId;
       let resolvedTemplateName = templateName;
 
       if (resolvedFields.length === 0) {
-        // Try lookup by id first, then by name.
+        // Resolve by ID when supplied, otherwise by name.
         let fieldRows: Parameters<typeof fieldRowsToDefs>[0] = [] as unknown as Parameters<
           typeof fieldRowsToDefs
         >[0];
@@ -37,19 +37,17 @@ export const StartSession = Command.define("StartSession", {
           const rows = store.query(
             tables.templateFields.select().where({ templateId }).orderBy("sortOrder", "asc"),
           ) as Parameters<typeof fieldRowsToDefs>[0];
-          if (rows.length > 0) {
-            fieldRows = rows;
-            foundId = templateId;
-            // Keep the stored template name consistent with the id's template
-            const tmpl = store.query(
-              tables.templates.select().where({ id: templateId }),
-            ) as ReadonlyArray<{
-              readonly name: string;
-            }>;
-            if (tmpl[0] !== undefined) foundName = tmpl[0].name;
-          }
+          fieldRows = rows;
+          foundId = templateId;
+          // Keep the stored template name consistent even when it has no fields.
+          const tmpl = store.query(
+            tables.templates.select().where({ id: templateId }),
+          ) as ReadonlyArray<{
+            readonly name: string;
+          }>;
+          if (tmpl[0] !== undefined) foundName = tmpl[0].name;
         }
-        if (fieldRows.length === 0 && templateName !== "") {
+        if (templateId === null && templateName !== "") {
           const tmpls = store.query(
             tables.templates.select().where({ name: templateName }),
           ) as ReadonlyArray<{
@@ -92,7 +90,9 @@ export const StartSession = Command.define("StartSession", {
       );
       return Message.SessionStarted({ sessionId: id });
     }).pipe(
-      Effect.catch((error) => Effect.succeed(Message.FailedSessionOp({ error: String(error) }))),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedSessionOp({ error: Cause.pretty(cause) })),
+      ),
     ),
 });
 
@@ -108,6 +108,8 @@ export const DiscardLiveSession = Command.define("DiscardLiveSession", {
       );
       return Message.SessionDiscarded();
     }).pipe(
-      Effect.catch((error) => Effect.succeed(Message.FailedSessionOp({ error: String(error) }))),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedSessionOp({ error: Cause.pretty(cause) })),
+      ),
     ),
 });

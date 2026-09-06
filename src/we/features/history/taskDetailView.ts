@@ -2,6 +2,7 @@ import { svgIcon } from "../../ui";
 import type { HtmlBuilder } from "foldkit/html";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp } from "../../format";
+import { isBooleanTrue } from "../../fields";
 
 export type TaskDetailModel = {
   readonly task: {
@@ -80,6 +81,7 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
       h.Class("fixed inset-0 z-50 flex flex-col bg-base-200"),
       h.Attribute("role", "dialog"),
       h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Task Details"),
     ],
     [
       h.div(
@@ -192,9 +194,8 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
                     ),
                   ]
                 : task.sections.map((section) => {
-                    const val = section.value.trim().toLowerCase();
-                    const isBool = val === "true" || val === "false";
-                    const isBoolOn = val === "true";
+                    const isBool = section.sectionType === "boolean";
+                    const isBoolOn = isBooleanTrue(section.value);
                     const hasValue = section.value !== "";
                     const showCheck = isBool ? isBoolOn : hasValue;
 

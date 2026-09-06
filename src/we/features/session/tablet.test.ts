@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { Effect, Stream } from "effect";
 
 vi.mock("../../../livestore/client", () => ({
   getStore: vi.fn(),
@@ -9,9 +10,10 @@ vi.mock("../../../livestore/client", () => ({
 (globalThis as any).self ??= globalThis;
 
 import { Message } from "../../../messages";
-import { update } from "../../../main";
+import { subscriptions, update } from "../../../main";
 import type { Model } from "../../../main";
-import { isFullScreenRoute, SessionRunner } from "../../routes";
+import { getStore } from "../../../livestore/client";
+import { isFullScreenRoute, SessionRunner, StartTab } from "../../routes";
 
 // helper to make a minimal runner state matching Model.runner shape
 const makeRunner = (
@@ -64,6 +66,50 @@ const makeModel = (runner: Model["runner"]): Model => ({
   editHistoryNameInput: "",
   selectedHistoryTaskId: null,
   csvError: null,
+});
+
+describe("runner dead links", () => {
+  it("waits for the session query before declaring a runner missing", async () => {
+    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+    vi.mocked(getStore).mockResolvedValue({
+      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+        callbacks.push(callback);
+        if (callbacks.length === 3) {
+          callbacks[1]!([]);
+          callbacks[2]!([]);
+          callbacks[0]!([{ id: "s1", templateName: "T", sessionName: "S", startedAt: 0 }]);
+        }
+        return () => {};
+      },
+    } as unknown as Awaited<ReturnType<typeof getStore>>);
+    const messages = await Effect.runPromise(
+      subscriptions.runner
+        .dependenciesToStream({ sessionId: "s1" })
+        .pipe(Stream.take(1), Stream.runCollect),
+    );
+    expect(messages[0]).toMatchObject({ _tag: "GotRunnerData", data: { sessionId: "s1" } });
+  });
+
+  it("redirects to Start after switching from a valid runner to a missing session", () => {
+    const model = makeModel(makeRunner({ sessionId: "s1" }));
+    const switched = update(
+      model,
+      Message.GotRoute({ route: SessionRunner({ sessionId: "missing" }) }),
+    );
+    expect(switched.model.runner?.sessionId).toBe("s1");
+    const synced = update(switched.model, Message.GotRunnerData({ data: null }));
+    expect(synced.model.runner).toBeNull();
+    expect(synced.commands).toEqual([
+      expect.objectContaining({ name: "NavigateInternal", args: { url: "#/start" } }),
+    ]);
+  });
+
+  it("does not redirect on null data outside a runner route", () => {
+    const model = { ...makeModel(makeRunner({ sessionId: "s1" })), route: StartTab() };
+    const synced = update(model, Message.GotRunnerData({ data: null }));
+    expect(synced.model.runner).toBeNull();
+    expect(synced.commands ?? []).toEqual([]);
+  });
 });
 
 describe("tablet sidebar visibility", () => {

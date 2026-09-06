@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Cause, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -12,7 +12,7 @@ import { nextDuplicateName } from "./naming";
 
 export const CreateTemplate = Command.define("CreateTemplate", {
   args: { id: S.String, name: S.String },
-  messages: [Message.TemplateCreated],
+  messages: [Message.TemplateCreated, Message.FailedTemplateOp],
   execute: ({ id, name }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
@@ -20,18 +20,26 @@ export const CreateTemplate = Command.define("CreateTemplate", {
       const existing = store.query(tables.templates.select()) as ReadonlyArray<{ id: string }>;
       store.commit(events.templateCreated({ id, name, isDefault: existing.length === 0 }));
       return Message.TemplateCreated();
-    }),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 export const SetDefaultTemplate = Command.define("SetDefaultTemplate", {
   args: { id: S.String },
-  messages: [Message.TemplateOpDone],
+  messages: [Message.TemplateOpDone, Message.FailedTemplateOp],
   execute: ({ id }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
       store.commit(events.templateDefaultSet({ id }));
       return Message.TemplateOpDone();
-    }),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 export const DuplicateTemplate = Command.define("DuplicateTemplate", {
@@ -104,7 +112,7 @@ export const DeleteTemplate = Command.define("DeleteTemplate", {
 /** Seeds "Sample Study" exactly once, when zero templates exist (spec §1.10). */
 export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
   args: {},
-  messages: [Message.TemplatesSeededCheck],
+  messages: [Message.TemplatesSeededCheck, Message.FailedTemplateOp],
   execute: () =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
@@ -162,7 +170,11 @@ export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
         }),
       );
       return Message.TemplatesSeededCheck();
-    }).pipe(Effect.catch((_error) => Effect.succeed(Message.TemplatesSeededCheck()))),
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+      ),
+    ),
 });
 
 const effectFailure = (message: string) => Effect.fail(new Error(message));

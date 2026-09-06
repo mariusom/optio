@@ -52,6 +52,7 @@ import { effectiveTemplateId, resolveSelectedTemplate } from "./we/features/sess
 import { startView } from "./we/features/session/startView";
 import { supportsRequired } from "./we/fields";
 import {
+  historyRouter,
   isFullScreenRoute,
   parseRoute,
   RouteSchema,
@@ -827,7 +828,7 @@ export const update = (model: Model, message: Message) =>
       const planned = applyPlan(model, { _tag: "DataSynced", data } as SessionEvent);
       // Dead link / store reset mid-session: the runner route has no live
       // session — bounce to Start instead of an infinite "Loading session…".
-      if (data === null && model.route._tag === "SessionRunner" && model.runner === null) {
+      if (data === null && model.route._tag === "SessionRunner" && planned.model.runner === null) {
         return {
           model: planned.model,
           commands: [...(planned.commands ?? []), NavigateInternal({ url: "#/start" })],
@@ -879,8 +880,14 @@ export const update = (model: Model, message: Message) =>
     // ── History ───────────────────────────────────────────────────────────
     GotHistory: ({ history }) => ({ model: { ...model, history } }),
     GotHistoryDetail: ({ detail }) => {
-      // detail null => session not found (maybe deleted); keep model as is or clear
-      if (detail === null) return { model: { ...model, selectedHistorySession: null } };
+      if (detail === null)
+        return {
+          model: { ...model, selectedHistorySession: null },
+          commands:
+            model.route._tag === "SessionDetail"
+              ? [NavigateInternal({ url: `#${historyRouter()}` })]
+              : [],
+        };
       // Preserve edit state if already editing? keep showEdit flag
       return {
         model: {
@@ -952,7 +959,7 @@ export const update = (model: Model, message: Message) =>
     ConfirmedEditHistoryName: () => {
       if (model.selectedHistorySession === null)
         return { model: { ...model, showEditHistoryName: false } };
-      const trimmed = model.editHistoryNameInput;
+      const trimmed = model.editHistoryNameInput.trim();
       // Allow empty to clear custom name (revert to template)
       return {
         model: { ...model, showEditHistoryName: false },
@@ -1238,8 +1245,10 @@ const runnerStream = (sessionId: string): Stream.Stream<Message> =>
         let latestSessions: ReadonlyArray<RunnerSessionRow> = [];
         let latestTasks: ReadonlyArray<RunnerTaskRow> = [];
         let latestFields: ReadonlyArray<RunnerFieldRow> = [];
+        let sessionsLoaded = false;
 
         const push = () => {
+          if (!sessionsLoaded) return;
           const session =
             (latestSessions as ReadonlyArray<RunnerSessionRow>).find((s) => s.id === sessionId) ??
             null;
@@ -1327,6 +1336,7 @@ const runnerStream = (sessionId: string): Stream.Stream<Message> =>
           tables.sessions.select().where({ id: sessionId }),
           (rows) => {
             latestSessions = rows as unknown as ReadonlyArray<RunnerSessionRow>;
+            sessionsLoaded = true;
             push();
           },
         );
@@ -1430,8 +1440,10 @@ const historyDetailStream = (sessionId: string): Stream.Stream<Message> =>
         let latestSessions: ReadonlyArray<HistorySessionRow> = [];
         let latestRecords: ReadonlyArray<TaskRecordRow> = [];
         let latestSections: ReadonlyArray<TaskSectionRow> = [];
+        let sessionsLoaded = false;
 
         const push = () => {
+          if (!sessionsLoaded) return;
           const session =
             (latestSessions as ReadonlyArray<HistorySessionRow>).find((s) => s.id === sessionId) ??
             null;
@@ -1477,11 +1489,7 @@ const historyDetailStream = (sessionId: string): Stream.Stream<Message> =>
                 })),
               };
             })
-            .sort((a, b) => {
-              const aStart = a.startedAt ?? Date.now();
-              const bStart = b.startedAt ?? Date.now();
-              return aStart - bStart;
-            });
+            .sort((a, b) => a.taskId - b.taskId);
           Queue.offerUnsafe(
             queue,
             Message.GotHistoryDetail({
@@ -1505,6 +1513,7 @@ const historyDetailStream = (sessionId: string): Stream.Stream<Message> =>
           tables.sessions.select().where({ id: sessionId }),
           (rows) => {
             latestSessions = rows as unknown as ReadonlyArray<HistorySessionRow>;
+            sessionsLoaded = true;
             push();
           },
         );

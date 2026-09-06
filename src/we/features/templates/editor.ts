@@ -42,6 +42,9 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
   if (!hasOptions(nextKind)) {
     next = { ...next, options: [], exclusiveOptions: [], newOptionText: "" };
   }
+  if (hasOptions(nextKind) && nextKind !== draft.kind) {
+    next = { ...next, defaultValue: "" };
+  }
   if (nextKind === "boolean") {
     const current = next.defaultValue;
     next = { ...next, defaultValue: current === "true" ? "true" : "false" };
@@ -66,7 +69,10 @@ export const isTemplateValid = (editor: { readonly name: string }): boolean =>
 
 export const isDraftValid = (draft: FieldDraft): boolean => {
   if (draft.name.trim().length === 0) return false;
-  if (hasOptions(draft.kind) && draft.options.length === 0) return false;
+  if (hasOptions(draft.kind) && draft.options.length < 2) return false;
+  if (draft.kind === "checkbox" && draft.options.some((option) => option.includes(","))) {
+    return false;
+  }
   return true;
 };
 
@@ -133,6 +139,10 @@ export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
   if (kind === "boolean") {
     defaultValue = defaultValue === "true" ? "true" : "false";
   }
+  if (hasOpts && defaultValue !== "") {
+    const defaults = kind === "checkbox" ? defaultValue.split(",") : [defaultValue];
+    if (!defaults.every((option) => options.includes(option))) defaultValue = "";
+  }
   return {
     id: draft.id,
     name: draft.name.trim(),
@@ -174,6 +184,7 @@ export const draftFromField = (field: FieldDef): FieldDraft => ({
 export const addOptionToDraft = (draft: FieldDraft): FieldDraft => {
   const trimmed = draft.newOptionText.trim();
   if (trimmed === "") return draft;
+  if (draft.kind === "checkbox" && trimmed.includes(",")) return draft;
   if (draft.options.includes(trimmed)) return { ...draft, newOptionText: "" };
   return { ...draft, options: [...draft.options, trimmed], newOptionText: "" };
 };

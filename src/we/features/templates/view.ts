@@ -406,7 +406,14 @@ const createModal = (newName: string, h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledCreateTemplate())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel creating template"),
+          h.OnClick(Message.CanceledCreateTemplate()),
+        ],
+        [],
+      ),
     ],
   );
 
@@ -453,7 +460,14 @@ const deleteModal = (
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDeleteTemplate())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel deleting template"),
+          h.OnClick(Message.CanceledDeleteTemplate()),
+        ],
+        [],
+      ),
     ],
   );
 

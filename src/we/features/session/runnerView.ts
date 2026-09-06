@@ -358,7 +358,10 @@ const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
     ],
     [
       h.label(
-        [h.Class("flex flex-col pr-3 cursor-pointer flex-1")],
+        [
+          h.Class("flex flex-col pr-3 cursor-pointer flex-1"),
+          h.Attribute("for", `runner-toggle-${section.id}`),
+        ],
         [
           h.span([h.Class("text-sm font-medium text-base-content")], [section.name]),
           h.span(
@@ -373,6 +376,7 @@ const formToggle = (section: RunnerSection, h: HtmlBuilder<Message>) => {
       ),
       h.input([
         h.Class("toggle toggle-primary checked:border-primary shrink-0"),
+        h.Id(`runner-toggle-${section.id}`),
         h.Type("checkbox"),
         h.Attribute("role", "switch"),
         h.Checked(isOn),
@@ -776,7 +780,12 @@ export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) =>
       ? `Are you sure you want to end this session? You have recorded 0 tasks in ${elapsed}. No session will be saved.`
       : `Are you sure you want to end this session? You have recorded ${count} task(s) in ${elapsed}.`;
   return h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "dialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel("End Session"),
+    ],
     [
       h.div(
         [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
@@ -804,20 +813,36 @@ export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledEndSession())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel ending session"),
+          h.OnClick(Message.CanceledEndSession()),
+        ],
+        [],
+      ),
     ],
   );
 };
 
 export const errorAlert = (msg: string, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs")],
+    [
+      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
+      h.Attribute("role", "alertdialog"),
+      h.Attribute("aria-modal", "true"),
+      h.AriaLabel("Something Went Wrong"),
+      h.Attribute("aria-describedby", "runner-error-message"),
+    ],
     [
       h.div(
         [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
         [
           h.h3([h.Class("text-base font-bold")], ["Something Went Wrong"]),
-          h.p([h.Class("mt-1.5 text-xs text-base-content/70")], [msg]),
+          h.p(
+            [h.Id("runner-error-message"), h.Class("mt-1.5 text-xs text-base-content/70")],
+            [msg],
+          ),
           h.div(
             [h.Class("modal-action mt-4")],
             [
@@ -832,7 +857,14 @@ export const errorAlert = (msg: string, h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.DismissedRunnerError())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Dismiss error"),
+          h.OnClick(Message.DismissedRunnerError()),
+        ],
+        [],
+      ),
     ],
   );
 

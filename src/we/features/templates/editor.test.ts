@@ -13,6 +13,7 @@ import {
   moveField,
   renumberFields,
   toggleExclusiveOption,
+  withKindChanged,
 } from "./editor";
 import type { EditorState, FieldDraft } from "./editor";
 
@@ -61,10 +62,11 @@ describe("isDraftValid", () => {
     expect(isDraftValid({ ...draft, name: "Activity" })).toBe(true);
   });
 
-  it("requires ≥1 option when hasOptions", () => {
+  it("requires ≥2 options when hasOptions", () => {
     const base = { ...makeEmptyDraft(0), name: "Category", kind: "radio" as const };
     expect(isDraftValid(base)).toBe(false);
-    expect(isDraftValid({ ...base, options: ["A"] })).toBe(true);
+    expect(isDraftValid({ ...base, options: ["A"] })).toBe(false);
+    expect(isDraftValid({ ...base, options: ["A", "B"] })).toBe(true);
     const checkbox = {
       ...makeEmptyDraft(0),
       name: "Tools",
@@ -72,7 +74,8 @@ describe("isDraftValid", () => {
       options: [],
     };
     expect(isDraftValid(checkbox)).toBe(false);
-    expect(isDraftValid({ ...checkbox, options: ["Computer"] })).toBe(true);
+    expect(isDraftValid({ ...checkbox, options: ["Computer"] })).toBe(false);
+    expect(isDraftValid({ ...checkbox, options: ["Computer", "Phone"] })).toBe(true);
   });
 
   it("textInput and boolean pass without options", () => {
@@ -208,6 +211,27 @@ describe("deleteField", () => {
 });
 
 describe("draftToFieldDef normalization", () => {
+  it.each(["radio", "checkbox"] as const)(
+    "clears stale %s defaults and preserves valid ones",
+    (kind) => {
+      const draft = { ...makeEmptyDraft(0), name: "Choice", kind, options: ["A", "B"] };
+      expect(draftToFieldDef({ ...draft, defaultValue: "old text" }).defaultValue).toBe("");
+      expect(draftToFieldDef({ ...draft, defaultValue: "A" }).defaultValue).toBe("A");
+      expect(draftToFieldDef({ ...draft, defaultValue: "A,B" }).defaultValue).toBe(
+        kind === "checkbox" ? "A,B" : "",
+      );
+      const removed = deleteOptionFromDraft({ ...draft, defaultValue: "A" }, 0);
+      expect(draftToFieldDef(removed).defaultValue).toBe("");
+    },
+  );
+
+  it.each(["radio", "checkbox"] as const)("clears text defaults when changing to %s", (kind) => {
+    for (const textKind of ["textInput", "textArea"] as const) {
+      const draft = { ...makeEmptyDraft(0), kind: textKind, defaultValue: "stale text" };
+      expect(withKindChanged(draft, kind).defaultValue).toBe("");
+    }
+  });
+
   it("boolean forces isRequired false and normalizes default", () => {
     const draft = {
       ...makeEmptyDraft(0),
@@ -254,6 +278,26 @@ describe("draftToFieldDef normalization", () => {
 });
 
 describe("option helpers", () => {
+  it("rejects comma-bearing checkbox names without losing the input", () => {
+    const draft = {
+      ...makeEmptyDraft(0),
+      name: "Tools",
+      kind: "checkbox" as const,
+      options: ["A", "B"],
+      newOptionText: " Pen, paper ",
+    };
+    expect(addOptionToDraft(draft)).toBe(draft);
+    expect(isDraftValid({ ...draft, options: ["A", "Pen, paper"] })).toBe(false);
+    const radio = { ...draft, kind: "radio" as const };
+    expect(addOptionToDraft(radio).options).toEqual(["A", "B", "Pen, paper"]);
+    expect(isDraftValid(withKindChanged(addOptionToDraft(radio), "checkbox"))).toBe(false);
+    expect(addOptionToDraft({ ...draft, newOptionText: " Pen and paper " }).options).toEqual([
+      "A",
+      "B",
+      "Pen and paper",
+    ]);
+  });
+
   it("addOptionToDraft trims, ignores blank and duplicate", () => {
     let draft = {
       ...makeEmptyDraft(0),

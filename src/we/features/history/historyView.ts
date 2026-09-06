@@ -427,7 +427,14 @@ const deleteModal = (
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledHistoryDelete())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel deleting session"),
+          h.OnClick(Message.CanceledHistoryDelete()),
+        ],
+        [],
+      ),
     ],
   );
 

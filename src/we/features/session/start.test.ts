@@ -41,6 +41,15 @@ describe("Foldcn session launcher", () => {
     }),
   };
 
+  it("announces persistence errors even before templates have loaded", () => {
+    Scene.scene(
+      config,
+      Scene.given({ ...model, templates: [], lastError: "Store unavailable" }),
+      Scene.expect(Scene.role("alert")).toExist(),
+      Scene.expect(Scene.text("Store unavailable")).toExist(),
+    );
+  });
+
   it("labels the native select and emits the selected template", () => {
     Scene.scene(
       config,

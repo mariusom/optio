@@ -284,7 +284,10 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                     ],
                     [
                       h.label(
-                        [h.Class("flex flex-col pr-3 cursor-pointer flex-1 text-left")],
+                        [
+                          h.Class("flex flex-col pr-3 cursor-pointer flex-1 text-left"),
+                          h.Attribute("for", "editor-default-template"),
+                        ],
                         [
                           h.span(
                             [h.Class("text-sm font-semibold text-base-content")],
@@ -300,6 +303,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                       ),
                       h.input([
                         h.Class("toggle toggle-primary checked:border-primary shrink-0"),
+                        h.Id("editor-default-template"),
                         h.Type("checkbox"),
                         h.Attribute("role", "switch"),
                         h.Checked(editor.isDefault),
@@ -514,6 +518,7 @@ const fieldRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<
           h.button(
             [
               h.Class("ml-1 flex items-center"),
+              h.AriaLabel(`Edit field ${field.name}`),
               h.OnClick(Message.ClickedEditField({ id: field.id })),
             ],
             [chevronRight(h)],
@@ -530,6 +535,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
   const title = isEditing ? "Edit Field" : "Add Field";
   const kind = draft.kind as FieldKind;
   const valid = isDraftValid(draft as unknown as Parameters<typeof isDraftValid>[0]);
+  const invalidOptionName = kind === "checkbox" && draft.newOptionText.includes(",");
 
   return h.div(
     [
@@ -542,7 +548,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
       h.div(
         [
           h.Class(
-            "modal-box max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-box sm:rounded-box bg-base-100 p-0 border border-base-300 flex flex-col shadow-xl",
+            "modal-box max-w-lg w-full max-h-[90vh] overflow-hidden rounded-t-box sm:rounded-box bg-base-100 p-0 border border-base-300 flex flex-col shadow-xl",
           ),
         ],
         [
@@ -550,7 +556,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
           h.div(
             [
               h.Class(
-                "sticky top-0 z-10 bg-base-100 border-b border-base-200 px-5 py-4 flex items-center justify-between",
+                "shrink-0 bg-base-100 border-b border-base-200 px-5 py-4 flex items-center justify-between",
               ),
             ],
             [
@@ -569,7 +575,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
           ),
           // Body
           h.div(
-            [h.Class("flex-1 space-y-5 p-5")],
+            [h.Class("min-h-0 flex-1 overflow-y-auto space-y-5 p-5")],
             [
               // Field Info
               h.div(
@@ -659,7 +665,10 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                       ],
                       [
                         h.label(
-                          [h.Class("flex flex-col pr-3 text-left cursor-pointer flex-1")],
+                          [
+                            h.Class("flex flex-col pr-3 text-left cursor-pointer flex-1"),
+                            h.Attribute("for", "editor-field-required"),
+                          ],
                           [
                             h.span(
                               [h.Class("text-sm font-medium text-base-content")],
@@ -673,6 +682,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                         ),
                         h.input([
                           h.Class("toggle toggle-primary checked:border-primary shrink-0"),
+                          h.Id("editor-field-required"),
                           h.Type("checkbox"),
                           h.Attribute("role", "switch"),
                           h.Checked(draft.isRequired),
@@ -787,9 +797,12 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                               h.Value(draft.newOptionText),
                               h.Placeholder("Add option name…"),
                               h.AriaLabel("New option name"),
+                              h.Attribute("aria-invalid", String(invalidOptionName)),
                               h.OnInput((value) => Message.ChangedNewOptionText({ text: value })),
                               h.OnKeyDownPreventDefault((key) =>
-                                key === "Enter" && draft.newOptionText.trim() !== ""
+                                key === "Enter" &&
+                                draft.newOptionText.trim() !== "" &&
+                                !invalidOptionName
                                   ? Option.some(Message.ConfirmedAddOption())
                                   : Option.none(),
                               ),
@@ -801,6 +814,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                 ),
                                 h.Disabled(
                                   draft.newOptionText.trim() === "" ||
+                                    invalidOptionName ||
                                     draft.options.includes(draft.newOptionText.trim()),
                                 ),
                                 h.OnClick(Message.ConfirmedAddOption()),
@@ -810,6 +824,25 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                             ),
                           ],
                         ),
+                        ...(draft.options.length === 1
+                          ? [
+                              h.p(
+                                [h.Class("text-sm text-error")],
+                                ["Add at least 2 options to save this field."],
+                              ),
+                            ]
+                          : []),
+                        ...(kind === "checkbox" &&
+                        (invalidOptionName || draft.options.some((option) => option.includes(",")))
+                          ? [
+                              h.p(
+                                [h.Class("text-sm text-error"), h.Attribute("role", "alert")],
+                                [
+                                  "Checkbox option names cannot contain commas. Remove commas before adding an option; delete and replace any existing option containing commas.",
+                                ],
+                              ),
+                            ]
+                          : []),
                       ],
                     ),
                   ]
@@ -843,6 +876,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                   [
                                     h.label(
                                       [
+                                        h.Attribute("for", "editor-field-default-boolean"),
                                         h.Class(
                                           "flex flex-col pr-3 text-left cursor-pointer flex-1",
                                         ),
@@ -867,6 +901,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                                       ],
                                     ),
                                     h.input([
+                                      h.Id("editor-field-default-boolean"),
                                       h.Class(
                                         "toggle toggle-primary checked:border-primary shrink-0",
                                       ),
@@ -921,7 +956,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
           ),
           // Footer actions
           h.div(
-            [h.Class("sticky bottom-0 bg-base-100 border-t border-base-200 p-4 flex gap-2.5")],
+            [h.Class("shrink-0 bg-base-100 border-t border-base-200 p-4 flex gap-2.5")],
             [
               h.button(
                 [
@@ -944,7 +979,14 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledAddField())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Cancel field editing"),
+          h.OnClick(Message.CanceledAddField()),
+        ],
+        [],
+      ),
     ],
   );
 };
@@ -993,6 +1035,13 @@ const discardModal = (h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscard())], []),
+      h.button(
+        [
+          h.Class("modal-backdrop"),
+          h.AriaLabel("Continue editing"),
+          h.OnClick(Message.CanceledDiscard()),
+        ],
+        [],
+      ),
     ],
   );
