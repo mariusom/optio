@@ -5,6 +5,7 @@ import { UrlRequest } from "foldkit/navigation";
 import { FieldDef } from "./livestore/schema";
 import { RouteSchema } from "./we/routes";
 import { TemplateSummary } from "./we/types";
+import { Theme } from "./we/theme";
 
 // Central flat Message union. Payload schemas are grouped by feature;
 // reducers live next to their feature views under src/we/features/*.
@@ -14,6 +15,8 @@ export const Message = defineMessageUnion({
   GotRoute: { route: RouteSchema },
   ClickedLink: { request: UrlRequest },
   Navigated: {},
+  SelectedTheme: { theme: Theme },
+  ThemeSaveFinished: { theme: Theme, saved: S.Boolean },
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: S.Array(TemplateSummary) },

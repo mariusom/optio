@@ -338,7 +338,7 @@ export const icon = <M>({ name, class: classes = "h-5 w-5" }: IconProps, h: Html
 // ── Building blocks ──────────────────────────────────────────────────────
 
 type TabDef = {
-  readonly tag: "StartTab" | "HistoryTab" | "TemplatesTab";
+  readonly tag: "StartTab" | "HistoryTab" | "TemplatesTab" | "SettingsTab";
   readonly label: string;
   readonly icon: IconName;
 };
@@ -347,6 +347,7 @@ const TABS: ReadonlyArray<TabDef> = [
   { tag: "TemplatesTab", label: "Templates", icon: "doc" },
   { tag: "StartTab", label: "Session", icon: "play" },
   { tag: "HistoryTab", label: "History", icon: "clock" },
+  { tag: "SettingsTab", label: "Settings", icon: "sliders" },
 ];
 
 export const navigationTabs = (hasHistory: boolean): ReadonlyArray<TabDef> =>
@@ -418,7 +419,7 @@ export const bottomTabBar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilde
       h.div(
         [
           h.Class(
-            `mx-auto grid h-14 max-w-md ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"} items-center px-2`,
+            `mx-auto grid h-14 max-w-md ${tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"} items-center px-2`,
           ),
         ],
         tabs.map((tab) => {

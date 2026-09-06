@@ -4,14 +4,9 @@ import { registerSW } from "virtual:pwa-register";
 
 import "./index.css";
 import { applicationConfig } from "./application.ts";
+import { initializeTheme } from "./we/browserTheme";
 
-const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
-const syncColorScheme = (event: MediaQueryListEvent | MediaQueryList) => {
-  document.documentElement.classList.toggle("dark", event.matches);
-};
-
-syncColorScheme(colorScheme);
-colorScheme.addEventListener("change", syncColorScheme);
+const theme = initializeTheme();
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
 // Design system §5.9: never reload the page out from under the user. When a new
@@ -59,6 +54,10 @@ const updateSW = registerSW({
 
 const application = Runtime.makeApplication({
   ...applicationConfig,
+  init: (url) => {
+    const initial = applicationConfig.init(url);
+    return { ...initial, model: { ...initial.model, theme } };
+  },
   container: document.getElementById("root")!,
 });
 

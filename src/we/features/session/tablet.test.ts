@@ -42,6 +42,8 @@ const makeRunner = (
 
 const makeModel = (runner: Model["runner"]): Model => ({
   route: SessionRunner({ sessionId: "s1" }),
+  theme: "auto",
+  themeSaveFailed: false,
   templates: [],
   showCreate: false,
   newName: "",

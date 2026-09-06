@@ -4,6 +4,9 @@ import type { Document, HtmlBuilder } from "foldkit/html";
 import { toString as urlToString, type Url } from "foldkit/url";
 
 import { Message } from "./messages";
+import { Theme } from "./we/theme";
+import { changeTheme } from "./we/browserTheme";
+import { settingsPage } from "./we/features/settings/view";
 import { getStore } from "./livestore/client";
 import { FieldDef, FieldKind, tables } from "./livestore/schema";
 import { generateSessionName } from "./we/random-name";
@@ -71,6 +74,8 @@ import { sessionDetailPage } from "./we/features/history/sessionDetailView";
 
 export const Model = S.Struct({
   route: RouteSchema,
+  theme: Theme,
+  themeSaveFailed: S.Boolean,
   // Templates tab slice
   templates: S.Array(
     S.Struct({
@@ -232,6 +237,8 @@ export type Model = typeof Model.Type;
 
 const initialModel = (route: Route): Model => ({
   route,
+  theme: "auto",
+  themeSaveFailed: false,
   templates: [],
   showCreate: false,
   newName: "",
@@ -270,6 +277,13 @@ const NavigateInternal = Command.define("NavigateInternal", {
   args: { url: S.String },
   messages: [Message.Navigated],
   execute: ({ url }) => Effect.map(Navigation.pushUrl(url), () => Message.Navigated()),
+});
+
+const SaveTheme = Command.define("SaveTheme", {
+  args: { theme: Theme },
+  messages: [Message.ThemeSaveFinished],
+  execute: ({ theme }) =>
+    Effect.map(changeTheme(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
 });
 
 const NavigateExternal = Command.define("NavigateExternal", {
@@ -314,6 +328,14 @@ const applyPlan = (model: Model, event: SessionEvent) => {
 
 export const update = (model: Model, message: Message) =>
   Message.match<Update.Return<Model, Message>>(message, {
+    SelectedTheme: ({ theme }) => ({
+      model: { ...model, theme },
+      commands: [SaveTheme({ theme })],
+    }),
+    ThemeSaveFinished: ({ theme, saved }) => ({
+      model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
+      commands: [],
+    }),
     // ── Routing ────────────────────────────────────────────────────────────
     GotRoute: ({ route }) => {
       let base =
@@ -1652,6 +1674,8 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 
 const pageTitle = (route: Route): string => {
   switch (route._tag) {
+    case "SettingsTab":
+      return "Settings";
     case "StartTab":
       return "Session";
     case "HistoryTab":
@@ -1669,6 +1693,8 @@ const pageTitle = (route: Route): string => {
 
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   switch (model.route._tag) {
+    case "SettingsTab":
+      return settingsPage(model.theme, model.themeSaveFailed, h);
     case "StartTab":
       return startView(model, h);
     case "TemplatesTab":
