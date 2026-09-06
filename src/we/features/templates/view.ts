@@ -98,18 +98,14 @@ const docIcon = (classes: string, h: HtmlBuilder<Message>) =>
     ),
   ]);
 
-// ── Desktop / Tablet Data Table ─────────────────────────────────────────────
+// ── Desktop Data Table ──────────────────────────────────────────────────────
 
 const desktopTemplatesTable = (
   templates: ReadonlyArray<TemplateSummary>,
   h: HtmlBuilder<Message>,
 ) =>
   h.div(
-    [
-      h.Class(
-        "hidden md:block w-full overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-xs",
-      ),
-    ],
+    [h.Class("hidden lg:block w-full rounded-box border border-base-300 bg-base-100 shadow-xs")],
     [
       h.table(
         [h.Class("table table-zebra table-hover w-full text-sm")],
@@ -144,27 +140,27 @@ const desktopTemplatesTable = (
             [h.Class("divide-y divide-base-200")],
             templates.map((template) =>
               h.tr(
-                [
-                  h.Class("cursor-pointer hover:bg-base-200/50 transition-colors group"),
-                  h.OnClick(Message.ClickedTemplateRow({ id: template.id })),
-                ],
+                [h.Class("hover:bg-base-200/50 transition-colors group")],
                 [
                   h.td(
                     [h.Class("py-3.5 px-4 font-semibold text-base-content")],
                     [
-                      h.div(
-                        [h.Class("flex items-center gap-2")],
+                      h.button(
                         [
-                          h.span(
-                            [h.Class("group-hover:text-primary transition-colors")],
-                            [template.name],
+                          h.Class(
+                            "flex items-center gap-2 rounded-field text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
                           ),
+                          h.OnClick(Message.ClickedTemplateRow({ id: template.id })),
+                          h.AriaLabel(`Edit template ${template.name}`),
+                        ],
+                        [
+                          h.span([], [template.name]),
                           ...(template.isDefault
                             ? [
                                 h.span(
                                   [
                                     h.Class(
-                                      "badge badge-sm border-none bg-accent/15 font-semibold text-accent text-[11px]",
+                                      "badge badge-sm border-none bg-accent font-semibold text-accent-foreground text-[11px]",
                                     ),
                                   ],
                                   ["Default"],
@@ -187,10 +183,7 @@ const desktopTemplatesTable = (
                     [h.Class("py-3.5 px-4 text-right")],
                     [
                       h.div(
-                        [
-                          h.Class("flex items-center justify-end gap-1"),
-                          h.Attribute("onclick", "event.stopPropagation()"),
-                        ],
+                        [h.Class("flex items-center justify-end gap-1")],
                         [kebabMenu(template, h)],
                       ),
                     ],
@@ -233,9 +226,9 @@ export const templatesPage = (
               ],
               [docIcon("h-8 w-8", h)],
             ),
-            h.h3([h.Class("text-base font-bold text-base-content")], ["No Templates"]),
+            h.h3([h.Class("text-xl font-bold text-base-content")], ["No templates yet"]),
             h.p(
-              [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/60")],
+              [h.Class("mt-2 text-sm leading-relaxed text-base-content/70")],
               [
                 "Create a template to define the fields you want to capture during your time and motion studies.",
               ],
@@ -265,16 +258,28 @@ export const templatesPage = (
       h.div(
         [h.Class("mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4")],
         [
-          // Desktop & Tablet table
-          desktopTemplatesTable(model.templates, h),
-
-          // Mobile card list
           h.div(
+            [h.Class("space-y-1")],
             [
-              h.Class(
-                "md:hidden divide-y divide-base-200 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-xs",
+              h.h1([h.Class("text-2xl font-bold tracking-tight text-base-content")], ["Templates"]),
+              h.p(
+                [h.Class("text-sm leading-relaxed text-base-content/70")],
+                ["Create and manage the forms used to capture your study data."],
+              ),
+              h.p(
+                [h.Class("pt-1 text-sm font-semibold text-base-content/80")],
+                [
+                  `${model.templates.length} ${model.templates.length === 1 ? "template" : "templates"}`,
+                ],
               ),
             ],
+          ),
+          // Desktop table
+          desktopTemplatesTable(model.templates, h),
+
+          // Mobile and tablet card grid
+          h.div(
+            [h.Class("grid grid-cols-1 gap-3 md:grid-cols-2 lg:hidden")],
             model.templates.map((t) => templateRow(t, h)),
           ),
           h.p(
@@ -295,7 +300,7 @@ const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
     template.id,
     [
       h.Class(
-        "flex items-stretch bg-base-100 active:scale-[0.99] active:bg-base-200/50 transition-all duration-75",
+        "flex items-stretch rounded-box border border-base-300 bg-base-100 shadow-xs active:scale-[0.99] active:bg-base-200/50 transition-all duration-75",
       ),
     ],
     [
@@ -320,7 +325,7 @@ const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
                     h.span(
                       [
                         h.Class(
-                          "badge badge-sm shrink-0 border-none bg-accent/15 font-semibold text-accent text-[11px]",
+                          "badge badge-sm shrink-0 border-none bg-accent font-semibold text-accent-foreground text-[11px]",
                         ),
                       ],
                       ["Default"],

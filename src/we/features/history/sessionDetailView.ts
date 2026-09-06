@@ -59,7 +59,7 @@ const badge = (taskId: number, h: HtmlBuilder<Message>) =>
   h.div(
     [
       h.Class(
-        "flex h-7 w-7 items-center justify-center rounded-full bg-primary text-white text-xs font-bold shrink-0",
+        "flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0",
       ),
     ],
     [String(taskId)],

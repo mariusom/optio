@@ -23,7 +23,7 @@ const badge = (taskId: number, h: HtmlBuilder<Message>) =>
   h.div(
     [
       h.Class(
-        "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold shrink-0",
+        "flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold shrink-0",
       ),
       h.Attribute("style", "min-width:24px;min-height:24px"),
     ],

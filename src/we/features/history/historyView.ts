@@ -104,7 +104,7 @@ const sessionRowView = (session: HistoryModel["history"][number], h: HtmlBuilder
   return h.div(
     [
       h.Class(
-        "flex items-stretch bg-base-100 active:scale-[0.99] active:bg-base-200/50 transition-all duration-75",
+        "flex items-stretch rounded-box border border-base-300 bg-base-100 shadow-xs active:scale-[0.99] active:bg-base-200/50 transition-all duration-75",
       ),
     ],
     [
@@ -212,15 +212,11 @@ const sessionRowView = (session: HistoryModel["history"][number], h: HtmlBuilder
   );
 };
 
-// ── Desktop / Tablet Data Table ─────────────────────────────────────────────
+// ── Desktop Data Table ──────────────────────────────────────────────────────
 
 const desktopHistoryTable = (history: HistoryModel["history"], h: HtmlBuilder<Message>) =>
   h.div(
-    [
-      h.Class(
-        "hidden md:block w-full overflow-x-auto rounded-box border border-base-300 bg-base-100 shadow-xs",
-      ),
-    ],
+    [h.Class("hidden lg:block w-full rounded-box border border-base-300 bg-base-100 shadow-xs")],
     [
       h.table(
         [h.Class("table table-zebra table-hover w-full text-sm")],
@@ -260,22 +256,20 @@ const desktopHistoryTable = (history: HistoryModel["history"], h: HtmlBuilder<Me
             history.map((session) => {
               const timeRange = formatRange(session.startedAt, session.endedAt);
               return h.tr(
-                [
-                  h.Class("cursor-pointer hover:bg-base-200/50 transition-colors group"),
-                  h.OnClick(Message.ClickedHistoryRow({ id: session.id })),
-                ],
+                [h.Class("hover:bg-base-200/50 transition-colors group")],
                 [
                   h.td(
                     [h.Class("py-3.5 px-4 font-semibold text-base-content")],
                     [
-                      h.div(
-                        [h.Class("flex items-center gap-2")],
+                      h.button(
                         [
-                          h.span(
-                            [h.Class("group-hover:text-primary transition-colors")],
-                            [session.displayName],
+                          h.Class(
+                            "rounded-field text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
                           ),
+                          h.OnClick(Message.ClickedHistoryRow({ id: session.id })),
+                          h.AriaLabel(`Open session ${session.displayName}`),
                         ],
+                        [h.span([], [session.displayName])],
                       ),
                     ],
                   ),
@@ -297,10 +291,7 @@ const desktopHistoryTable = (history: HistoryModel["history"], h: HtmlBuilder<Me
                     [h.Class("py-3.5 px-4 text-right")],
                     [
                       h.div(
-                        [
-                          h.Class("flex items-center justify-end gap-1.5"),
-                          h.Attribute("onclick", "event.stopPropagation()"),
-                        ],
+                        [h.Class("flex items-center justify-end gap-1.5")],
                         [
                           ...(session.taskCount > 0
                             ? [
@@ -371,9 +362,9 @@ const emptyState = (h: HtmlBuilder<Message>) =>
             ],
             [clockQuestionIcon("h-8 w-8", h)],
           ),
-          h.h3([h.Class("text-base font-bold text-base-content")], ["No sessions yet"]),
+          h.h3([h.Class("text-xl font-bold text-base-content")], ["No sessions yet"]),
           h.p(
-            [h.Class("mt-1.5 text-xs leading-relaxed text-base-content/60")],
+            [h.Class("mt-2 text-sm leading-relaxed text-base-content/70")],
             ["Finish a session and it will appear here, ready for CSV export."],
           ),
           h.a(
@@ -483,16 +474,26 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
       h.div(
         [h.Class("mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 space-y-4")],
         [
-          // Desktop & Tablet table
-          desktopHistoryTable(model.history, h),
-
-          // Mobile card list
           h.div(
+            [h.Class("space-y-1")],
             [
-              h.Class(
-                "md:hidden divide-y divide-base-200 overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-xs",
+              h.h1([h.Class("text-2xl font-bold tracking-tight text-base-content")], ["History"]),
+              h.p(
+                [h.Class("text-sm leading-relaxed text-base-content/70")],
+                ["Review completed sessions and export their recorded data."],
+              ),
+              h.p(
+                [h.Class("pt-1 text-sm font-semibold text-base-content/80")],
+                [`${model.history.length} ${model.history.length === 1 ? "session" : "sessions"}`],
               ),
             ],
+          ),
+          // Desktop table
+          desktopHistoryTable(model.history, h),
+
+          // Mobile and tablet card grid
+          h.div(
+            [h.Class("grid grid-cols-1 gap-3 md:grid-cols-2 lg:hidden")],
             model.history.map((session) => sessionRowView(session, h)),
           ),
         ],

@@ -19,8 +19,10 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
   first value written stamps `startDate` (SQL `COALESCE(startDate, now)`), and
   task/session durations are derived from it. Sessions can be resumed after a
   force-quit or a reload — the live session row _is_ the resume state.
-- **Phone + tablet/desktop** — single-column task canvas on `<768px`; a split
-  cockpit (`w-80 lg:w-96` task sidebar + form pane) at `≥768px`. Bottom tab
+- **Phone + tablet/desktop** — bottom navigation and a single-column task canvas
+  on `<768px`; a compact workspace rail on tablets, and a labeled sidebar at
+  `≥1200px`. Recording uses a split cockpit (`w-64 lg:w-80` task sidebar + form pane)
+  at `≥768px`. Bottom tab
   bar is hidden during a live session, where a fixed timer + Record/End footer
   takes over.
 - **History** — archived sessions with full task/section detail, editable
@@ -32,17 +34,17 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 
 ## Stack
 
-| Layer              | Tool                                                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| UI framework       | [FoldKit](https://foldkit.dev) 0.157 — Elm architecture on Effect (Model / Message / update / view)                            |
-| Styling            | Tailwind CSS 4 + daisyUI 5 (`optio-light` / `optio-dark` themes, grouped surfaces)                                             |
-| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`     |
-| Session logic      | `@typeonce/effect-machine` 0.31 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously |
-| Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                       |
-| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                |
-| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                        |
-| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                          |
-| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                             |
+| Layer              | Tool                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI framework       | [FoldKit](https://foldkit.dev) 0.157 — Elm architecture on Effect (Model / Message / update / view)                                           |
+| Styling            | Tailwind CSS 4 + [Foldcn](https://foldcn.elianiva.com) / `@foldkit/ui`; daisyUI 5 retained for legacy components, sharing Foldcn theme tokens |
+| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`                    |
+| Session logic      | `@typeonce/effect-machine` 0.31 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously                |
+| Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                                      |
+| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                               |
+| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                                       |
+| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                                         |
+| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                                            |
 
 ## Standalone-PWA hardening
 
@@ -69,6 +71,34 @@ pnpm test            # vitest via vp test
 pnpm preview         # preview the production build
 bun scripts/gen-icons.ts             # regenerate public/icon-{180,192,512}.png
 ```
+
+## Foldcn components
+
+`components.json` registers `@foldcn` and maps the `@/components`,
+`@/components/ui`, `@/lib`, and `@/hooks` aliases. TypeScript and Vite both
+resolve `@/` to `src/`. This is a Foldkit project, not React; always use
+the **namespaced** registry items:
+
+```sh
+npx shadcn@latest add @foldcn/button @foldcn/dialog
+```
+
+Button, Dialog, and Native Select are installed as editable TypeScript source
+in `src/components/ui`. The session launcher uses Button and Native Select;
+Dialog is available for subsequent modal migration. No React/Radix components
+are used. Stateful components such as Dialog must be wired as Foldkit submodels,
+not treated as CSS-only wrappers; see the [Foldcn docs](https://foldcn.elianiva.com/docs).
+
+`src/index.css` must retain `@import "tailwindcss";`. Foldcn's `:root`/`.dark`
+tokens are the shared theme, and dark mode follows the system preference.
+daisyUI remains for existing screens with its themes disabled and compatibility
+aliases pointing to the same colors. Its control-local `--border` width is
+isolated from Foldcn's `--border` color token.
+
+The base registry currently requests Effect `4.0.0-rc.109`; this app keeps
+`4.0.0-rc.112` to match its existing stack. Check dependency changes after any
+registry update. Run `pnpm check`, `pnpm exec tsc --noEmit`, `pnpm test`, and
+`pnpm build` after adding or updating components.
 
 ## Deployment
 

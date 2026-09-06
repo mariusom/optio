@@ -11,6 +11,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "useDefineForClassFields": true,
+    "paths": { "@/*": ["./src/*"] },
     "types": ["vite-plus/client", "vite-plugin-pwa/client"]
   },
   "include": ["src", "vite.config.ts"]

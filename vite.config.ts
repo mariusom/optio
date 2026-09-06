@@ -6,6 +6,7 @@ import { defineConfig } from "vite-plus";
 // Deployed to GitHub Pages project site: https://mariusom.github.io/optio/
 export default defineConfig({
   base: "/optio/",
+  resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
   server: { port: 60_001 },
   worker: { format: "es" },
   plugins: [

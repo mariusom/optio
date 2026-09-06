@@ -352,6 +352,54 @@ const TABS: ReadonlyArray<TabDef> = [
 export const navigationTabs = (hasHistory: boolean): ReadonlyArray<TabDef> =>
   hasHistory ? TABS : TABS.filter((tab) => tab.tag !== "HistoryTab");
 
+/** Persistent workspace navigation; a compact rail on tablet. */
+export const workspaceNavigation = <M>(route: Route, h: HtmlBuilder<M>) =>
+  h.aside(
+    [h.Class("workspace-sidebar")],
+    [
+      h.a(
+        [
+          h.Class("workspace-brand"),
+          h.Attribute("href", hrefFor({ _tag: "StartTab" })),
+          h.AriaLabel("Optio home"),
+        ],
+        [
+          h.span([h.Class("brand-mark")], ["o"]),
+          h.span(
+            [h.Class("sidebar-label")],
+            ["optio", h.span([h.Class("brand-caption")], ["TIME & MOTION"])],
+          ),
+        ],
+      ),
+      h.p([h.Class("sidebar-section sidebar-label")], ["WORKSPACE"]),
+      h.nav(
+        [h.AriaLabel("Workspace navigation")],
+        TABS.map((tab) => {
+          const active = route._tag === tab.tag;
+          return h.a(
+            [
+              h.Class(`workspace-link ${active ? "is-active" : ""}`),
+              h.Attribute("href", hrefFor({ _tag: tab.tag })),
+              h.AriaLabel(tab.label),
+              ...(active ? [h.AriaCurrent("page")] : []),
+            ],
+            [icon({ name: tab.icon }, h), h.span([h.Class("sidebar-label")], [tab.label])],
+          );
+        }),
+      ),
+      h.div(
+        [h.Class("workspace-privacy")],
+        [
+          icon({ name: "check", class: "h-4 w-4 shrink-0" }, h),
+          h.div(
+            [h.Class("sidebar-label")],
+            [h.p([], ["Just on this device"]), h.p([], ["Private. Offline. Yours."])],
+          ),
+        ],
+      ),
+    ],
+  );
+
 /**
  * Bottom tab bar for mobile viewports (< md). Safe-area aware; hidden on full-screen routes and md+.
  * Anchors drive hash routing — no JS navigation needed.
@@ -431,7 +479,7 @@ export const topBar = <M>(
   return h.header(
     [
       h.Class(
-        "sticky top-0 z-30 w-full border-b border-base-300 bg-base-100/90 pt-[env(safe-area-inset-top)] backdrop-blur-md select-none shadow-xs",
+        "app-topbar sticky top-0 z-30 w-full border-b border-base-300 bg-base-100/90 pt-[env(safe-area-inset-top)] backdrop-blur-md select-none",
       ),
     ],
     [

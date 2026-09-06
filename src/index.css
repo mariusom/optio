@@ -1,83 +1,12 @@
 /* fallow-ignore-file unused-file — imported by src/entry.ts; styles, not exports */
 @import "tailwindcss";
+@import "tw-animate-css";
 
-/* optio design system — see notes/design-system.md
-   Custom daisyUI themes: inspection-grade palette, grouped surfaces. */
+@custom-variant dark (&:is(.dark *));
+
+/* Keep daisyUI's legacy component mechanics; color tokens live in :root/.dark. */
 @plugin 'daisyui' {
-  themes:
-    optio-light --default,
-    optio-dark --prefersdark;
-}
-
-@plugin 'daisyui/theme' {
-  name: "optio-light";
-  default: true;
-  color-scheme: light;
-
-  /* Brand & neutrals */
-  --color-primary: oklch(52% 0.2 255); /* precision sapphire */
-  --color-primary-content: oklch(99% 0 0);
-  --color-secondary: oklch(58% 0.08 240); /* steel slate */
-  --color-secondary-content: oklch(99% 0 0);
-  --color-accent: oklch(68% 0.16 55); /* inspection amber */
-  --color-accent-content: oklch(15% 0.03 55);
-  --color-neutral: oklch(24% 0.02 260); /* charcoal iron */
-  --color-neutral-content: oklch(98% 0 0);
-
-  /* grouped surfaces */
-  --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(96.5% 0.005 250);
-  --color-base-300: oklch(91% 0.01 250);
-  --color-base-content: oklch(20% 0.02 260);
-
-  /* Semantics */
-  --color-success: oklch(62% 0.19 145);
-  --color-success-content: oklch(99% 0 0);
-  --color-warning: oklch(76% 0.15 75);
-  --color-warning-content: oklch(18% 0.04 75);
-  --color-error: oklch(58% 0.23 27);
-  --color-error-content: oklch(99% 0 0);
-
-  --radius-box: 0.875rem;
-  --radius-field: 0.625rem;
-  --radius-selector: 0.5rem;
-}
-
-@plugin 'daisyui/theme' {
-  name: "optio-dark";
-  prefersdark: true;
-  color-scheme: dark;
-
-  --color-primary: oklch(64% 0.18 255);
-  --color-primary-content: oklch(12% 0.02 255);
-  --color-secondary: oklch(68% 0.07 240);
-  --color-secondary-content: oklch(12% 0.02 240);
-  --color-accent: oklch(74% 0.15 55);
-  --color-accent-content: oklch(14% 0.03 55);
-  --color-neutral: oklch(18% 0.02 260);
-  --color-neutral-content: oklch(94% 0 0);
-
-  --color-base-100: oklch(21% 0.015 260);
-  --color-base-200: oklch(14% 0.01 260);
-  --color-base-300: oklch(28% 0.02 260);
-  --color-base-content: oklch(92% 0.005 250);
-
-  --color-success: oklch(68% 0.17 145);
-  --color-success-content: oklch(12% 0.03 145);
-  --color-warning: oklch(78% 0.14 75);
-  --color-warning-content: oklch(14% 0.03 75);
-  --color-error: oklch(64% 0.21 27);
-  --color-error-content: oklch(12% 0.03 27);
-
-  --radius-box: 0.875rem;
-  --radius-field: 0.625rem;
-  --radius-selector: 0.5rem;
-}
-
-@theme {
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  themes: false;
 }
 
 /* ── Standalone-PWA hardening ──────────────────────────────────────────── */
@@ -164,6 +93,417 @@ main,
   -webkit-overflow-scrolling: touch;
 }
 
+/* Workspace chrome is intentionally different at each device size. */
+.app-shell {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* daisyUI uses --border as a width; Foldcn uses it as a color. Keep the
+   legacy width local to its controls, never on the shared theme root. */
+.app-shell :is(.btn, .input, .select, .textarea, .checkbox, .radio, .toggle, .badge) {
+  --border: 1px;
+}
+
+/* Tables and alerts can contain Foldcn components. Override their legacy
+   border declarations without passing a width-valued --border to children. */
+.app-shell .alert {
+  border-width: 1px;
+}
+
+.app-shell .table :where(thead tr :is(td, th), tbody tr:not(:last-child) :is(td, th)) {
+  border-bottom: 1px solid var(--legacy-border-color);
+}
+
+.app-shell .table :where(tfoot tr:first-child :is(td, th)) {
+  border-top: 1px solid var(--legacy-border-color);
+}
+
+.workspace-sidebar {
+  display: none;
+}
+
+.app-topbar > div {
+  height: 4.5rem;
+}
+
+.app-shell .btn {
+  text-transform: none;
+  box-shadow: none;
+  font-weight: 600;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.app-shell .btn-primary {
+  border-color: transparent;
+}
+
+.app-shell .fieldset-legend {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.875rem;
+}
+
+.app-shell :is(.input, .select, .textarea) {
+  box-shadow: none;
+}
+
+.app-shell .table th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  padding-block: 1.2rem;
+}
+
+.app-shell .table td {
+  padding-block: 1.4rem;
+}
+
+.app-shell .table-zebra tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.start-page {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem calc(6rem + env(safe-area-inset-bottom));
+}
+
+.start-layout {
+  display: grid;
+  gap: 2rem;
+}
+
+.start-intro {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 30rem;
+}
+
+.start-title {
+  font-size: clamp(2.5rem, 4vw, 3.75rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.start-action {
+  min-width: 0;
+}
+
+.launch-card {
+  border: 1px solid var(--color-base-300);
+  box-shadow: 0 12px 40px -24px color-mix(in oklch, var(--color-base-content) 22%, transparent);
+  border-radius: 1.5rem;
+}
+
+.launch-card > div:first-child {
+  padding: 1.5rem;
+  background: transparent;
+}
+
+.launch-card h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.launch-card .btn-primary {
+  margin-top: 1.75rem;
+  height: 3.5rem;
+}
+
+.launch-card [data-slot="native-select-wrapper"] {
+  width: 100%;
+}
+
+.launch-card [data-slot="native-select"] {
+  width: 100%;
+  height: 3rem;
+  border-radius: var(--radius-field);
+}
+
+.launch-card [data-slot="button"] {
+  height: 3.5rem;
+}
+
+.study-guide {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.study-guide li {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.study-guide-number {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border: 1px solid var(--color-base-300);
+  border-radius: 50%;
+  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.study-guide h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.study-guide p {
+  margin-top: 0.2rem;
+  font-size: 0.8125rem;
+  color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
+}
+
+@media (min-width: 768px) {
+  .browse-workspace {
+    padding-left: 5.5rem;
+  }
+
+  .workspace-sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 5.5rem;
+    padding: 2rem 1rem;
+    background: var(--color-base-100);
+    border-right: 1px solid var(--color-base-300);
+  }
+
+  .sidebar-label {
+    display: none;
+  }
+
+  .workspace-brand {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 3.5rem;
+    font-size: 1.625rem;
+    font-weight: 650;
+    letter-spacing: -0.06em;
+  }
+
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 1rem;
+    background: var(--color-primary);
+    color: var(--color-primary-content);
+    font-size: 2.75rem;
+    font-weight: 400;
+    line-height: 1;
+    padding-bottom: 0.5rem;
+    letter-spacing: -0.07em;
+  }
+
+  .workspace-link {
+    display: flex;
+    gap: 0.875rem;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.25rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.875rem;
+    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+    font-size: 0.875rem;
+    font-weight: 550;
+    transition:
+      background-color 160ms ease,
+      color 160ms ease;
+  }
+
+  .workspace-link:hover,
+  .workspace-link.is-active {
+    background: color-mix(in oklch, var(--color-primary) 9%, transparent);
+    color: var(--color-primary);
+  }
+
+  .workspace-privacy {
+    margin-top: auto;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary);
+  }
+
+  .browse-workspace .app-topbar nav,
+  .browse-workspace .app-topbar > div > div:first-child {
+    display: none;
+  }
+
+  .browse-workspace .app-topbar h1 {
+    display: block;
+    text-align: left;
+    max-width: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  }
+
+  .browse-workspace .app-topbar > div > div:nth-child(2) {
+    justify-content: flex-start;
+  }
+
+  .browse-workspace .app-topbar {
+    background: transparent;
+    border: 0;
+  }
+
+  .start-page {
+    padding: 2.5rem 2.5rem 4rem;
+  }
+
+  .start-layout {
+    max-width: 38rem;
+    margin: auto;
+    gap: 2.5rem;
+  }
+
+  .app-shell .modal-box {
+    padding: 1.75rem;
+    border-radius: 1.5rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .browse-workspace {
+    padding-left: 15rem;
+  }
+
+  .workspace-sidebar {
+    width: 15rem;
+    padding: 2rem 1.25rem;
+  }
+
+  .sidebar-label {
+    display: block;
+  }
+
+  .brand-caption {
+    display: block;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    margin-top: 0.15rem;
+    color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  }
+
+  .sidebar-section {
+    font-size: 0.5625rem;
+    letter-spacing: 0.14em;
+    color: color-mix(in oklch, var(--color-base-content) 45%, transparent);
+    padding: 0 1rem 1rem;
+  }
+
+  .workspace-link {
+    justify-content: flex-start;
+    padding-inline: 1rem;
+  }
+
+  .workspace-privacy {
+    justify-content: flex-start;
+    padding: 1rem 0.5rem 0;
+    border-top: 1px solid var(--color-base-300);
+    font-size: 0.75rem;
+  }
+
+  .workspace-privacy p + p {
+    color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+    font-size: 0.6875rem;
+    margin-top: 0.25rem;
+  }
+
+  .start-page {
+    padding: clamp(3rem, 8vh, 6rem) 3.5rem 4rem;
+  }
+
+  .start-layout {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    column-gap: clamp(2rem, 5vw, 5rem);
+    row-gap: 3rem;
+    align-items: start;
+  }
+
+  .start-action {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: center;
+  }
+
+  .study-guide {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  .browse-workspace > main {
+    margin-bottom: calc(4rem + 1px + env(safe-area-inset-bottom));
+  }
+
+  .start-page {
+    padding-bottom: 2rem;
+  }
+
+  [data-slot="button"] {
+    min-height: 2.75rem;
+  }
+
+  .app-shell .btn {
+    min-height: 2.75rem;
+  }
+
+  .app-shell .btn-circle {
+    min-width: 2.75rem;
+  }
+
+  .app-shell :is(input, select, textarea) {
+    font-size: 1rem;
+  }
+
+  .app-topbar > div > div:first-child,
+  .app-topbar > div > div:last-child {
+    min-width: 3rem;
+  }
+
+  .app-topbar > div {
+    padding-inline: max(1rem, env(safe-area-inset-left));
+    height: 3.75rem;
+  }
+
+  .app-shell > nav {
+    box-shadow: none;
+  }
+
+  .app-shell > nav > div {
+    height: 4rem;
+  }
+
+  .app-shell .modal-box {
+    border-radius: 1.5rem 1.5rem 0 0;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 2rem - env(safe-area-inset-top));
+  }
+
+  .study-guide {
+    border-top: 1px solid var(--color-base-300);
+    padding-top: 2rem;
+  }
+}
+
 /* Respect the user's motion preference without removing useful state changes. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -173,5 +513,204 @@ main,
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --color-base-100: var(--card);
+  --color-base-200: var(--background);
+  --color-base-300: var(--legacy-border-color);
+  --color-base-content: var(--foreground);
+  --color-primary-content: var(--primary-foreground);
+  --color-secondary-content: var(--secondary-foreground);
+  --color-accent-content: var(--accent-foreground);
+  --color-neutral: var(--neutral);
+  --color-neutral-content: var(--neutral-foreground);
+  --color-success: var(--success);
+  --color-success-content: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-content: var(--warning-foreground);
+  --color-error: var(--destructive);
+  --color-error-content: var(--destructive-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto));
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height, var(--accordion-panel-height, auto));
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+  --legacy-border-color: var(--border);
+  --background: oklch(97.5% 0.004 155);
+  --foreground: oklch(25% 0.022 170);
+  --card: oklch(100% 0 0);
+  --card-foreground: var(--foreground);
+  --popover: oklch(100% 0 0);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(43% 0.075 180);
+  --primary-foreground: oklch(99% 0.003 170);
+  --secondary: oklch(94% 0.018 155);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(94% 0.012 155);
+  --muted-foreground: oklch(48% 0.025 170);
+  --accent: oklch(91% 0.025 165);
+  --accent-foreground: var(--foreground);
+  --neutral: oklch(28% 0.018 170);
+  --neutral-foreground: oklch(98% 0.003 170);
+  --destructive: oklch(58% 0.23 27);
+  --destructive-foreground: oklch(99% 0 0);
+  --success: oklch(52% 0.15 145);
+  --success-foreground: oklch(99% 0 0);
+  --warning: oklch(76% 0.15 75);
+  --warning-foreground: oklch(18% 0.04 75);
+  --border: oklch(91.5% 0.008 155);
+  --input: oklch(91.5% 0.008 155);
+  --ring: var(--primary);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.875rem;
+  --radius-box: 1.25rem;
+  --radius-field: 0.875rem;
+  --radius-selector: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --depth: 1;
+  --noise: 0;
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+.dark {
+  color-scheme: dark;
+  --legacy-border-color: var(--border);
+  --background: oklch(18% 0.012 170);
+  --foreground: oklch(94% 0.005 170);
+  --card: oklch(23% 0.012 170);
+  --card-foreground: var(--foreground);
+  --popover: oklch(23% 0.012 170);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(77% 0.09 170);
+  --primary-foreground: oklch(19% 0.03 170);
+  --secondary: oklch(27% 0.018 170);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(27% 0.015 170);
+  --muted-foreground: oklch(72% 0.015 170);
+  --accent: oklch(30% 0.025 170);
+  --accent-foreground: var(--foreground);
+  --neutral: oklch(14% 0.012 170);
+  --neutral-foreground: var(--foreground);
+  --destructive: oklch(64% 0.21 27);
+  --destructive-foreground: oklch(12% 0.03 27);
+  --success: oklch(68% 0.17 145);
+  --success-foreground: oklch(12% 0.03 145);
+  --warning: oklch(78% 0.14 75);
+  --warning-foreground: oklch(14% 0.03 75);
+  --border: oklch(32% 0.015 170);
+  --input: oklch(32% 0.015 170);
+  --ring: var(--primary);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  [data-leave] {
+    --tw-animation-fill-mode: both;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
   }
 }

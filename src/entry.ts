@@ -5,6 +5,14 @@ import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import { applicationConfig } from "./application.ts";
 
+const colorScheme = window.matchMedia("(prefers-color-scheme: dark)");
+const syncColorScheme = (event: MediaQueryListEvent | MediaQueryList) => {
+  document.documentElement.classList.toggle("dark", event.matches);
+};
+
+syncColorScheme(colorScheme);
+colorScheme.addEventListener("change", syncColorScheme);
+
 // ── PWA update toast ─────────────────────────────────────────────────────────
 // Design system §5.9: never reload the page out from under the user. When a new
 // service worker takes control (or is `waiting`, prompt-style), show an

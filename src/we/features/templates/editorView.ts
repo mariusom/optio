@@ -229,11 +229,11 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
       h.div(
         [
           h.Class(
-            "mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-6 space-y-6 flex-1",
+            "mx-auto grid w-full max-w-4xl flex-1 grid-cols-1 items-start gap-6 px-4 pb-6 pt-4 sm:px-6 sm:pt-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:px-8",
           ),
         ],
         [
-          // Template Info card
+          // Template details card
           h.div(
             [h.Class("rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden")],
             [
@@ -246,7 +246,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                         "text-xs font-semibold uppercase tracking-wider text-base-content/60",
                       ),
                     ],
-                    ["Template Info"],
+                    ["Template details"],
                   ),
                 ],
               ),
@@ -331,7 +331,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                         "text-xs font-semibold uppercase tracking-wider text-base-content/60",
                       ),
                     ],
-                    ["Fields Schema"],
+                    ["Observation fields"],
                   ),
                   h.span(
                     [h.Class("badge badge-sm badge-neutral font-mono")],
@@ -383,7 +383,12 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
 
           ...(model.lastError === null
             ? []
-            : [h.div([h.Class("alert alert-warning py-2 text-sm shadow-xs")], [model.lastError])]),
+            : [
+                h.div(
+                  [h.Class("alert alert-warning py-2 text-sm shadow-xs lg:col-span-2")],
+                  [model.lastError],
+                ),
+              ]),
         ],
       ),
 
@@ -438,7 +443,7 @@ const fieldRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<
       ),
     ],
     [
-      kindIcon(field.kind as FieldKind, "h-6 w-6 shrink-0 text-secondary", h),
+      kindIcon(field.kind as FieldKind, "h-6 w-6 shrink-0 text-muted-foreground", h),
       h.button(
         [
           h.Class("flex min-w-0 grow flex-col items-start gap-0.5 text-left"),
@@ -458,7 +463,7 @@ const fieldRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<
                     h.span(
                       [
                         h.Class(
-                          "badge badge-sm shrink-0 border-none bg-accent/15 font-medium text-accent",
+                          "badge badge-sm shrink-0 border-none bg-accent font-medium text-accent-foreground",
                         ),
                       ],
                       ["Required"],
@@ -971,7 +976,7 @@ const discardModal = (h: HtmlBuilder<Message>) =>
               h.button(
                 [
                   h.Class("btn btn-error btn-block rounded-field text-xs font-semibold sm:flex-1"),
-                  h.OnClick(Message.ConfirmedDiscardTemplate()),
+                  h.OnClick(Message.ConfirmedDiscard()),
                   h.AriaLabel("Confirm discard changes"),
                 ],
                 ["Discard"],
@@ -979,7 +984,7 @@ const discardModal = (h: HtmlBuilder<Message>) =>
               h.button(
                 [
                   h.Class("btn btn-ghost btn-block rounded-field text-xs sm:flex-1"),
-                  h.OnClick(Message.CanceledDiscardTemplate()),
+                  h.OnClick(Message.CanceledDiscard()),
                   h.AriaLabel("Continue editing"),
                 ],
                 ["Keep Editing"],
@@ -988,6 +993,6 @@ const discardModal = (h: HtmlBuilder<Message>) =>
           ),
         ],
       ),
-      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscardTemplate())], []),
+      h.button([h.Class("modal-backdrop"), h.OnClick(Message.CanceledDiscard())], []),
     ],
   );

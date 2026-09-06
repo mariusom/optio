@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
+import * as Scene from "foldkit/scene";
 
+import { Message } from "../../../messages";
+import { startView } from "./startView";
 import { generateSessionName } from "../../random-name";
 import type { TemplateSummary } from "../../types";
 import {
@@ -19,6 +22,51 @@ const t = (overrides: Partial<TemplateSummary> & { id: string }): TemplateSummar
   fieldCount: 1,
   requiredCount: 0,
   ...overrides,
+});
+
+describe("Foldcn session launcher", () => {
+  const model: Parameters<typeof startView>[0] = {
+    templates: [t({ id: "a", name: "Assembly" }), t({ id: "b", name: "Patient care" })],
+    selectedTemplateId: "a",
+    sessionNameInput: "",
+    placeholderName: "Morning shift",
+    activeSession: null,
+    pendingDiscardSession: false,
+  };
+  const config = {
+    view: startView,
+    update: (model: Parameters<typeof startView>[0], message: Message) => ({
+      model,
+      outMessage: message,
+    }),
+  };
+
+  it("labels the native select and emits the selected template", () => {
+    Scene.scene(
+      config,
+      Scene.given(model),
+      Scene.expect(Scene.role("combobox", { name: "Study template" })).toHaveValue("a"),
+      Scene.change(Scene.role("combobox", { name: "Study template" }), "b"),
+      Scene.expectOutMessage(Message.SelectedTemplate({ id: "b" })),
+    );
+  });
+
+  it("dispatches start through the Foldcn button", () => {
+    Scene.scene(
+      config,
+      Scene.given(model),
+      Scene.click(Scene.role("button", { name: "Start Session" })),
+      Scene.expectOutMessage(Message.ClickedStartSession()),
+    );
+  });
+
+  it("disables starting without a selected template", () => {
+    Scene.scene(
+      config,
+      Scene.given({ ...model, selectedTemplateId: null }),
+      Scene.expect(Scene.role("button", { name: "Start Session" })).toBeDisabled(),
+    );
+  });
 });
 
 describe("generateSessionName", () => {

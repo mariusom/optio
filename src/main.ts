@@ -58,7 +58,7 @@ import {
   templatesRouter,
   type Route,
 } from "./we/routes";
-import { bottomTabBar, topBar } from "./we/ui";
+import { bottomTabBar, topBar, workspaceNavigation } from "./we/ui";
 import {
   DeleteHistorySession,
   ExportSessionCsv,
@@ -1705,23 +1705,27 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
   ({
     title: "optio",
     body: h.div(
-      [h.Class("flex h-dvh w-full flex-col overflow-hidden bg-base-200 text-base-content")],
       [
-        topBar(
-          pageTitle(model.route),
-          model.route,
-          model.history.length > 0,
-          trailingFor(model, h),
-          h,
+        h.Class(
+          `app-shell ${isFullScreenRoute(model.route) ? "focus-workspace" : "browse-workspace"} flex h-dvh w-full flex-col overflow-hidden bg-base-200 text-base-content`,
         ),
+      ],
+      [
+        ...(!isFullScreenRoute(model.route) ? [workspaceNavigation(model.route, h)] : []),
+        ...(model.route._tag === "SessionRunner"
+          ? []
+          : [
+              topBar(
+                pageTitle(model.route),
+                model.route,
+                model.history.length > 0,
+                trailingFor(model, h),
+                h,
+              ),
+            ]),
         h.main(
-          [h.Class("relative flex-1 overflow-y-auto overscroll-y-contain")],
-          [
-            pageFor(model, h),
-            ...(isFullScreenRoute(model.route)
-              ? []
-              : [h.div([h.Class("h-[calc(4rem+env(safe-area-inset-bottom))]")], [])]),
-          ],
+          [h.Class("relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain")],
+          [pageFor(model, h)],
         ),
         ...(isFullScreenRoute(model.route)
           ? []

@@ -109,7 +109,7 @@ const sidebarStateIndicator = (task: RunnerTask, h: HtmlBuilder<Message>) => {
   return h.div(
     [
       h.Class(
-        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-white",
+        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground",
       ),
     ],
     [checkIcon("h-2.5 w-2.5", h)],
@@ -362,7 +362,7 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
     ],
     [
       h.div(
-        [h.Class("flex items-center gap-3 min-w-0")],
+        [h.Class("flex min-w-0 flex-1 items-center gap-3")],
         [
           h.button(
             [
@@ -381,28 +381,32 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
             ],
           ),
           h.div(
-            [h.Class("flex items-center gap-2 border-l border-base-300 pl-3")],
+            [h.Class("flex min-w-0 flex-1 items-center gap-2 border-l border-base-300 pl-3")],
             [
               h.span(
-                [h.Class("text-sm font-bold tracking-tight text-base-content truncate max-w-xs")],
+                [
+                  h.Class(
+                    "min-w-0 flex-1 truncate text-sm font-bold tracking-tight text-base-content",
+                  ),
+                ],
                 [runner.sessionName || runner.templateName],
               ),
               h.span(
-                [h.Class("badge badge-sm badge-neutral font-mono")],
+                [h.Class("badge badge-sm badge-neutral hidden shrink-0 font-mono lg:inline-flex")],
                 [`${runner.templateName}`],
               ),
             ],
           ),
         ],
       ),
-      sessionTimerView(runner, h),
+      h.div([h.Class("shrink-0")], [sessionTimerView(runner, h)]),
     ],
   );
 
   const sidebar = h.aside(
     [
       h.Class(
-        `bg-base-100 border-r border-base-300 flex flex-col shrink-0 overflow-hidden transition-all duration-250 ease-in-out ${runner.showSidebar ? "translate-x-0 w-80 lg:w-96" : "-translate-x-full w-0 overflow-hidden border-r-0"}`,
+        `bg-base-100 border-r border-base-300 flex flex-col shrink-0 overflow-hidden transition-all duration-250 ease-in-out ${runner.showSidebar ? "translate-x-0 w-64 lg:w-80" : "-translate-x-full w-0 overflow-hidden border-r-0"}`,
       ),
       h.Attribute("style", "transition: transform 0.25s ease-in-out, width 0.25s ease-in-out"),
       h.AriaLabel("Task navigation sidebar"),
@@ -439,23 +443,37 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
 
   const mainSection = h.section(
     [
-      h.Class(
-        "flex-1 overflow-y-auto overscroll-y-contain bg-base-200 p-6 md:p-8 flex justify-center relative",
-      ),
+      h.Class("relative flex min-w-0 flex-1 flex-col overflow-hidden bg-base-200"),
       h.AriaLabel("Active task form"),
     ],
     [
-      h.div([h.Class("w-full max-w-2xl xl:max-w-3xl pb-28")], [formSectionsView(runner, task, h)]),
+      h.div(
+        [
+          h.Class(
+            "flex min-h-0 flex-1 justify-center overflow-y-auto overscroll-y-contain p-6 md:p-8",
+          ),
+        ],
+        [
+          h.div(
+            [h.Class("w-full max-w-2xl xl:max-w-3xl pb-28")],
+            [formSectionsView(runner, task, h)],
+          ),
+        ],
+      ),
       tabletBottomFadeGradient(h),
       tabletSessionBottomBar(runner, task, h),
     ],
   );
 
   return h.div(
-    [h.Class("h-dvh w-full flex flex-col bg-base-200 overflow-hidden text-base-content relative")],
+    [
+      h.Class(
+        "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-base-200 text-base-content",
+      ),
+    ],
     [
       headerBar,
-      h.div([h.Class("flex-1 flex overflow-hidden")], [sidebar, mainSection]),
+      h.div([h.Class("flex min-h-0 flex-1 overflow-hidden")], [sidebar, mainSection]),
       ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
       ...(runner.lastError !== null ? [errorAlert(runner.lastError, h)] : []),
     ],

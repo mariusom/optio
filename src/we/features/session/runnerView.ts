@@ -895,7 +895,7 @@ export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
   return h.div(
     [
       h.Class(
-        "flex h-[100dvh] w-full flex-col overflow-hidden bg-base-200 text-base-content relative",
+        "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-base-200 text-base-content",
       ),
     ],
     [

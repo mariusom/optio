@@ -2,6 +2,8 @@ import { svgIcon } from "../../ui";
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
+import { button } from "@/components/ui/button";
+import { nativeSelect } from "@/components/ui/native-select";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimestamp } from "../../format";
 import type { TemplateSummary } from "../../types";
@@ -86,12 +88,6 @@ const xIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
       [],
     ),
   ]);
-
-const chevronIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [h.polyline([h.Attribute("points", "6 9 12 15 18 9")], [])]);
-
-const checkSmallIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])], "3");
 
 const trashIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
   svgIcon(classes, h, [
@@ -332,11 +328,11 @@ const noTemplatesView = (h: HtmlBuilder<Message>) =>
             ],
             [docIcon("h-8 w-8", h)],
           ),
-          h.h3([h.Class("text-lg font-bold text-base-content")], ["No Templates Configured"]),
+          h.h3([h.Class("text-lg font-bold text-base-content")], ["Your first study starts here"]),
           h.p(
             [h.Class("mt-2 text-xs sm:text-sm leading-relaxed text-base-content/60 max-w-sm")],
             [
-              "Create a template to define the form schema, field types, and questions captured during your time and motion studies.",
+              "Create a template for the details you want to capture, then begin your first session.",
             ],
           ),
           h.a(
@@ -362,85 +358,26 @@ const templatePicker = (
   h: HtmlBuilder<Message>,
 ) => {
   const sorted = [...templates].sort((a, b) => a.name.localeCompare(b.name));
-  const selected = sorted.find((t) => t.id === selectedId) ?? null;
-  const label =
-    selected !== null
-      ? `${selected.name}${selected.isDefault ? " (Default)" : ""}`
-      : "Select Template";
-
-  return h.div(
-    [h.Class("dropdown dropdown-bottom w-full")],
-    [
-      h.div(
-        [
-          h.Tabindex(0),
-          h.Class(
-            "btn w-full justify-between rounded-field border border-base-300 bg-base-100 text-sm font-medium normal-case hover:bg-base-200/50 hover:border-base-300/80 focus-visible:border-primary transition-all h-12 shadow-2xs",
+  return nativeSelect(
+    {
+      id: "study-template",
+      label: "Study template",
+      labelClass: "text-sm font-semibold text-foreground",
+      value: selectedId ?? "",
+      onChange: (id) => Message.SelectedTemplate({ id }),
+      options: [
+        ...(selectedId === null
+          ? [h.option([h.Value(""), h.Disabled(true)], ["Select template"])]
+          : []),
+        ...sorted.map((template) =>
+          h.option(
+            [h.Value(template.id)],
+            [`${template.name}${template.isDefault ? " (Default)" : ""}`],
           ),
-          h.Attribute("role", "combobox"),
-          h.Attribute("aria-expanded", "false"),
-          h.Attribute("aria-haspopup", "listbox"),
-          h.AriaLabel("Select Template"),
-        ],
-        [
-          h.div(
-            [h.Class("flex items-center gap-2.5 truncate")],
-            [
-              docIcon("h-4 w-4 text-primary shrink-0", h),
-              h.span([h.Class("truncate text-left font-semibold text-base-content")], [label]),
-            ],
-          ),
-          chevronIcon("h-4 w-4 text-base-content/50 shrink-0", h),
-        ],
-      ),
-      h.ul(
-        [
-          h.Tabindex(0),
-          h.Class(
-            "dropdown-content menu z-40 mt-1 max-h-64 w-full overflow-auto rounded-box border border-base-300 bg-base-100 p-1.5 shadow-xl",
-          ),
-          h.Attribute("role", "listbox"),
-          h.AriaLabel("Templates list"),
-        ],
-        sorted.map((t) => {
-          const isSelected = t.id === selectedId;
-          const nameWithSuffix = `${t.name}${t.isDefault ? " (Default)" : ""}`;
-          return h.li(
-            [h.Attribute("role", "none")],
-            [
-              h.button(
-                [
-                  h.Class(
-                    `flex w-full items-center justify-between rounded-field px-3.5 py-2.5 text-left text-sm transition-colors ${
-                      isSelected
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-base-content hover:bg-base-200/60"
-                    }`,
-                  ),
-                  h.Attribute("role", "option"),
-                  h.Attribute("aria-selected", isSelected ? "true" : "false"),
-                  h.AriaLabel(nameWithSuffix),
-                  h.OnClick(Message.SelectedTemplate({ id: t.id })),
-                ],
-                [
-                  h.div(
-                    [h.Class("flex flex-col min-w-0 pr-2")],
-                    [
-                      h.span([h.Class("truncate font-medium")], [nameWithSuffix]),
-                      h.span(
-                        [h.Class("text-[11px] text-base-content/50 font-normal mt-0.5")],
-                        [`${t.fieldCount} fields · ${t.requiredCount} required`],
-                      ),
-                    ],
-                  ),
-                  ...(isSelected ? [checkSmallIcon("h-4 w-4 text-primary shrink-0", h)] : []),
-                ],
-              ),
-            ],
-          );
-        }),
-      ),
-    ],
+        ),
+      ],
+    },
+    h,
   );
 };
 
@@ -452,19 +389,13 @@ const sessionNameField = (
   h.fieldset(
     [h.Class("fieldset p-0 gap-1.5 w-full")],
     [
-      h.div(
-        [h.Class("flex items-center justify-between")],
+      h.legend(
         [
-          h.legend(
-            [
-              h.Class(
-                "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
-              ),
-            ],
-            ["Session Name (Optional)"],
+          h.Class(
+            "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
           ),
-          h.span([h.Class("text-[11px] text-base-content/40 font-mono")], ["Auto-timestamped"]),
         ],
+        ["Session name (optional)"],
       ),
       // DaisyUI 5 Input Group container with leading icon, text input, and inline clear button
       h.label(
@@ -521,7 +452,7 @@ const startFormCard = (
   return h.div(
     [
       h.Class(
-        "rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md w-full",
+        "launch-card rounded-box bg-base-100 border border-base-300 shadow-sm overflow-hidden backdrop-blur-md w-full",
       ),
     ],
     [
@@ -539,12 +470,12 @@ const startFormCard = (
               h.div(
                 [
                   h.Class(
-                    "flex h-6 w-6 items-center justify-center rounded-md bg-primary text-white text-xs",
+                    "flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs",
                   ),
                 ],
                 [playIcon("h-3 w-3", h)],
               ),
-              h.h2([h.Class("text-sm font-bold text-base-content")], ["Launch Study Session"]),
+              h.h2([h.Class("text-sm font-bold text-base-content")], ["New session"]),
             ],
           ),
           // Tag moved to the card
@@ -556,7 +487,7 @@ const startFormCard = (
             ],
             [
               h.div([h.Class("h-1.5 w-1.5 rounded-full bg-success")], []),
-              h.span([], ["Local-First · OPFS SQLite"]),
+              h.span([], ["On-device"]),
             ],
           ),
         ],
@@ -566,31 +497,17 @@ const startFormCard = (
       h.div(
         [h.Class("p-5 sm:p-6 space-y-5")],
         [
-          h.fieldset(
-            [h.Class("fieldset p-0 gap-1.5 w-full")],
-            [
-              h.legend(
-                [
-                  h.Class(
-                    "fieldset-legend text-xs font-semibold uppercase tracking-wider text-base-content/70",
-                  ),
-                ],
-                ["Study Template"],
-              ),
-              templatePicker(templates, selectedTemplateId, h),
-            ],
-          ),
+          templatePicker(templates, selectedTemplateId, h),
           sessionNameField(placeholderName, sessionNameInput, h),
-          h.button(
-            [
-              h.Class(
-                "btn btn-primary btn-block rounded-field h-13 text-base font-semibold shadow-md shadow-primary/20 gap-2.5 active:scale-[0.98] transition-all disabled:opacity-50 hover:brightness-105",
-              ),
-              h.Disabled(!canStart),
-              h.OnClick(Message.ClickedStartSession()),
-              h.AriaLabel("Start Session"),
-            ],
-            [playIcon("h-4 w-4", h), h.span([], ["Start Study Session"])],
+          button(
+            {
+              className: "w-full rounded-field gap-2.5 text-base font-semibold",
+              isDisabled: !canStart,
+              onClick: Message.ClickedStartSession(),
+              attributes: [h.AriaLabel("Start Session")],
+            },
+            [playIcon("h-4 w-4", h), h.span([], ["Start session"])],
+            h,
           ),
         ],
       ),
@@ -602,78 +519,43 @@ const startFormCard = (
 
 const heroHeader = (h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("flex flex-col items-center text-center gap-2.5")],
+    [h.Class("start-intro")],
     [
-      // App logo mark + Title
-      h.div(
-        [h.Class("flex items-center gap-3")],
-        [
-          h.div(
-            [
-              h.Class(
-                "flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-white font-serif text-2xl sm:text-3xl shadow-sm select-none shrink-0",
-              ),
-            ],
-            ["θ"],
-          ),
-          h.div(
-            [h.Class("flex flex-col text-left")],
-            [
-              h.h1(
-                [
-                  h.Class(
-                    "text-2xl sm:text-3xl font-bold tracking-tight text-base-content leading-none",
-                  ),
-                ],
-                ["optio"],
-              ),
-              h.span(
-                [h.Class("text-xs sm:text-sm font-medium text-primary mt-1 tracking-tight")],
-                ["Time & Motion Study Recorder"],
-              ),
-            ],
-          ),
-        ],
+      h.p(
+        [h.Class("text-xs font-semibold uppercase tracking-widest text-primary")],
+        ["YOUR WORKSPACE"],
+      ),
+      h.h1(
+        [h.Class("start-title text-4xl sm:text-5xl font-bold tracking-tight text-base-content")],
+        ["Make every moment count."],
       ),
       h.p(
-        [h.Class("text-xs sm:text-sm leading-relaxed text-base-content/70 max-w-sm mt-0.5")],
-        [
-          "Sub-second task timing designed for industrial engineering, healthcare observations, and continuous workflow studies.",
-        ],
+        [h.Class("text-sm sm:text-base leading-relaxed text-base-content/70")],
+        ["Choose a template, start observing, and turn everyday work into useful insights."],
       ),
     ],
   );
 
-const featureHighlights = (h: HtmlBuilder<Message>) =>
-  h.div(
-    [h.Class("flex flex-wrap items-center justify-center gap-2 pt-1 text-center")],
-    [
-      h.div(
+const studyGuide = (h: HtmlBuilder<Message>) => {
+  const steps = [
+    ["Choose a template", "Set up the details you want to observe."],
+    ["Capture the work", "Record each task as it happens."],
+    ["Take insights with you", "Review and export what you learned."],
+  ] as const;
+
+  return h.ol(
+    [h.Class("study-guide")],
+    steps.map(([title, description], index) =>
+      h.li(
+        [],
         [
-          h.Class(
-            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
-          ),
+          h.span([h.Class("study-guide-number")], [`${index + 1}`]),
+          h.div([], [h.h3([], [title]), h.p([], [description])]),
         ],
-        [h.span([h.Class("text-primary font-bold")], ["⏱"]), "Sub-Second Precision"],
       ),
-      h.div(
-        [
-          h.Class(
-            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
-          ),
-        ],
-        [h.span([h.Class("text-primary font-bold")], ["🎛"]), "Dynamic Schemas"],
-      ),
-      h.div(
-        [
-          h.Class(
-            "badge badge-outline border-base-300 bg-base-100/70 text-[11px] text-base-content/70 py-2.5 px-3 shadow-2xs gap-1.5",
-          ),
-        ],
-        [h.span([h.Class("text-primary font-bold")], ["🔒"]), "100% Offline & Private"],
-      ),
-    ],
+    ),
   );
+};
 
 // ── Public entry ──────────────────────────────────────────────────────────
 
@@ -690,41 +572,36 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) => {
   const hasActive = model.activeSession !== null;
 
   return h.div(
+    [h.Class("start-page")],
     [
-      h.Class(
-        "min-h-full flex flex-col items-center justify-center py-6 sm:py-10 px-4 sm:px-6 max-w-xl mx-auto w-full pb-[calc(4.5rem+env(safe-area-inset-bottom))]",
-      ),
-    ],
-    [
-      hasActive
-        ? h.div(
-            [h.Class("space-y-6 w-full my-auto")],
+      h.div(
+        [h.Class("start-layout")],
+        [
+          heroHeader(h),
+          h.div(
+            [h.Class("start-action")],
             [
-              heroHeader(h),
-              resumeView(
-                model.activeSession as ActiveSession,
-                model.templates,
-                model.pendingDiscardSession,
-                h,
-              ),
+              hasActive
+                ? resumeView(
+                    model.activeSession as ActiveSession,
+                    model.templates,
+                    model.pendingDiscardSession,
+                    h,
+                  )
+                : model.templates.length === 0
+                  ? noTemplatesView(h)
+                  : startFormCard(
+                      model.templates,
+                      model.selectedTemplateId,
+                      model.placeholderName,
+                      model.sessionNameInput,
+                      h,
+                    ),
             ],
-          )
-        : model.templates.length === 0
-          ? h.div([h.Class("space-y-6 w-full my-auto")], [heroHeader(h), noTemplatesView(h)])
-          : h.div(
-              [h.Class("space-y-6 w-full my-auto flex flex-col items-center")],
-              [
-                heroHeader(h),
-                startFormCard(
-                  model.templates,
-                  model.selectedTemplateId,
-                  model.placeholderName,
-                  model.sessionNameInput,
-                  h,
-                ),
-                featureHighlights(h),
-              ],
-            ),
+          ),
+          studyGuide(h),
+        ],
+      ),
     ],
   );
 };
