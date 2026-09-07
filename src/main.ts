@@ -1,9 +1,19 @@
-import { Duration, Effect, Queue, Schema as S, Stream } from "effect";
-import { Command, Navigation, Subscription, Update } from "foldkit";
+import { Duration, Effect, Queue, Result, Schema as S, Stream } from "effect";
+import { Command, Navigation, Port, Subscription, Update } from "foldkit";
 import type { Document, HtmlBuilder } from "foldkit/html";
 import { toString as urlToString, type Url } from "foldkit/url";
 
 import { Message } from "./messages";
+import {
+  AgentAction,
+  AgentReply,
+  actionError,
+  agentPorts,
+  confirmationState,
+  confirmationTarget,
+  requiresConfirmation,
+} from "./agents/actions";
+import { hrefFor } from "./we/routes";
 import { Theme } from "./we/theme";
 import { changeTheme } from "./we/browserTheme";
 import { settingsPage } from "./we/features/settings/view";
@@ -74,6 +84,7 @@ import { sessionDetailPage } from "./we/features/history/sessionDetailView";
 // MODEL — shell state + feature slices
 
 export const Model = S.Struct({
+  agentConfirmationVersion: S.Number,
   route: RouteSchema,
   theme: Theme,
   themeSaveFailed: S.Boolean,
@@ -237,6 +248,7 @@ export const Model = S.Struct({
 export type Model = typeof Model.Type;
 
 const initialModel = (route: Route): Model => ({
+  agentConfirmationVersion: 0,
   route,
   theme: "auto",
   themeSaveFailed: false,
@@ -327,8 +339,73 @@ const applyPlan = (model: Model, event: SessionEvent) => {
 
 // UPDATE — pure state transitions
 
-export const update = (model: Model, message: Message) =>
+const ReplyToAgent = Command.define("ReplyToAgent", {
+  args: { reply: AgentReply },
+  messages: [Message.Navigated],
+  execute: ({ reply }) =>
+    Port.emit(agentPorts.outbound.agentReply, reply).pipe(Effect.as(Message.Navigated())),
+});
+
+export const update = (model: Model, message: Message): Update.Return<Model, Message> => {
+  const result = updateInternal(model, message);
+  // AgentRequest delegates to this function, so its reply already includes the
+  // new version. Other sources (including UI events) invalidate approvals too.
+  if (message._tag === "AgentRequest") return result;
+  if (
+    confirmationState(model) !== confirmationState(result.model) ||
+    message._tag === "ConfirmedDeleteTemplate" ||
+    message._tag === "ConfirmedHistoryDelete" ||
+    message._tag === "ConfirmedDiscardSession" ||
+    message._tag === "ConfirmedEndSession" ||
+    message._tag === "ConfirmedDiscard" ||
+    message._tag === "RequestedDeleteTemplate" ||
+    message._tag === "RequestedHistoryDelete"
+  )
+    return {
+      ...result,
+      model: { ...result.model, agentConfirmationVersion: model.agentConfirmationVersion + 1 },
+    };
+  return result;
+};
+
+const updateInternal = (model: Model, message: Message): Update.Return<Model, Message> =>
   Message.match<Update.Return<Model, Message>>(message, {
+    AgentRequest: ({ requestId, action, confirmationVersion }) => {
+      const decoded = action === null ? null : S.decodeUnknownResult(AgentAction)(action);
+      const operation = decoded !== null && Result.isSuccess(decoded) ? decoded.success : null;
+      const error =
+        decoded !== null && Result.isFailure(decoded)
+          ? "Unsupported or invalid app action."
+          : operation === null
+            ? null
+            : requiresConfirmation(operation) &&
+                (confirmationVersion !== model.agentConfirmationVersion ||
+                  confirmationTarget(model, operation) === null)
+              ? "Confirmation changed or is missing; request confirmation again."
+              : actionError(model, operation);
+      const result =
+        operation === null || error !== null
+          ? { model }
+          : operation._tag === "Navigate"
+            ? { model, commands: [NavigateInternal({ url: hrefFor(operation.route) })] }
+            : update(model, operation);
+      const commands = result.commands ?? [];
+      return {
+        model: result.model,
+        commands: [
+          ...commands,
+          ReplyToAgent({
+            reply: {
+              requestId,
+              state: result.model,
+              changed: result.model !== model || commands.length > 0,
+              pendingCommands: commands.length,
+              error,
+            },
+          }),
+        ],
+      };
+    },
     SelectedTheme: ({ theme }) => ({
       model: { ...model, theme },
       commands: [SaveTheme({ theme })],
@@ -423,9 +500,12 @@ export const update = (model: Model, message: Message) =>
       model,
       commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
     }),
-    RequestedDeleteTemplate: ({ id, name }) => ({
-      model: { ...model, pendingDelete: { id, name } },
-    }),
+    RequestedDeleteTemplate: ({ id }) => {
+      const template = model.templates.find((template) => template.id === id);
+      return {
+        model: { ...model, pendingDelete: template ? { id, name: template.name } : null },
+      };
+    },
     CanceledDeleteTemplate: () => ({ model: { ...model, pendingDelete: null } }),
     ConfirmedDeleteTemplate: () =>
       model.pendingDelete === null
@@ -911,9 +991,15 @@ export const update = (model: Model, message: Message) =>
       model,
       commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
     }),
-    RequestedHistoryDelete: ({ id, displayName }) => ({
-      model: { ...model, pendingHistoryDelete: { id, displayName } },
-    }),
+    RequestedHistoryDelete: ({ id }) => {
+      const session = model.history.find((session) => session.id === id);
+      return {
+        model: {
+          ...model,
+          pendingHistoryDelete: session ? { id, displayName: session.displayName } : null,
+        },
+      };
+    },
     CanceledHistoryDelete: () => ({ model: { ...model, pendingHistoryDelete: null } }),
     ConfirmedHistoryDelete: () =>
       model.pendingHistoryDelete === null
@@ -1550,6 +1636,7 @@ const tickStream: Stream.Stream<Message> = Stream.tick(Duration.seconds(1)).pipe
 );
 
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
+  agentRequest: Port.subscription(agentPorts.inbound.agentRequest, Message.AgentRequest),
   templates: entry(
     { live: S.Boolean },
     {

@@ -56,7 +56,7 @@ const cases = [
   {
     name: "EndSession empty",
     command: () => EndSession({ sessionId: "session" }),
-    rows: [[task]],
+    rows: [[{ id: "session", endedAt: null }], [task]],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
     writes: true,
@@ -64,7 +64,7 @@ const cases = [
   {
     name: "EndSession archive",
     command: () => EndSession({ sessionId: "session" }),
-    rows: [[finishedTask], []],
+    rows: [[{ id: "session", endedAt: null }], [finishedTask], []],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
     writes: true,

@@ -11,6 +11,11 @@ import { Theme } from "./we/theme";
 // reducers live next to their feature views under src/we/features/*.
 
 export const Message = defineMessageUnion({
+  AgentRequest: {
+    requestId: S.String,
+    action: S.Unknown,
+    confirmationVersion: S.optionalKey(S.Number),
+  },
   // ── Routing ────────────────────────────────────────────────────────────
   GotRoute: { route: RouteSchema },
   ClickedLink: { request: UrlRequest },

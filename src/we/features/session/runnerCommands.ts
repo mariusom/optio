@@ -129,6 +129,10 @@ export const EndSession = Command.define("EndSession", {
   execute: ({ sessionId }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
+      const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
+      if (!session || session.endedAt !== null) {
+        return Message.FailedRunnerOp({ error: "Session is missing or already ended." });
+      }
 
       const taskRows = store.query(
         tables.sessionTasks.select().where({ sessionId }).orderBy("orderIndex", "asc"),

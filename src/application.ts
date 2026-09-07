@@ -4,6 +4,7 @@ import { UrlRequest } from "foldkit/navigation";
 import { Message } from "./messages.ts";
 import { parseRoute } from "./we/routes.ts";
 import { Model, init, subscriptions, update, view } from "./main.ts";
+import { agentPorts } from "./agents/actions";
 
 /**
  * Everything `Runtime.makeApplication` needs except the DOM container.
@@ -17,6 +18,7 @@ import { Model, init, subscriptions, update, view } from "./main.ts";
  */
 export const applicationConfig = {
   Model,
+  ports: agentPorts,
   init,
   update,
   view,

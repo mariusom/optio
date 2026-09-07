@@ -43,6 +43,7 @@ const makeRunner = (
 };
 
 const makeModel = (runner: Model["runner"]): Model => ({
+  agentConfirmationVersion: 0,
   route: SessionRunner({ sessionId: "s1" }),
   theme: "auto",
   themeSaveFailed: false,

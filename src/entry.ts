@@ -1,10 +1,13 @@
 // fallow-ignore-file unused-file — app entry (referenced by index.html, not by other modules)
 import { Runtime } from "foldkit";
+import { Effect, Fiber } from "effect";
 import { registerSW } from "virtual:pwa-register";
 
 import "./index.css";
 import { applicationConfig } from "./application.ts";
 import { initializeTheme } from "./we/browserTheme";
+import { getStore } from "./livestore/client";
+import type { ModelContext } from "./agents/webmcp";
 
 const theme = initializeTheme();
 
@@ -61,4 +64,40 @@ const application = Runtime.makeApplication({
   container: document.getElementById("root")!,
 });
 
-Runtime.run(application);
+// Explicit per-tab opt-in grants access to study values and all existing UI operations.
+const modelContext = (document as Document & { modelContext?: ModelContext }).modelContext;
+if (
+  new URLSearchParams(location.search).get("agentTools") === "1" &&
+  modelContext &&
+  window.confirm(
+    "Enable agent access for this tab? Agents can read study data and operate Optio, including editing and deleting data. Your agent provider may send returned data to a cloud model. Cancel keeps agent access disabled.",
+  )
+) {
+  const handle = Runtime.embed(application);
+  const registration = Effect.gen(function* () {
+    const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =
+      yield* Effect.all(
+        [
+          Effect.promise(() => import("./agents/webmcp")),
+          Effect.promise(() => import("./agents/tools")),
+          Effect.promise(() => import("./agents/connection")),
+        ],
+        { concurrency: "unbounded" },
+      );
+    const connection = connectAgentApplication(handle.ports, (message) => window.confirm(message));
+    yield* registerWebMcp(modelContext, makeToolHandlers(getStore, connection));
+    yield* Effect.never;
+  }).pipe(
+    Effect.scoped,
+    Effect.catchCause(() =>
+      Effect.logWarning("Optio agent tools could not be registered. The app remains available."),
+    ),
+  );
+  const fiber = Effect.runFork(registration);
+  import.meta.hot?.dispose(() => {
+    Effect.runFork(Fiber.interrupt(fiber));
+    handle.dispose();
+  });
+} else {
+  Runtime.run(application);
+}

@@ -6,7 +6,10 @@ import { foldkit } from "@foldkit/vite-plugin";
 export default defineConfig({
   plugins: [tailwindcss(), foldkit()],
   resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
-  optimizeDeps: { include: ["foldkit/brand"] },
+  optimizeDeps: {
+    include: ["foldkit/brand", "@livestore/adapter-web/worker"],
+    exclude: ["@livestore/wa-sqlite"],
+  },
   test: {
     include: ["src/**/*.browser.ts"],
     browser: {

@@ -135,3 +135,96 @@ visit thanks to the generated service worker.
 Everything lives in the browser: LiveStore → SQLite (WASM) → OPFS. The store
 id is `optio-v1` — earlier store versions are deliberately incompatible and
 ignored. There is intentionally no sync and no backend.
+
+## Agent access: WebMCP and MCP
+
+WebMCP works on static hosting, including GitHub Pages. In a browser/agent
+supporting the current `document.modelContext` API, open the app with
+`?agentTools=1` **before the hash route**, then accept the native consent dialog.
+For example, after deploying this version: `/optio/?agentTools=1#/templates`.
+Without the flag, consent, or API support, no tools are registered and the app
+continues normally. Remove the flag and reload to revoke access.
+
+**This is full access to existing app operations and loaded study data, not
+read-only access.** An agent provider may send returned data to a cloud model.
+Optio itself adds no network requests, model API key, server or sync. Only enable
+access with an agent you trust. WebMCP remains experimental; browser flags or an
+origin trial may be needed. No polyfill or origin-trial token is bundled.
+
+The shared Effect `Tool`/`Toolkit` implementation is in `src/agents/tools.ts`:
+
+| Tool                        | Purpose                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `optio_list_templates`      | Paginated local template IDs, names and defaults                                                                             |
+| `optio_list_sessions`       | Paginated archived session summaries                                                                                         |
+| `optio_get_session_summary` | Timestamps, elapsed duration and task count for one archive                                                                  |
+| `optio_get_state`           | Current app state, including editor drafts, live observation values, loaded archive detail, errors and pending confirmations |
+| `optio_action`              | One schema-validated user action through the real Foldkit update loop                                                        |
+
+List tools accept optional `offset` (default 0) and `limit` (default 50, maximum
+100). `optio_action` takes `{ "action": { "_tag": "…", ... } }`; its generated
+input schema enumerates the supported actions. This exposes:
+
+- Templates: create, open, rename, duplicate, set default and delete.
+- Fields/options: add, edit, remove and reorder; changes remain editor drafts
+  until `ClickedSaveTemplate`.
+- Sessions: start, resume, rename archives, end/archive, discard live sessions
+  and delete archives.
+- Observations: read, fill, record, select completed live tasks, edit, save and
+  cancel edits. Archived observation values remain immutable, as in the UI;
+  deleting an archived session removes its observations.
+- Archive detail, CSV downloads, navigation and theme settings.
+
+For example, create a template by sending `ClickedNewTemplate`,
+`ChangedNewName` with `text`, then `ConfirmedCreateTemplate`. Open its ID with
+`ClickedTemplateRow`. Navigate using
+`{ "_tag": "Navigate", "route": { "_tag": "TemplatesTab" } }` rather than URLs.
+Internal store snapshots and completion messages cannot be sent as actions.
+
+Action replies describe the immediate update result: `changed`, `state` and
+`pendingCommands` (the number of commands dispatched by **that action**).
+They do **not** promise that asynchronous writes have finished. Read state until
+the expected data or error appears before proceeding; a subsequent read's zero
+`pendingCommands` is not a global idle signal. Do not blindly retry creation,
+recording or deletion after a timeout. Cancellation stops waiting, not an already
+dispatched write. Recording and field changes use the same timestamp rules as
+the UI and can affect study measurements.
+
+Destructive confirmations require a separate human browser confirmation as well
+as the app's request/confirm workflow. Deletion labels come from application
+state, not agent-supplied names; the browser confirmation includes the target ID.
+Approval carries an internal confirmation version checked and consumed atomically
+by the update loop. Target changes, cancellation and prior confirmations invalidate
+it, including changes made by another connection or the UI. A stale approval
+dispatches no destructive command and requires confirmation again. Unnamed archives
+use the same display-name fallback as the history list.
+Tool annotations are hints, not permission checks. Invalid field kinds, option
+indices, selected values and foreign task field IDs are rejected at the agent
+boundary. ID-specific navigation requires an existing template/archive, and only
+the active session can be opened in the runner.
+
+WebMCP returns expected failures as `{ "isError": true, "error": { "message": "…" } }`
+so validation, refusal and timeout messages survive native error handling.
+Successful results keep the shapes described above. Cancellation and unexpected
+defects still reject execution; ordinary MCP uses its protocol-native errors.
+
+`src/agents/webmcp.ts` owns browser registration with an Effect scope; closing
+it unregisters tools and interrupts calls. `src/agents/connection.ts` uses typed
+Foldkit ports, `Effect.callback` and Effect timeouts—not a Promise queue.
+Promises exist only at library/browser boundaries. There is no outbound HTTP
+in this integration; the MCP transport uses Effect's HTTP stack.
+
+`src/agents/mcp.ts` also exports `makeMcpHandler(handlers, allowedOrigins)`, an
+embeddable MCP Streamable HTTP `Request → Response` handler for `/mcp`, using
+protocol version `2025-06-18`. Construct handlers with `makeToolHandlers(getStore,
+connection)` and an open-app connection from `connectAgentApplication`. Dispose
+the HTTP handler when its host closes. **This does not start a server or make
+`/mcp` available on GitHub Pages.** External MCP clients need a host/bridge to
+the browser session; OPFS cannot be read by a separate Node server. The host must
+provide authentication if exposed outside its trusted process; an origin
+allowlist is not authentication.
+
+Agent tests cover MCP initialization/list/call, WebMCP schemas and cleanup, and
+the actual UI/SQLite CRUD path with LiveStore's in-memory adapter. The latter
+substitutes the experimental browser registry and human confirmation response;
+it does not prove native-agent compatibility or OPFS/reload persistence.

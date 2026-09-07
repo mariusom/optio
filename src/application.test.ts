@@ -23,6 +23,7 @@ describe("application wiring", () => {
     expect(names).toEqual(
       [
         "activeSession",
+        "agentRequest",
         "currentTaskScroll",
         "focusedSectionScroll",
         "history",
