@@ -279,7 +279,10 @@ const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef
 const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>) =>
   fields.map((field) =>
     tables.sessionTaskFields.insert({
-      id: crypto.randomUUID(),
+      // Materializers run in both the client and worker, and during replay.
+      // Updates must target the same field everywhere; namespace template IDs
+      // by task because the first task reuses its template's field definitions.
+      id: `${taskId}:${field.id}`,
       taskId,
       name: field.name,
       kind: field.kind,
