@@ -1,6 +1,15 @@
 packages:
   - "."
 
+# Worker RPC protocols must match FoldKit's Effect release exactly.
+overrides:
+  effect: 4.0.0-rc.112
+  "@effect/opentelemetry": 4.0.0-rc.112
+  "@effect/platform-browser": 4.0.0-rc.112
+  "@effect/platform-bun": 4.0.0-rc.112
+  "@effect/platform-node": 4.0.0-rc.112
+  "@effect/platform-node-shared": 4.0.0-rc.112
+
 allowBuilds:
   msgpackr-extract: false
 
@@ -14,3 +23,6 @@ onlyBuiltDependencies:
   - esbuild
   - rolldown
   - sqlite-wasm
+
+patchedDependencies:
+  "@livestore/adapter-web@0.5.0-dev.0": patches/@livestore__adapter-web@0.5.0-dev.0.patch

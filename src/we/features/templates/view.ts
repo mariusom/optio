@@ -358,7 +358,11 @@ const createModal = (newName: string, h: HtmlBuilder<Message>) =>
     ],
     [
       h.div(
-        [h.Class("modal-box max-w-sm rounded-box border border-base-300 p-5 bg-base-100")],
+        [
+          h.Class(
+            "modal-box w-full max-w-sm justify-self-center rounded-box border border-base-300 p-5 bg-base-100",
+          ),
+        ],
         [
           h.h3([h.Class("text-base font-bold text-base-content")], ["New Template"]),
           h.p(
