@@ -224,18 +224,18 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
   const _hasChanges = hasChanges(editor as unknown as Parameters<typeof hasChanges>[0]);
 
   return h.div(
-    [h.Class("flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))]")],
+    [h.Class("template-editor flex min-h-full flex-col")],
     [
       h.div(
-        [
-          h.Class(
-            "mx-auto grid w-full max-w-4xl flex-1 grid-cols-1 items-start gap-6 px-4 pb-6 pt-4 sm:px-6 sm:pt-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:px-8",
-          ),
-        ],
+        [h.Class("mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6")],
         [
           // Template details card
           h.div(
-            [h.Class("rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden")],
+            [
+              h.Class(
+                "w-full rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden",
+              ),
+            ],
             [
               h.div(
                 [h.Class("px-4 py-2.5 bg-base-200/60 border-b border-base-200")],
@@ -269,7 +269,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                           "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none transition-colors placeholder:text-base-content/40",
                         ),
                         h.Value(editor.name),
-                        h.Placeholder("Template Name"),
+                        h.Placeholder("e.g. Morning ward observations"),
                         h.AriaLabel("Template Name"),
                         h.Autofocus(false),
                         h.OnInput((value) => Message.ChangedEditorName({ text: value })),
@@ -322,7 +322,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
           h.div(
             [
               h.Class(
-                "rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden divide-y divide-base-200",
+                "w-full rounded-box bg-base-100 border border-base-300 shadow-xs overflow-hidden divide-y divide-base-200",
               ),
             ],
             [
@@ -350,7 +350,9 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                       [
                         h.p(
                           [h.Class("text-sm italic text-base-content/50")],
-                          ["No fields added yet. Add fields below to capture study data."],
+                          [
+                            "What would you like to record? Add a field for each detail, such as activity, location, or notes.",
+                          ],
                         ),
                       ],
                     ),
@@ -369,7 +371,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                   h.button(
                     [
                       h.Class(
-                        "btn btn-ghost btn-sm gap-1.5 text-primary font-semibold hover:bg-primary/10 rounded-field",
+                        "btn btn-outline gap-1.5 text-primary font-semibold hover:bg-primary/10 rounded-field",
                       ),
                       h.OnClick(Message.ClickedAddField()),
                       h.AriaLabel("Add Field"),
@@ -405,11 +407,13 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
         ],
         [
           h.div(
-            [h.Class("mx-auto flex max-w-4xl gap-3")],
+            [h.Class("mx-auto flex max-w-3xl gap-3 sm:justify-end")],
             [
               h.button(
                 [
-                  h.Class("btn btn-ghost flex-1 rounded-field font-medium"),
+                  h.Class(
+                    "btn btn-ghost flex-1 sm:flex-none sm:min-w-28 rounded-field font-medium",
+                  ),
                   h.OnClick(Message.ClickedCancelEditTemplate()),
                   h.AriaLabel("Cancel template editing"),
                 ],
@@ -417,7 +421,9 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
               ),
               h.button(
                 [
-                  h.Class("btn btn-primary flex-1 rounded-field font-semibold shadow-sm"),
+                  h.Class(
+                    "btn btn-primary flex-1 sm:flex-none sm:min-w-40 rounded-field font-semibold shadow-sm",
+                  ),
                   h.Disabled(!isValid || !_hasChanges || editor.isSaving),
                   h.OnClick(Message.ClickedSaveTemplate()),
                   h.AriaLabel("Save template changes"),
@@ -443,14 +449,16 @@ const fieldRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<
     field.id,
     [
       h.Class(
-        "flex items-center gap-3 bg-base-100 px-3 py-3 transition-colors active:bg-base-200/50",
+        "flex flex-wrap items-center gap-3 bg-base-100 px-4 py-3 transition-colors active:bg-base-200/50",
       ),
     ],
     [
       kindIcon(field.kind as FieldKind, "h-6 w-6 shrink-0 text-muted-foreground", h),
       h.button(
         [
-          h.Class("flex min-w-0 grow flex-col items-start gap-0.5 text-left"),
+          h.Class(
+            "flex min-h-11 min-w-0 flex-1 flex-col justify-center items-start gap-0.5 text-left",
+          ),
           h.OnClick(Message.ClickedEditField({ id: field.id })),
           h.AriaLabel(`Edit field ${field.name}`),
         ],
@@ -487,7 +495,7 @@ const fieldRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<
         ],
       ),
       h.div(
-        [h.Class("flex shrink-0 items-center gap-0.5")],
+        [h.Class("ml-auto flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto")],
         [
           h.button(
             [
@@ -625,7 +633,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                       ),
                       h.div(
                         [
-                          h.Class("grid grid-cols-2 sm:grid-cols-3 gap-2"),
+                          h.Class("grid grid-cols-2 gap-2"),
                           h.Attribute("role", "radiogroup"),
                           h.AriaLabel("Field Type"),
                         ],
@@ -794,7 +802,7 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                           [
                             h.input([
                               h.Class(
-                                "input input-bordered flex-1 rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
+                                "input input-bordered min-w-0 flex-1 rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
                               ),
                               h.Value(draft.newOptionText),
                               h.Placeholder("Add option name…"),

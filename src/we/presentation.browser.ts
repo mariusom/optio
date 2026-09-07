@@ -14,6 +14,8 @@ import { templatesPage } from "./features/templates/view";
 import { historyPage } from "./features/history/historyView";
 import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
+import { button } from "../components/ui/button";
+import { nativeSelect } from "../components/ui/native-select";
 import "../index.css";
 
 const now = 1_700_000_000_000;
@@ -113,6 +115,47 @@ afterEach(() => {
 });
 
 describe("persistent presentation regressions", () => {
+  it.each([390, 1280])(
+    "aligns controls and keeps the editor footer flush at %ipx",
+    async (width) => {
+      await mount((model, h) =>
+        h.div(
+          [h.Class("app-shell h-dvh overflow-y-auto")],
+          [templateEditorPage({ ...model, editor: editor(2, 2) }, h)],
+        ),
+      );
+      await page.viewport(width, 900);
+      await expect.element(page.getByLabelText("Template Name")).toBeVisible();
+      const root = document.querySelector(".template-editor")!;
+      const footer = root.children[1]!;
+      expect(getComputedStyle(root).paddingBottom).toBe("0px");
+      expect(root.getBoundingClientRect().bottom).toBe(footer.getBoundingClientRect().bottom);
+      expect(root.scrollWidth).toBe(root.clientWidth);
+      for (const control of root.querySelectorAll(".btn, .input")) {
+        expect(control.getBoundingClientRect().height).toBe(44);
+      }
+    },
+  );
+
+  it("aligns legacy inputs with shared buttons and selects", async () => {
+    await mount((_model, h) =>
+      h.div(
+        [h.Class("app-shell flex gap-2")],
+        [
+          h.input([h.Class("input input-sm"), h.AriaLabel("Example")]),
+          button({ size: "sm" }, "Action", h),
+          button({ size: "icon-xs", attributes: [h.AriaLabel("Icon action")] }, "+", h),
+          nativeSelect({ id: "example-select", label: "Choice", size: "sm", options: [] }, h),
+        ],
+      ),
+    );
+    await expect.element(page.getByLabelText("Example")).toBeVisible();
+    for (const control of container!.querySelectorAll("input, button, select")) {
+      expect(control.getBoundingClientRect().height).toBe(44);
+    }
+    expect(page.getByLabelText("Icon action").element().getBoundingClientRect().width).toBe(44);
+  });
+
   it("renders a converted text input default exactly as it is stored", async () => {
     const convertedDraft = withKindChanged(
       {

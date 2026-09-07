@@ -96,6 +96,22 @@ main,
 /* Workspace chrome is intentionally different at each device size. */
 .app-shell {
   -webkit-font-smoothing: antialiased;
+  --control-height: 2.75rem;
+}
+
+/* One control rhythm across legacy forms and newer shared components.
+   Textareas and selection controls keep their content-appropriate dimensions. */
+.app-shell :is(.btn, .input, .select, [data-slot="button"], [data-slot="native-select"]) {
+  height: var(--control-height);
+  min-height: var(--control-height);
+  border-radius: var(--radius-field);
+  font-size: 0.875rem;
+}
+
+.app-shell :is(.btn-circle, .btn-square, [data-slot="button"][data-size^="icon"]) {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  padding-inline: 0;
 }
 
 /* daisyUI uses --border as a width; Foldcn uses it as a color. Keep the
@@ -512,18 +528,6 @@ main,
 
   .start-page {
     padding-bottom: 2rem;
-  }
-
-  [data-slot="button"] {
-    min-height: 2.75rem;
-  }
-
-  .app-shell .btn {
-    min-height: 2.75rem;
-  }
-
-  .app-shell .btn-circle {
-    min-width: 2.75rem;
   }
 
   .app-shell :is(input, select, textarea) {
