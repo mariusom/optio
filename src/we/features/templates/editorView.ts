@@ -339,7 +339,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                   ),
                   h.span(
                     [h.Class("badge badge-sm badge-neutral font-mono")],
-                    [`${editor.fields.length} fields`],
+                    [`${editor.fields.length} field${editor.fields.length === 1 ? "" : "s"}`],
                   ),
                 ],
               ),
@@ -714,7 +714,9 @@ const fieldModal = (editor: NonNullable<EditorModel["editor"]>, h: HtmlBuilder<M
                             ),
                             h.span(
                               [h.Class("text-xs font-mono text-base-content/50")],
-                              [`${draft.options.length} options`],
+                              [
+                                `${draft.options.length} option${draft.options.length === 1 ? "" : "s"}`,
+                              ],
                             ),
                           ],
                         ),

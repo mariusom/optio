@@ -14,9 +14,9 @@ const kebabMenu = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
   h.div(
     [h.Class("dropdown dropdown-end self-center pr-1")],
     [
-      h.div(
+      h.button(
         [
-          h.Tabindex(0),
+          h.Type("button"),
           h.Class("btn btn-ghost btn-sm btn-circle"),
           h.AriaLabel(`Actions for "${template.name}"`),
         ],

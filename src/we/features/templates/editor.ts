@@ -38,6 +38,9 @@ export type EditorState = {
  */
 export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDraft => {
   let next = { ...draft, kind: nextKind };
+  if (nextKind === "textInput") {
+    next = { ...next, defaultValue: next.defaultValue.replace(/[\r\n]/g, "") };
+  }
   if (!supportsRequired(nextKind)) next = { ...next, isRequired: false };
   if (!hasOptions(nextKind)) {
     next = { ...next, options: [], exclusiveOptions: [], newOptionText: "" };
@@ -85,7 +88,7 @@ const arrayEqual = (a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean
   a.length === b.length && a.every((value, index) => value === b[index]);
 
 /** One field's dirty check: identity + every editable attribute. */
-const fieldDiffers = (current: FieldDef, original: FieldDef): boolean =>
+export const fieldDiffers = (current: FieldDef, original: FieldDef): boolean =>
   current.id !== original.id ||
   current.name !== original.name ||
   current.kind !== original.kind ||

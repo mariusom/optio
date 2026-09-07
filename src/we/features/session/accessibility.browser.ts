@@ -16,7 +16,7 @@ import { sessionView } from "./sessionView";
 import type { RunnerState } from "./runner";
 import "../../../index.css";
 
-const runnerFixture = (value: string): RunnerState => ({
+const runnerFixture = (value: string, override: Partial<RunnerState> = {}): RunnerState => ({
   sessionId: "session",
   templateName: "Keyboard study",
   sessionName: "Keyboard accessibility",
@@ -79,6 +79,7 @@ const runnerFixture = (value: string): RunnerState => ({
       ],
     },
   ],
+  ...override,
 });
 
 let handle: Runtime.EmbedHandle | undefined;
@@ -97,7 +98,11 @@ const accessibleTaskNames = async () => {
   return nodes.filter((node) => !node.ignored).map((node) => node.name?.value);
 };
 
-const mount = async (width: number, value = "Observe") => {
+const mount = async (
+  width: number,
+  value = "Observe",
+  runnerOverride: Partial<RunnerState> = {},
+) => {
   await page.viewport(width, 900);
   container = document.createElement("div");
   container.id = `runner-test-${crypto.randomUUID()}`;
@@ -110,7 +115,11 @@ const mount = async (width: number, value = "Observe") => {
       Model,
       container,
       init: () => ({
-        model: { ...model, runner: runnerFixture(value), runnerPhase: "collecting" as const },
+        model: {
+          ...model,
+          runner: runnerFixture(value, runnerOverride),
+          runnerPhase: "collecting" as const,
+        },
       }),
       view: (current, h) =>
         h.div([h.Class("app-shell focus-workspace h-full")], [sessionView(current, h)]),
@@ -235,6 +244,29 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
       expect(document.activeElement?.getAttribute("type")).not.toBe("radio");
     },
   );
+});
+
+describe.each([390, 820])("runner actions at %ipx", (width) => {
+  const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
+    const task = runnerFixture(value).tasks[0]!;
+    return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
+  };
+
+  it("disables Record for a completed task that is not being edited", async () => {
+    await mount(width, "Observe", taskOverride("Observe", 1_000, false));
+    const name = width < 768 ? /^Record$/ : /Record Task/;
+    await expect.element(page.getByRole("button", { name })).toBeDisabled();
+  });
+
+  it("enables Save for a completed, filled task being edited", async () => {
+    await mount(width, "Observe", taskOverride("Observe", 1_000, true));
+    await expect.element(page.getByRole("button", { name: /Save/ })).toBeEnabled();
+  });
+
+  it("disables Save when an edited task is missing a required value", async () => {
+    await mount(width, "", taskOverride("", 1_000, true));
+    await expect.element(page.getByRole("button", { name: /Save/ })).toBeDisabled();
+  });
 });
 
 describe.each([820, 1440])("task sidebar at %ipx", (width) => {

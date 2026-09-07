@@ -91,6 +91,33 @@ describe("runner dead links", () => {
     expect(messages[0]).toMatchObject({ _tag: "GotRunnerData", data: { sessionId: "s1" } });
   });
 
+  it.each([
+    { label: "ended", endedAt: 1, expectedData: null },
+    { label: "live", endedAt: null, expectedData: { sessionId: "s1" } },
+    { label: "legacy live", endedAt: undefined, expectedData: { sessionId: "s1" } },
+  ])("treats $label session correctly", async ({ endedAt, expectedData }) => {
+    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+    vi.mocked(getStore).mockResolvedValue({
+      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+        callbacks.push(callback);
+        if (callbacks.length === 3) {
+          callbacks[1]!([]);
+          callbacks[2]!([]);
+          callbacks[0]!([{ id: "s1", templateName: "T", sessionName: "S", startedAt: 0, endedAt }]);
+        }
+        return () => {};
+      },
+    } as unknown as Awaited<ReturnType<typeof getStore>>);
+
+    const messages = await Effect.runPromise(
+      subscriptions.runner
+        .dependenciesToStream({ sessionId: "s1" })
+        .pipe(Stream.take(1), Stream.runCollect),
+    );
+
+    expect(messages[0]).toMatchObject({ _tag: "GotRunnerData", data: expectedData });
+  });
+
   it("redirects to Start after switching from a valid runner to a missing session", () => {
     const model = makeModel(makeRunner({ sessionId: "s1" }));
     const switched = update(

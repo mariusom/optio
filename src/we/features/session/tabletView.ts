@@ -3,7 +3,14 @@ import type { HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
-import { currentTask, taskStartDate, type RunnerState, type RunnerTask } from "./runner";
+import {
+  canRecordTask,
+  currentTask,
+  isTaskDone,
+  taskStartDate,
+  type RunnerState,
+  type RunnerTask,
+} from "./runner";
 import { formSectionsView, sessionTimerView, endConfirmModal, errorAlert } from "./runnerView";
 
 // ── Icons ───────────────────────────────────────────────────────────────────
@@ -240,8 +247,8 @@ const tabletSessionBottomBar = (
 ) => {
   if (task === null) return h.div([], []);
   const isEditing = task.isBeingEdited;
-  const canRecord = task.sections.every((s) => (s.isRequired ? s.value !== "" : true));
-  const canSave = isEditing ? canRecord : true;
+  const canRecord = canRecordTask(task);
+  const canSave = isEditing ? isTaskDone(task) : true;
 
   const outerClass =
     "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3";

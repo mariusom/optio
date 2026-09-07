@@ -46,6 +46,7 @@ import {
   deleteOptionFromDraft,
   draftFromField,
   draftToFieldDef,
+  fieldDiffers,
   hasChanges,
   withKindChanged,
   isDraftValid,
@@ -530,7 +531,10 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     // ── Template editor ───────────────────────────────────────────────────
     GotTemplateDetail: ({ template }) => {
       if (template === null) {
-        return { model: { ...model, editor: null, lastError: "Template not found." } };
+        return {
+          model: { ...model, editor: null, lastError: "Template not found." },
+          commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
+        };
       }
       if (model.editor !== null && model.editor.id === template.id) {
         const sorted = [...template.fields].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -596,7 +600,21 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     CanceledAddField: () => {
       if (model.editor === null) return { model };
       const draft = model.editor.draft;
-      const isDraftDirty = draft !== null && (draft.name.trim() !== "" || draft.options.length > 0);
+      const editedField = model.editor.fields.find(
+        (field) => field.id === model.editor?.editingFieldId,
+      );
+      const isDraftDirty =
+        draft !== null &&
+        (model.editor.editingFieldId === null
+          ? draft.name.trim() !== "" ||
+            draft.kind !== "textInput" ||
+            draft.isRequired ||
+            draft.defaultValue !== "" ||
+            draft.options.length > 0 ||
+            draft.newOptionText !== ""
+          : draft.newOptionText !== "" ||
+            editedField === undefined ||
+            fieldDiffers(draftToFieldDef(draft), editedField));
       if (isDraftDirty) {
         return { model: { ...model, editor: { ...model.editor, pendingDiscard: true } } };
       }
@@ -1346,7 +1364,7 @@ const runnerStream = (sessionId: string): Stream.Stream<Message> =>
           const session =
             (latestSessions as ReadonlyArray<RunnerSessionRow>).find((s) => s.id === sessionId) ??
             null;
-          if (session === null) {
+          if (session === null || (session.endedAt !== null && session.endedAt !== undefined)) {
             Queue.offerUnsafe(queue, Message.GotRunnerData({ data: null }));
             return;
           }
@@ -1541,11 +1559,10 @@ const historyDetailStream = (sessionId: string): Stream.Stream<Message> =>
           const session =
             (latestSessions as ReadonlyArray<HistorySessionRow>).find((s) => s.id === sessionId) ??
             null;
-          if (session === null) {
+          if (session === null || session.endedAt === null || session.endedAt === undefined) {
             Queue.offerUnsafe(queue, Message.GotHistoryDetail({ detail: null }));
             return;
           }
-          // If session not ended (live), still push detail? Spec says History detail is for ended sessions; but we push anyway
           const recordsForSession = (latestRecords as ReadonlyArray<TaskRecordRow>).filter(
             (r) => r.sessionId === sessionId,
           );

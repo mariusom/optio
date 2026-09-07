@@ -50,7 +50,11 @@ export const isSectionDone = (section: RunnerSection): boolean =>
 export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
 
 export const canRecordTask = (task: RunnerTask | null | undefined): boolean =>
-  task !== null && task !== undefined && isTaskDone(task);
+  task !== null &&
+  task !== undefined &&
+  task.endDate === null &&
+  !task.isBeingEdited &&
+  isTaskDone(task);
 
 // Earliest touched section startDate (min) — mirrors Task.startDate
 export const taskStartDate = (task: RunnerTask): number | null => {

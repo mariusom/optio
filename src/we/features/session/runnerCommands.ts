@@ -287,6 +287,16 @@ export const SaveEdit = Command.define("SaveEdit", {
   execute: ({ taskId }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
+      const fieldRows = store.query(
+        tables.sessionTaskFields.select().where({ taskId }),
+      ) as ReadonlyArray<{ isRequired: number; value: string }>;
+      const notDone = fieldRows.some(
+        (r) => r.isRequired === 1 && (r.value === "" || r.value === null),
+      );
+      if (notDone) {
+        return Message.FailedRunnerOp({ error: "Cannot save: required fields empty" });
+      }
+
       store.commit(events.taskEditFinished({ id: taskId }));
       return Message.TaskEditFinished();
     }).pipe(

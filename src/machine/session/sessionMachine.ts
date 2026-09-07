@@ -355,6 +355,11 @@ export const SessionMachine = Machine.make({
               .resolve(({ current, target, owner }, enqueue) => {
                 const cur = currentTask(current.data);
                 if (cur === null) return target.from().update(owner.decoded(current));
+                // Completed tasks are saved through the edit flow, never recorded again.
+                // Check this before required fields so a stale selection is a quiet no-op.
+                if (cur.endDate !== null || cur.isBeingEdited) {
+                  return target.from().update(owner.decoded(current));
+                }
                 if (!isTaskDone(cur)) {
                   return target.from().update(
                     owner.decoded({
@@ -414,7 +419,6 @@ export const SessionMachine = Machine.make({
                 const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
                 const fallback = fallbackTaskId(current.data);
                 const common = {
-                  editBackup: null,
                   showTaskList: false,
                   data: {
                     ...current.data,
@@ -468,7 +472,6 @@ export const SessionMachine = Machine.make({
                 return target.from().update(
                   owner.decoded({
                     ...current,
-                    editBackup: null,
                     showTaskList: false,
                     focusedSectionId: null,
                     data: {

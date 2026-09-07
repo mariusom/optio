@@ -172,7 +172,7 @@ const resumeView = (
               ),
               h.span(
                 [h.Class("badge badge-sm badge-neutral font-mono text-xs")],
-                [`${active.completedCount} tasks`],
+                [`${active.completedCount} task${active.completedCount === 1 ? "" : "s"}`],
               ),
             ],
           ),

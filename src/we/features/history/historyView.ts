@@ -127,7 +127,7 @@ const sessionRowView = (session: HistoryModel["history"][number], h: HtmlBuilder
               h.div([h.Class("flex-1")], []),
               h.span(
                 [h.Class("badge badge-sm badge-neutral font-mono text-[10px]")],
-                [`${session.taskCount} tasks`],
+                [`${session.taskCount} task${session.taskCount === 1 ? "" : "s"}`],
               ),
             ],
           ),
@@ -150,9 +150,9 @@ const sessionRowView = (session: HistoryModel["history"][number], h: HtmlBuilder
           h.div(
             [h.Class("dropdown dropdown-end")],
             [
-              h.div(
+              h.button(
                 [
-                  h.Tabindex(0),
+                  h.Type("button"),
                   h.Class("btn btn-ghost btn-sm btn-circle"),
                   h.AriaLabel(`Actions for "${session.displayName}"`),
                 ],

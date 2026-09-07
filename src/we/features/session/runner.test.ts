@@ -79,6 +79,18 @@ describe("isTaskDone / canRecord", () => {
   it("false for null task", () => {
     expect(canRecordTask(null)).toBe(false);
   });
+  it("false for a completed task even when required fields are filled", () => {
+    const t = task([section({ name: "A", isRequired: true, value: "x" })], {
+      endDate: 1234,
+    });
+    expect(canRecordTask(t)).toBe(false);
+  });
+  it("false for an editing task even when required fields are filled", () => {
+    const t = task([section({ name: "A", isRequired: true, value: "x" })], {
+      isBeingEdited: true,
+    });
+    expect(canRecordTask(t)).toBe(false);
+  });
   it("prefilled defaults count as filled", () => {
     const t = task([
       section({

@@ -28,6 +28,7 @@ const query = vi.fn();
 const commit = vi.fn();
 const task = { id: "task", orderIndex: 1, endDate: null, isBeingEdited: 0 };
 const finishedTask = { ...task, endDate: new Date(1000) };
+const liveSession = { id: "session", endedAt: null };
 const template = { id: "template", name: "Study", isDefault: 0, createdAt: new Date(0) };
 const saveArgs = { id: "template", name: "Edited study", isDefault: false, fields: [] };
 
@@ -56,7 +57,7 @@ const cases = [
   {
     name: "EndSession empty",
     command: () => EndSession({ sessionId: "session" }),
-    rows: [[{ id: "session", endedAt: null }], [task]],
+    rows: [[liveSession], [task]],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
     writes: true,
@@ -64,7 +65,7 @@ const cases = [
   {
     name: "EndSession archive",
     command: () => EndSession({ sessionId: "session" }),
-    rows: [[{ id: "session", endedAt: null }], [finishedTask], []],
+    rows: [[liveSession], [finishedTask], []],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
     writes: true,
@@ -96,7 +97,7 @@ const cases = [
   {
     name: "SaveEdit",
     command: () => SaveEdit({ taskId: "task" }),
-    rows: [],
+    rows: [[]],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",
     writes: true,
@@ -205,6 +206,66 @@ describe.each(cases)("$name persistence", ({ name, command, rows, success, failu
       if (stage === "open") expect(query).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("SaveEdit required field validation", () => {
+  it("does not finish the edit when a persisted required field is empty", async () => {
+    query.mockReturnValueOnce([{ isRequired: 1, value: "" }]);
+
+    expect(
+      await Effect.runPromise<Message, never>(SaveEdit({ taskId: "task" }).effect),
+    ).toMatchObject({
+      _tag: "FailedRunnerOp",
+      error: "Cannot save: required fields empty",
+    });
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("allows persisted optional fields to be empty", async () => {
+    query.mockReturnValueOnce([
+      { isRequired: 0, value: "" },
+      { isRequired: 1, value: "complete" },
+    ]);
+
+    expect(
+      await Effect.runPromise<Message, never>(SaveEdit({ taskId: "task" }).effect),
+    ).toMatchObject({
+      _tag: "TaskEditFinished",
+    });
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("EndSession idempotency", () => {
+  it.each([
+    ["missing", []],
+    ["already ended", [{ ...liveSession, endedAt: new Date(2000) }]],
+  ])("rejects a %s session without reading tasks or committing", async (_name, sessionRows) => {
+    query.mockReturnValueOnce(sessionRows);
+
+    expect(
+      await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect),
+    ).toMatchObject({
+      _tag: "FailedRunnerOp",
+      error: "Session is missing or already ended.",
+    });
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("does not delete an archive when EndSession is repeated", async () => {
+    query
+      .mockReturnValueOnce([liveSession])
+      .mockReturnValueOnce([finishedTask])
+      .mockReturnValueOnce([])
+      .mockReturnValueOnce([{ ...liveSession, endedAt: new Date(2000) }]);
+
+    await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect);
+    await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect);
+
+    expect(query).toHaveBeenCalledTimes(4);
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("template save failure recovery", () => {

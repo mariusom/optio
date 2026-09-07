@@ -19,6 +19,17 @@ export const StartSession = Command.define("StartSession", {
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
 
+      const sessions = store.query(tables.sessions.select()) as ReadonlyArray<{
+        readonly id: string;
+        readonly endedAt: number | Date | null;
+      }>;
+      const activeSession = sessions.find(
+        (session) => session.endedAt === null || session.endedAt === undefined,
+      );
+      if (activeSession !== undefined) {
+        return Message.SessionStarted({ sessionId: activeSession.id });
+      }
+
       // An explicit template ID is authoritative, including zero-field templates.
       // Name lookup is only for callers without an ID.
       let resolvedFields: ReadonlyArray<FieldDef> = fields;
@@ -102,6 +113,15 @@ export const DiscardLiveSession = Command.define("DiscardLiveSession", {
   execute: ({ sessionId }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
+
+      const sessionRows = store.query(
+        tables.sessions.select().where({ id: sessionId }),
+      ) as ReadonlyArray<{ endedAt: Date | number | null }>;
+      const session = sessionRows[0];
+      if (session === undefined || (session.endedAt !== null && session.endedAt !== undefined)) {
+        return Message.SessionDiscarded();
+      }
+
       store.commit(
         events.sessionLiveGraphCleared({ sessionId }),
         events.sessionDeleted({ id: sessionId }),

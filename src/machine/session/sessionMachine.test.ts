@@ -189,6 +189,32 @@ describe("sessionMachine recording", () => {
     expect(runner!.focusedSectionId).toBeNull();
   });
 
+  it("ignores RecordRequested for an editing task before required-field validation", () => {
+    const editing = data({
+      tasks: [
+        {
+          id: "task-1",
+          orderIndex: 0,
+          endDate: null,
+          isBeingEdited: true,
+          sections: [section("f-required", "Required", "textInput", true, "", 0)],
+        },
+      ],
+    });
+    const { runner, emissions } = plan(liveRunner({ ...editing, lastError: null }), {
+      _tag: "RecordRequested",
+    });
+    expect(emissions).toEqual([]);
+    expect(runner!.lastError).toBeNull();
+  });
+
+  it("ignores a completed task selected immediately before RecordRequested", () => {
+    const selected = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
+    const recorded = plan(selected.runner, { _tag: "RecordRequested" });
+    expect(recorded.emissions).toEqual([]);
+    expect(recorded.runner!.lastError).toBeNull();
+  });
+
   it("RecordAcked clears focus and task list", () => {
     const { runner } = plan(liveRunner({ focusedSectionId: "f-activity", showTaskList: true }), {
       _tag: "RecordAcked",
@@ -288,8 +314,35 @@ describe("sessionMachine task selection + edit", () => {
     expect(emissions).toEqual([
       { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
     ]);
-    expect(runner!.editBackup).toBeNull();
+    expect(runner!.editBackup).toEqual({ taskId: "task-2", values: { "f-note": "Old note" } });
     expect(runner!.currentTaskId).toBe("task-1");
+  });
+
+  it("retains the original backup when cancel fails and the task is reselected and retried", () => {
+    const editing = data({
+      currentTaskId: "task-2",
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        isBeingEdited: task.id === "task-2",
+        sections: task.sections.map((field) =>
+          field.id === "f-note" ? { ...field, value: "Changed" } : field,
+        ),
+      })),
+    });
+    const originalBackup = { taskId: "task-2", values: { "f-note": "Old note" } };
+    const cancelled = plan(liveRunner({ ...editing, editBackup: originalBackup }), {
+      _tag: "EditCancelled",
+    });
+
+    // FailedRunnerOp only adds lastError in the parent reducer; no EditAcked is sent.
+    const failed = { ...cancelled.runner!, lastError: "write failed" };
+    const reselected = plan(failed, { _tag: "TaskSelected", taskId: "task-2" });
+    const retried = plan(reselected.runner, { _tag: "EditCancelled" });
+
+    expect(reselected.runner!.editBackup).toEqual(originalBackup);
+    expect(retried.emissions).toEqual([
+      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
+    ]);
   });
 
   it("EditSaved gates and commits", () => {
@@ -319,7 +372,33 @@ describe("sessionMachine task selection + edit", () => {
       { _tag: "EditSaved" },
     );
     expect(emissions).toEqual([{ _tag: "CommitSaveEdit", taskId: "task-2" }]);
-    expect(runner!.editBackup).toBeNull();
+    expect(runner!.editBackup).toEqual({ taskId: "task-2", values: { "f-note": "Old note" } });
+  });
+
+  it("retains rollback values when save persistence fails", () => {
+    const editing = data({
+      currentTaskId: "task-2",
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        isBeingEdited: task.id === "task-2",
+        sections: task.sections.map((field) =>
+          field.id === "f-note" ? { ...field, value: "Fixed" } : field,
+        ),
+      })),
+    });
+    const originalBackup = { taskId: "task-2", values: { "f-note": "Old note" } };
+    const saved = plan(liveRunner({ ...editing, editBackup: originalBackup }), {
+      _tag: "EditSaved",
+    });
+
+    // A failed save leaves edit mode active in persistence, allowing cancel rollback.
+    const failed = { ...saved.runner!, lastError: "write failed" };
+    const cancelled = plan(failed, { _tag: "EditCancelled" });
+
+    expect(saved.runner!.editBackup).toEqual(originalBackup);
+    expect(cancelled.emissions).toEqual([
+      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
+    ]);
   });
 });
 

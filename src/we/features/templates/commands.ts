@@ -18,7 +18,9 @@ export const CreateTemplate = Command.define("CreateTemplate", {
       const store = yield* Effect.promise(getStore);
       // First template ever becomes the default automatically
       const existing = store.query(tables.templates.select()) as ReadonlyArray<{ id: string }>;
-      store.commit(events.templateCreated({ id, name, isDefault: existing.length === 0 }));
+      store.commit(
+        events.templateCreated({ id, name: name.trim(), isDefault: existing.length === 0 }),
+      );
       return Message.TemplateCreated();
     }).pipe(
       Effect.catchCause((cause) =>

@@ -8,6 +8,7 @@ import {
   canRecordTask,
   currentTask,
   isSectionDone,
+  isTaskDone,
   taskStartDate,
   type RunnerSection,
   type RunnerState,
@@ -470,7 +471,7 @@ const sessionBottomBar = (
   const isEditing = task !== null && task.isBeingEdited;
   const canRecord = canRecordTask(task);
   // For editing, Save enabled iff editing task isDone
-  const canSave = isEditing ? canRecordTask(task) : true;
+  const canSave = isEditing ? task !== null && isTaskDone(task) : true;
 
   if (isEditing) {
     return h.div(

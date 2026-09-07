@@ -174,6 +174,36 @@ describe("history detail regressions", () => {
     expect(rendered.indexOf("Task 2")).toBeLessThan(rendered.indexOf("Task 3"));
   });
 
+  it.each([
+    ["live session with null endedAt", null, null],
+    ["live session with undefined endedAt", undefined, null],
+    ["ended session", 100, expect.objectContaining({ id: "s1", endedAt: 100 })],
+  ])("enforces ended-only detail for %s", async (_case, endedAt, expectedDetail) => {
+    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+    vi.mocked(getStore).mockResolvedValue({
+      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+        callbacks.push(callback);
+        if (callbacks.length === 3) {
+          callbacks[1]!([]);
+          callbacks[2]!([]);
+          callbacks[0]!([{ ...detail, endedAt }]);
+        }
+        return () => {};
+      },
+    } as unknown as Awaited<ReturnType<typeof getStore>>);
+
+    const messages = await Effect.runPromise(
+      subscriptions.historyDetail
+        .dependenciesToStream({ sessionId: "s1" })
+        .pipe(Stream.take(1), Stream.runCollect),
+    );
+
+    expect(messages[0]).toMatchObject({
+      _tag: "GotHistoryDetail",
+      detail: expectedDetail,
+    });
+  });
+
   it("constructs history in taskId order and waits for the session query", async () => {
     const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
     vi.mocked(getStore).mockResolvedValue({

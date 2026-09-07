@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
 import { getStore, type AppStore } from "../../../livestore/client";
+import { events } from "../../../livestore/schema";
 import { Message } from "../../../messages";
 import { CreateTemplate, EnsureTemplatesSeeded, SetDefaultTemplate } from "./commands";
 
@@ -43,6 +44,17 @@ describe.each([
       _tag: "FailedTemplateOp",
       error: expect.stringContaining("Persistence failed"),
     });
+  });
+});
+
+describe("CreateTemplate", () => {
+  it("trims the committed name while reporting success and making the first template default", async () => {
+    expect(
+      await Effect.runPromise(CreateTemplate({ id: "new", name: "  Study  " }).effect),
+    ).toEqual(Message.TemplateCreated());
+    expect(commit).toHaveBeenCalledWith(
+      events.templateCreated({ id: "new", name: "Study", isDefault: true }),
+    );
   });
 });
 

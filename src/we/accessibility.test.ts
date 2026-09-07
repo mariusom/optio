@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "../messages";
 import { editSessionNameSheet } from "./features/history/editSessionNameSheet";
 import { historyPage } from "./features/history/historyView";
+import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { taskDetailView } from "./features/history/taskDetailView";
 import type { RunnerState } from "./features/session/runner";
 import { endConfirmModal, errorAlert, formSectionsView } from "./features/session/runnerView";
@@ -168,6 +169,81 @@ describe("audited view accessibility", () => {
       (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === "Edit field Observed",
     );
     expect(buttons).toHaveLength(2);
+  });
+
+  it("uses native named button controls for dropdown action triggers", () => {
+    const session = {
+      id: "session-1",
+      displayName: "Morning study",
+      templateName: "Study",
+      sessionName: "Morning study",
+      startedAt: 0,
+      endedAt: 1000,
+      taskCount: 1,
+    };
+    const task = {
+      id: "task-1",
+      taskId: 1,
+      startedAt: 0,
+      endedAt: 1000,
+      sections: [],
+    };
+    const cases = [
+      {
+        view: templatesPage(
+          {
+            templates: [
+              {
+                id: "template-1",
+                name: "Study",
+                isDefault: false,
+                fieldCount: 1,
+                requiredCount: 0,
+                createdAt: 0,
+                updatedAt: 0,
+              },
+            ],
+            showCreate: false,
+            newName: "",
+            pendingDelete: null,
+            lastError: null,
+          },
+          h,
+        ),
+        name: 'Actions for "Study"',
+      },
+      {
+        view: historyPage({ history: [session], pendingHistoryDelete: null, csvError: null }, h),
+        name: 'Actions for "Morning study"',
+      },
+      {
+        view: sessionDetailPage(
+          {
+            selectedHistorySession: {
+              ...session,
+              endedAt: session.endedAt,
+              tasks: [task],
+            },
+            showEditHistoryName: false,
+            editHistoryNameInput: "",
+            selectedHistoryTaskId: null,
+            csvError: null,
+          },
+          h,
+        ),
+        name: "Actions for Task 1",
+      },
+    ];
+
+    for (const { view, name } of cases) {
+      const triggers = nodes(view).filter((node) => node.data?.attrs?.["aria-label"] === name);
+      expect(triggers.length).toBeGreaterThan(0);
+      for (const trigger of triggers) {
+        expect(trigger.sel).toBe("button");
+        expect(trigger.data?.props?.type).toBe("button");
+        expect(trigger.data?.attrs?.tabindex).toBeUndefined();
+      }
+    }
   });
 
   it("associates each switch with its clickable label using unique input IDs", () => {

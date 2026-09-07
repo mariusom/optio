@@ -143,7 +143,7 @@ const taskRowView = (t: SessionDetailTask, h: HtmlBuilder<Message>) => {
                 ? [
                     h.span(
                       [h.Class("text-[11px] text-base-content/50 font-medium")],
-                      [`+${more} more fields`],
+                      [`+${more} more field${more === 1 ? "" : "s"}`],
                     ),
                   ]
                 : []),
@@ -159,9 +159,9 @@ const taskRowView = (t: SessionDetailTask, h: HtmlBuilder<Message>) => {
           h.div(
             [h.Class("dropdown dropdown-end")],
             [
-              h.div(
+              h.button(
                 [
-                  h.Tabindex(0),
+                  h.Type("button"),
                   h.Class("btn btn-ghost btn-sm btn-circle"),
                   h.AriaLabel(`Actions for Task ${t.taskId}`),
                 ],
@@ -402,7 +402,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                           ),
                           h.span(
                             [h.Class("badge badge-sm badge-neutral font-mono")],
-                            [`${detail.taskCount} tasks`],
+                            [`${detail.taskCount} task${detail.taskCount === 1 ? "" : "s"}`],
                           ),
                         ],
                       ),
