@@ -20,8 +20,8 @@ importers:
   .:
     dependencies:
       '@foldkit/ui':
-        specifier: ^0.157.0
-        version: 0.157.0(effect@4.0.0-rc.112)(foldkit@0.157.0(effect@4.0.0-rc.112))
+        specifier: ^0.158.0
+        version: 0.158.0(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))
       '@livestore/adapter-web':
         specifier: 0.5.0-dev.0
         version: 0.5.0-dev.0(patch_hash=a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)
@@ -41,8 +41,8 @@ importers:
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112
       foldkit:
-        specifier: ^0.157.0
-        version: 0.157.0(effect@4.0.0-rc.112)
+        specifier: ^0.158.2
+        version: 0.158.2(effect@4.0.0-rc.112)
       lucide:
         specifier: ^1.41.0
         version: 1.41.0
@@ -55,9 +55,9 @@ importers:
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11)
       '@foldkit/vite-plugin':
         specifier: ^0.20.1
-        version: 0.20.1(effect@4.0.0-rc.112)(foldkit@0.157.0(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
+        version: 0.20.1(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
       '@tailwindcss/vite':
-        specifier: ^4.0.0
+        specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
       '@vitest/browser-playwright':
         specifier: 4.1.11
@@ -72,13 +72,13 @@ importers:
         specifier: ^1.63.0
         version: 1.63.0
       tailwindcss:
-        specifier: ^4.0.0
+        specifier: ^4.3.3
         version: 4.3.3
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
       vite-plugin-pwa:
-        specifier: ^0.21.0 || ^1.0.0
+        specifier: ^1.3.0
         version: 1.3.0(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))(workbox-build@7.4.1)(workbox-window@7.4.1)
       vite-plus:
         specifier: ^0.3.0
@@ -715,8 +715,8 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@foldkit/ui@0.157.0':
-    resolution: {integrity: sha512-fegKyWCYtkR7dz+iBbqmG/OZTy1CaQx2ts4xzL+DCNIBImOU+hWPgV86bLrIn5rBabrif/UrUho1GKFO/ba7nQ==}
+  '@foldkit/ui@0.158.0':
+    resolution: {integrity: sha512-VMh+DgPX6qgBqT7+cW+f5oGuQmDvpR5sogN4z/tPVCbRS8NeghCGMBysdH0PLA7I1zpEi0hr2x/k5DpdAZc9ow==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       effect: 4.0.0-rc.112
@@ -747,8 +747,8 @@ packages:
   '@jridgewell/source-map@0.3.11':
     resolution: {integrity: sha512-ZMp1V8ZFcPG5dIWnQLr3NSI1MiCU7UETdS/A0G8V/XWHvJv3ZsFqutJn1Y5RPmAPX6F3BiE397OqveU/9NCuIA==}
 
-  '@jridgewell/sourcemap-codec@1.5.5':
-    resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+  '@jridgewell/sourcemap-codec@1.6.0':
+    resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
@@ -2357,8 +2357,8 @@ packages:
   filelist@1.0.6:
     resolution: {integrity: sha512-5giy2PkLYY1cP39p17Ech+2xlpTRL9HLspOfEgm0L6CwBXBTgsK5ou0JtzYuepxkaQ/tvhCFIJ5uXo0OrM2DxA==}
 
-  foldkit@0.157.0:
-    resolution: {integrity: sha512-I2ImNQqrM+ZRLm+S8xy0gm9G0BBmJYOq+6l4UcvrjBdRLuUrFyClKXsvycCFHlwqhbbz4tKrUhONyslACJqauw==}
+  foldkit@0.158.2:
+    resolution: {integrity: sha512-zA2Bj0W6DHPhPYXGtWduMJjuKnAo+uDyVNLSp5SO3panujtW5Tbh3oLqXhaOcvomqMx6DO2SUtTy+R5s0ut3wQ==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       effect: 4.0.0-rc.112
@@ -2932,8 +2932,8 @@ packages:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
 
-  postcss@8.5.26:
-    resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
+  postcss@8.5.28:
+    resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
 
   pretty-bytes@5.6.0:
@@ -4210,16 +4210,16 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@foldkit/ui@0.157.0(effect@4.0.0-rc.112)(foldkit@0.157.0(effect@4.0.0-rc.112))':
+  '@foldkit/ui@0.158.0(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))':
     dependencies:
       '@floating-ui/dom': 1.8.0
       effect: 4.0.0-rc.112
-      foldkit: 0.157.0(effect@4.0.0-rc.112)
+      foldkit: 0.158.2(effect@4.0.0-rc.112)
 
-  '@foldkit/vite-plugin@0.20.1(effect@4.0.0-rc.112)(foldkit@0.157.0(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))':
+  '@foldkit/vite-plugin@0.20.1(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))':
     dependencies:
       effect: 4.0.0-rc.112
-      foldkit: 0.157.0(effect@4.0.0-rc.112)
+      foldkit: 0.158.2(effect@4.0.0-rc.112)
       magic-string: 1.2.3
       vite: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0)
       ws: 8.21.3
@@ -4231,7 +4231,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/remapping@2.3.5':
@@ -4246,12 +4246,12 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@jridgewell/sourcemap-codec@1.5.5': {}
+  '@jridgewell/sourcemap-codec@1.6.0': {}
 
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   '@livestore/adapter-web@0.5.0-dev.0(patch_hash=a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)':
     dependencies:
@@ -4995,7 +4995,7 @@ snapshots:
       '@oxc-project/runtime': 0.146.0
       '@oxc-project/types': 0.146.0
       lightningcss: 1.33.0
-      postcss: 8.5.26
+      postcss: 8.5.28
       yuku-codegen: 0.5.48
       yuku-parser: 0.5.48
     optionalDependencies:
@@ -5449,7 +5449,7 @@ snapshots:
     dependencies:
       minimatch: 5.1.9
 
-  foldkit@0.157.0(effect@4.0.0-rc.112):
+  foldkit@0.158.2(effect@4.0.0-rc.112):
     dependencies:
       effect: 4.0.0-rc.112
       parse5: 8.0.1
@@ -5823,11 +5823,11 @@ snapshots:
 
   magic-string@0.30.21:
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   magic-string@1.2.3:
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
 
   math-intrinsics@1.1.0: {}
 
@@ -5985,7 +5985,7 @@ snapshots:
 
   possible-typed-array-names@1.1.0: {}
 
-  postcss@8.5.26:
+  postcss@8.5.28:
     dependencies:
       nanoid: 3.3.18
       picocolors: 1.1.1
@@ -6489,7 +6489,7 @@ snapshots:
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
-      postcss: 8.5.26
+      postcss: 8.5.28
       rolldown: 1.2.5
       tinyglobby: 0.2.17
     optionalDependencies:
