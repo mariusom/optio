@@ -1,9 +1,10 @@
-import { Cause, Effect, Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, type FieldDef } from "../../../livestore/schema";
+import { friendlyFailure } from "../../errors";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { nextDuplicateName } from "./naming";
 
@@ -24,7 +25,7 @@ export const CreateTemplate = Command.define("CreateTemplate", {
       return Message.TemplateCreated();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("create", cause) })),
       ),
     ),
 });
@@ -39,7 +40,7 @@ export const SetDefaultTemplate = Command.define("SetDefaultTemplate", {
       return Message.TemplateOpDone();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });
@@ -55,8 +56,7 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
         readonly name: string;
       }>;
       const source = templates.find((t) => t.id === id);
-      if (source === undefined)
-        return yield* effectFailure("Failed to duplicate template. Please try again.");
+      if (source === undefined) return yield* effectFailure("Template no longer exists.");
       const fieldRows = store.query(
         tables.templateFields.select().where({ templateId: id }).orderBy("sortOrder", "asc"),
       ) as Parameters<typeof fieldRowsToDefs>[0];
@@ -76,7 +76,7 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
       return Message.DuplicatedTemplate({ id: copyId });
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("duplicate", cause) })),
       ),
     ),
 });
@@ -110,12 +110,142 @@ export const DeleteTemplate = Command.define("DeleteTemplate", {
       return Message.TemplateOpDone();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("delete", cause) })),
       ),
     ),
 });
 
-/** Seeds "Sample Study" exactly once, when zero templates exist (spec §1.10). */
+// ── Sample templates ───────────────────────────────────────────────────────
+
+const field = (
+  name: string,
+  kind: FieldDef["kind"],
+  isRequired: boolean,
+  sortOrder: number,
+  options: ReadonlyArray<string> = [],
+  exclusiveOptions: ReadonlyArray<string> = [],
+  defaultValue = "",
+): FieldDef => ({
+  id: crypto.randomUUID(),
+  name,
+  kind,
+  isRequired,
+  defaultValue,
+  sortOrder,
+  options: [...options],
+  exclusiveOptions: [...exclusiveOptions],
+});
+
+export type SampleTemplate = {
+  readonly id: string;
+  readonly name: string;
+  readonly isDefault: boolean;
+  readonly fields: ReadonlyArray<FieldDef>;
+};
+
+/**
+ * Three ready-made studies, one per setting, each showing every answer type:
+ * a short text answer, single choice, multiple choice (with a "None" choice
+ * that clears the others), Yes/No and free notes.
+ */
+export const sampleTemplates = (): ReadonlyArray<SampleTemplate> => [
+  {
+    id: crypto.randomUUID(),
+    name: "Assembly line",
+    isDefault: true,
+    fields: [
+      field("Station", "radio", true, 0, [
+        "Station 1",
+        "Station 2",
+        "Station 3",
+        "Station 4",
+        "Station 5",
+        "Rework",
+      ]),
+      field("Operation", "textInput", true, 1),
+      field("Task type", "radio", true, 2, [
+        "Value-added",
+        "Walking",
+        "Waiting",
+        "Setup",
+        "Inspection",
+        "Rework",
+      ]),
+      field(
+        "Tools used",
+        "checkbox",
+        false,
+        3,
+        ["Torque driver", "Hoist", "Scanner", "Hand tools", "None"],
+        ["None"],
+      ),
+      field("Interrupted", "boolean", false, 4),
+      field("Notes", "textArea", false, 5),
+    ],
+  },
+  {
+    id: crypto.randomUUID(),
+    name: "Ward round",
+    isDefault: false,
+    fields: [
+      field("Location", "radio", true, 0, [
+        "Bed",
+        "Nurses’ station",
+        "Treatment room",
+        "Corridor",
+        "Office",
+      ]),
+      field("Activity", "textInput", true, 1),
+      field("Care type", "radio", true, 2, [
+        "Direct care",
+        "Documentation",
+        "Handover",
+        "Medication",
+        "Waiting",
+        "Other",
+      ]),
+      field(
+        "Equipment used",
+        "checkbox",
+        false,
+        3,
+        ["Trolley", "Computer on wheels", "Monitor", "Phone", "None"],
+        ["None"],
+      ),
+      field("Patient present", "boolean", false, 4),
+      field("Notes", "textArea", false, 5),
+    ],
+  },
+  {
+    id: crypto.randomUUID(),
+    name: "Warehouse pick",
+    isDefault: false,
+    fields: [
+      field("Zone", "radio", true, 0, ["A", "B", "C", "Packing", "Dock"]),
+      field("Order/task", "textInput", true, 1),
+      field("Activity", "radio", true, 2, [
+        "Walking",
+        "Picking",
+        "Scanning",
+        "Packing",
+        "Waiting",
+        "Searching",
+      ]),
+      field(
+        "Aids used",
+        "checkbox",
+        false,
+        3,
+        ["Handheld scanner", "Trolley", "Forklift", "Pick list", "None"],
+        ["None"],
+      ),
+      field("Item damaged", "boolean", false, 4),
+      field("Notes", "textArea", false, 5),
+    ],
+  },
+];
+
+/** Seeds the three sample templates exactly once, when zero templates exist. */
 export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
   args: {},
   messages: [Message.TemplatesSeededCheck, Message.FailedTemplateOp],
@@ -124,61 +254,40 @@ export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
       const store = yield* Effect.promise(getStore);
       const existing = store.query(tables.templates.select()) as ReadonlyArray<{ id: string }>;
       if (existing.length > 0) return Message.TemplatesSeededCheck();
-
-      const field = (
-        name: string,
-        kind: FieldDef["kind"],
-        isRequired: boolean,
-        sortOrder: number,
-        options: ReadonlyArray<string> = [],
-        exclusiveOptions: ReadonlyArray<string> = [],
-        defaultValue = "",
-      ): FieldDef => ({
-        id: crypto.randomUUID(),
-        name,
-        kind,
-        isRequired,
-        defaultValue,
-        sortOrder,
-        options: [...options],
-        exclusiveOptions: [...exclusiveOptions],
-      });
-
-      store.commit(
-        events.templatesSeeded({
-          templates: [
-            {
-              id: crypto.randomUUID(),
-              name: "Sample Study",
-              isDefault: true,
-              fields: [
-                field("Activity", "textInput", true, 0),
-                field("Category", "radio", true, 1, [
-                  "Communication",
-                  "Documentation",
-                  "Direct task",
-                  "Admin",
-                  "Other",
-                ]),
-                field(
-                  "Tools used",
-                  "checkbox",
-                  true,
-                  2,
-                  ["Computer", "Phone", "Paper", "Reference material", "None"],
-                  ["None"],
-                ),
-                field("Interrupted", "boolean", false, 3),
-                field("Notes", "textArea", false, 4),
-              ],
-            },
-          ],
-        }),
-      );
+      store.commit(events.templatesSeeded({ templates: sampleTemplates() }));
       return Message.TemplatesSeededCheck();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("create", cause) })),
+      ),
+    ),
+});
+
+/**
+ * Adds the sample templates the user doesn't have yet, by name. Never changes
+ * which template is the default unless the app has none at all.
+ */
+export const AddSampleTemplates = Command.define("AddSampleTemplates", {
+  args: {},
+  messages: [Message.SampleTemplatesAdded, Message.FailedTemplateOp],
+  execute: () =>
+    Effect.gen(function* () {
+      const store = yield* Effect.promise(getStore);
+      const existing = store.query(tables.templates.select()) as ReadonlyArray<{
+        readonly name: string;
+      }>;
+      const taken = new Set(existing.map((t) => t.name));
+      const missing = sampleTemplates()
+        .filter((template) => !taken.has(template.name))
+        .map((template, index) => ({
+          ...template,
+          isDefault: existing.length === 0 && index === 0,
+        }));
+      if (missing.length > 0) store.commit(events.templatesSeeded({ templates: missing }));
+      return Message.SampleTemplatesAdded();
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("create", cause) })),
       ),
     ),
 });

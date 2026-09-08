@@ -40,6 +40,10 @@ export const Message = defineMessageUnion({
   TemplateOpDone: {},
   FailedTemplateOp: { error: S.String },
   TemplatesSeededCheck: {},
+  OpenedTemplateActions: { id: S.String },
+  ClosedTemplateActions: {},
+  ClickedAddSampleTemplates: {},
+  SampleTemplatesAdded: {},
 
   // ── Template editor ─────────────────────────────────────────────────────
   GotTemplateDetail: {
@@ -200,6 +204,8 @@ export const Message = defineMessageUnion({
     ]),
   },
   RequestedHistoryDelete: { id: S.String, displayName: S.String },
+  OpenedHistoryActions: { id: S.String },
+  ClosedHistoryActions: {},
   CanceledHistoryDelete: {},
   ConfirmedHistoryDelete: {},
   HistoryDeleted: {},

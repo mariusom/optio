@@ -20,8 +20,8 @@ importers:
   .:
     dependencies:
       '@foldkit/ui':
-        specifier: ^0.158.0
-        version: 0.158.0(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))
+        specifier: ^0.158.2
+        version: 0.158.2(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))
       '@livestore/adapter-web':
         specifier: 0.5.0-dev.0
         version: 0.5.0-dev.0(patch_hash=a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)
@@ -32,8 +32,8 @@ importers:
         specifier: 0.5.0-dev.0
         version: 0.5.0-dev.0
       '@typeonce/effect-machine':
-        specifier: 0.31.2
-        version: 0.31.2(effect@4.0.0-rc.112)
+        specifier: 0.33.0
+        version: 0.33.0(effect@4.0.0-rc.112)
       cn:
         specifier: ^0.2.5
         version: 0.2.5
@@ -54,17 +54,14 @@ importers:
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11)
       '@foldkit/vite-plugin':
-        specifier: ^0.20.1
-        version: 0.20.1(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
+        specifier: ^0.20.2
+        version: 0.20.2(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
       '@vitest/browser-playwright':
         specifier: 4.1.11
         version: 4.1.11(playwright@1.63.0)(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))(vitest@4.1.11)
-      daisyui:
-        specifier: ^5.7.28
-        version: 5.7.28
       fallow:
         specifier: ^3.22.0
         version: 3.22.0
@@ -715,15 +712,15 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@foldkit/ui@0.158.0':
-    resolution: {integrity: sha512-VMh+DgPX6qgBqT7+cW+f5oGuQmDvpR5sogN4z/tPVCbRS8NeghCGMBysdH0PLA7I1zpEi0hr2x/k5DpdAZc9ow==}
+  '@foldkit/ui@0.158.2':
+    resolution: {integrity: sha512-0bAIsQ8hiL0ilc0mzM19G6QF0VnrvedL0y1IzTilR8Su/mW/uOEMqKQXS6onWNYWI6Xsw9fTszJ0xhGHj/BvxQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       effect: 4.0.0-rc.112
       foldkit: '>=0.155.0'
 
-  '@foldkit/vite-plugin@0.20.1':
-    resolution: {integrity: sha512-nWUDL0GCWU5CJMkzJhtDRa7s0kDOUqIpufCaIsB5Hb3d6xKIg+F6IuckL7Vbt9dBPaPbpQZW5R1oOlNO76jVlw==}
+  '@foldkit/vite-plugin@0.20.2':
+    resolution: {integrity: sha512-KI7x5HtqlTHWfwjKE/g9UgpA9Nh4V+kGKRQe/yee7Vjp4wtLAMhViYtYquDnv4OQpx0RgQv3liWWAIXD32vVpw==}
     engines: {node: '>=20.19.0'}
     peerDependencies:
       effect: 4.0.0-rc.112
@@ -1632,8 +1629,8 @@ packages:
     resolution: {integrity: sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==}
     engines: {node: '>=12'}
 
-  '@typeonce/effect-machine@0.31.2':
-    resolution: {integrity: sha512-V5d4MzAchGYDIHey83dLrG9Cj7ocxes0QNrdTYLMt6hNlaU72c6p9iDCdgM6pMfYT9SNbncDeASbpb24fLefgw==}
+  '@typeonce/effect-machine@0.33.0':
+    resolution: {integrity: sha512-cJcw4CO9FTqj09McNWbtuHbn3NcIXrPrPvMrDveOwc6aNz4O0jQg76BXBfDgoKiagEnzcOjFaNUThawOzEQ0Og==}
     engines: {node: '>=20'}
     peerDependencies:
       effect: 4.0.0-rc.112
@@ -2198,9 +2195,6 @@ packages:
   crypto-random-string@2.0.0:
     resolution: {integrity: sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA==}
     engines: {node: '>=8'}
-
-  daisyui@5.7.28:
-    resolution: {integrity: sha512-BxQap2QOj7NQy5nEsjTHRmybmUZP3t+O5G6vfdidZuptBsh/QyKN9wbdrGDZk198fMI3UyYnA/rCWlggZIhGnw==}
 
   data-view-buffer@1.0.2:
     resolution: {integrity: sha512-EmKO5V3OLXh1rtK2wgXRansaK1/mtVdTUEiEI0W8RkvgT05kfxaH29PliLnpLP73yYO6142Q72QNa8Wx/A5CqQ==}
@@ -4210,13 +4204,13 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@foldkit/ui@0.158.0(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))':
+  '@foldkit/ui@0.158.2(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))':
     dependencies:
       '@floating-ui/dom': 1.8.0
       effect: 4.0.0-rc.112
       foldkit: 0.158.2(effect@4.0.0-rc.112)
 
-  '@foldkit/vite-plugin@0.20.1(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))':
+  '@foldkit/vite-plugin@0.20.2(effect@4.0.0-rc.112)(foldkit@0.158.2(effect@4.0.0-rc.112))(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))':
     dependencies:
       effect: 4.0.0-rc.112
       foldkit: 0.158.2(effect@4.0.0-rc.112)
@@ -4820,7 +4814,7 @@ snapshots:
       magic-string: 0.30.21
       string.prototype.matchall: 4.0.12
 
-  '@typeonce/effect-machine@0.31.2(effect@4.0.0-rc.112)':
+  '@typeonce/effect-machine@0.33.0(effect@4.0.0-rc.112)':
     dependencies:
       effect: 4.0.0-rc.112
 
@@ -5239,8 +5233,6 @@ snapshots:
       which: 2.0.2
 
   crypto-random-string@2.0.0: {}
-
-  daisyui@5.7.28: {}
 
   data-view-buffer@1.0.2:
     dependencies:

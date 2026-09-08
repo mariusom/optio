@@ -14,8 +14,8 @@ import { templatesPage } from "./features/templates/view";
 import { historyPage } from "./features/history/historyView";
 import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
+import { groupedList, navBar, navBarAction, row } from "../components/app";
 import { button } from "../components/ui/button";
-import { nativeSelect } from "../components/ui/native-select";
 import "../index.css";
 
 const now = 1_700_000_000_000;
@@ -115,45 +115,49 @@ afterEach(() => {
 });
 
 describe("persistent presentation regressions", () => {
-  it.each([390, 1280])(
-    "aligns controls and keeps the editor footer flush at %ipx",
-    async (width) => {
-      await mount((model, h) =>
-        h.div(
-          [h.Class("app-shell h-dvh overflow-y-auto")],
-          [templateEditorPage({ ...model, editor: editor(2, 2) }, h)],
-        ),
-      );
-      await page.viewport(width, 900);
-      await expect.element(page.getByLabelText("Template Name")).toBeVisible();
-      const root = document.querySelector(".template-editor")!;
-      const footer = root.children[1]!;
-      expect(getComputedStyle(root).paddingBottom).toBe("0px");
-      expect(root.getBoundingClientRect().bottom).toBe(footer.getBoundingClientRect().bottom);
-      expect(root.scrollWidth).toBe(root.clientWidth);
-      for (const control of root.querySelectorAll(".btn, .input")) {
-        expect(control.getBoundingClientRect().height).toBe(44);
-      }
-    },
-  );
+  it.each([390, 1280])("keeps the editor within the viewport at %ipx", async (width) => {
+    await mount((model, h) =>
+      h.div(
+        [h.Class("app-shell h-dvh overflow-y-auto")],
+        [templateEditorPage({ ...model, editor: editor(2, 2) }, h)],
+      ),
+    );
+    await page.viewport(width, 900);
+    await expect.element(page.getByLabelText("Name", { exact: true })).toBeVisible();
+    const root = document.querySelector(".template-editor")!;
+    expect(root.scrollWidth).toBe(root.clientWidth);
+    // The nav bar stays pinned to the top of the screen while the form scrolls.
+    const navBarElement = root.querySelector('[data-slot="nav-bar"]')!;
+    expect(getComputedStyle(navBarElement).position).toBe("sticky");
+    // Every control the thumb has to hit is at least a 44px target.
+    for (const control of root.querySelectorAll("button, input, textarea")) {
+      if (control.closest('[data-slot="switch"]') !== null) continue;
+      expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+  });
 
-  it("aligns legacy inputs with shared buttons and selects", async () => {
+  it("keeps every app-layer control at least 44px tall", async () => {
     await mount((_model, h) =>
       h.div(
-        [h.Class("app-shell flex gap-2")],
+        [h.Class("app-shell flex flex-col gap-2")],
         [
-          h.input([h.Class("input input-sm"), h.AriaLabel("Example")]),
-          button({ size: "sm" }, "Action", h),
-          button({ size: "icon-xs", attributes: [h.AriaLabel("Icon action")] }, "+", h),
-          nativeSelect({ id: "example-select", label: "Choice", size: "sm", options: [] }, h),
+          navBar(
+            {
+              title: "Example",
+              back: { href: "#start", label: "Back" },
+              trailing: [navBarAction({ label: "Done", ariaLabel: "Done action" }, h)],
+            },
+            h,
+          ),
+          groupedList({}, [row({ title: "Row action", href: "#start" }, h)], h),
+          button({ size: "lg", className: "h-12" }, "Primary", h),
         ],
       ),
     );
-    await expect.element(page.getByLabelText("Example")).toBeVisible();
-    for (const control of container!.querySelectorAll("input, button, select")) {
-      expect(control.getBoundingClientRect().height).toBe(44);
+    await expect.element(page.getByLabelText("Done action")).toBeVisible();
+    for (const control of container!.querySelectorAll("a, button")) {
+      expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
-    expect(page.getByLabelText("Icon action").element().getBoundingClientRect().width).toBe(44);
   });
 
   it("renders a converted text input default exactly as it is stored", async () => {
@@ -173,7 +177,7 @@ describe("persistent presentation regressions", () => {
 
     await mount((model, h) => templateEditorPage({ ...model, editor: convertedEditor }, h));
 
-    const defaultInput = page.getByLabelText("Default Value");
+    const defaultInput = page.getByLabelText("Default answer");
     await expect.element(defaultInput).toBeVisible();
     expect((defaultInput.element() as HTMLInputElement).value).toBe(convertedDraft.defaultValue);
     expect(convertedDraft.defaultValue).toBe("firstsecondthirdfourth");
@@ -181,10 +185,10 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each([
-    [1, 1, "1 field", "1 option"],
-    [2, 2, "2 fields", "2 options"],
+    [1, 1, "1 question", "1 choice"],
+    [2, 2, "2 questions", "2 choices"],
   ] as const)(
-    "uses grammatical editor counts for %i field(s)",
+    "uses grammatical editor counts for %i question(s)",
     async (count, options, fieldLabel, optionLabel) => {
       await mount((model, h) =>
         templateEditorPage({ ...model, editor: editor(count, options, true) }, h),
@@ -198,7 +202,7 @@ describe("persistent presentation regressions", () => {
     await mount(
       (model, h) =>
         h.div(
-          [h.Class("grid gap-8 bg-base-200 p-4")],
+          [h.Class("grid gap-8 bg-background p-4")],
           [
             historyPage({ ...model, history: [history] }, h),
             sessionDetailPage({ ...model, selectedHistorySession: detail }, h),
@@ -221,46 +225,72 @@ describe("persistent presentation regressions", () => {
         ),
       1800,
     );
-    await expect.element(page.getByText("+1 more field", { exact: true })).toBeVisible();
-    const singularTaskLabels = [...document.querySelectorAll("span")].filter(
-      (node) => node.textContent?.trim() === "1 task",
-    );
-    expect(singularTaskLabels).toHaveLength(3);
+    // The task row previews the first two answers only.
+    await expect
+      .element(page.getByText("Outcome: Value 1 · Location: Value 2", { exact: true }))
+      .toBeVisible();
+    expect(document.body.textContent).toContain("1 task");
     expect(document.body.textContent).not.toContain("1 tasks");
-    expect(document.body.textContent).not.toContain("1 more fields");
+    expect(document.body.textContent).not.toContain("Value 4");
   });
 
-  it("exposes native template, history, and task dropdown buttons to keyboard users", async () => {
+  it("opens the history action sheet from a named, keyboard-reachable button", async () => {
+    await mount(
+      (model, h) => h.div([h.Class("p-4")], [historyPage({ ...model, history: [history] }, h)]),
+      900,
+    );
+    const trigger = page.getByRole("button", { name: 'Actions for "Morning observation"' });
+    await expect.element(trigger).toBeVisible();
+    (trigger.element() as HTMLButtonElement).focus();
+    await expect.element(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    const exportAction = page.getByRole("button", { name: "Export Morning observation" });
+    await expect.element(exportAction).toBeVisible();
+    await expect
+      .element(page.getByRole("button", { name: "Delete Morning observation" }))
+      .toBeVisible();
+    (exportAction.element() as HTMLButtonElement).focus();
+    await expect.element(exportAction).toHaveFocus();
+  });
+
+  it("opens the template action sheet from a named, keyboard-reachable button", async () => {
+    await mount(
+      (model, h) =>
+        h.div([h.Class("grid gap-8 p-4")], [templatesPage({ ...model, templates: [template] }, h)]),
+      1500,
+    );
+    const trigger = page.getByRole("button", { name: 'Actions for "Observation"' });
+    await expect.element(trigger).toBeVisible();
+    (trigger.element() as HTMLButtonElement).focus();
+    await expect.element(trigger).toHaveFocus();
+    await userEvent.click(trigger);
+    const setDefault = page.getByRole("button", { name: "Set as default" });
+    await expect.element(setDefault).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Duplicate" })).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Delete" })).toBeVisible();
+    (setDefault.element() as HTMLButtonElement).focus();
+    await expect.element(setDefault).toHaveFocus();
+  });
+
+  it("shows what each template asks for and offers the ready-made studies", async () => {
     await mount(
       (model, h) =>
         h.div(
           [h.Class("grid gap-8 p-4")],
           [
-            templatesPage({ ...model, templates: [template] }, h),
-            historyPage({ ...model, history: [history] }, h),
-            sessionDetailPage({ ...model, selectedHistorySession: detail }, h),
+            templatesPage(
+              {
+                ...model,
+                templates: [{ ...template, isDefault: true, fieldCount: 5, requiredCount: 3 }],
+              },
+              h,
+            ),
           ],
         ),
-      1500,
+      1200,
     );
-    for (const [buttonName, actionName] of [
-      ['Actions for "Observation"', "Set as Default"],
-      ['Actions for "Morning observation"', "Export CSV for Morning observation"],
-      ["Actions for Task 1", "View details for Task 1"],
-    ] as const) {
-      const button = page.getByRole("button", { name: buttonName });
-      const action =
-        actionName === "View details for Task 1"
-          ? page.getByText("View Details", { exact: true })
-          : page.getByRole("button", { name: actionName });
-      await expect.element(button).toBeVisible();
-      (button.element() as HTMLButtonElement).focus();
-      await expect.element(button).toHaveFocus();
-      await userEvent.tab();
-      expect(document.activeElement?.tagName).toBe("UL");
-      await expect.element(action).toBeVisible();
-      await userEvent.tab();
-      await expect.element(action).toHaveFocus();
-    }
+    await expect.element(page.getByText("5 questions · 3 required", { exact: true })).toBeVisible();
+    await expect.element(page.getByText("Default", { exact: true })).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Add sample templates" })).toBeVisible();
   });
 });

@@ -164,7 +164,7 @@ const cases = [
   },
 ] as const;
 
-describe.each(cases)("$name persistence", ({ name, command, rows, success, failure, writes }) => {
+describe.each(cases)("$name persistence", ({ command, rows, success, failure, writes }) => {
   beforeEach(() => {
     for (const result of rows) query.mockReturnValueOnce(result);
   });
@@ -195,13 +195,13 @@ describe.each(cases)("$name persistence", ({ name, command, rows, success, failu
           });
         });
       }
-      expect(await Effect.runPromise<Message, never>(command().effect)).toMatchObject({
-        _tag: failure,
-        error:
-          name === "DeleteHistorySession"
-            ? "Failed to delete session. Please try again."
-            : expect.stringContaining(error.message),
-      });
+      const message = await Effect.runPromise<Message, never>(command().effect);
+      expect(message).toMatchObject({ _tag: failure });
+      // Users get one short sentence, never the raw cause or a stack trace.
+      const reported = (message as { error: string }).error;
+      expect(reported).toMatch(/^[A-Z].*\.$/);
+      expect(reported).not.toContain(error.message);
+      expect(reported).not.toContain("Error");
       expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
       if (stage === "open") expect(query).not.toHaveBeenCalled();
     },
@@ -216,7 +216,7 @@ describe("SaveEdit required field validation", () => {
       await Effect.runPromise<Message, never>(SaveEdit({ taskId: "task" }).effect),
     ).toMatchObject({
       _tag: "FailedRunnerOp",
-      error: "Cannot save: required fields empty",
+      error: "Answer the required questions first.",
     });
     expect(commit).not.toHaveBeenCalled();
   });
@@ -247,7 +247,7 @@ describe("EndSession idempotency", () => {
       await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect),
     ).toMatchObject({
       _tag: "FailedRunnerOp",
-      error: "Session is missing or already ended.",
+      error: "This session has already ended.",
     });
     expect(query).toHaveBeenCalledTimes(1);
     expect(commit).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ describe("template save failure recovery", () => {
     Scene.scene(
       { view: templateEditorPage, update },
       Scene.given(saving.model),
-      Scene.expect(Scene.role("button", { name: "Save template changes" })).toBeDisabled(),
+      Scene.expect(Scene.role("button", { name: "Save template" })).toBeDisabled(),
     );
     const error = new Error("Save unavailable");
     if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
@@ -321,12 +321,12 @@ describe("template save failure recovery", () => {
     expect(message._tag).toBe("FailedTemplateOp");
     const recovered = update(saving.model, message);
     expect(recovered.model.editor).toEqual(model.editor);
-    expect(recovered.model.lastError).toContain(error.message);
+    expect(recovered.model.lastError).toBe("Couldn't save that. Please try again.");
     expect(recovered.commands ?? []).toEqual([]);
     Scene.scene(
       { view: templateEditorPage, update },
       Scene.given(recovered.model),
-      Scene.expect(Scene.role("button", { name: "Save template changes" })).toBeEnabled(),
+      Scene.expect(Scene.role("button", { name: "Save template" })).toBeEnabled(),
     );
     expect(update(recovered.model, Message.ClickedSaveTemplate()).model.editor?.isSaving).toBe(
       true,

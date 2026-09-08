@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { navigationTabs } from "./ui";
+import { navigationTabs } from "./navigation";
 
 describe("navigation tabs", () => {
   it("keeps Settings available without history", () => {

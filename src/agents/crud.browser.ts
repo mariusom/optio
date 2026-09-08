@@ -191,7 +191,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     // Protect against stale state and direct deep links too, not just agent routes.
     expect(await Effect.runPromise(EndSession({ sessionId }).effect)).toMatchObject({
       _tag: "FailedRunnerOp",
-      error: "Session is missing or already ended.",
+      error: "This session has already ended.",
     });
     expect(await Effect.runPromise(EndSession({ sessionId: "missing" }).effect)).toMatchObject({
       _tag: "FailedRunnerOp",

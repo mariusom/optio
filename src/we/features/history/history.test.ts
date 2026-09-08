@@ -4,10 +4,14 @@ import { formatCsvDate } from "../../format";
 import {
   buildArchiveCsv,
   csvEscaped,
+  dayGroupLabel,
   displayNameFor,
   filenameForArchive,
   filenameSafe,
+  formatAnswer,
   formatFilenameDate,
+  groupByDay,
+  taskCountLabel,
 } from "./helpers";
 
 describe("displayNameFor", () => {
@@ -286,5 +290,65 @@ describe("history taskCount (pure)", () => {
     expect(counts.get("s1")).toBe(2);
     expect(counts.get("s2")).toBe(1);
     expect(counts.get("s3") ?? 0).toBe(0);
+  });
+});
+
+describe("dayGroupLabel", () => {
+  const now = new Date(2026, 5, 15, 10, 0, 0).getTime();
+  it("names today and yesterday", () => {
+    expect(dayGroupLabel(new Date(2026, 5, 15, 1, 0, 0).getTime(), now)).toBe("Today");
+    expect(dayGroupLabel(new Date(2026, 5, 14, 23, 59, 0).getTime(), now)).toBe("Yesterday");
+  });
+  it("falls back to a written date for older days", () => {
+    const label = dayGroupLabel(new Date(2026, 5, 1, 9, 0, 0).getTime(), now);
+    expect(label).not.toBe("Today");
+    expect(label).not.toBe("Yesterday");
+    expect(label).toContain("1");
+  });
+});
+
+describe("groupByDay", () => {
+  const now = new Date(2026, 5, 15, 10, 0, 0).getTime();
+  it("keeps date order and merges consecutive same-day sessions", () => {
+    const groups = groupByDay(
+      [
+        { startedAt: new Date(2026, 5, 15, 9, 0, 0).getTime() },
+        { startedAt: new Date(2026, 5, 15, 8, 0, 0).getTime() },
+        { startedAt: new Date(2026, 5, 14, 8, 0, 0).getTime() },
+      ],
+      now,
+    );
+    expect(groups.map((group) => [group.label, group.sessions.length])).toEqual([
+      ["Today", 2],
+      ["Yesterday", 1],
+    ]);
+  });
+  it("returns nothing for no sessions", () => {
+    expect(groupByDay([], now)).toEqual([]);
+  });
+});
+
+describe("formatAnswer", () => {
+  it("says Yes and No for toggles", () => {
+    expect(formatAnswer("boolean", "true")).toBe("Yes");
+    expect(formatAnswer("boolean", "")).toBe("No");
+  });
+  it("separates multiple choices with commas", () => {
+    expect(formatAnswer("checkbox", "A,B")).toBe("A, B");
+  });
+  it("shows an em dash when nothing was answered", () => {
+    expect(formatAnswer("textInput", "  ")).toBe("—");
+    expect(formatAnswer("checkbox", "")).toBe("—");
+  });
+  it("passes text through unchanged", () => {
+    expect(formatAnswer("textArea", "Line one")).toBe("Line one");
+  });
+});
+
+describe("taskCountLabel", () => {
+  it("uses the singular for one task", () => {
+    expect(taskCountLabel(1)).toBe("1 task");
+    expect(taskCountLabel(0)).toBe("0 tasks");
+    expect(taskCountLabel(12)).toBe("12 tasks");
   });
 });

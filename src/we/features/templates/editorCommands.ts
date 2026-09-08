@@ -1,7 +1,8 @@
-import { Cause, Effect, Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
+import { friendlyFailure } from "../../errors";
 import { getStore } from "../../../livestore/client";
 import { events, type FieldDef } from "../../../livestore/schema";
 
@@ -46,7 +47,7 @@ export const SaveTemplate = Command.define("SaveTemplate", {
       return Message.TemplateSaved();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });

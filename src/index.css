@@ -4,11 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Keep daisyUI's legacy component mechanics; color tokens live in :root/.dark. */
-@plugin 'daisyui' {
-  themes: false;
-}
-
 /* ── Standalone-PWA hardening ──────────────────────────────────────────── */
 
 html,
@@ -17,54 +12,41 @@ body {
 }
 
 body {
-  /* No gray flash rectangles on tap. */
   -webkit-tap-highlight-color: transparent;
-  /* The app shell delegates scrolling to <main>; body itself never scrolls. */
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 input,
 textarea,
 select,
 button {
-  /* Strip native bevels/shadows on form controls. */
   -webkit-appearance: none;
   appearance: none;
 }
 
-@keyframes scale-in {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
+/* Accessible focus ring style */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+main,
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Phones never zoom into a 16px field. */
+@media (max-width: 767px) {
+  .app-shell :is(input, select, textarea) {
+    font-size: 1rem;
   }
 }
 
-/* Generic fade (design system §4.1 — toast / overlay entries). */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+/* ── Motion ────────────────────────────────────────────────────────────── */
 
-@keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* Update-toast entry: rise 8px + fade. Keeps translateX(-50%) in both frames,
-   since the toast itself is centered with -translate-x-1/2. */
 @keyframes toast-in {
   from {
     transform: translate(-50%, 8px);
@@ -76,495 +58,35 @@ button {
   }
 }
 
-/* Accessible focus ring style */
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* ── PWA checklist: momentum scrolling on scrollable regions ────────────────
-   `main` is the shell scroll host; .overflow-y-auto/.overflow-auto covers the
-   runner canvases, task sheets and dropdown menus. (-webkit-overflow-scrolling
-   sets the desired momentum behavior; a no-op on modern WebKit, harmless
-   elsewhere — keep it explicit.) */
-main,
-.overflow-y-auto,
-.overflow-auto {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Workspace chrome is intentionally different at each device size. */
-.app-shell {
-  -webkit-font-smoothing: antialiased;
-  --control-height: 2.75rem;
-}
-
-/* One control rhythm across legacy forms and newer shared components.
-   Textareas and selection controls keep their content-appropriate dimensions. */
-.app-shell :is(.btn, .input, .select, [data-slot="button"], [data-slot="native-select"]) {
-  height: var(--control-height);
-  min-height: var(--control-height);
-  border-radius: var(--radius-field);
-  font-size: 0.875rem;
-}
-
-.app-shell :is(.btn-circle, .btn-square, [data-slot="button"][data-size^="icon"]) {
-  width: var(--control-height);
-  min-width: var(--control-height);
-  padding-inline: 0;
-}
-
-/* daisyUI uses --border as a width; Foldcn uses it as a color. Keep the
-   legacy width local to its controls, never on the shared theme root. */
-.app-shell :is(.btn, .input, .select, .textarea, .checkbox, .radio, .toggle, .badge) {
-  --border: 1px;
-}
-
-/* Tables and alerts can contain Foldcn components. Override their legacy
-   border declarations without passing a width-valued --border to children. */
-.app-shell .alert {
-  border-width: 1px;
-}
-
-.app-shell .table :where(thead tr :is(td, th), tbody tr:not(:last-child) :is(td, th)) {
-  border-bottom: 1px solid var(--legacy-border-color);
-}
-
-.app-shell .table :where(tfoot tr:first-child :is(td, th)) {
-  border-top: 1px solid var(--legacy-border-color);
-}
-
-.workspace-sidebar {
-  display: none;
-}
-
-.app-topbar > div {
-  height: 4.5rem;
-}
-
-.app-shell .btn {
-  text-transform: none;
-  box-shadow: none;
-  font-weight: 600;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
-}
-
-.app-shell .btn-primary {
-  border-color: transparent;
-}
-
-.app-shell .fieldset-legend {
-  text-transform: none;
-  letter-spacing: normal;
-  font-size: 0.875rem;
-}
-
-.app-shell :is(.input, .select, .textarea) {
-  box-shadow: none;
-}
-
-/* Input groups own focus at their outer border, never around the inner text. */
-.app-shell
-  :is(
-    .input:not(.input-ghost),
-    .select:not(.select-ghost),
-    .textarea:not(.textarea-ghost)
-  ):focus-within,
-.app-shell [data-slot="native-select"]:focus-visible {
-  border-color: var(--color-primary);
-  outline: 1px solid var(--color-primary);
-  outline-offset: 2px;
-  box-shadow: none;
-}
-
-.app-shell .input input:focus,
-.app-shell :is(input.input-ghost, textarea.textarea-ghost):focus {
-  outline: none;
-  box-shadow: none;
-}
-
-.theme-option {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.75rem;
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-field);
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.theme-option input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.theme-option:has(:checked) {
-  border-color: var(--color-primary);
-  background: color-mix(in oklch, var(--color-primary) 6%, transparent);
-  color: var(--color-primary);
-}
-
-.theme-option:has(:focus-visible) {
-  outline: 1px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.app-shell .table th {
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  padding-block: 1.2rem;
-}
-
-.app-shell .table td {
-  padding-block: 1.4rem;
-}
-
-.app-shell .table-zebra tbody tr:nth-child(even) {
-  background: transparent;
-}
-
-.start-page {
-  max-width: 76rem;
-  margin: 0 auto;
-  padding: 2rem 1.5rem calc(6rem + env(safe-area-inset-bottom));
-}
-
-.start-layout {
-  display: grid;
-  gap: 2rem;
-}
-
-.start-intro {
-  display: grid;
-  gap: 1.25rem;
-  max-width: 30rem;
-}
-
-.start-title {
-  font-size: clamp(2rem, 3vw, 2.75rem);
-  font-weight: 500;
-  line-height: 1.12;
-  letter-spacing: -0.04em;
-  text-wrap: balance;
-}
-
-.start-action {
-  min-width: 0;
-}
-
-.launch-card {
-  border: 1px solid var(--color-base-300);
-  box-shadow: none;
-  border-radius: 0.75rem;
-}
-
-.launch-card > div:first-child {
-  padding: 1rem 1.25rem;
-  background: transparent;
-}
-
-.launch-card h2 {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.launch-card .btn-primary {
-  margin-top: 1.75rem;
-  height: 3.5rem;
-}
-
-.launch-card [data-slot="native-select-wrapper"] {
-  width: 100%;
-}
-
-.launch-card [data-slot="native-select"] {
-  width: 100%;
-  height: 2.5rem;
-  border-radius: var(--radius-field);
-}
-
-.launch-card .input {
-  height: 2.5rem;
-}
-
-.launch-card [data-slot="button"] {
-  height: 2.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.study-guide {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.study-guide li {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.study-guide-number {
-  display: grid;
-  place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
-  flex-shrink: 0;
-  border: 1px solid var(--color-base-300);
-  border-radius: 50%;
-  color: var(--color-primary);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.study-guide h3 {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.study-guide p {
-  margin-top: 0.2rem;
-  font-size: 0.8125rem;
-  color: color-mix(in oklch, var(--color-base-content) 65%, transparent);
-}
-
-@media (min-width: 768px) {
-  .browse-workspace {
-    padding-left: 5.5rem;
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
   }
-
-  .workspace-sidebar {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: 5.5rem;
-    padding: 2rem 1rem;
-    background: var(--color-base-100);
-    border-right: 1px solid var(--color-base-300);
-  }
-
-  .sidebar-label {
-    display: none;
-  }
-
-  .workspace-brand {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    margin-bottom: 3.5rem;
-    font-size: 1.625rem;
-    font-weight: 650;
-    letter-spacing: -0.06em;
-  }
-
-  .brand-mark {
-    display: grid;
-    place-items: center;
-    width: 3.25rem;
-    height: 3.25rem;
-    border-radius: 1rem;
-    background: var(--color-primary);
-    color: var(--color-primary-content);
-    font-size: 2.75rem;
-    font-weight: 400;
-    line-height: 1;
-    padding-bottom: 0.5rem;
-    letter-spacing: -0.07em;
-  }
-
-  .workspace-link {
-    display: flex;
-    gap: 0.875rem;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.75rem;
-    margin-bottom: 0.5rem;
-    border-radius: 0.5rem;
-    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
-    font-size: 0.875rem;
-    font-weight: 550;
-    transition:
-      background-color 160ms ease,
-      color 160ms ease;
-  }
-
-  .workspace-link:hover,
-  .workspace-link.is-active {
-    background: color-mix(in oklch, var(--color-primary) 9%, transparent);
-    color: var(--color-primary);
-  }
-
-  .workspace-privacy {
-    margin-top: auto;
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-primary);
-  }
-
-  .browse-workspace .app-topbar nav,
-  .browse-workspace .app-topbar > div > div:first-child {
-    display: none;
-  }
-
-  .browse-workspace .app-topbar h1 {
-    display: block;
-    text-align: left;
-    max-width: none;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
-  }
-
-  .browse-workspace .app-topbar > div > div:nth-child(2) {
-    justify-content: flex-start;
-  }
-
-  .browse-workspace .app-topbar {
-    background: transparent;
-    border: 0;
-  }
-
-  .start-page {
-    padding: 2.5rem 2.5rem 4rem;
-  }
-
-  .start-layout {
-    max-width: 38rem;
-    margin: auto;
-    gap: 2.5rem;
-  }
-
-  .app-shell .modal-box {
-    padding: 1.75rem;
-    border-radius: 1.5rem;
+  to {
+    transform: translateY(0);
   }
 }
 
-@media (min-width: 1200px) {
-  .browse-workspace {
-    padding-left: 13rem;
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
-
-  .workspace-sidebar {
-    width: 13rem;
-    padding: 2rem 1.25rem;
-  }
-
-  .sidebar-label {
-    display: block;
-  }
-
-  .brand-caption {
-    display: block;
-    font-size: 0.5625rem;
-    font-weight: 600;
-    letter-spacing: 0.18em;
-    margin-top: 0.15rem;
-    color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-  }
-
-  .sidebar-section {
-    font-size: 0.5625rem;
-    letter-spacing: 0.14em;
-    color: color-mix(in oklch, var(--color-base-content) 45%, transparent);
-    padding: 0 1rem 1rem;
-  }
-
-  .workspace-link {
-    justify-content: flex-start;
-    padding-inline: 1rem;
-  }
-
-  .workspace-privacy {
-    justify-content: flex-start;
-    padding: 1rem 0.5rem 0;
-    border-top: 1px solid var(--color-base-300);
-    font-size: 0.75rem;
-  }
-
-  .workspace-privacy p + p {
-    color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
-    font-size: 0.6875rem;
-    margin-top: 0.25rem;
-  }
-
-  .start-page {
-    padding: clamp(3rem, 8vh, 6rem) 3.5rem 4rem;
-  }
-
-  .start-layout {
-    max-width: none;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-    column-gap: clamp(2rem, 5vw, 5rem);
-    row-gap: 3rem;
-    align-items: start;
-  }
-
-  .start-action {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: center;
-  }
-
-  .study-guide {
-    grid-column: 1;
+  to {
+    opacity: 1;
   }
 }
 
-@media (max-width: 767px) {
-  .browse-workspace > main {
-    margin-bottom: calc(4rem + 1px + env(safe-area-inset-bottom));
+@keyframes scale-in {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
   }
-
-  .start-page {
-    padding-bottom: 2rem;
-  }
-
-  .app-shell :is(input, select, textarea) {
-    font-size: 1rem;
-  }
-
-  .app-topbar > div > div:first-child,
-  .app-topbar > div > div:last-child {
-    min-width: 3rem;
-  }
-
-  .app-topbar > div {
-    padding-inline: max(1rem, env(safe-area-inset-left));
-    height: 3.75rem;
-  }
-
-  .app-shell > nav {
-    box-shadow: none;
-  }
-
-  .app-shell > nav > div {
-    height: 4rem;
-  }
-
-  .app-shell .modal-box {
-    border-radius: 1.5rem 1.5rem 0 0;
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-    max-height: calc(100dvh - 2rem - env(safe-area-inset-top));
-  }
-
-  .study-guide {
-    border-top: 1px solid var(--color-base-300);
-    padding-top: 2rem;
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
-/* Respect the user's motion preference without removing useful state changes. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -576,15 +98,52 @@ main,
   }
 }
 
+/* ── App utilities (used by src/components/app primitives) ─────────────── */
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* Lazy list rows: the browser skips layout/paint for off-screen rows. */
+@utility lazy-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4.5rem;
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Large-title typography (SwiftUI `.largeTitle`). */
+@utility text-large-title {
+  font-size: 2.125rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --color-base-100: var(--card);
-  --color-base-200: var(--background);
-  --color-base-300: var(--legacy-border-color);
-  --color-base-content: var(--foreground);
   --color-primary-content: var(--primary-foreground);
   --color-secondary-content: var(--secondary-foreground);
   --color-accent-content: var(--accent-foreground);
@@ -660,7 +219,6 @@ main,
 
 :root {
   color-scheme: light;
-  --legacy-border-color: var(--border);
   --background: oklch(97.5% 0.004 155);
   --foreground: oklch(25% 0.022 170);
   --card: oklch(100% 0 0);
@@ -691,14 +249,7 @@ main,
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.5rem;
-  --radius-box: 0.75rem;
-  --radius-field: 0.5rem;
-  --radius-selector: 0.5rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-  --depth: 1;
-  --noise: 0;
+  --radius: 0.625rem;
   --sidebar: var(--card);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
@@ -711,7 +262,6 @@ main,
 
 .dark {
   color-scheme: dark;
-  --legacy-border-color: var(--border);
   --background: oklch(18% 0.012 170);
   --foreground: oklch(94% 0.005 170);
   --card: oklch(23% 0.012 170);

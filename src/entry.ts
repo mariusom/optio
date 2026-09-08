@@ -6,10 +6,12 @@ import { registerSW } from "virtual:pwa-register";
 import "./index.css";
 import { applicationConfig } from "./application.ts";
 import { initializeTheme } from "./we/browserTheme";
+import { installSheetFocus } from "./we/sheetFocus";
 import { getStore } from "./livestore/client";
 import type { ModelContext } from "./agents/webmcp";
 
 const theme = initializeTheme();
+installSheetFocus();
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
 // Design system §5.9: never reload the page out from under the user. When a new
@@ -21,7 +23,7 @@ const theme = initializeTheme();
 
 const TOAST_ID = "pwa-update-toast";
 const TOAST_CLASS =
-  "fixed bottom-4 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-box border border-base-300 bg-base-100/90 px-4 py-3 text-sm font-medium text-base-content shadow-lg backdrop-blur-md animate-[toast-in_0.25s_ease-out]";
+  "fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background shadow-lg animate-[toast-in_0.25s_ease-out]";
 
 const showUpdateToast = (onTap: () => void) => {
   if (document.getElementById(TOAST_ID) !== null) return;
@@ -30,7 +32,7 @@ const showUpdateToast = (onTap: () => void) => {
   toast.type = "button";
   toast.className = TOAST_CLASS;
   toast.setAttribute("role", "status");
-  toast.textContent = "Update available — tap to refresh";
+  toast.textContent = "Update ready. Tap to refresh.";
   toast.addEventListener("click", () => {
     // Guard against double taps firing the reload twice.
     toast.disabled = true;
@@ -70,7 +72,7 @@ if (
   new URLSearchParams(location.search).get("agentTools") === "1" &&
   modelContext &&
   window.confirm(
-    "Enable agent access for this tab? Agents can read study data and operate Optio, including editing and deleting data. Your agent provider may send returned data to a cloud model. Cancel keeps agent access disabled.",
+    "Let an assistant use Optio in this tab? It will be able to read, change and delete your studies, and may send them to its provider. Cancel to keep assistants off.",
   )
 ) {
   const handle = Runtime.embed(application);

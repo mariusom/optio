@@ -12,9 +12,9 @@ export const nextDuplicateName = (
   return `${originalName} copy ${counter}`;
 };
 
-/** Summary line under a template row (spec §3.9). */
-export const fieldSummaryLine = (fieldCount: number, requiredCount: number): string => {
-  if (fieldCount === 0) return "No fields";
-  const fields = `${fieldCount} field${fieldCount === 1 ? "" : "s"}`;
-  return requiredCount > 0 ? `${fields}, ${requiredCount} required` : fields;
+/** Summary line under a template row: "5 questions · 3 required". */
+export const questionSummaryLine = (fieldCount: number, requiredCount: number): string => {
+  if (fieldCount === 0) return "No questions yet";
+  const questions = `${fieldCount} question${fieldCount === 1 ? "" : "s"}`;
+  return requiredCount > 0 ? `${questions} · ${requiredCount} required` : questions;
 };

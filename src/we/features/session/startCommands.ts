@@ -1,7 +1,8 @@
-import { Cause, Effect, Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
+import { friendlyFailure } from "../../errors";
 import { getStore } from "../../../livestore/client";
 import { events, tables, FieldDef } from "../../../livestore/schema";
 import { fieldRowsToDefs } from "../../fieldRows";
@@ -102,7 +103,7 @@ export const StartSession = Command.define("StartSession", {
       return Message.SessionStarted({ sessionId: id });
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedSessionOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedSessionOp({ error: friendlyFailure("start", cause) })),
       ),
     ),
 });
@@ -129,7 +130,7 @@ export const DiscardLiveSession = Command.define("DiscardLiveSession", {
       return Message.SessionDiscarded();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedSessionOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedSessionOp({ error: friendlyFailure("delete", cause) })),
       ),
     ),
 });

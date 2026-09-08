@@ -22,8 +22,8 @@ export default defineConfig({
         short_name: "optio",
         description:
           "Record time & motion study sessions offline. Your data never leaves your device.",
-        theme_color: "#f2f3f7",
-        background_color: "#f2f3f7",
+        theme_color: "#f5f8f5",
+        background_color: "#f5f8f5",
         display: "standalone",
         icons: [
           { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

@@ -1,5 +1,10 @@
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
+
+import { sheet } from "@/components/app";
+import { button } from "@/components/ui/button";
+import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 
 type EditModel = {
@@ -12,146 +17,75 @@ type EditModel = {
 
 export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) => {
   if (!model.showEditHistoryName) return h.div([], []);
-  return h.div(
-    [
-      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
-      h.Attribute("role", "dialog"),
-      h.Attribute("aria-modal", "true"),
-      h.AriaLabel("Edit Session"),
-    ],
+  const templateName = model.selectedHistorySession?.templateName ?? "";
+  return sheet(
+    {
+      id: "edit-session-name",
+      title: "Session name",
+      onDismiss: Message.CanceledEditHistoryName(),
+      dismissLabel: "Cancel editing session",
+      size: "md",
+      footer: [
+        button(
+          {
+            size: "lg",
+            className: "h-11 text-base font-semibold",
+            onClick: Message.ConfirmedEditHistoryName(),
+            attributes: [h.AriaLabel("Save session name")],
+          },
+          "Save",
+          h,
+        ),
+        button(
+          {
+            variant: "secondary",
+            size: "lg",
+            className: "h-11 text-base",
+            onClick: Message.CanceledEditHistoryName(),
+            attributes: [h.AriaLabel("Cancel editing session name")],
+          },
+          "Cancel",
+          h,
+        ),
+      ],
+    },
     [
       h.div(
+        [h.Class("flex flex-col gap-1.5 py-1")],
         [
-          h.Class(
-            "modal-box max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-box sm:rounded-box bg-base-100 p-0 border border-base-300 flex flex-col",
+          h.label(
+            [
+              h.For("edit-session-name"),
+              h.Class(cn(inputLabelClass, "text-[0.8125rem] text-muted-foreground")),
+            ],
+            ["Name"],
           ),
-        ],
-        [
-          // Header
-          h.div(
+          h.input([
+            h.Id("edit-session-name"),
+            h.Type("text"),
+            h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+            h.Value(model.editHistoryNameInput),
+            h.Placeholder(templateName === "" ? "Session name" : templateName),
+            h.Autocomplete("off"),
+            h.Autocapitalize("words"),
+            h.EnterKeyHint("done"),
+            h.Autofocus(true),
+            h.OnInput((value) => Message.ChangedEditHistoryName({ text: value })),
+            h.OnKeyDownPreventDefault((key) =>
+              key === "Enter" ? Option.some(Message.ConfirmedEditHistoryName()) : Option.none(),
+            ),
+          ]),
+          h.p(
+            [h.Class("text-[0.8125rem] leading-snug text-muted-foreground")],
             [
-              h.Class(
-                "sticky top-0 z-10 bg-base-100 border-b border-base-200 px-5 py-4 flex items-center justify-between",
-              ),
-            ],
-            [
-              h.h3([h.Class("text-base font-bold")], ["Edit Session"]),
-              h.button(
-                [
-                  h.Class("btn btn-ghost btn-sm rounded-field"),
-                  h.OnClick(Message.CanceledEditHistoryName()),
-                ],
-                ["Cancel"],
-              ),
-            ],
-          ),
-          h.div(
-            [h.Class("flex-1 space-y-4 p-5")],
-            [
-              h.div(
-                [h.Class("rounded-box bg-base-100 border border-base-300 overflow-hidden")],
-                [
-                  h.div(
-                    [h.Class("px-4 py-2 bg-base-100 border-b border-base-200")],
-                    [
-                      h.label(
-                        [
-                          h.Attribute("for", "edit-session-name"),
-                          h.Class(
-                            "text-xs font-semibold uppercase tracking-wider text-base-content/60",
-                          ),
-                        ],
-                        ["Name"],
-                      ),
-                    ],
-                  ),
-                  h.div(
-                    [h.Class("p-4")],
-                    [
-                      // NOTE (S7): focus this field ~500ms after the sheet
-                      // appears (keyboard-delay nicety). Deferred — a setTimeout
-                      // in a Subscription is fiddly for marginal gain; immediate
-                      // autofocus here instead. focus-visible only, per the
-                      // Safari checklist — raw `focus:` rings persist on touch.
-                      h.input([
-                        h.Class(
-                          "input input-bordered w-full rounded-field text-base md:text-sm bg-base-100 focus-visible:input-primary focus-visible:outline-none placeholder:text-base-content/40",
-                        ),
-                        h.Value(model.editHistoryNameInput),
-                        h.Id("edit-session-name"),
-                        h.Placeholder("Session Name"),
-                        h.Autofocus(true),
-                        h.OnInput((value) => Message.ChangedEditHistoryName({ text: value })),
-                        h.OnKeyDownPreventDefault((key) =>
-                          key === "Enter"
-                            ? Option.some(Message.ConfirmedEditHistoryName())
-                            : Option.none(),
-                        ),
-                      ]),
-                      h.p(
-                        [h.Class("mt-2 text-[11px] leading-relaxed text-base-content/60")],
-                        [
-                          "Enter a custom name for this session, or leave blank to use the default.",
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              // Read-only Template row
-              ...(model.selectedHistorySession
-                ? [
-                    h.div(
-                      [
-                        h.Class(
-                          "flex items-center justify-between rounded-field border border-base-200 bg-base-100 px-4 py-3",
-                        ),
-                      ],
-                      [
-                        h.span([h.Class("text-sm text-base-content/60")], ["Template"]),
-                        h.span(
-                          [h.Class("text-sm font-medium")],
-                          [model.selectedHistorySession.templateName],
-                        ),
-                      ],
-                    ),
-                  ]
-                : []),
-            ],
-          ),
-          h.div(
-            [
-              h.Class(
-                "sticky bottom-0 bg-base-100 border-t border-base-200 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex gap-2",
-              ),
-            ],
-            [
-              h.button(
-                [
-                  h.Class("btn btn-ghost flex-1 rounded-field"),
-                  h.OnClick(Message.CanceledEditHistoryName()),
-                ],
-                ["Cancel"],
-              ),
-              h.button(
-                [
-                  h.Class("btn btn-primary flex-1 rounded-field font-semibold"),
-                  h.OnClick(Message.ConfirmedEditHistoryName()),
-                ],
-                ["Save"],
-              ),
+              templateName === ""
+                ? "Leave it empty to use the template name."
+                : `Leave it empty to call it “${templateName}”.`,
             ],
           ),
         ],
-      ),
-      h.button(
-        [
-          h.Class("modal-backdrop"),
-          h.AriaLabel("Cancel editing session"),
-          h.OnClick(Message.CanceledEditHistoryName()),
-        ],
-        [],
       ),
     ],
+    h,
   );
 };

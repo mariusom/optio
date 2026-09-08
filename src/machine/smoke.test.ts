@@ -8,12 +8,15 @@ const State = Schema.TaggedUnion({
   Running: { count: Schema.Number },
 });
 
-const States = Machine.states({
-  Idle: {},
-  Running: State.cases.Running,
+const States = Machine.state({
+  initial: "Idle",
+  states: {
+    Idle: {},
+    Running: State.cases.Running,
+  },
 });
 
-const CounterEvent = Machine.events(
+const CounterEvent = Machine.eventsFromSchemas(
   Schema.TaggedUnion({
     Start: {},
     Increment: {},
@@ -23,25 +26,25 @@ const CounterEvent = Machine.events(
 
 const Counter = Machine.make({
   id: "Counter",
-  states: States.states,
+  root: States,
   events: CounterEvent,
-  initial: (to) => to.Idle(),
 }).handle({
-  Idle: {
-    on: {
-      Start: (to) => to.full.Running().resolve(({ target }) => target.from({ count: 0 })),
+  states: {
+    Idle: {
+      on: {
+        Start: (to) => to.branch.Running().from(() => ({ count: 0 })),
+      },
     },
-  },
-  Running: {
-    on: {
-      Increment: (to) =>
-        to.full.Running().resolve(({ state, target }) => target.from({ count: state.count + 1 })),
-      Stop: (to) => to.full.Idle(),
+    Running: {
+      on: {
+        Increment: (to) => to.branch.Running().from(({ state }) => ({ count: state.count + 1 })),
+        Stop: (to) => to.branch.Idle(),
+      },
     },
   },
 });
 
-const Emissions = Machine.emittedEvents(
+const Emissions = Machine.emittedEventsFromSchemas(
   Schema.TaggedUnion({
     Incremented: { count: Schema.Number },
   }),
@@ -49,28 +52,29 @@ const Emissions = Machine.emittedEvents(
 
 const Emitter = Machine.make({
   id: "Emitter",
-  states: States.states,
+  root: States,
   events: CounterEvent,
   emittedEvents: Emissions,
-  initial: (to) => to.Idle(),
 }).handle({
-  Idle: {
-    on: {
-      Start: (to) =>
-        to.full.Running().resolve(({ target }, enqueue) => {
-          enqueue.emit(Emissions.Incremented({ count: 0 }));
-          return target.from({ count: 0 });
-        }),
+  states: {
+    Idle: {
+      on: {
+        Start: (to) =>
+          to.branch.Running().resolve(({ target }, enqueue) => {
+            enqueue.emit(Emissions.Incremented({ count: 0 }));
+            return target.from({ count: 0 });
+          }),
+      },
     },
-  },
-  Running: {
-    on: {
-      Increment: (to) =>
-        to.full.Running().resolve(({ state, target }, enqueue) => {
-          enqueue.emit(Emissions.Incremented({ count: state.count + 1 }));
-          return target.from({ count: state.count + 1 });
-        }),
-      Stop: (to) => to.full.Idle(),
+    Running: {
+      on: {
+        Increment: (to) =>
+          to.branch.Running().resolve(({ state, target }, enqueue) => {
+            enqueue.emit(Emissions.Incremented({ count: state.count + 1 }));
+            return target.from({ count: state.count + 1 });
+          }),
+        Stop: (to) => to.branch.Idle(),
+      },
     },
   },
 });
@@ -79,11 +83,11 @@ describe("effect-machine smoke", () => {
   it("planInitial + plan are runSync-able and return emissions", () => {
     const initial = Effect.runSync(Machine.planInitial(Emitter)).state;
     const next = Effect.runSync(Machine.plan(Emitter, initial, { _tag: "Start" }));
-    expect(next.next.path).toBe("Running");
+    expect(next.next.state.path).toBe("Running");
     expect(next.emittedEvents).toEqual([{ _tag: "Incremented", count: 0 }]);
     const inc = Effect.runSync(Machine.plan(Emitter, next.next, { _tag: "Increment" }));
     expect(inc.emittedEvents).toEqual([{ _tag: "Incremented", count: 1 }]);
-    expect(inc.next.value).toMatchObject({ count: 1 });
+    expect(inc.next.state.value).toMatchObject({ count: 1 });
   });
 
   it("plans transitions with MachineTest", async () => {
@@ -93,7 +97,6 @@ describe("effect-machine smoke", () => {
       }),
     );
     const last = trace.final;
-    console.log("LAST:", JSON.stringify(last));
     expect(JSON.stringify(last)).toContain('"count":1');
   });
 
@@ -106,7 +109,7 @@ describe("effect-machine smoke", () => {
         yield* Effect.sleep("50 millis");
         const s = yield* ref.state;
         yield* ref.stop;
-        return s.value;
+        return s.state.value;
       }),
     );
     expect(state).toMatchObject({ _tag: "Running", count: 1 });

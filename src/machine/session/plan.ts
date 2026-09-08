@@ -56,10 +56,16 @@ const runnerToValue = (runner: RunnerState): LiveValue => ({
 /** Plain (runner, phase) → machine persistence record (decode-safe form). */
 const toEncoded = (runner: RunnerState | null, phase: SessionPhase) =>
   runner === null
-    ? { _tag: "MachineSnapshot" as const, active: [{ path: "Idle" as const }] }
+    ? {
+        _tag: "MachineSnapshot" as const,
+        version: 2 as const,
+        active: [{ path: "" as const }, { path: "Idle" as const }],
+      }
     : {
         _tag: "MachineSnapshot" as const,
+        version: 2 as const,
         active: [
+          { path: "" as const },
           { path: "Live" as const, value: runnerToValue(runner) },
           { path: phaseToChildPath(phase) },
         ],
@@ -67,9 +73,10 @@ const toEncoded = (runner: RunnerState | null, phase: SessionPhase) =>
 
 /** Machine snapshot → (runner, phase). Idle yields a null runner. */
 const snapshotToRunner = (
-  next: { path: string; value?: unknown; state?: { path: string } },
+  root: { path: string; state?: { path: string; value?: unknown; state?: { path: string } } },
   now: number,
 ): { runner: RunnerState | null; phase: SessionPhase } => {
+  const next = root.state as { path: string; value?: unknown; state?: { path: string } };
   if (next.path === "Idle") return { runner: null, phase: "collecting" };
   const value = next.value as LiveValue;
   const phase = childPathToPhase((next.state as { path: string }).path);

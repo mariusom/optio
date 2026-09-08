@@ -1,5 +1,6 @@
 // Pure helpers for History slice — tested in isolation
 
+import { isBooleanTrue } from "../../fields";
 import { formatCsvDate } from "../../format";
 
 /** Display name mirrors Session.displayName: custom sessionName or templateName */
@@ -96,3 +97,66 @@ export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => 
 
 export const filenameForArchive = (displayName: string, now: Date = new Date()): string =>
   `optio_${filenameSafe(displayName)}_${formatFilenameDate(now)}.csv`;
+
+// ── Display helpers ───────────────────────────────────────────────────────
+
+const dayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+const startOfDay = (epochMs: number): number => {
+  const date = new Date(epochMs);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+};
+
+/** "Today" / "Yesterday" / "Mon, Feb 3" — section header for a day of sessions. */
+export const dayGroupLabel = (epochMs: number, now: number = Date.now()): string => {
+  const days = Math.round((startOfDay(now) - startOfDay(epochMs)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return dayFormatter.format(new Date(epochMs));
+};
+
+const fullDayFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+
+/** "Tuesday, September 8, 2026" — the day a session was recorded. */
+export const formatDay = (epochMs: number): string => fullDayFormatter.format(new Date(epochMs));
+
+/** Groups already date-sorted sessions into consecutive runs of the same day. */
+export const groupByDay = <T extends { readonly startedAt: number }>(
+  sessions: ReadonlyArray<T>,
+  now: number = Date.now(),
+): ReadonlyArray<{ readonly label: string; readonly sessions: ReadonlyArray<T> }> => {
+  const groups: Array<{ label: string; sessions: Array<T> }> = [];
+  for (const session of sessions) {
+    const label = dayGroupLabel(session.startedAt, now);
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.label === label) last.sessions.push(session);
+    else groups.push({ label, sessions: [session] });
+  }
+  return groups;
+};
+
+/** A recorded answer in plain language: "Yes"/"No", "A, B", or an em dash. */
+export const formatAnswer = (sectionType: string, value: string): string => {
+  if (sectionType === "boolean") return isBooleanTrue(value) ? "Yes" : "No";
+  if (value.trim() === "") return "—";
+  if (sectionType === "checkbox") {
+    const chosen = value
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part !== "");
+    return chosen.length === 0 ? "—" : chosen.join(", ");
+  }
+  return value;
+};
+
+/** "12 tasks" / "1 task". */
+export const taskCountLabel = (count: number): string => `${count} task${count === 1 ? "" : "s"}`;

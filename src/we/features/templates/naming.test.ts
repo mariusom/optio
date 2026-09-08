@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { fieldSummaryLine } from "./naming";
+import { questionSummaryLine } from "./naming";
 
-describe("fieldSummaryLine", () => {
+describe("questionSummaryLine", () => {
   it.each([
-    [0, 0, "No fields"],
-    [1, 0, "1 field"],
-    [2, 0, "2 fields"],
-    [1, 1, "1 field, 1 required"],
-    [2, 1, "2 fields, 1 required"],
-    [2, 2, "2 fields, 2 required"],
-  ])("summarizes %i fields with %i required", (fieldCount, requiredCount, expected) => {
-    expect(fieldSummaryLine(fieldCount, requiredCount)).toBe(expected);
+    [0, 0, "No questions yet"],
+    [1, 0, "1 question"],
+    [2, 0, "2 questions"],
+    [1, 1, "1 question · 1 required"],
+    [2, 1, "2 questions · 1 required"],
+    [2, 2, "2 questions · 2 required"],
+  ])("summarizes %i questions with %i required", (fieldCount, requiredCount, expected) => {
+    expect(questionSummaryLine(fieldCount, requiredCount)).toBe(expected);
   });
 });

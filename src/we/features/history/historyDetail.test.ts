@@ -72,8 +72,8 @@ describe("history detail regressions", () => {
       expect(state.selectedHistoryTaskId).toBe("task-1");
       const openUi = JSON.stringify(render((h) => sessionDetailPage(state, h)));
       expect(openUi).toContain('"role":"dialog"');
-      expect(openUi).toContain('"aria-label":"Edit Session"');
-      expect(openUi).toContain('"aria-label":"Task Details"');
+      expect(openUi).toContain('"aria-labelledby":"edit-session-name-title"');
+      expect(openUi).toContain('"aria-labelledby":"history-task-title"');
       state = update(
         state,
         source === "subscription"

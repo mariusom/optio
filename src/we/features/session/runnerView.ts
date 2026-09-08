@@ -1,8 +1,28 @@
-import { svgIcon } from "../../ui";
-import type { HtmlBuilder } from "foldkit/html";
+import type { Html, HtmlBuilder } from "foldkit/html";
 
+import {
+  Check,
+  List,
+  Timer,
+  confirmSheet,
+  emptyState,
+  groupedList,
+  hint,
+  icon,
+  navBar,
+  navBarAction,
+  notice,
+  row,
+  sheet,
+  statusPill,
+} from "@/components/app";
+import { button } from "@/components/ui/button";
+import { inputClass } from "@/components/ui/input";
+import { switch_ } from "@/components/ui/switch";
+import { textareaClass } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
-import { formatClock, formatTimeOnly, formatDurationHms } from "../../format";
+import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
 import { isBooleanTrue, toggleCheckboxOption } from "../../fields";
 import {
   canRecordTask,
@@ -15,279 +35,132 @@ import {
   type RunnerTask,
 } from "./runner";
 
-// ── Icons ───────────────────────────────────────────────────────────────────
+// ── Status line ─────────────────────────────────────────────────────────────
 
-const clockTinyIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [
-    h.circle([h.Attribute("cx", "12"), h.Attribute("cy", "12"), h.Attribute("r", "9")], []),
-    h.polyline([h.Attribute("points", "12 7 12 12 15 15")], []),
-  ]);
-
-const listBulletIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [
-    h.line(
-      [
-        h.Attribute("x1", "8"),
-        h.Attribute("y1", "6"),
-        h.Attribute("x2", "20"),
-        h.Attribute("y2", "6"),
-      ],
-      [],
-    ),
-    h.line(
-      [
-        h.Attribute("x1", "8"),
-        h.Attribute("y1", "12"),
-        h.Attribute("x2", "20"),
-        h.Attribute("y2", "12"),
-      ],
-      [],
-    ),
-    h.line(
-      [
-        h.Attribute("x1", "8"),
-        h.Attribute("y1", "18"),
-        h.Attribute("x2", "20"),
-        h.Attribute("y2", "18"),
-      ],
-      [],
-    ),
-    h.circle(
-      [
-        h.Attribute("cx", "4"),
-        h.Attribute("cy", "6"),
-        h.Attribute("r", "1"),
-        h.Attribute("fill", "currentColor"),
-      ],
-      [],
-    ),
-    h.circle(
-      [
-        h.Attribute("cx", "4"),
-        h.Attribute("cy", "12"),
-        h.Attribute("r", "1"),
-        h.Attribute("fill", "currentColor"),
-      ],
-      [],
-    ),
-    h.circle(
-      [
-        h.Attribute("cx", "4"),
-        h.Attribute("cy", "18"),
-        h.Attribute("r", "1"),
-        h.Attribute("fill", "currentColor"),
-      ],
-      [],
-    ),
-  ]);
-
-const checkIcon = <M>(classes: string, h: HtmlBuilder<M>) =>
-  svgIcon(classes, h, [h.polyline([h.Attribute("points", "20 6 9 17 4 12")], [])], "2.5");
-
-// ── SessionTimerView ────────────────────────────────────────────────────────
-
+/** Compact live status under the title: "Task 4 · 00:42 · 3 recorded". */
 export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const task = currentTask(runner);
   const isEditing = task !== null && task.isBeingEdited;
-  const taskStart = task !== null ? taskStartDate(task) : null;
+  const taskStart = task === null ? null : taskStartDate(task);
   const isRecording = !isEditing && taskStart !== null;
-  const now = runner.now;
+  const elapsed =
+    taskStart !== null
+      ? Math.max(0, runner.now - taskStart)
+      : Math.max(0, runner.now - runner.startedAt);
+  const recorded = `${runner.completedCount} recorded`;
+  const parts =
+    task === null
+      ? [formatClock(elapsed), recorded]
+      : isEditing
+        ? [`Editing task ${task.orderIndex}`, recorded]
+        : [`Task ${task.orderIndex}`, formatClock(elapsed), recorded];
 
-  const taskElapsed = taskStart !== null ? Math.max(0, now - taskStart) : 0;
-  const sessionElapsed = Math.max(0, now - runner.startedAt);
-
-  const taskClock = formatClock(taskElapsed);
-  const sessionClock = formatClock(sessionElapsed);
-
-  const dotColor = isEditing
-    ? "text-warning"
-    : isRecording
-      ? "text-success"
-      : "text-base-content/25";
-  const dotPulse = isRecording ? " animate-pulse" : "";
-
-  return h.div(
-    [h.Class("flex items-center gap-2.5")],
+  return h.p(
+    [h.Class("flex items-center gap-1.5 text-xs text-muted-foreground tabular")],
     [
-      // pulsing dot
-      h.div(
+      h.span(
         [
-          h.Class(`h-2.5 w-2.5 rounded-full shrink-0 ${dotColor}${dotPulse}`),
-          h.Attribute("style", `background:currentColor`),
-          h.Attribute("aria-hidden", "true"),
+          h.Class(
+            cn(
+              "size-1.5 shrink-0 rounded-full",
+              isEditing ? "bg-warning" : isRecording ? "bg-success animate-pulse" : "bg-border",
+            ),
+          ),
+          h.AriaHidden(true),
         ],
         [],
       ),
-      h.div(
-        [h.Class("flex flex-col gap-0.5")],
-        isEditing
-          ? [
-              h.span([h.Class("text-sm font-bold text-warning tracking-wide")], ["EDITING"]),
-              h.span(
-                [h.Class("text-[11px] text-base-content/60 font-mono")],
-                [`Session ${sessionClock} · ${runner.completedCount} recorded`],
-              ),
-            ]
-          : [
-              h.span(
-                [
-                  h.Class(
-                    "font-mono text-[1.35rem] font-semibold leading-none tracking-tight tabular-nums text-base-content",
-                  ),
-                  h.Attribute("style", "font-variant-numeric: tabular-nums"),
-                ],
-                [taskClock],
-              ),
-              h.span(
-                [h.Class("text-[11px] text-base-content/60 font-mono")],
-                [`Session ${sessionClock} · ${runner.completedCount} recorded`],
-              ),
-            ],
-      ),
+      h.span([], [parts.join(" · ")]),
     ],
   );
 };
 
-// ── FormSelectionButton ─────────────────────────────────────────────────────
+// ── Question controls ───────────────────────────────────────────────────────
 
-const selectionButton = (
-  value: string,
-  active: boolean,
-  h: HtmlBuilder<Message>,
-  type: "radio" | "checkbox" = "radio",
-  isExclusive = false,
-) =>
-  h.div(
-    [
-      h.Class(
-        `flex min-h-[48px] w-full items-center justify-between rounded-field px-4 py-3 text-sm font-medium leading-tight transition-all duration-150 active:scale-[0.98] select-none border ${
-          active
-            ? "bg-primary text-primary-content border-primary shadow-sm"
-            : "bg-base-100 border-base-300 shadow-xs text-base-content hover:border-base-300/80 hover:bg-base-200/50"
-        }`,
-      ),
-    ],
-    [
-      h.span([h.Class("truncate flex-1 text-left")], [value]),
-      ...(isExclusive && !active
-        ? [
-            h.span(
-              [h.Class("badge badge-xs badge-neutral shrink-0 ml-1.5 opacity-60 text-[10px]")],
-              ["Exclusive"],
-            ),
-          ]
-        : []),
-      h.div(
-        [
-          h.Class(
-            `flex h-5 w-5 shrink-0 items-center justify-center rounded-${
-              type === "radio" ? "full" : "selector"
-            } border transition-colors ml-2 ${
-              active
-                ? "bg-white/20 border-white text-white"
-                : "bg-transparent border-base-300 text-transparent"
-            }`,
-          ),
-          h.Attribute("aria-hidden", "true"),
-        ],
-        [
-          type === "radio"
-            ? h.div([h.Class(`h-2 w-2 rounded-full ${active ? "bg-white" : "bg-transparent"}`)], [])
-            : checkIcon("h-3 w-3", h),
-        ],
-      ),
-    ],
-  );
-
-// ── FormSectionHeader ───────────────────────────────────────────────────────
-
-const formSectionHeader = (
-  section: RunnerSection,
-  done: boolean,
-  showCheck: boolean,
+const choiceBody = (
+  label: string,
+  caption: string | null,
+  indicator: Html,
   h: HtmlBuilder<Message>,
 ) =>
-  h.div(
-    [h.Class("flex items-center gap-1 px-4 pt-4 pb-1.5")],
+  h.span(
+    [h.Class("flex w-full min-h-14 items-center gap-3 px-4 py-3 text-[1.0625rem] leading-snug")],
     [
       h.span(
-        [h.Class("text-xs font-semibold uppercase tracking-wider text-base-content/60")],
-        [section.name.toUpperCase()],
+        [h.Class("flex min-w-0 flex-1 flex-col text-left")],
+        [
+          h.span([h.Class("truncate")], [label]),
+          ...(caption === null
+            ? []
+            : [h.span([h.Class("text-[0.8125rem] text-muted-foreground")], [caption])]),
+        ],
       ),
-      ...(section.isRequired
-        ? [h.span([h.Class("text-xs font-bold text-error ml-0.5")], ["*"])]
-        : []),
-      ...(showCheck
-        ? [
-            h.span(
-              [
-                h.Class("ml-1.5 text-success font-bold text-xs transition-transform duration-300"),
-                h.Attribute("style", "animation: scale-in 0.3s cubic-bezier(0.34,1.56,0.64,1)"),
-                h.AriaLabel("Completed"),
-              ],
-              ["✓"],
-            ),
-          ]
-        : []),
-      h.div([h.Class("flex-1")], []),
+      indicator,
     ],
   );
 
-// ── Form groups ─────────────────────────────────────────────────────────────
+const checkMark = (isSelected: boolean, h: HtmlBuilder<Message>) =>
+  isSelected
+    ? icon(h, Check, "size-5 shrink-0 text-primary")
+    : h.span([h.Class("size-5 shrink-0"), h.AriaHidden(true)], []);
 
-const formRadioGroup = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
-  h.div(
+const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
+  h.span(
     [
-      h.Class("grid gap-2.5"),
-      h.Attribute("style", "grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))"),
-      h.Attribute("role", "radiogroup"),
-      h.AriaLabel(section.name),
+      h.Class(
+        cn(
+          "grid size-6 shrink-0 place-items-center rounded-md border transition-colors",
+          isSelected
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-input text-transparent",
+        ),
+      ),
+      h.AriaHidden(true),
     ],
+    [icon(h, Check, "size-4")],
+  );
+
+/** Single choice: native radios keep arrow-key and single-tab-stop behaviour. */
+const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
+  h.div(
+    [h.Class("divide-y divide-border/80"), h.Role("radiogroup"), h.AriaLabel(section.name)],
     section.options.map((option) => {
-      const active = section.value === option;
+      const isSelected = section.value === option;
       return h.label(
         [
           h.Class(
-            "relative block w-full cursor-pointer text-left rounded-field has-[:focus-visible]:outline has-[:focus-visible]:outline-primary has-[:focus-visible]:outline-offset-2",
+            cn(
+              "flex w-full cursor-pointer transition-colors active:bg-muted",
+              "has-[:focus-visible]:bg-muted/70",
+              isSelected ? "bg-primary/8 text-primary" : "hover:bg-muted/60",
+            ),
           ),
         ],
         [
           h.input([
             h.Class("sr-only"),
             h.Type("radio"),
-            // Both responsive views are mounted; keep their native groups independent.
+            // Both responsive copies are mounted; keep their native groups apart.
             h.Name(`${scope}-${section.id}`),
             h.Value(option),
-            h.Checked(active),
+            h.Checked(isSelected),
             h.AriaLabel(option),
             h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
           ]),
-          selectionButton(option, active, h, "radio"),
+          choiceBody(option, null, checkMark(isSelected, h), h),
         ],
       );
     }),
   );
 
-const formCheckboxGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
-  h.div(
-    [
-      h.Class("grid gap-2.5"),
-      h.Attribute("style", "grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))"),
-      h.Attribute("role", "group"),
-      h.AriaLabel(section.name),
-    ],
+/** Multiple choice: a check box per option; exclusive options say so plainly. */
+const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) => {
+  const selected = new Set(section.value.split(",").filter((value) => value !== ""));
+  return h.div(
+    [h.Class("divide-y divide-border/80"), h.Role("group"), h.AriaLabel(section.name)],
     section.options.map((option) => {
-      const selectedSet = new Set(section.value.split(",").filter((v) => v !== ""));
-      const isSelected = selectedSet.has(option);
+      const isSelected = selected.has(option);
       const isExclusive = section.exclusiveOptions.includes(option);
-      const hint = isSelected
-        ? "Selected. Tap to deselect"
-        : isExclusive
-          ? "Tap to select. This will clear all other selections"
-          : selectedSet.size > 0 &&
-              [...selectedSet].some((v) => section.exclusiveOptions.includes(v))
-            ? "Tap to select. This will clear the exclusive option"
-            : "Tap to select";
       const nextValue = toggleCheckboxOption(
         section.value,
         option,
@@ -296,573 +169,444 @@ const formCheckboxGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
       );
       return h.button(
         [
-          h.Class("w-full text-left focus-visible:outline-none rounded-field"),
-          h.Attribute("role", "checkbox"),
+          h.Type("button"),
+          h.Class(
+            cn(
+              "flex w-full transition-colors active:bg-muted focus-visible:bg-muted/70",
+              isSelected ? "bg-primary/8 text-primary" : "hover:bg-muted/60",
+            ),
+          ),
+          h.Role("checkbox"),
           h.AriaChecked(isSelected),
           h.AriaLabel(option),
-          h.Title(hint),
           h.OnClick(Message.ChangedFieldValue({ taskFieldId: section.id, value: nextValue })),
         ],
-        [selectionButton(option, isSelected, h, "checkbox", isExclusive)],
+        [
+          choiceBody(
+            option,
+            isExclusive && !isSelected ? "Clears the others" : null,
+            checkBox(isSelected, h),
+            h,
+          ),
+        ],
       );
     }),
   );
+};
 
-const formFieldChromeClass =
-  "rounded-field border bg-base-100 px-3.5 py-3 shadow-xs transition-all duration-150 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 border-base-300 hover:border-base-300/80";
-
-const formTextField = (section: RunnerSection, h: HtmlBuilder<Message>) =>
+const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class(formFieldChromeClass)],
+    [h.Class("px-4 py-3")],
     [
       h.input([
-        h.Class(
-          "input input-ghost w-full h-auto min-h-0 p-0 border-0 bg-transparent text-base focus:outline-none focus-visible:outline-none placeholder:text-base-content/40",
-        ),
+        h.Class(cn(inputClass, "h-12 rounded-xl text-base md:text-base")),
         h.Value(section.value),
-        h.Placeholder(section.name),
+        h.Placeholder("Type your answer"),
         h.AriaLabel(section.name),
         h.Attribute("aria-required", section.isRequired ? "true" : "false"),
-        h.OnInput((v) => Message.ChangedFieldValue({ taskFieldId: section.id, value: v })),
-        h.Attribute("autocomplete", "off"),
-        h.Attribute("autocorrect", "off"),
+        h.Autocomplete("off"),
+        h.Autocapitalize("sentences"),
+        h.EnterKeyHint("next"),
+        h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
       ]),
     ],
   );
 
-const formTextArea = (section: RunnerSection, h: HtmlBuilder<Message>) =>
+const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class(formFieldChromeClass)],
+    [h.Class("px-4 py-3")],
     [
       h.textarea([
-        h.Class(
-          "textarea textarea-ghost w-full min-h-[90px] p-0 border-0 bg-transparent text-base leading-relaxed focus:outline-none focus-visible:outline-none placeholder:text-base-content/40 resize-none",
-        ),
+        h.Class(cn(textareaClass, "min-h-24 rounded-xl text-base md:text-base")),
         h.Value(section.value),
-        h.Placeholder(`Add ${section.name.toLowerCase()}…`),
+        h.Placeholder("Add anything worth remembering"),
         h.AriaLabel(section.name),
         h.Attribute("aria-required", section.isRequired ? "true" : "false"),
-        h.OnInput((v) => Message.ChangedFieldValue({ taskFieldId: section.id, value: v })),
+        h.Autocomplete("off"),
+        h.Autocapitalize("sentences"),
         h.Attribute("rows", "3"),
-        h.Attribute("autocomplete", "off"),
+        h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
       ]),
     ],
   );
 
-const formToggle = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
+const yesNoAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
   const isOn = isBooleanTrue(section.value);
-  const next = isOn ? "false" : "true";
   return h.div(
+    [h.Class("flex min-h-14 items-center px-4 py-1"), h.Role("group"), h.AriaLabel(section.name)],
     [
-      h.Class(
-        `flex items-center justify-between p-3.5 rounded-field border transition-all duration-150 select-none ${
-          isOn
-            ? "bg-primary/10 border-primary/40 shadow-xs"
-            : "bg-base-100 border-base-300 shadow-xs hover:border-base-300/80"
-        }`,
+      switch_(
+        {
+          id: `${scope}-runner-toggle-${section.id}`,
+          isChecked: isOn,
+          label: isOn ? "Yes" : "No",
+          labelClass:
+            "flex min-h-11 flex-1 cursor-pointer items-center text-[1.0625rem] font-normal",
+          wrapperClass: "w-full gap-3",
+          onToggle: (checked) =>
+            Message.ChangedFieldValue({
+              taskFieldId: section.id,
+              value: checked ? "true" : "false",
+            }),
+        },
+        h,
       ),
     ],
-    [
-      h.label(
+  );
+};
+
+const answerControl = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
+  switch (section.kind) {
+    case "radio":
+      return singleChoiceGroup(section, scope, h);
+    case "checkbox":
+      return multipleChoiceGroup(section, h);
+    case "textArea":
+      return notesAnswer(section, h);
+    case "boolean":
+      return yesNoAnswer(section, scope, h);
+    default:
+      return textAnswer(section, h);
+  }
+};
+
+const questionFooter = (section: RunnerSection): string | undefined =>
+  section.kind === "checkbox" ? "Pick as many as apply." : undefined;
+
+const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
+  groupedList(
+    {
+      header: h.span(
+        [h.Class("flex items-center gap-2 normal-case")],
         [
-          h.Class("flex flex-col pr-3 cursor-pointer flex-1"),
-          h.Attribute("for", `${scope}-runner-toggle-${section.id}`),
-        ],
-        [
-          h.span([h.Class("text-sm font-medium text-base-content")], [section.name]),
           h.span(
-            [
-              h.Class(
-                `text-xs mt-0.5 ${isOn ? "text-primary font-medium" : "text-base-content/60"}`,
-              ),
-            ],
-            [isOn ? "Active / Enabled" : "Off / Disabled"],
+            [h.Class("min-w-0 text-[0.9375rem] font-semibold tracking-normal")],
+            [section.name],
           ),
+          ...(section.isRequired
+            ? [
+                statusPill(
+                  { tone: "primary", className: "h-5 px-2 text-[0.6875rem]" },
+                  ["Required"],
+                  h,
+                ),
+              ]
+            : []),
         ],
       ),
-      h.input([
-        h.Class("toggle toggle-primary checked:border-primary shrink-0"),
-        h.Id(`${scope}-runner-toggle-${section.id}`),
-        h.Type("checkbox"),
-        h.Attribute("role", "switch"),
-        h.Checked(isOn),
-        h.AriaChecked(isOn),
-        h.AriaLabel(section.name),
-        h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: next })),
-      ]),
-    ],
+      footer: questionFooter(section),
+      attributes: [h.Id(`${scope}-${section.id}`)],
+    },
+    [answerControl(section, scope, h)],
+    h,
   );
-};
 
-// ── FormSectionContent ──────────────────────────────────────────────────────
-
-const formSectionContent = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
-  const kind = section.kind;
-  if (kind === "radio") return formRadioGroup(section, scope, h);
-  if (kind === "checkbox") return formCheckboxGroup(section, h);
-  if (kind === "textArea") return formTextArea(section, h);
-  if (kind === "textInput") return formTextField(section, h);
-  if (kind === "boolean") return formToggle(section, scope, h);
-  return formTextField(section, h);
-};
-
-// ── FormSectionView ─────────────────────────────────────────────────────────
-
-const formSectionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
-  const done = isSectionDone(section);
-  const isBool = section.kind === "boolean";
-  const showCheck = isBool ? isBooleanTrue(section.value) : done && section.value !== "";
-  return h.div(
-    [h.Class("flex flex-col bg-base-200"), h.Id(`${scope}-${section.id}`)],
-    [
-      formSectionHeader(section, done, showCheck, h),
-      h.div([h.Class("px-4 pb-4")], [formSectionContent(section, scope, h)]),
-    ],
-  );
-};
-
-// ── FormSectionsView (canvas) ───────────────────────────────────────────────
+// ── Form canvas ─────────────────────────────────────────────────────────────
 
 export const formSectionsView = (
-  runner: RunnerState,
+  _runner: RunnerState,
   task: RunnerTask,
   h: HtmlBuilder<Message>,
   scope = "mobile",
 ) => {
   const sections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
-    [h.Class("flex flex-col")],
-
+    [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-6 px-safe pt-4 pb-8")],
     [
-      // invisible anchor formTop
-      h.div([h.Class("h-0 w-full"), h.Id(`${scope}-formTop`)], []),
-      ...sections.flatMap((section, idx) => {
-        const view = formSectionView(section, scope, h);
-        const divider =
-          idx < sections.length - 1 ? h.div([h.Class("mx-4 h-px bg-base-300")], []) : null;
-        return divider ? [view, divider] : [view];
-      }),
-      // tail spacer 100pt
-      h.div([h.Class("h-[100px] w-full shrink-0")], []),
+      h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)], []),
+      ...sections.map((section) => questionView(section, scope, h)),
     ],
   );
 };
 
-// ── BottomFadeGradient ──────────────────────────────────────────────────────
-
-const bottomFadeGradient = (h: HtmlBuilder<Message>) =>
-  h.div(
-    [
-      h.Class(
-        "pointer-events-none fixed inset-x-0 bottom-0 h-[180px] bg-gradient-to-t from-base-200 via-base-200/80 to-transparent",
-      ),
-      h.Attribute("aria-hidden", "true"),
-    ],
-    [],
-  );
-
-// ── SessionBottomBar ────────────────────────────────────────────────────────
-
-const sessionBottomBar = (
+/** Scrolling form area; identical on phone, tablet and desktop. */
+export const runnerCanvas = (
   runner: RunnerState,
-  task: RunnerTask | null,
+  task: RunnerTask,
+  scope: string,
   h: HtmlBuilder<Message>,
-) => {
-  const isEditing = task !== null && task.isBeingEdited;
+) =>
+  h.div(
+    [h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain")],
+    [formSectionsView(runner, task, h, scope)],
+  );
+
+// ── Nav bar pieces ──────────────────────────────────────────────────────────
+
+const endAction = (h: HtmlBuilder<Message>) =>
+  navBarAction(
+    {
+      label: h.span([h.Class("text-destructive")], ["End"]),
+      onClick: Message.ClickedEndSession(),
+      ariaLabel: "End session",
+    },
+    h,
+  );
+
+const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+  navBarAction(
+    {
+      label: h.span(
+        [h.Class("flex items-center gap-1.5")],
+        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.tasks.length}`])],
+      ),
+      onClick: Message.ToggledTaskList(),
+      ariaLabel: "Show task list",
+    },
+    h,
+  );
+
+export const runnerNavBar = (
+  runner: RunnerState,
+  trailing: ReadonlyArray<Html>,
+  h: HtmlBuilder<Message>,
+) =>
+  navBar(
+    {
+      title: runner.sessionName === "" ? runner.templateName : runner.sessionName,
+      subtitle: sessionTimerView(runner, h),
+      leading: endAction(h),
+      trailing,
+    },
+    h,
+  );
+
+export const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+  runnerNavBar(runner, [taskListAction(runner, h)], h);
+
+// ── Action bar ──────────────────────────────────────────────────────────────
+
+const missingRequiredCount = (task: RunnerTask): number =>
+  task.sections.filter((section) => !isSectionDone(section)).length;
+
+const recordHint = (task: RunnerTask): string => {
+  const missing = missingRequiredCount(task);
+  const verb = task.isBeingEdited ? "to save" : "first";
+  if (!task.isBeingEdited && task.endDate !== null)
+    return "This task is already recorded. Pick it in the task list to change it.";
+  return missing === 1
+    ? `Answer the required question ${verb}.`
+    : `Answer the ${missing} required questions ${verb}.`;
+};
+
+/** The one action that matters, always within thumb reach. */
+export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBuilder<Message>) => {
+  const isEditing = task.isBeingEdited;
   const canRecord = canRecordTask(task);
-  // For editing, Save enabled iff editing task isDone
-  const canSave = isEditing ? task !== null && isTaskDone(task) : true;
+  const canSave = isTaskDone(task);
 
-  if (isEditing) {
-    return h.div(
-      [
-        h.Class(
-          "fixed inset-x-0 bottom-0 z-10 flex items-end justify-between px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 pointer-events-none",
-        ),
-      ],
-      [
-        // Cancel + Save cluster on right; End hidden? Spec shows End still left, but when editing spec bottom bar shows Cancel/Save on right, End on left.
+  const actions = isEditing
+    ? [
         h.div(
-          [h.Class("flex w-full items-end justify-between gap-2 pointer-events-auto")],
+          [h.Class("flex gap-3 [&>*]:flex-1")],
           [
-            h.button(
-              [
-                h.Class(
-                  "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98] transition-transform",
-                ),
-                h.OnClick(Message.ClickedEndSession()),
-              ],
-              [h.span([h.Class("text-sm")], ["■"]), "End"],
+            button(
+              {
+                variant: "secondary",
+                size: "lg",
+                className: "h-14 rounded-2xl text-base font-semibold",
+                onClick: Message.ClickedCancelEdit(),
+                attributes: [h.AriaLabel("Cancel editing")],
+              },
+              "Cancel",
+              h,
             ),
-            h.div(
-              [h.Class("flex gap-2")],
-              [
-                h.button(
-                  [
-                    h.Class(
-                      "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98]",
-                    ),
-                    h.OnClick(Message.ClickedCancelEdit()),
-                  ],
-                  ["Cancel"],
-                ),
-                h.button(
-                  [
-                    h.Class(
-                      "btn btn-sm rounded-full bg-success text-white border border-success gap-1.5 shadow-sm active:scale-[0.98] disabled:opacity-50 disabled:bg-base-300 disabled:text-base-content/40 disabled:border-base-300",
-                    ),
-                    h.Disabled(!canSave),
-                    h.OnClick(Message.ClickedSaveEdit()),
-                  ],
-                  ["Save"],
-                ),
-              ],
+            button(
+              {
+                size: "lg",
+                className: "h-14 rounded-2xl text-base font-semibold",
+                isDisabled: !canSave,
+                onClick: Message.ClickedSaveEdit(),
+                attributes: [h.AriaLabel("Save changes")],
+              },
+              [icon(h, Check, "size-5"), "Save"],
+              h,
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  return h.div(
-    [
-      h.Class(
-        "fixed inset-x-0 bottom-0 z-10 flex items-end justify-between px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2",
-      ),
-    ],
-    [
-      h.button(
-        [
-          h.Class(
-            "btn btn-sm rounded-full bg-error/10 backdrop-blur-md border border-error/20 text-error hover:bg-error hover:text-white gap-1.5 shadow-sm active:scale-[0.98] transition-transform",
-          ),
-          h.OnClick(Message.ClickedEndSession()),
-        ],
-        [h.span([h.Class("text-sm")], ["■"]), "End"],
-      ),
-      h.button(
-        [
-          h.Class(
-            `btn btn-sm rounded-full gap-1.5 shadow-sm active:scale-[0.98] transition-colors ${
-              canRecord
-                ? "bg-success text-white border border-success hover:bg-success/90"
-                : "bg-base-300 text-base-content/40 border border-base-300 cursor-not-allowed"
-            }`,
-          ),
-          h.Disabled(!canRecord),
-          h.OnClick(Message.ClickedRecord()),
-        ],
-        ["Record"],
-      ),
-    ],
-  );
-};
-
-// ── FormEntry (phone sheet row) ─────────────────────────────────────────────
-
-const taskStateIndicator = (task: RunnerTask, h: HtmlBuilder<Message>) => {
-  const state = task.endDate === null ? "current" : task.isBeingEdited ? "editable" : "done";
-  if (state === "current") {
-    return h.div(
-      [
-        h.Class("relative flex items-center justify-center shrink-0"),
-        h.Attribute("style", "width:20px;height:20px"),
-      ],
-      [
-        h.div([h.Class("absolute inset-0 rounded-full bg-success")], []),
-        h.div(
-          [
-            h.Class("absolute rounded-full border-2 border-success/30"),
-            h.Attribute("style", "inset:-3px"),
-          ],
-          [],
+        ...(canSave ? [] : [hint(recordHint(task), h)]),
+      ]
+    : [
+        button(
+          {
+            size: "lg",
+            className: "h-14 w-full rounded-2xl text-base font-semibold",
+            isDisabled: !canRecord,
+            onClick: Message.ClickedRecord(),
+            attributes: [h.AriaLabel("Record task")],
+          },
+          [icon(h, Check, "size-5"), "Record task"],
+          h,
         ),
-      ],
-    );
-  }
-  if (state === "editable") {
-    return h.div(
-      [
-        h.Class(
-          "flex h-5 w-5 items-center justify-center rounded-full bg-warning text-white text-[10px] font-bold shrink-0",
-        ),
-      ],
-      ["✎"],
-    );
-  }
-  // done
-  return h.div(
-    [
-      h.Class(
-        "flex h-5 w-5 items-center justify-center rounded-full bg-base-300 text-base-content/60 shrink-0",
-      ),
-    ],
-    [checkIcon("h-3 w-3", h)],
-  );
-};
-
-const formEntry = (task: RunnerTask, isSelected: boolean, h: HtmlBuilder<Message>) => {
-  const timeLabel =
-    taskStartDate(task) !== null ? formatTimeOnly(taskStartDate(task) as number) : null;
-  const duration = (() => {
-    const start = taskStartDate(task);
-    const end = task.endDate;
-    if (start !== null && end !== null) return formatDurationHms(end - start);
-    return null;
-  })();
-
-  // Show up to 4-line preview
-  const previewSections = [...task.sections].sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 4);
+        ...(canRecord ? [] : [hint(recordHint(task), h)]),
+      ];
 
   return h.div(
     [
-      h.Class(
-        `flex gap-3 rounded-box p-3.5 transition-all duration-150 border ${
-          isSelected
-            ? "bg-primary/10 border-primary/40 shadow-xs"
-            : "bg-base-100 border-base-300 shadow-xs hover:border-base-300/80"
-        }`,
-      ),
+      h.Class("shrink-0 border-t border-border/70 bg-background/90 pb-safe backdrop-blur-xl"),
+      h.DataAttribute("slot", "action-bar"),
     ],
     [
-      taskStateIndicator(task, h),
       h.div(
-        [h.Class("flex min-w-0 flex-1 flex-col gap-1.5")],
-        [
-          h.div(
-            [h.Class("flex items-center justify-between gap-2")],
-            [
-              h.span(
-                [
-                  h.Class(
-                    `truncate text-sm ${isSelected ? "font-bold text-primary" : "font-semibold text-base-content"}`,
-                  ),
-                ],
-                [`Task ${task.orderIndex}`],
-              ),
-              ...(timeLabel
-                ? [
-                    h.span(
-                      [h.Class("shrink-0 text-xs font-mono text-base-content/60")],
-                      [timeLabel],
-                    ),
-                  ]
-                : []),
-            ],
-          ),
-          ...(duration
-            ? [
-                h.div(
-                  [h.Class("flex items-center gap-1 text-xs font-mono text-base-content/60")],
-                  [clockTinyIcon("h-3 w-3", h), h.span([], [duration])],
-                ),
-              ]
-            : []),
-          ...(previewSections.length > 0
-            ? [
-                h.div(
-                  [h.Class("flex flex-col gap-1 pt-1 border-t border-base-200/60")],
-                  previewSections.map((s) => {
-                    const hasValue = s.value !== "";
-                    const displayVal =
-                      s.kind === "boolean" && hasValue
-                        ? isBooleanTrue(s.value)
-                          ? "Yes / Active"
-                          : "No / Off"
-                        : s.value;
-                    return h.div(
-                      [h.Class("flex items-baseline gap-2 text-xs")],
-                      [
-                        h.span(
-                          [h.Class("min-w-[60px] shrink-0 text-base-content/50 font-medium")],
-                          [s.name],
-                        ),
-                        h.span(
-                          [
-                            h.Class(
-                              `truncate ${hasValue ? "text-base-content" : "text-base-content/40 italic"}`,
-                            ),
-                          ],
-                          [hasValue ? displayVal : "—"],
-                        ),
-                      ],
-                    );
-                  }),
-                ),
-              ]
-            : []),
-        ],
+        [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-3 pb-3")],
+        [...(runner.lastError === null ? [] : [errorAlert(runner.lastError, h)]), ...actions],
       ),
     ],
   );
 };
 
-// ── Task list sheet ─────────────────────────────────────────────────────────
+// ── Task list ───────────────────────────────────────────────────────────────
 
-const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+const taskStatus = (task: RunnerTask): "recording" | "editing" | "done" =>
+  task.endDate === null ? "recording" : task.isBeingEdited ? "editing" : "done";
+
+const firstAnswer = (task: RunnerTask): string => {
+  const answered = [...task.sections]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .find((section) => section.value !== "");
+  if (answered === undefined) return "No answers yet";
+  if (answered.kind === "boolean") {
+    return `${answered.name}: ${isBooleanTrue(answered.value) ? "Yes" : "No"}`;
+  }
+  return answered.value;
+};
+
+const taskValue = (task: RunnerTask): string | undefined => {
+  const start = taskStartDate(task);
+  if (start === null) return undefined;
+  if (task.endDate === null) return formatTimeOnly(start);
+  return formatDurationHms(task.endDate - start);
+};
+
+/** One row per task; shared by the phone sheet and the tablet sidebar. */
+export const taskRow = (
+  task: RunnerTask,
+  isCurrent: boolean,
+  h: HtmlBuilder<Message>,
+  options: Readonly<{ showValue?: boolean }> = {},
+) => {
+  const status = taskStatus(task);
+  const label =
+    status === "recording" ? "in progress" : status === "editing" ? "editing" : "completed";
+  return row(
+    {
+      lazy: true,
+      title: `Task ${task.orderIndex}`,
+      subtitle: firstAnswer(task),
+      value: options.showValue === false ? undefined : taskValue(task),
+      trailing: statusPill(
+        {
+          tone: status === "recording" ? "success" : status === "editing" ? "warning" : "neutral",
+        },
+        [status === "recording" ? "Recording" : status === "editing" ? "Editing" : "Done"],
+        h,
+      ),
+      onClick: Message.ClickedSelectTask({ taskId: task.id }),
+      className: isCurrent ? "bg-primary/8 text-primary" : "",
+      attributes: [
+        h.AriaLabel(`Task ${task.orderIndex} ${label}`),
+        ...(isCurrent ? [h.AriaCurrent("true")] : []),
+      ],
+    },
+    h,
+  );
+};
+
+export const taskRows = (
+  runner: RunnerState,
+  h: HtmlBuilder<Message>,
+  options: Readonly<{ showValue?: boolean }> = {},
+): ReadonlyArray<Html> => {
   const sorted = [...runner.tasks].sort((a, b) => b.orderIndex - a.orderIndex);
-  const curId = currentTask(runner)?.id ?? runner.currentTaskId;
-  return h.div(
-    [
-      h.Class("fixed inset-0 z-40 flex flex-col bg-base-200 animate-[slide-up_0.25s_ease-out]"),
-      h.Attribute("role", "dialog"),
-      h.Attribute("aria-modal", "true"),
-      h.AriaLabel("Tasks"),
-    ],
-    [
-      // header
-      h.div(
-        [
-          h.Class(
-            "flex flex-col border-b border-base-300 bg-base-100 px-4 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-3 shrink-0 shadow-xs",
-          ),
-        ],
-        [
-          h.div([h.Class("mx-auto h-1 w-10 rounded-full bg-base-content/20 mb-2")], []),
-          h.div(
-            [h.Class("flex items-center justify-between")],
-            [
-              h.div(
-                [h.Class("flex items-center gap-2")],
-                [
-                  h.h2([h.Class("text-base font-bold text-base-content")], ["Tasks"]),
-                  h.span(
-                    [h.Class("badge badge-sm badge-neutral font-mono")],
-                    [`${runner.completedCount} completed`],
-                  ),
-                ],
-              ),
-              h.button(
-                [
-                  h.Class("btn btn-primary btn-sm rounded-field font-semibold px-4 shadow-xs"),
-                  h.OnClick(Message.ToggledTaskList()),
-                  h.AriaLabel("Done"),
-                ],
-                ["Done"],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.div(
-        [
-          h.Class(
-            "flex-1 overflow-y-auto overscroll-y-contain p-4 space-y-2.5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
-          ),
-        ],
-        sorted.map((task) =>
-          h.button(
-            [
-              h.Class("w-full text-left rounded-box focus-visible:outline-none"),
-              h.OnClick(Message.ClickedSelectTask({ taskId: task.id })),
-              h.AriaLabel(
-                `Task ${task.orderIndex} ${task.endDate === null ? "in progress" : task.isBeingEdited ? "editing" : "completed"}`,
-              ),
-            ],
-            [formEntry(task, task.id === curId, h)],
-          ),
-        ),
-      ),
-    ],
-  );
+  const currentId = currentTask(runner)?.id ?? runner.currentTaskId;
+  return sorted.map((task) => taskRow(task, task.id === currentId, h, options));
 };
 
-// ── End confirmation modal ──────────────────────────────────────────────────
+const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+  sheet(
+    {
+      id: "runner-tasks",
+      title: "Tasks",
+      description: `${runner.completedCount} recorded. Tap a task to change its answers.`,
+      onDismiss: Message.ToggledTaskList(),
+      dismissLabel: "Close task list",
+      size: "md",
+      footer: [
+        button(
+          {
+            variant: "secondary",
+            size: "lg",
+            className: "h-11 text-base",
+            onClick: Message.ToggledTaskList(),
+            attributes: [h.AriaLabel("Close task list")],
+          },
+          "Done",
+          h,
+        ),
+      ],
+    },
+    [groupedList({}, [...taskRows(runner, h)], h)],
+    h,
+  );
+
+// ── End session & errors ────────────────────────────────────────────────────
 
 export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) => {
-  const elapsed = formatClock(Math.max(0, runner.now - runner.startedAt));
   const count = runner.completedCount;
   const message =
     count === 0
-      ? `Are you sure you want to end this session? You have recorded 0 tasks in ${elapsed}. No session will be saved.`
-      : `Are you sure you want to end this session? You have recorded ${count} task(s) in ${elapsed}.`;
-  return h.div(
-    [
-      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
-      h.Attribute("role", "dialog"),
-      h.Attribute("aria-modal", "true"),
-      h.AriaLabel("End Session"),
-    ],
-    [
-      h.div(
-        [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
-        [
-          h.h3([h.Class("text-base font-bold")], ["End Session"]),
-          h.p([h.Class("mt-1.5 text-xs leading-relaxed text-base-content/70")], [message]),
-          h.div(
-            [h.Class("modal-action mt-5 flex-col gap-2 sm:flex-row")],
-            [
-              h.button(
-                [
-                  h.Class("btn btn-error btn-block rounded-field text-xs font-semibold sm:flex-1"),
-                  h.OnClick(Message.ConfirmedEndSession()),
-                ],
-                ["End Session"],
-              ),
-              h.button(
-                [
-                  h.Class("btn btn-ghost btn-block rounded-field text-xs sm:flex-1"),
-                  h.OnClick(Message.CanceledEndSession()),
-                ],
-                ["Cancel"],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.button(
-        [
-          h.Class("modal-backdrop"),
-          h.AriaLabel("Cancel ending session"),
-          h.OnClick(Message.CanceledEndSession()),
-        ],
-        [],
-      ),
-    ],
+      ? "Nothing has been recorded yet, so nothing will be kept."
+      : `${count} task${count === 1 ? "" : "s"} recorded. You can review and export them from History.`;
+  return confirmSheet(
+    {
+      id: "end-session",
+      title: "End session?",
+      message,
+      confirmLabel: "End session",
+      confirmAriaLabel: "End session",
+      cancelAriaLabel: "Keep recording",
+      cancelLabel: "Keep recording",
+      dismissLabel: "Cancel ending session",
+      onConfirm: Message.ConfirmedEndSession(),
+      onCancel: Message.CanceledEndSession(),
+    },
+    h,
   );
 };
 
-export const errorAlert = (msg: string, h: HtmlBuilder<Message>) =>
+/** Inline, dismissible failure message shown just above the action bar. */
+export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
+  notice(
+    {
+      tone: "error",
+      text: message,
+      onDismiss: Message.DismissedRunnerError(),
+      dismissLabel: "Dismiss error",
+    },
+    h,
+  );
+
+// ── Placeholder states ──────────────────────────────────────────────────────
+
+export const runnerLoadingView = (h: HtmlBuilder<Message>) =>
   h.div(
+    [h.Class("flex h-full items-center justify-center p-8")],
     [
-      h.Class("modal modal-open modal-bottom sm:modal-middle bg-neutral/40 backdrop-blur-xs"),
-      h.Attribute("role", "alertdialog"),
-      h.Attribute("aria-modal", "true"),
-      h.AriaLabel("Something Went Wrong"),
-      h.Attribute("aria-describedby", "runner-error-message"),
-    ],
-    [
-      h.div(
-        [h.Class("modal-box max-w-sm rounded-box border border-base-300 bg-base-100 p-5")],
-        [
-          h.h3([h.Class("text-base font-bold")], ["Something Went Wrong"]),
-          h.p(
-            [h.Id("runner-error-message"), h.Class("mt-1.5 text-xs text-base-content/70")],
-            [msg],
-          ),
-          h.div(
-            [h.Class("modal-action mt-4")],
-            [
-              h.button(
-                [
-                  h.Class("btn btn-primary btn-block rounded-field"),
-                  h.OnClick(Message.DismissedRunnerError()),
-                ],
-                ["OK"],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.button(
-        [
-          h.Class("modal-backdrop"),
-          h.AriaLabel("Dismiss error"),
-          h.OnClick(Message.DismissedRunnerError()),
-        ],
-        [],
+      h.p(
+        [h.Class("text-[0.9375rem] text-muted-foreground"), h.Role("status")],
+        ["Loading session…"],
       ),
     ],
+  );
+
+export const runnerEmptyTaskView = (h: HtmlBuilder<Message>) =>
+  emptyState(
+    {
+      icon: Timer,
+      title: "Nothing to record",
+      description: "This session has no task to fill in. End it and start a new one.",
+    },
+    h,
   );
 
 // ── Public entry ────────────────────────────────────────────────────────────
@@ -873,68 +617,19 @@ type RunnerModel = {
 
 export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
   const runner = model.runner;
-  if (runner === null) {
-    return h.div(
-      [h.Class("flex h-full flex-col items-center justify-center p-8 text-center")],
-      [
-        h.div([h.Class("loading loading-spinner loading-sm text-base-content/40")], []),
-        h.p([h.Class("mt-3 text-sm text-base-content/60")], ["Loading session…"]),
-      ],
-    );
-  }
+  if (runner === null) return runnerLoadingView(h);
 
-  // Find current task (for canvas)
   const task = currentTask(runner);
-  if (task === null) {
-    return h.div(
-      [h.Class("flex h-full items-center justify-center p-8 text-center")],
-      [h.p([h.Class("text-sm text-base-content/50")], ["No task found for this session."])],
-    );
-  }
-
-  const headerRow = h.div(
-    [
-      h.Class(
-        "sticky top-0 z-20 flex items-center justify-between border-b border-base-300 bg-base-100 px-4 py-2 pt-[env(safe-area-inset-top)] shrink-0",
-      ),
-    ],
-    [
-      sessionTimerView(runner, h),
-      h.button(
-        [
-          h.Class(
-            "flex items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-3 py-1.5 text-xs font-medium text-base-content shadow-sm active:scale-[0.98] transition-transform",
-          ),
-          h.OnClick(Message.ToggledTaskList()),
-          h.AriaLabel("Show task list"),
-        ],
-        [
-          h.span([h.Class("font-mono font-semibold")], [`${runner.completedCount}`]),
-          listBulletIcon("h-4 w-4", h),
-        ],
-      ),
-    ],
-  );
-
-  const scrollCanvas = h.div(
-    [h.Class("flex-1 overflow-y-auto overscroll-y-contain bg-base-200")],
-    [h.div([h.Class("mx-auto w-full max-w-xl pb-28")], [formSectionsView(runner, task, h)])],
-  );
+  if (task === null) return runnerEmptyTaskView(h);
 
   return h.div(
+    [h.Class("flex h-full min-h-0 w-full flex-col bg-background text-foreground")],
     [
-      h.Class(
-        "relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-base-200 text-base-content",
-      ),
-    ],
-    [
-      headerRow,
-      scrollCanvas,
-      bottomFadeGradient(h),
-      sessionBottomBar(runner, task, h),
+      phoneNavBar(runner, h),
+      runnerCanvas(runner, task, "mobile", h),
+      runnerActionBar(runner, task, h),
       ...(runner.showTaskList ? [taskListSheet(runner, h)] : []),
       ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
-      ...(runner.lastError !== null ? [errorAlert(runner.lastError, h)] : []),
     ],
   );
 };

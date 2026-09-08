@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
@@ -8,8 +8,13 @@ import { events } from "../../../livestore/schema";
 import { Message } from "../../../messages";
 import { DiscardLiveSession, StartSession } from "./startCommands";
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe.each(["start", "discard"] as const)("%s session failures", (operation) => {
-  it.each(["open", "commit"] as const)("reports %s failures", async (failure) => {
+  it.each(["open", "commit"] as const)("reports %s failures in plain language", async (failure) => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const commit = vi.fn(() => {
       throw new Error("Persistence unavailable");
     });
@@ -31,10 +36,21 @@ describe.each(["start", "discard"] as const)("%s session failures", (operation) 
             fields: [],
           })
         : DiscardLiveSession({ sessionId: "s" });
-    expect(await Effect.runPromise<Message, never>(command.effect)).toMatchObject({
+    const result = await Effect.runPromise<Message, never>(command.effect);
+    expect(result).toMatchObject({
       _tag: "FailedSessionOp",
-      error: expect.stringContaining("Persistence unavailable"),
+      error:
+        operation === "start"
+          ? "Couldn't start the session. Please try again."
+          : "Couldn't delete that. Please try again.",
     });
+    expect(result._tag === "FailedSessionOp" ? result.error : "").not.toContain(
+      "Persistence unavailable",
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining("failed"),
+      expect.stringContaining("Persistence unavailable"),
+    );
     if (failure === "open") expect(commit).not.toHaveBeenCalled();
   });
 });
@@ -71,6 +87,7 @@ describe("DiscardLiveSession live-session guard", () => {
   });
 
   it("reports query failures without writing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const query = vi.fn(() => {
       throw new Error("Query unavailable");
     });
@@ -79,7 +96,7 @@ describe("DiscardLiveSession live-session guard", () => {
 
     expect(await Effect.runPromise(DiscardLiveSession({ sessionId: "s" }).effect)).toMatchObject({
       _tag: "FailedSessionOp",
-      error: expect.stringContaining("Query unavailable"),
+      error: "Couldn't delete that. Please try again.",
     });
     expect(commit).not.toHaveBeenCalled();
   });

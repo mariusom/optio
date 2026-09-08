@@ -10,21 +10,22 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 
 ## What it does
 
-- **Templates** — define the fields captured in every session: single choice
-  (radio), multiple choice (checkbox with exclusive "clear others" options),
-  text input, text area, toggle. Fields can be required, defaulted, reordered
-  and renamed (duplicate / set-default / delete included).
+- **Templates** — the questions asked for every task: text, long text, single
+  choice, multiple choice (with choices that clear the others, e.g. "None"),
+  and Yes/No. Questions can be required, given a default answer, reordered and
+  renamed; templates can be duplicated, set as default and deleted. Three
+  sample templates ("Assembly line", "Ward round", "Warehouse pick") are seeded
+  on first launch and can be re-added any time from the Templates screen.
 - **Sessions** — pick a template, name the session (or accept a random
   two-word name), and record observations. Each task is one filled form; the
   first value written stamps `startDate` (SQL `COALESCE(startDate, now)`), and
   task/session durations are derived from it. Sessions can be resumed after a
   force-quit or a reload — the live session row _is_ the resume state.
-- **Phone + tablet/desktop** — bottom navigation and a single-column task canvas
-  on `<768px`; a compact workspace rail on tablets, and a labeled sidebar at
-  `≥1200px`. Recording uses a split cockpit (`w-64 lg:w-80` task sidebar + form pane)
-  at `≥768px`. Bottom tab
-  bar is hidden during a live session, where a fixed timer + Record/End footer
-  takes over.
+- **Phone + tablet/desktop** — one phone-first layout: bottom tab bar and a
+  single-column form on `<768px`; a sidebar rail on tablets and a labeled
+  sidebar at `≥1280px`. The live session adds a task column beside the form at
+  `≥768px`. The tab bar is hidden during a live session, where a navigation
+  bar with the timer and a full-width Record button take over.
 - **History** — archived sessions with full task/section detail, editable
   session names, delete confirmation, and **CSV export** per session in both
   export formats (live per-option expanded columns, archive alphabetical
@@ -34,17 +35,17 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 
 ## Stack
 
-| Layer              | Tool                                                                                                                                          |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| UI framework       | [FoldKit](https://foldkit.dev) 0.157 — Elm architecture on Effect (Model / Message / update / view)                                           |
-| Styling            | Tailwind CSS 4 + [Foldcn](https://foldcn.elianiva.com) / `@foldkit/ui`; daisyUI 5 retained for legacy components, sharing Foldcn theme tokens |
-| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`                    |
-| Session logic      | `@typeonce/effect-machine` 0.31 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously                |
-| Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                                      |
-| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                               |
-| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                                       |
-| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                                         |
-| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                                            |
+| Layer              | Tool                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| UI framework       | [FoldKit](https://foldkit.dev) 0.158 — Elm architecture on Effect (Model / Message / update / view)                                        |
+| Styling            | Tailwind CSS 4 + [Foldcn](https://foldcn.elianiva.com) / `@foldkit/ui` registry components, with optio's app primitives on top (see below) |
+| Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`                 |
+| Session logic      | `@typeonce/effect-machine` 0.33 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously             |
+| Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                                   |
+| Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                            |
+| PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                                    |
+| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                                      |
+| Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                                         |
 
 ## Standalone-PWA hardening
 
@@ -70,30 +71,69 @@ pnpm check           # oxfmt + oxlint + type checks in one shot
 pnpm test            # vitest via vp test
 pnpm preview         # preview the production build
 bun scripts/gen-icons.ts             # regenerate public/icon-{180,192,512}.png
+node scripts/screenshots/tour.mjs /tmp/tour   # screenshot every screen (needs `pnpm preview --port 60002`)
 ```
 
-## Foldcn components
+## Design language
 
-`components.json` registers `@foldcn` and maps the `@/components`,
-`@/components/ui`, `@/lib`, and `@/hooks` aliases. TypeScript and Vite both
-resolve `@/` to `src/`. This is a Foldkit project, not React; always use
-the **namespaced** registry items:
+optio is designed phone-first in the vocabulary of SwiftUI / iOS, then the
+same layout is centered on tablets and desktops:
 
-```sh
-npx shadcn@latest add @foldcn/button @foldcn/dialog
-```
+- **Shell** — large-title page headers on the four tab roots, a bottom tab bar
+  on phones and a sidebar (icon rail on tablets, labeled column on wide
+  screens) at `≥768px`. Pushed screens (template editor, session detail, live
+  session) draw one 44pt navigation bar with a back link that looks identical
+  at every size, so nothing rearranges between breakpoints.
+- **Content** — inset grouped lists with uppercase section headers and muted
+  footers, 44pt rows, checkmarks for selection, chevrons for navigation, one
+  full-width primary action per screen, destructive actions in red and always
+  confirmed in a sheet.
+- **Sheets** — bottom sheets on phones, centered cards on larger screens, for
+  every modal (create, rename, confirm, task details, per-row actions). A small
+  document-level focus manager (`src/we/sheetFocus.ts`) moves focus into an
+  open sheet, keeps it there, and returns it to the opener on close.
+- **Copy** — plain language only: "question", "answer type", "choices",
+  "must be answered", "Yes/No". Failures are one short sentence; the technical
+  cause goes to the console, never to the screen.
+- **Forms** — associated labels, 16px inputs on phones, `autocapitalize`,
+  `enterkeyhint`, autofocus on the first field of a sheet, and a hint under any
+  disabled primary button that says what is missing.
+- **Lazy lists** — long lists (history, tasks, questions) use
+  `content-visibility: auto` rows so off-screen rows cost nothing to render.
 
-Button, Dialog, and Native Select are installed as editable TypeScript source
-in `src/components/ui`. The session launcher uses Button and Native Select;
-Dialog is available for subsequent modal migration. No React/Radix components
-are used. Stateful components such as Dialog must be wired as Foldkit submodels,
-not treated as CSS-only wrappers; see the [Foldcn docs](https://foldcn.elianiva.com/docs).
+## Component layers
 
-`src/index.css` must retain `@import "tailwindcss";`. Foldcn's `:root`/`.dark`
-tokens are the shared theme, and dark mode follows the system preference.
-daisyUI remains for existing screens with its themes disabled and compatibility
-aliases pointing to the same colors. Its control-local `--border` width is
-isolated from Foldcn's `--border` color token.
+Two layers, both TypeScript view functions for Foldkit (no React):
+
+1. **`src/components/ui/*`** — [Foldcn](https://foldcn.elianiva.com) registry
+   items, installed **unmodified** so they can be re-synced as foldcn evolves.
+   `components.json` registers `@foldcn` and maps the `@/components`,
+   `@/components/ui`, `@/lib` and `@/hooks` aliases. Add or refresh items with
+   the namespaced registry names:
+
+   ```sh
+   npx shadcn@latest add @foldcn/button @foldcn/sheet --overwrite
+   ```
+
+   Installed: button, input, textarea, switch, checkbox, radio-group,
+   native-select, badge, card, item, empty, label, separator, skeleton,
+   progress, dialog, sheet, alert-dialog. `button.ts` carries one local
+   addition (`data-size` on the element) that an `--overwrite` would drop.
+   Stateful items (dialog, sheet, alert-dialog, radio-group) are Foldkit
+   submodels; the app currently uses the pure-view items plus its own
+   pure-view sheet (below).
+
+2. **`src/components/app/*`** — optio's own primitives composed from the
+   Foldcn layer and Tailwind tokens: `tabBar`, `sidebar`, `navBar`,
+   `navBarAction`, `pageHeader`, `page`, `groupedList`, `row`, `detailRow`,
+   `controlRow`, `statusPill`, `sheet`, `confirmSheet`, `emptyState`,
+   `notice`, `hint`, and lucide `icon`. Every screen is built from these; no
+   screen-specific CSS classes exist.
+
+`src/index.css` keeps `@import "tailwindcss";`, the Foldcn `:root`/`.dark`
+tokens (dark mode follows the system unless overridden in Settings), the
+standalone-PWA hardening rules and a handful of `@utility` helpers
+(`pt-safe`, `pb-safe`, `px-safe`, `lazy-row`, `text-large-title`).
 
 The base registry currently requests Effect `4.0.0-rc.109`; this app keeps
 `4.0.0-rc.112` to match its existing stack. Check dependency changes after any

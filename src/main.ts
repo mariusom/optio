@@ -33,6 +33,7 @@ import { planSession, type SessionEmission } from "./machine/session/plan";
 import { safeArray } from "./we/fieldRows";
 import type { SessionEvent } from "./machine/session/sessionMachine";
 import {
+  AddSampleTemplates,
   CreateTemplate,
   DeleteTemplate,
   DuplicateTemplate,
@@ -73,7 +74,8 @@ import {
   templatesRouter,
   type Route,
 } from "./we/routes";
-import { bottomTabBar, topBar, workspaceNavigation } from "./we/ui";
+import { button } from "@/components/ui/button";
+import { Plus, icon, pageHeader, sidebar, tabBar } from "@/components/app";
 import {
   DeleteHistorySession,
   ExportSessionCsv,
@@ -104,6 +106,8 @@ export const Model = S.Struct({
   showCreate: S.Boolean,
   newName: S.String,
   pendingDelete: S.Union([S.Null, S.Struct({ id: S.String, name: S.String })]),
+  /** Template whose "⋯" action sheet is open, if any. */
+  templateActionsFor: S.Union([S.Null, S.String]),
   lastError: S.Union([S.Null, S.String]),
   editor: S.Union([
     S.Null,
@@ -244,6 +248,9 @@ export const Model = S.Struct({
   showEditHistoryName: S.Boolean,
   editHistoryNameInput: S.String,
   selectedHistoryTaskId: S.Union([S.Null, S.String]),
+  historyActionsFor: S.Union([S.Null, S.String]),
+  /** Where an internal link wanted to go while the editor had unsaved changes. */
+  pendingNavigationUrl: S.Union([S.Null, S.String]),
   csvError: S.Union([S.Null, S.String]),
 });
 export type Model = typeof Model.Type;
@@ -257,6 +264,7 @@ const initialModel = (route: Route): Model => ({
   showCreate: false,
   newName: "",
   pendingDelete: null,
+  templateActionsFor: null,
   lastError: null,
   editor: null,
   selectedTemplateId: null,
@@ -272,6 +280,8 @@ const initialModel = (route: Route): Model => ({
   showEditHistoryName: false,
   editHistoryNameInput: "",
   selectedHistoryTaskId: null,
+  historyActionsFor: null,
+  pendingNavigationUrl: null,
   csvError: null,
 });
 
@@ -420,9 +430,10 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       let base =
         route._tag === "TemplateEditor"
           ? model.editor !== null && model.editor.id === route.templateId
-            ? { ...model, route }
-            : { ...model, route, editor: null }
-          : { ...model, route, editor: null };
+            ? { ...model, route, templateActionsFor: null }
+            : { ...model, route, editor: null, templateActionsFor: null }
+          : { ...model, route, editor: null, templateActionsFor: null };
+      base = { ...base, historyActionsFor: null };
       // Clear history detail when leaving SessionDetail
       if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
         base = {
@@ -451,10 +462,27 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       }
       return { model: base };
     },
-    ClickedLink: ({ request }) =>
-      request._tag === "Internal"
-        ? { model, commands: [NavigateInternal({ url: urlToString(request.url) })] }
-        : { model, commands: [NavigateExternal({ href: request.href })] },
+    ClickedLink: ({ request }) => {
+      if (request._tag !== "Internal")
+        return { model, commands: [NavigateExternal({ href: request.href })] };
+      const url = urlToString(request.url);
+      // Leaving the template editor with unsaved changes asks first; the
+      // requested destination is kept and used once the discard is confirmed.
+      if (
+        model.route._tag === "TemplateEditor" &&
+        model.editor !== null &&
+        hasChanges(model.editor)
+      ) {
+        return {
+          model: {
+            ...model,
+            pendingNavigationUrl: url,
+            editor: { ...model.editor, pendingDiscard: true },
+          },
+        };
+      }
+      return { model, commands: [NavigateInternal({ url })] };
+    },
     Navigated: () => ({ model }),
 
     // ── Templates ──────────────────────────────────────────────────────────
@@ -504,7 +532,11 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     RequestedDeleteTemplate: ({ id }) => {
       const template = model.templates.find((template) => template.id === id);
       return {
-        model: { ...model, pendingDelete: template ? { id, name: template.name } : null },
+        model: {
+          ...model,
+          templateActionsFor: null,
+          pendingDelete: template ? { id, name: template.name } : null,
+        },
       };
     },
     CanceledDeleteTemplate: () => ({ model: { ...model, pendingDelete: null } }),
@@ -515,8 +547,21 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             model: { ...model, pendingDelete: null },
             commands: [DeleteTemplate({ id: model.pendingDelete.id })],
           },
-    ClickedSetDefaultTemplate: ({ id }) => ({ model, commands: [SetDefaultTemplate({ id })] }),
-    ClickedDuplicateTemplate: ({ id }) => ({ model, commands: [DuplicateTemplate({ id })] }),
+    ClickedSetDefaultTemplate: ({ id }) => ({
+      model: { ...model, templateActionsFor: null },
+      commands: [SetDefaultTemplate({ id })],
+    }),
+    ClickedDuplicateTemplate: ({ id }) => ({
+      model: { ...model, templateActionsFor: null },
+      commands: [DuplicateTemplate({ id })],
+    }),
+    OpenedTemplateActions: ({ id }) => ({ model: { ...model, templateActionsFor: id } }),
+    ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
+    ClickedAddSampleTemplates: () => ({
+      model: { ...model, lastError: null },
+      commands: [AddSampleTemplates({})],
+    }),
+    SampleTemplatesAdded: () => ({ model }),
     TemplateOpDone: () => ({ model }),
     TemplatesSeededCheck: () => ({ model }),
     FailedTemplateOp: ({ error }) => {
@@ -822,7 +867,13 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     },
     CanceledDiscard: () => {
       if (model.editor === null) return { model };
-      return { model: { ...model, editor: { ...model.editor, pendingDiscard: false } } };
+      return {
+        model: {
+          ...model,
+          pendingNavigationUrl: null,
+          editor: { ...model.editor, pendingDiscard: false },
+        },
+      };
     },
     ConfirmedDiscard: () => {
       if (model.editor === null) return { model };
@@ -844,8 +895,14 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
         };
       }
       return {
-        model: { ...model, editor: { ...model.editor, pendingDiscard: false } },
-        commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
+        model: {
+          ...model,
+          pendingNavigationUrl: null,
+          editor: { ...model.editor, pendingDiscard: false },
+        },
+        commands: [
+          NavigateInternal({ url: model.pendingNavigationUrl ?? `#${templatesRouter()}` }),
+        ],
       };
     },
 
@@ -1009,15 +1066,18 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       model,
       commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
     }),
-    RequestedHistoryDelete: ({ id }) => {
+    RequestedHistoryDelete: ({ id, displayName }) => {
       const session = model.history.find((session) => session.id === id);
       return {
         model: {
           ...model,
-          pendingHistoryDelete: session ? { id, displayName: session.displayName } : null,
+          historyActionsFor: null,
+          pendingHistoryDelete: { id, displayName: session?.displayName ?? displayName },
         },
       };
     },
+    OpenedHistoryActions: ({ id }) => ({ model: { ...model, historyActionsFor: id } }),
+    ClosedHistoryActions: () => ({ model: { ...model, historyActionsFor: null } }),
     CanceledHistoryDelete: () => ({ model: { ...model, pendingHistoryDelete: null } }),
     ConfirmedHistoryDelete: () =>
       model.pendingHistoryDelete === null
@@ -1084,7 +1144,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     ClickedHistoryTask: ({ taskId }) => ({ model: { ...model, selectedHistoryTaskId: taskId } }),
     DismissedHistoryTask: () => ({ model: { ...model, selectedHistoryTaskId: null } }),
     ClickedExportHistoryCsv: ({ sessionId }) => ({
-      model: { ...model, csvError: null },
+      model: { ...model, csvError: null, historyActionsFor: null },
       commands: [ExportSessionCsv({ sessionId })],
     }),
     CsvExported: () => ({ model }),
@@ -1793,7 +1853,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   ),
 }));
 
-// VIEW — app shell: top bar, routed page, bottom tab bar
+// VIEW — app shell: sidebar (md+), routed page, tab bar (phone)
 
 const pageTitle = (route: Route): string => {
   switch (route._tag) {
@@ -1808,9 +1868,9 @@ const pageTitle = (route: Route): string => {
     case "SessionRunner":
       return "Session";
     case "TemplateEditor":
-      return "Edit Template";
+      return "Template";
     case "SessionDetail":
-      return "Session Details";
+      return "Session";
   }
 };
 
@@ -1833,52 +1893,66 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   }
 };
 
-const trailingFor = (model: Model, h: HtmlBuilder<Message>) =>
-  model.route._tag === "TemplatesTab" && model.templates.length > 0
-    ? h.button(
-        [
-          h.Class(
-            "btn btn-primary btn-sm rounded-field font-semibold text-xs gap-1 shadow-xs active:scale-[0.98] transition-all",
-          ),
-          h.AriaLabel("Create new template"),
-          h.OnClick(Message.ClickedNewTemplate()),
-        ],
-        [
-          h.span([h.Class("text-base leading-none")], ["+"]),
-          h.span([h.Class("hidden sm:inline")], ["New Template"]),
-        ],
-      )
-    : null;
+/** Large-title header for the four tab roots; detail screens draw their own nav bar. */
+const rootHeader = (model: Model, h: HtmlBuilder<Message>) => {
+  switch (model.route._tag) {
+    case "TemplatesTab":
+      return pageHeader(
+        {
+          title: pageTitle(model.route),
+          trailing:
+            model.templates.length > 0
+              ? button(
+                  {
+                    size: "icon-lg",
+                    className: "size-11 rounded-full",
+                    onClick: Message.ClickedNewTemplate(),
+                    attributes: [h.AriaLabel("New template")],
+                  },
+                  icon(h, Plus, "size-5"),
+                  h,
+                )
+              : undefined,
+        },
+        h,
+      );
+    case "StartTab":
+    case "HistoryTab":
+    case "SettingsTab":
+      return pageHeader({ title: pageTitle(model.route) }, h);
+    case "SessionRunner":
+    case "TemplateEditor":
+    case "SessionDetail":
+      return null;
+  }
+};
 
-export const view = (model: Model, h: HtmlBuilder<Message>): Document =>
-  ({
+export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
+  const isRunner = model.route._tag === "SessionRunner";
+  const hasHistory = model.history.length > 0;
+  const header = rootHeader(model, h);
+  return {
     title: "optio",
     body: h.div(
       [
         h.Class(
-          `app-shell ${isFullScreenRoute(model.route) ? "focus-workspace" : "browse-workspace"} flex h-dvh w-full flex-col overflow-hidden bg-base-200 text-base-content`,
+          `app-shell ${isFullScreenRoute(model.route) ? "focus-workspace" : "browse-workspace"} flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground`,
         ),
       ],
       [
-        ...(!isFullScreenRoute(model.route) ? [workspaceNavigation(model.route, h)] : []),
-        ...(model.route._tag === "SessionRunner"
-          ? []
-          : [
-              topBar(
-                pageTitle(model.route),
-                model.route,
-                model.history.length > 0,
-                trailingFor(model, h),
-                h,
-              ),
-            ]),
+        ...(isRunner ? [] : [sidebar(model.route, hasHistory, h)]),
         h.main(
-          [h.Class("relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain")],
-          [pageFor(model, h)],
+          [
+            h.Class(
+              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain ${
+                isRunner ? "" : "md:pl-[4.5rem] xl:pl-60"
+              }`,
+            ),
+          ],
+          [...(header === null ? [] : [header]), pageFor(model, h)],
         ),
-        ...(isFullScreenRoute(model.route)
-          ? []
-          : [bottomTabBar(model.route, model.history.length > 0, h)]),
+        ...(isFullScreenRoute(model.route) ? [] : [tabBar(model.route, hasHistory, h)]),
       ],
     ),
-  }) satisfies Document;
+  } satisfies Document;
+};

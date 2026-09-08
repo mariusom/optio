@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import type { Message } from "../messages";
 import { editSessionNameSheet } from "./features/history/editSessionNameSheet";
 import { historyPage } from "./features/history/historyView";
-import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { taskDetailView } from "./features/history/taskDetailView";
 import type { RunnerState } from "./features/session/runner";
 import { endConfirmModal, errorAlert, formSectionsView } from "./features/session/runnerView";
@@ -102,7 +101,12 @@ describe("audited view accessibility", () => {
       ),
       templateEditorPage({ editor, lastError: null }, h),
       historyPage(
-        { history: [], pendingHistoryDelete: { id: "s", displayName: "S" }, csvError: null },
+        {
+          history: [],
+          pendingHistoryDelete: { id: "s", displayName: "S" },
+          historyActionsFor: null,
+          csvError: null,
+        },
         h,
       ),
       editSheet(),
@@ -125,10 +129,9 @@ describe("audited view accessibility", () => {
         h,
       ),
       endConfirmModal(runner, h),
-      errorAlert("Cannot save", h),
     ];
     const backdrops = views.flatMap(nodes).filter((n) => n.data?.class?.["modal-backdrop"]);
-    expect(backdrops).toHaveLength(9);
+    expect(backdrops).toHaveLength(8);
     for (const backdrop of backdrops) {
       expect(backdrop.sel).toBe("button");
       expect(backdrop.data?.attrs?.["aria-label"]).toEqual(expect.any(String));
@@ -142,33 +145,72 @@ describe("audited view accessibility", () => {
       { task: { id: "t", taskId: 1, startedAt: null, endedAt: null, sections: [] } },
       h,
     );
-    for (const [view, role, name] of [
-      [editSheet(), "dialog", "Edit Session"],
-      [endConfirmModal(runner, h), "dialog", "End Session"],
-      [errorAlert("Cannot save", h), "alertdialog", "Something Went Wrong"],
-      [details, "dialog", "Task Details"],
+    // Sheets take their accessible name from the visible title.
+    for (const [view, title] of [
+      [editSheet(), "Session name"],
+      [details, "Task 1"],
+      [endConfirmModal(runner, h), "End session?"],
     ] as const) {
-      expect(view?.data?.attrs).toMatchObject({ role, "aria-modal": "true", "aria-label": name });
+      expect(view?.data?.attrs?.role).toBe("dialog");
+      expect(view?.data?.attrs?.["aria-modal"]).toBeTruthy();
+      const titleId = view?.data?.attrs?.["aria-labelledby"];
+      expect(titleId).toEqual(expect.any(String));
+      expect(nodes(view).find((n) => n.data?.props?.id === titleId)?.children).toContainEqual(
+        expect.objectContaining({ text: title }),
+      );
     }
+    // The live session reports failures inline, next to the action they block.
     const error = errorAlert("Cannot save", h);
+    expect(error?.data?.attrs?.role).toBe("alert");
+    expect(nodes(error).flatMap((n) => n.children ?? [])).toContainEqual(
+      expect.objectContaining({ text: "Cannot save" }),
+    );
     expect(
-      nodes(error).find((n) => n.data?.props?.id === error?.data?.attrs?.["aria-describedby"])
-        ?.children,
-    ).toContainEqual(expect.objectContaining({ text: "Cannot save" }));
+      nodes(error).find((n) => n.data?.attrs?.["aria-label"] === "Dismiss error")?.data?.on?.click,
+    ).toBeTypeOf("function");
   });
 
   it("associates the visible name label with the edit-session textbox", () => {
     const all = nodes(editSheet());
     const input = all.find((n) => n.sel === "input");
     expect(input?.data?.props?.id).toBe("edit-session-name");
-    expect(all.find((n) => n.sel === "label")?.data?.attrs?.for).toBe(input?.data?.props?.id);
+    expect(all.find((n) => n.sel === "label")?.data?.props?.htmlFor).toBe(input?.data?.props?.id);
   });
 
-  it("names both field edit controls with the field name", () => {
-    const buttons = nodes(templateEditorPage({ editor, lastError: null }, h)).filter(
-      (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === "Edit field Observed",
-    );
-    expect(buttons).toHaveLength(2);
+  it("names every question control with the question it acts on", () => {
+    const all = nodes(templateEditorPage({ editor, lastError: null }, h));
+    for (const label of [
+      "Edit question Observed",
+      "Move Observed up",
+      "Move Observed down",
+      "Delete question Observed",
+    ]) {
+      const controls = all.filter(
+        (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === label,
+      );
+      expect(controls).toHaveLength(1);
+    }
+  });
+
+  it("labels every switch in the template editor with its own clickable label", () => {
+    const textEditor = { ...editor, draft: { ...editor.draft!, kind: "textInput" as const } };
+    for (const view of [
+      templateEditorPage({ editor, lastError: null }, h),
+      templateEditorPage({ editor: textEditor, lastError: null }, h),
+    ]) {
+      const all = nodes(view);
+      const switches = all.filter((n) => n.data?.attrs?.role === "switch");
+      expect(switches).toHaveLength(2);
+      for (const control of switches) {
+        expect(control.sel).toBe("button");
+        expect(control.data?.props?.type).toBe("button");
+        const labelId = control.data?.attrs?.["aria-labelledby"];
+        expect(labelId).toEqual(expect.any(String));
+        const labels = all.filter((n) => n.sel === "label" && n.data?.props?.id === labelId);
+        expect(labels).toHaveLength(1);
+        expect(labels[0]?.data?.on?.click).toBeTypeOf("function");
+      }
+    }
   });
 
   it("uses native named button controls for dropdown action triggers", () => {
@@ -180,13 +222,6 @@ describe("audited view accessibility", () => {
       startedAt: 0,
       endedAt: 1000,
       taskCount: 1,
-    };
-    const task = {
-      id: "task-1",
-      taskId: 1,
-      startedAt: 0,
-      endedAt: 1000,
-      sections: [],
     };
     const cases = [
       {
@@ -213,25 +248,16 @@ describe("audited view accessibility", () => {
         name: 'Actions for "Study"',
       },
       {
-        view: historyPage({ history: [session], pendingHistoryDelete: null, csvError: null }, h),
-        name: 'Actions for "Morning study"',
-      },
-      {
-        view: sessionDetailPage(
+        view: historyPage(
           {
-            selectedHistorySession: {
-              ...session,
-              endedAt: session.endedAt,
-              tasks: [task],
-            },
-            showEditHistoryName: false,
-            editHistoryNameInput: "",
-            selectedHistoryTaskId: null,
+            history: [session],
+            pendingHistoryDelete: null,
+            historyActionsFor: null,
             csvError: null,
           },
           h,
         ),
-        name: "Actions for Task 1",
+        name: 'Actions for "Morning study"',
       },
     ];
 
@@ -246,23 +272,18 @@ describe("audited view accessibility", () => {
     }
   });
 
-  it("associates each switch with its clickable label using unique input IDs", () => {
-    const textEditor = { ...editor, draft: { ...editor.draft!, kind: "textInput" as const } };
-    for (const [view, count] of [
-      [templateEditorPage({ editor, lastError: null }, h), 2],
-      [templateEditorPage({ editor: textEditor, lastError: null }, h), 2],
-      [formSectionsView(runner, runner.tasks[0]!, h), 2],
-    ] as const) {
-      const all = nodes(view);
-      const switches = all.filter((n) => n.data?.attrs?.role === "switch");
-      expect(switches).toHaveLength(count);
-      for (const control of switches) {
-        const id = control.data?.props?.id;
-        expect(id).toEqual(expect.any(String));
-        expect(all.filter((n) => n.data?.props?.id === id)).toHaveLength(1);
-        expect(all.filter((n) => n.sel === "label" && n.data?.attrs?.for === id)).toHaveLength(1);
-        expect(control.data?.props?.type).toBe("checkbox");
-      }
+  it("labels each yes/no answer switch in the live session", () => {
+    const all = nodes(formSectionsView(runner, runner.tasks[0]!, h));
+    const switches = all.filter((n) => n.data?.attrs?.role === "switch");
+    expect(switches).toHaveLength(2);
+    for (const control of switches) {
+      const labelId = control.data?.attrs?.["aria-labelledby"];
+      expect(labelId).toEqual(expect.any(String));
+      const labels = all.filter((n) => n.sel === "label" && n.data?.props?.id === labelId);
+      expect(labels).toHaveLength(1);
+      expect(labels[0]?.children).toContainEqual(expect.objectContaining({ text: "No" }));
+      expect(labels[0]?.data?.on?.click).toBeTypeOf("function");
+      expect(control.data?.props?.type).toBe("button");
     }
   });
 });

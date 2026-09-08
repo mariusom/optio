@@ -1,7 +1,8 @@
-import { Cause, Effect, Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
+import { friendlyFailure } from "../../errors";
 import { getStore } from "../../../livestore/client";
 import { events, tables } from "../../../livestore/schema";
 import { buildArchiveCsv, filenameForArchive, type ArchiveTask } from "./helpers";
@@ -16,10 +17,8 @@ export const DeleteHistorySession = Command.define("DeleteHistorySession", {
       store.commit(events.sessionDeleted({ id }));
       return Message.HistoryDeleted();
     }).pipe(
-      Effect.catchCause(() =>
-        Effect.succeed(
-          Message.FailedCsvExport({ error: "Failed to delete session. Please try again." }),
-        ),
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("delete", cause) })),
       ),
     ),
 });
@@ -35,7 +34,7 @@ export const RenameHistorySession = Command.define("RenameHistorySession", {
       return Message.HistoryNameUpdated();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedCsvExport({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });
@@ -59,7 +58,7 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
         endedAt: Date | number | null;
       }>;
       const session = sessions[0];
-      if (!session) return Message.FailedCsvExport({ error: "Session not found" });
+      if (!session) return Message.FailedCsvExport({ error: "That session is no longer here." });
 
       const displayName = session.sessionName !== "" ? session.sessionName : session.templateName;
 
@@ -74,7 +73,7 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
       }>;
 
       if (taskRows.length === 0) {
-        return Message.FailedCsvExport({ error: "No tasks to export" });
+        return Message.FailedCsvExport({ error: "There are no tasks in this session to export." });
       }
 
       const allSectionRows = store.query(tables.taskSectionRecords.select()) as ReadonlyArray<{
@@ -137,14 +136,14 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
             URL.revokeObjectURL(url);
           }, 0);
         } catch (e) {
-          return Message.FailedCsvExport({ error: String(e) });
+          return Message.FailedCsvExport({ error: friendlyFailure("export", e) });
         }
       }
 
       return Message.CsvExported({ filename });
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedCsvExport({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("export", cause) })),
       ),
     ),
 });

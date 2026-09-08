@@ -164,7 +164,7 @@ describe("sessionMachine recording", () => {
   it("gates RecordRequested on required fields with lastError", () => {
     const { runner, emissions } = plan(liveRunner(), { _tag: "RecordRequested" });
     expect(emissions).toEqual([]);
-    expect(runner!.lastError).toBe("Please complete required fields before recording.");
+    expect(runner!.lastError).toBe("Answer the required questions before recording.");
   });
 
   it("commits a record when the current task is complete", () => {

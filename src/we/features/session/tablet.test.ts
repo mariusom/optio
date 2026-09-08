@@ -51,6 +51,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   showCreate: false,
   newName: "",
   pendingDelete: null,
+  templateActionsFor: null,
   lastError: null,
   editor: null,
   selectedTemplateId: null,
@@ -66,6 +67,8 @@ const makeModel = (runner: Model["runner"]): Model => ({
   showEditHistoryName: false,
   editHistoryNameInput: "",
   selectedHistoryTaskId: null,
+  historyActionsFor: null,
+  pendingNavigationUrl: null,
   csvError: null,
 });
 

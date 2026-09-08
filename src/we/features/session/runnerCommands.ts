@@ -1,10 +1,11 @@
-import { Cause, Effect, Schema as S } from "effect";
+import { Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
 import { getStore } from "../../../livestore/client";
 import { events, tables, type FieldDef } from "../../../livestore/schema";
 import { safeArray } from "../../fieldRows";
+import { friendlyFailure } from "../../errors";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ export const UpdateFieldValue = Command.define("UpdateFieldValue", {
       return Message.UpdatedFieldValue();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });
@@ -51,7 +52,7 @@ export const RecordTask = Command.define("RecordTask", {
       }>;
       const currentRow = taskRows.find((r) => r.id === currentTaskId);
       if (currentRow === undefined) {
-        return Message.FailedRunnerOp({ error: "Current task not found" });
+        return Message.FailedRunnerOp({ error: "That task isn’t available any more." });
       }
       // Guard: if task already finished, no-op
       if (currentRow.endDate !== null && currentRow.endDate !== undefined) {
@@ -82,7 +83,7 @@ export const RecordTask = Command.define("RecordTask", {
         (r) => r.isRequired === 1 && (r.value === "" || r.value === null),
       );
       if (notDone) {
-        return Message.FailedRunnerOp({ error: "Cannot record: required fields empty" });
+        return Message.FailedRunnerOp({ error: "Answer the required questions first." });
       }
 
       // Compute next orderIndex = max +1
@@ -116,7 +117,7 @@ export const RecordTask = Command.define("RecordTask", {
       return Message.TaskRecorded();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("record", cause) })),
       ),
     ),
 });
@@ -131,7 +132,7 @@ export const EndSession = Command.define("EndSession", {
       const store = yield* Effect.promise(getStore);
       const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
       if (!session || session.endedAt !== null) {
-        return Message.FailedRunnerOp({ error: "Session is missing or already ended." });
+        return Message.FailedRunnerOp({ error: "This session has already ended." });
       }
 
       const taskRows = store.query(
@@ -223,7 +224,7 @@ export const EndSession = Command.define("EndSession", {
       return Message.SessionEnded();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("end", cause) })),
       ),
     ),
 });
@@ -257,7 +258,7 @@ export const SelectTask = Command.define("SelectTask", {
       }
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("load", cause) })),
       ),
     ),
 });
@@ -276,7 +277,7 @@ export const CancelEdit = Command.define("CancelEdit", {
       return Message.TaskEditFinished();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });
@@ -294,14 +295,14 @@ export const SaveEdit = Command.define("SaveEdit", {
         (r) => r.isRequired === 1 && (r.value === "" || r.value === null),
       );
       if (notDone) {
-        return Message.FailedRunnerOp({ error: "Cannot save: required fields empty" });
+        return Message.FailedRunnerOp({ error: "Answer the required questions first." });
       }
 
       store.commit(events.taskEditFinished({ id: taskId }));
       return Message.TaskEditFinished();
     }).pipe(
       Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: Cause.pretty(cause) })),
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
       ),
     ),
 });
