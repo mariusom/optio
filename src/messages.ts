@@ -5,7 +5,7 @@ import { UrlRequest } from "foldkit/navigation";
 import { FieldDef } from "./livestore/schema";
 import { RouteSchema } from "./we/routes";
 import { TemplateSummary } from "./we/types";
-import { Theme } from "./we/theme";
+import { Accent, Font, Theme } from "./we/theme";
 import { FoldcnStyle } from "./we/style";
 
 // Central flat Message union. Payload schemas are grouped by feature;
@@ -25,6 +25,10 @@ export const Message = defineMessageUnion({
   ThemeSaveFinished: { theme: Theme, saved: S.Boolean },
   SelectedStyle: { style: FoldcnStyle },
   StyleSaveFinished: { style: FoldcnStyle, saved: S.Boolean },
+  SelectedFont: { font: Font },
+  FontSaveFinished: { font: Font, saved: S.Boolean },
+  SelectedAccent: { accent: Accent },
+  AccentSaveFinished: { accent: Accent, saved: S.Boolean },
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: S.Array(TemplateSummary) },

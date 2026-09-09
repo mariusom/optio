@@ -15,7 +15,7 @@ export type BackLink<M = never> = Readonly<{
 
 export type NavBarConfig<M> = Readonly<{
   title: string;
-  /** Back affordance (chevron + parent name), shown on every device size. */
+  /** Back chevron; parent name is also visible on larger screens. */
   back?: BackLink<M>;
   /** Leading control when there is no back link (e.g. Cancel). */
   leading?: Html;
@@ -23,6 +23,7 @@ export type NavBarConfig<M> = Readonly<{
   trailing?: ReadonlyArray<Html>;
   /** Small caption under the title (e.g. live timer). */
   subtitle?: Html | string;
+  wide?: boolean;
   className?: string;
 }>;
 
@@ -37,7 +38,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
     [
       h.Class(
         cn(
-          "sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background/85 pt-safe backdrop-blur-xl select-none",
+          "sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background pt-safe select-none",
           config.className,
         ),
       ),
@@ -47,7 +48,10 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
       h.div(
         [
           h.Class(
-            "mx-auto grid h-11 w-full max-w-3xl grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center px-safe",
+            cn(
+              "mx-auto grid h-11 w-full grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center px-safe",
+              config.wide ? "max-w-5xl" : "max-w-3xl",
+            ),
           ),
         ],
         [
@@ -83,13 +87,13 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
 
 const backClass = buttonClass({
   variant: "ghost",
-  className: "-ml-2 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+  className: "-ml-2 min-w-11 max-w-36 justify-start gap-1 px-2 text-base text-primary",
 });
 
 const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
   const body = [
     icon(h, ChevronLeft, "size-6 shrink-0 -ml-0.5"),
-    h.span([h.Class("truncate")], [back.label]),
+    h.span([h.Class("hidden truncate sm:inline")], [back.label]),
   ];
   const label = h.AriaLabel(`Back to ${back.label}`);
   return back.onClick === undefined
@@ -97,7 +101,7 @@ const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
     : button(
         {
           variant: "ghost",
-          className: "-ml-2 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+          className: "-ml-2 min-w-11 max-w-36 justify-start gap-1 px-2 text-base text-primary",
           onClick: back.onClick,
           attributes: [label],
         },
@@ -153,17 +157,19 @@ export type PageHeaderConfig = Readonly<{
 }>;
 
 /**
- * Large title for tab roots (SwiftUI `.navigationBarTitleDisplayMode(.large)`).
- * Lives inside the scrolling content, so the top of the screen is clean.
+ * Pinned title and action row for tab roots, sharing the content column.
  */
 export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html =>
   h.div(
-    [h.Class("pt-safe"), h.DataAttribute("slot", "page-header")],
+    [
+      h.Class("sticky top-0 z-20 border-b border-border/70 bg-background pt-safe"),
+      h.DataAttribute("slot", "page-header"),
+    ],
     [
       h.div(
         [
           h.Class(
-            "mx-auto flex w-full max-w-3xl items-end justify-between gap-4 px-safe py-4 md:py-8",
+            "mx-auto flex min-h-[4.25rem] w-full max-w-3xl items-center justify-between gap-4 px-safe py-3 md:min-h-[5.25rem] md:py-5",
           ),
         ],
         [
@@ -185,7 +191,7 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
           ),
           ...(config.trailing === undefined
             ? []
-            : [h.div([h.Class("shrink-0 pb-0.5")], [config.trailing])]),
+            : [h.div([h.Class("shrink-0")], [config.trailing])]),
         ],
       ),
     ],

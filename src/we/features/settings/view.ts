@@ -3,7 +3,7 @@ import type { HtmlBuilder } from "foldkit/html";
 import { choiceRows, groupedList, notice, page, row } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
-import type { Theme } from "../../theme";
+import type { Accent, Font, Theme } from "../../theme";
 import type { FoldcnStyle } from "../../style";
 
 const THEMES: ReadonlyArray<{ value: Theme; label: string }> = [
@@ -24,11 +24,29 @@ const STYLES: ReadonlyArray<{ value: FoldcnStyle; label: string }> = [
   { value: "rhea", label: "Rhea" },
 ];
 
+const FONTS: ReadonlyArray<{ value: Font; label: string }> = [
+  { value: "sans", label: "System sans" },
+  { value: "serif", label: "System serif" },
+  { value: "mono", label: "System mono" },
+];
+
+const ACCENTS: ReadonlyArray<{ value: Accent; label: string }> = [
+  { value: "default", label: "Default" },
+  { value: "blue", label: "Blue" },
+  { value: "violet", label: "Violet" },
+  { value: "green", label: "Green" },
+  { value: "rose", label: "Rose" },
+];
+
 export const settingsPage = (
   theme: Theme,
   style: FoldcnStyle,
+  font: Font,
+  accent: Accent,
   saveFailed: boolean,
   styleSaveFailed: boolean,
+  fontSaveFailed: boolean,
+  accentSaveFailed: boolean,
   h: HtmlBuilder<Message>,
 ) =>
   page(
@@ -43,6 +61,32 @@ export const settingsPage = (
             label: option.label,
             selected: theme === option.value,
             onSelect: Message.SelectedTheme({ theme: option.value }),
+          })),
+        },
+        h,
+      ),
+      choiceRows(
+        {
+          label: "Font",
+          header: "Font",
+          footer: "Uses fonts already available on your device.",
+          choices: FONTS.map((option) => ({
+            label: option.label,
+            selected: font === option.value,
+            onSelect: Message.SelectedFont({ font: option.value }),
+          })),
+        },
+        h,
+      ),
+      choiceRows(
+        {
+          label: "Accent colour",
+          header: "Accent colour",
+          footer: "Changes controls and focus indicators independently of appearance and style.",
+          choices: ACCENTS.map((option) => ({
+            label: option.label,
+            selected: accent === option.value,
+            onSelect: Message.SelectedAccent({ accent: option.value }),
           })),
         },
         h,
@@ -84,6 +128,17 @@ export const settingsPage = (
         ? [
             notice(
               { tone: "warning", text: "The component style was applied but couldn’t be saved." },
+              h,
+            ),
+          ]
+        : []),
+      ...(fontSaveFailed
+        ? [notice({ tone: "warning", text: "The font was applied but couldn’t be saved." }, h)]
+        : []),
+      ...(accentSaveFailed
+        ? [
+            notice(
+              { tone: "warning", text: "The accent colour was applied but couldn’t be saved." },
               h,
             ),
           ]

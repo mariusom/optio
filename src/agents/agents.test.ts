@@ -26,7 +26,7 @@ const registerWebMcp = async (
   context: ModelContext,
   handlers: ReturnType<typeof makeToolHandlers>,
 ) => {
-  const scope = Effect.runSync(Scope.make());
+  const scope = await Effect.runPromise(Scope.make());
   const close = () => Effect.runPromise(Scope.close(scope, Exit.void));
   try {
     await Effect.runPromise(

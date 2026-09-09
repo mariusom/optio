@@ -6,6 +6,7 @@ vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 import { getStore, type AppStore } from "../../../livestore/client";
 import { events } from "../../../livestore/schema";
 import { Message } from "../../../messages";
+import { SaveTemplate } from "./editorCommands";
 import {
   AddSampleTemplates,
   CreateTemplate,
@@ -76,6 +77,39 @@ describe.each([
 });
 
 describe("CreateTemplate", () => {
+  it.each([true, false])(
+    "commits a new builder template with its fields (first: %s)",
+    async (first) => {
+      query.mockReturnValue(first ? [] : [{ id: "existing" }]);
+      const fields = [
+        {
+          id: "question",
+          name: "  Activity  ",
+          kind: "textInput" as const,
+          isRequired: true,
+          defaultValue: "Observe",
+          sortOrder: 7,
+          options: [],
+          exclusiveOptions: [],
+        },
+      ];
+      expect(
+        await Effect.runPromise(
+          SaveTemplate({ id: "new", name: "  Study  ", isNew: true, isDefault: false, fields })
+            .effect,
+        ),
+      ).toEqual(Message.TemplateSaved());
+      expect(commit).toHaveBeenCalledExactlyOnceWith(
+        events.templateCreated({ id: "new", name: "Study", isDefault: first }),
+        events.fieldsReplaced({
+          templateId: "new",
+          fields: [{ ...fields[0]!, name: "Activity", sortOrder: 0 }],
+        }),
+        ...(first ? [events.templateDefaultSet({ id: "new" })] : []),
+      );
+    },
+  );
+
   it("trims the committed name while reporting success and making the first template default", async () => {
     expect(
       await Effect.runPromise(CreateTemplate({ id: "new", name: "  Study  " }).effect),

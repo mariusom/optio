@@ -47,6 +47,17 @@ describe("parseRoute", () => {
     );
     expect(parseRoute(urlWithHash("#/history/s-9"))).toEqual(SessionDetail({ sessionId: "s-9" }));
   });
+
+  it("requires complete paths but ignores empty segments and preserves encoded IDs", () => {
+    expect(parseRoute(urlWithHash("#/session"))).toEqual(StartTab());
+    expect(parseRoute(urlWithHash("#/history/s-9/extra"))).toEqual(StartTab());
+    expect(parseRoute(urlWithHash("#//templates///t%2F42/"))).toEqual(
+      TemplateEditor({ templateId: "t%2F42" }),
+    );
+    expect(
+      parseRoute({ ...urlWithHash("#/history"), search: Option.some("?ignored=yes") }),
+    ).toEqual(HistoryTab());
+  });
 });
 
 describe("hrefFor round-trips through parseRoute", () => {

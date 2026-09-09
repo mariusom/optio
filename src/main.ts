@@ -14,8 +14,8 @@ import {
   requiresConfirmation,
 } from "./agents/actions";
 import { hrefFor } from "./we/routes";
-import { Theme } from "./we/theme";
-import { changeTheme } from "./we/browserTheme";
+import { Accent, Font, Theme } from "./we/theme";
+import { changeAccent, changeFont, changeTheme } from "./we/browserTheme";
 import { FoldcnStyle } from "./we/style";
 import { changeStyle } from "./we/browserTheme";
 import { settingsPage } from "./we/features/settings/view";
@@ -95,6 +95,10 @@ export const Model = S.Struct({
   themeSaveFailed: S.Boolean,
   style: FoldcnStyle,
   styleSaveFailed: S.Boolean,
+  font: Font,
+  fontSaveFailed: S.Boolean,
+  accent: Accent,
+  accentSaveFailed: S.Boolean,
   // Templates tab slice
   templates: S.Array(
     S.Struct({
@@ -266,6 +270,10 @@ const initialModel = (route: Route): Model => ({
   themeSaveFailed: false,
   style: "default",
   styleSaveFailed: false,
+  font: "sans",
+  fontSaveFailed: false,
+  accent: "default",
+  accentSaveFailed: false,
   templates: [],
   showCreate: false,
   newName: "",
@@ -321,6 +329,20 @@ const SaveStyle = Command.define("SaveStyle", {
   messages: [Message.StyleSaveFinished],
   execute: ({ style }) =>
     Effect.map(changeStyle(style), (saved) => Message.StyleSaveFinished({ style, saved })),
+});
+
+const SaveFont = Command.define("SaveFont", {
+  args: { font: Font },
+  messages: [Message.FontSaveFinished],
+  execute: ({ font }) =>
+    Effect.map(changeFont(font), (saved) => Message.FontSaveFinished({ font, saved })),
+});
+
+const SaveAccent = Command.define("SaveAccent", {
+  args: { accent: Accent },
+  messages: [Message.AccentSaveFinished],
+  execute: ({ accent }) =>
+    Effect.map(changeAccent(accent), (saved) => Message.AccentSaveFinished({ accent, saved })),
 });
 
 const NavigateExternal = Command.define("NavigateExternal", {
@@ -446,6 +468,20 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       model: style === model.style ? { ...model, styleSaveFailed: !saved } : model,
       commands: [],
     }),
+    SelectedFont: ({ font }) => ({
+      model: { ...model, font },
+      commands: [SaveFont({ font })],
+    }),
+    FontSaveFinished: ({ font, saved }) => ({
+      model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
+    }),
+    SelectedAccent: ({ accent }) => ({
+      model: { ...model, accent },
+      commands: [SaveAccent({ accent })],
+    }),
+    AccentSaveFinished: ({ accent, saved }) => ({
+      model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
+    }),
     // ── Routing ────────────────────────────────────────────────────────────
     GotRoute: ({ route }) => {
       let base =
@@ -454,7 +490,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             ? { ...model, route, templateActionsFor: null }
             : { ...model, route, editor: null, templateActionsFor: null }
           : { ...model, route, editor: null, templateActionsFor: null };
-      base = { ...base, historyActionsFor: null };
+      base = { ...base, historyActionsFor: null, showCreate: false };
       // Clear history detail when leaving SessionDetail
       if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
         base = {
@@ -490,9 +526,9 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       // Leaving the template editor with unsaved changes asks first; the
       // requested destination is kept and used once the discard is confirmed.
       if (
-        model.route._tag === "TemplateEditor" &&
+        (model.route._tag === "TemplateEditor" || model.showCreate) &&
         model.editor !== null &&
-        hasChanges(model.editor)
+        (hasChanges(model.editor) || model.editor.draft !== null)
       ) {
         return {
           model: {
@@ -530,7 +566,24 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       };
     },
     ClickedNewTemplate: () => ({
-      model: { ...model, showCreate: true, newName: "", lastError: null },
+      model: {
+        ...model,
+        showCreate: true,
+        newName: "",
+        lastError: null,
+        editor: {
+          id: crypto.randomUUID(),
+          name: "",
+          isDefault: model.templates.length === 0,
+          fields: [],
+          original: { name: "", isDefault: model.templates.length === 0, fields: [] },
+          isSaving: false,
+          showAddField: false,
+          editingFieldId: null,
+          draft: null,
+          pendingDiscard: false,
+        },
+      },
     }),
     ChangedNewName: ({ text }) => ({ model: { ...model, newName: text } }),
     ConfirmedCreateTemplate: () =>
@@ -540,8 +593,10 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             model,
             commands: [CreateTemplate({ id: crypto.randomUUID(), name: model.newName.trim() })],
           },
-    TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "" } }),
-    CanceledCreateTemplate: () => ({ model: { ...model, showCreate: false, newName: "" } }),
+    TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "", editor: null } }),
+    CanceledCreateTemplate: () => ({
+      model: { ...model, showCreate: false, newName: "", editor: null },
+    }),
     ClickedTemplateRow: ({ id }) => ({
       model,
       commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
@@ -654,7 +709,8 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       };
     },
     ClickedAddField: () => {
-      if (model.editor === null) return { model };
+      if (model.editor === null || model.editor.draft !== null || model.editor.isSaving)
+        return { model };
       const draft = makeEmptyDraft(model.editor.fields.length);
       return {
         model: {
@@ -692,7 +748,8 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       };
     },
     ClickedEditField: ({ id }) => {
-      if (model.editor === null) return { model };
+      if (model.editor === null || model.editor.draft !== null || model.editor.isSaving)
+        return { model };
       const field = model.editor.fields.find((entry) => entry.id === id);
       if (field === undefined) return { model };
       return {
@@ -851,7 +908,8 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       };
     },
     ClickedSaveTemplate: () => {
-      if (model.editor === null) return { model };
+      if (model.editor === null || model.editor.isSaving || model.editor.draft !== null)
+        return { model };
       if (!isTemplateValid(model.editor)) return { model };
       if (!hasChanges(model.editor)) return { model };
       const { id, name, isDefault, fields } = model.editor;
@@ -862,6 +920,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             id,
             name,
             isDefault,
+            isNew: model.showCreate,
             fields: [...fields] as unknown as ReadonlyArray<FieldDef>,
           }),
         ],
@@ -869,16 +928,23 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     },
     ClickedCancelEditTemplate: () => {
       if (model.editor === null) return { model };
-      if (!hasChanges(model.editor)) {
+      if (!hasChanges(model.editor) && model.editor.draft === null) {
+        if (model.showCreate) return { model: { ...model, showCreate: false, editor: null } };
         return { model, commands: [NavigateInternal({ url: `#${templatesRouter()}` })] };
       }
-      return { model: { ...model, editor: { ...model.editor, pendingDiscard: true } } };
+      return {
+        model: {
+          ...model,
+          pendingNavigationUrl: `#${templatesRouter()}`,
+          editor: { ...model.editor, pendingDiscard: true },
+        },
+      };
     },
     TemplateSaved: () => {
       if (model.editor === null)
         return { model, commands: [NavigateInternal({ url: `#${templatesRouter()}` })] };
       return {
-        model: { ...model, editor: { ...model.editor, isSaving: false } },
+        model: { ...model, showCreate: false, editor: null },
         commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
       };
     },
@@ -899,6 +965,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     ConfirmedDiscard: () => {
       if (model.editor === null) return { model };
       const isFieldDiscard =
+        model.pendingNavigationUrl === null &&
         model.editor.draft !== null &&
         (model.editor.showAddField || model.editor.editingFieldId !== null);
       if (isFieldDiscard) {
@@ -919,7 +986,8 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
         model: {
           ...model,
           pendingNavigationUrl: null,
-          editor: { ...model.editor, pendingDiscard: false },
+          showCreate: false,
+          editor: null,
         },
         commands: [
           NavigateInternal({ url: model.pendingNavigationUrl ?? `#${templatesRouter()}` }),
@@ -1826,6 +1894,24 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
         ),
     },
   ),
+  editorDraftFocus: entry(
+    { draftId: S.Union([S.Null, S.String]) },
+    {
+      modelToDependencies: (model) => ({ draftId: model.editor?.draft?.id ?? null }),
+      dependenciesToStream: ({ draftId }) => {
+        if (draftId === null) return Stream.empty;
+        return Stream.fromEffect(
+          Effect.sync(() => {
+            setTimeout(() => {
+              if (typeof document === "undefined") return;
+              document.getElementById("question-name")?.focus({ preventScroll: true });
+              document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
+            }, 0);
+          }),
+        ).pipe(Stream.drain);
+      },
+    },
+  ),
   focusedSectionScroll: entry(
     { focusedSectionId: S.Union([S.Null, S.String]) },
     {
@@ -1896,13 +1982,18 @@ const pageTitle = (route: Route): string => {
 };
 
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
+  if (model.showCreate) return templateEditorPage(model, h);
   switch (model.route._tag) {
     case "SettingsTab":
       return settingsPage(
         model.theme,
         model.style,
+        model.font,
+        model.accent,
         model.themeSaveFailed,
         model.styleSaveFailed,
+        model.fontSaveFailed,
+        model.accentSaveFailed,
         h,
       );
     case "StartTab":
@@ -1922,6 +2013,7 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
 
 /** Large-title header for the four tab roots; detail screens draw their own nav bar. */
 const rootHeader = (model: Model, h: HtmlBuilder<Message>) => {
+  if (model.showCreate) return null;
   switch (model.route._tag) {
     case "TemplatesTab":
       return pageHeader(
@@ -1971,14 +2063,16 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         h.main(
           [
             h.Class(
-              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain ${
+              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 ${
                 isRunner ? "" : "md:pl-[4.5rem] xl:pl-60"
               }`,
             ),
           ],
           [...(header === null ? [] : [header]), pageFor(model, h)],
         ),
-        ...(isFullScreenRoute(model.route) ? [] : [tabBar(model.route, hasHistory, h)]),
+        ...(isFullScreenRoute(model.route) || model.showCreate
+          ? []
+          : [tabBar(model.route, hasHistory, h)]),
       ],
     ),
   } satisfies Document;

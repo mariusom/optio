@@ -34,6 +34,45 @@ const templateEditorModel = () =>
   }).model;
 
 describe("template detail regressions", () => {
+  it("builds a new template locally and saves its questions in one command", () => {
+    const opened = update(templateEditorModel(), Message.ClickedNewTemplate());
+    expect(opened.commands ?? []).toHaveLength(0);
+    expect(opened.model.editor?.name).toBe("");
+    let model = update(opened.model, Message.ChangedEditorName({ text: "Morning study" })).model;
+    model = update(model, Message.ClickedAddField()).model;
+    model = update(model, Message.ChangedFieldName({ text: "Activity" })).model;
+    const draft = model.editor!.draft;
+    expect(update(model, Message.ClickedAddField()).model.editor!.draft).toBe(draft);
+    expect(update(model, Message.ClickedSaveTemplate()).commands ?? []).toHaveLength(0);
+    model = update(model, Message.ConfirmedSaveField()).model;
+    const saved = update(model, Message.ClickedSaveTemplate());
+    expect(saved.commands).toEqual([
+      expect.objectContaining({
+        name: "SaveTemplate",
+        args: expect.objectContaining({
+          isNew: true,
+          name: "Morning study",
+          fields: [expect.objectContaining({ name: "Activity", sortOrder: 0 })],
+        }),
+      }),
+    ]);
+    expect(update(saved.model, Message.ClickedSaveTemplate()).commands ?? []).toHaveLength(0);
+  });
+
+  it("distinguishes canceling one question from leaving the whole builder", () => {
+    let model = update(templateEditorModel(), Message.ClickedNewTemplate()).model;
+    model = update(model, Message.ClickedAddField()).model;
+    model = update(model, Message.ChangedFieldName({ text: "Unfinished question" })).model;
+    const cancelQuestion = update(model, Message.CanceledAddField());
+    const discardedQuestion = update(cancelQuestion.model, Message.ConfirmedDiscard());
+    expect(discardedQuestion.model.showCreate).toBe(true);
+    expect(discardedQuestion.model.editor?.draft).toBeNull();
+    const leave = update(model, Message.ClickedCancelEditTemplate());
+    const discardedTemplate = update(leave.model, Message.ConfirmedDiscard());
+    expect(discardedTemplate.model.editor).toBeNull();
+    expect(discardedTemplate.model.showCreate).toBe(false);
+  });
+
   it("retains the missing-template error while navigating back to templates", () => {
     const result = update(templateEditorModel(), Message.GotTemplateDetail({ template: null }));
 

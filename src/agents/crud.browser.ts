@@ -34,7 +34,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
   const confirm = vi.fn(() => true);
   const connection = connectAgentApplication(handle.ports, confirm);
   const tools = new Map<string, Parameters<ModelContext["registerTool"]>[0]>();
-  const scope = Effect.runSync(Scope.make());
+  const scope = await Effect.runPromise(Scope.make());
   await Effect.runPromise(
     registerWebMcp(
       {

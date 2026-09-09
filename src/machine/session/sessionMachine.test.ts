@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { vi } from "vitest";
 
 import { Machine } from "@typeonce/effect-machine";
 import { Effect } from "effect";
@@ -85,10 +86,27 @@ const plan = (
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe("sessionMachine topology", () => {
-  it("starts Idle", () => {
-    expect(
-      SessionStates.matches(Effect.runSync(Machine.planInitial(SessionMachine)).state, "Idle"),
-    ).toBe(true);
+  it.effect("starts Idle", () =>
+    Effect.gen(function* () {
+      expect(
+        SessionStates.matches((yield* Machine.planInitial(SessionMachine)).state, "Idle"),
+      ).toBe(true);
+    }),
+  );
+
+  it("keeps the current state and suppresses emissions when snapshot decoding fails", () => {
+    const runner = liveRunner({ completedCount: "invalid" as never });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      expect(planSession(runner, "confirming", { _tag: "EndConfirmed" })).toEqual({
+        runner,
+        phase: "confirming",
+        emissions: [],
+      });
+      expect(log).toHaveBeenCalledWith("[sessionMachine] plan failed", expect.anything());
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it("enters Live.Collecting with fresh controls on first DataSynced", () => {

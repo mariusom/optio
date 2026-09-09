@@ -131,7 +131,8 @@ describe("audited view accessibility", () => {
       endConfirmModal(runner, h),
     ];
     const backdrops = views.flatMap(nodes).filter((n) => n.data?.class?.["modal-backdrop"]);
-    expect(backdrops).toHaveLength(8);
+    // Creation and question editing are inline; only confirmations/actions are modal.
+    expect(backdrops).toHaveLength(6);
     for (const backdrop of backdrops) {
       expect(backdrop.sel).toBe("button");
       expect(backdrop.data?.attrs?.["aria-label"]).toEqual(expect.any(String));

@@ -25,6 +25,7 @@ describe("application wiring", () => {
         "activeSession",
         "agentRequest",
         "currentTaskScroll",
+        "editorDraftFocus",
         "focusedSectionScroll",
         "history",
         "historyDetail",

@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
-import { Option } from "effect";
+import { Effect, Option } from "effect";
 import { Runtime } from "foldkit";
 import { fromString } from "foldkit/url";
 import type {} from "@vitest/browser-playwright";
 
 vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
 
-import { init, Model, update } from "../main";
+import { init, Model, update, view as appView } from "../main";
 import { makeEmptyDraft, withKindChanged } from "./features/templates/editor";
 import { templateEditorPage } from "./features/templates/editorView";
 import { templatesPage } from "./features/templates/view";
@@ -16,7 +16,14 @@ import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
 import { settingsPage } from "./features/settings/view";
 import { foldcnStyles, setCurrentStyle } from "./style";
-import { initializeStyle } from "./browserTheme";
+import {
+  changeAccent,
+  changeFont,
+  initializeAccent,
+  initializeFont,
+  initializeStyle,
+  initializeTheme,
+} from "./browserTheme";
 import { groupedList, navBar, navBarAction, row } from "../components/app";
 import { button } from "../components/ui/button";
 import "../index.css";
@@ -117,10 +124,153 @@ afterEach(() => {
   document.documentElement.style.removeProperty("font-size");
   setCurrentStyle("default");
   localStorage.removeItem("optio-foldcn-style");
+  localStorage.removeItem("optio-font");
+  localStorage.removeItem("optio-accent");
+  document.documentElement.removeAttribute("data-font");
+  document.documentElement.removeAttribute("data-accent");
+  document.documentElement.classList.remove("dark");
   vi.restoreAllMocks();
 });
 
 describe("persistent presentation regressions", () => {
+  it("loads defaults and reports unsaved choices when browser storage is blocked", async () => {
+    const blocked = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new DOMException("Storage denied", "SecurityError");
+    });
+    try {
+      expect(
+        await Effect.runPromise(
+          Effect.all({
+            theme: initializeTheme,
+            style: initializeStyle,
+            font: initializeFont,
+            accent: initializeAccent,
+          }),
+        ),
+      ).toEqual({ theme: "auto", style: "default", font: "sans", accent: "default" });
+      expect(await Effect.runPromise(changeFont("mono"))).toBe(false);
+      expect(await Effect.runPromise(changeAccent("rose"))).toBe(false);
+      expect(document.documentElement.dataset.font).toBe("mono");
+      expect(document.documentElement.dataset.accent).toBe("rose");
+    } finally {
+      blocked.mockRestore();
+    }
+  });
+
+  it("applies and restores font and accent choices independently", async () => {
+    await mount((model, h) =>
+      settingsPage(
+        model.theme,
+        model.style,
+        model.font,
+        model.accent,
+        model.themeSaveFailed,
+        model.styleSaveFailed,
+        model.fontSaveFailed,
+        model.accentSaveFailed,
+        h,
+      ),
+    );
+    const fonts = page.getByRole("radiogroup", { name: "Font", exact: true });
+    await expect.element(fonts).toBeVisible();
+    const original = getComputedStyle(fonts.element()).fontFamily;
+    await fonts.getByRole("radio", { name: "System serif" }).click();
+    await expect.poll(() => localStorage.getItem("optio-font")).toBe("serif");
+    expect(getComputedStyle(fonts.element()).fontFamily).not.toBe(original);
+    expect(await Effect.runPromise(initializeFont)).toBe("serif");
+    const colours = page.getByRole("radiogroup", { name: "Accent colour" });
+    await colours.getByRole("radio", { name: "Violet" }).click();
+    await expect.poll(() => localStorage.getItem("optio-accent")).toBe("violet");
+    const lightPrimary = getComputedStyle(document.documentElement).getPropertyValue("--primary");
+    await page.getByRole("radio", { name: "Dark", exact: true }).click();
+    await expect.poll(() => document.documentElement.classList.contains("dark")).toBe(true);
+    expect(getComputedStyle(document.documentElement).getPropertyValue("--primary")).not.toBe(
+      lightPrimary,
+    );
+    expect(await Effect.runPromise(initializeAccent)).toBe("violet");
+    expect(await Effect.runPromise(initializeFont)).toBe("serif");
+  });
+
+  it.each([390, 1280])("creates and edits questions inline at %ipx", async (width) => {
+    await mount((model, h) => appView({ ...model, route: { _tag: "TemplatesTab" } }, h).body);
+    await page.viewport(width, 900);
+    await page.getByRole("button", { name: "Create template", exact: true }).click();
+    await expect
+      .element(page.getByRole("heading", { name: "New template", exact: true }))
+      .toBeVisible();
+    await page.getByRole("textbox", { name: "Name", exact: true }).fill("Morning study");
+    await page.getByRole("button", { name: "Add question", exact: true }).click();
+    const form = page.getByRole("region", { name: "New question" });
+    await expect.element(form).toBeVisible();
+    expect(document.querySelector('[data-slot="sheet"]')).toBeNull();
+    await page.getByRole("textbox", { name: "Question", exact: true }).fill("Activity");
+    const done = page.getByRole("button", { name: "Save question" });
+    await expect.element(done).toBeEnabled();
+    await expect.element(page.getByRole("button", { name: "Save template" })).toBeDisabled();
+    await done.click();
+    const edit = page.getByRole("button", { name: "Edit question Activity" });
+    await expect.element(edit).toBeVisible();
+    await expect.element(page.getByRole("button", { name: "Save template" })).toBeEnabled();
+    await edit.click();
+    await expect
+      .element(page.getByRole("region", { name: "Edit question", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(page.getByRole("textbox", { name: "Question", exact: true }))
+      .toHaveValue("Activity");
+    const root = document.querySelector(".template-editor")!;
+    expect(root.scrollWidth).toBe(root.clientWidth);
+  });
+
+  it("pins the mobile title and add action together while scrolling", async () => {
+    await mount(
+      (model, h) =>
+        appView(
+          {
+            ...model,
+            route: { _tag: "TemplatesTab" },
+            templates: Array.from({ length: 30 }, (_, index) => ({
+              ...template,
+              id: `template-${index}`,
+            })),
+          },
+          h,
+        ).body,
+    );
+    await page.viewport(390, 700);
+    const heading = page.getByRole("heading", { name: "Templates", exact: true });
+    await expect.element(heading).toBeVisible();
+    const action = page.getByRole("button", { name: "New template", exact: true });
+    const initialTop = heading.element().getBoundingClientRect().top;
+    heading.element().closest("main")!.scrollTop = 350;
+    await new Promise(requestAnimationFrame);
+    expect(heading.element().getBoundingClientRect().top).toBe(initialTop);
+    const titleBounds = heading.element().getBoundingClientRect();
+    const actionBounds = action.element().getBoundingClientRect();
+    expect(
+      Math.abs((titleBounds.top + titleBounds.bottom - actionBounds.top - actionBounds.bottom) / 2),
+    ).toBeLessThan(1);
+  });
+
+  it("places a sheet above bottom navigation", async () => {
+    await mount(
+      (model, h) =>
+        appView(
+          {
+            ...model,
+            route: { _tag: "TemplatesTab" },
+            templates: [template],
+            templateActionsFor: template.id,
+          },
+          h,
+        ).body,
+    );
+    await page.viewport(390, 700);
+    await expect.element(page.getByRole("dialog")).toBeVisible();
+    const hit = document.elementFromPoint(195, 680);
+    expect(hit?.closest('[data-slot="sheet"]')).not.toBeNull();
+  });
+
   it.each(foldcnStyles)("fills template action cells in %s", async (style) => {
     setCurrentStyle(style);
     await mount((model, h) => templatesPage({ ...model, templates: [template] }, h));
@@ -167,7 +317,17 @@ describe("persistent presentation regressions", () => {
       h.div(
         [],
         [
-          settingsPage(model.theme, model.style, model.themeSaveFailed, model.styleSaveFailed, h),
+          settingsPage(
+            model.theme,
+            model.style,
+            model.font,
+            model.accent,
+            model.themeSaveFailed,
+            model.styleSaveFailed,
+            model.fontSaveFailed,
+            model.accentSaveFailed,
+            h,
+          ),
           button({}, "Style sample", h),
         ],
       ),
@@ -190,7 +350,7 @@ describe("persistent presentation regressions", () => {
     // Styles must change actual rendered components, not only the radio value.
     expect(renderedClasses.size).toBeGreaterThan(4);
     setCurrentStyle("default");
-    expect(initializeStyle()).toBe("rhea");
+    expect(await Effect.runPromise(initializeStyle)).toBe("rhea");
   });
 
   it.each([16, 20])("scales base controls with a %ipx root font", async (rootSize) => {

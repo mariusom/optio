@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
 
 import { Machine } from "@typeonce/effect-machine";
 import { MachineTest } from "@typeonce/effect-machine/testing";
@@ -92,15 +92,17 @@ const Emitter = Machine.make({
 });
 
 describe("effect-machine smoke", () => {
-  it("planInitial + plan are runSync-able and return emissions", () => {
-    const initial = Effect.runSync(Machine.planInitial(Emitter)).state;
-    const next = Effect.runSync(Machine.plan(Emitter, initial, { _tag: "Start" }));
-    expect(next.next.state.path).toBe("Running");
-    expect(next.emittedEvents).toEqual([{ _tag: "Incremented", count: 0 }]);
-    const inc = Effect.runSync(Machine.plan(Emitter, next.next, { _tag: "Increment" }));
-    expect(inc.emittedEvents).toEqual([{ _tag: "Incremented", count: 1 }]);
-    expect(inc.next.state.value).toMatchObject({ count: 1 });
-  });
+  it.effect("planInitial + plan return emissions", () =>
+    Effect.gen(function* () {
+      const initial = (yield* Machine.planInitial(Emitter)).state;
+      const next = yield* Machine.plan(Emitter, initial, { _tag: "Start" });
+      expect(next.next.state.path).toBe("Running");
+      expect(next.emittedEvents).toEqual([{ _tag: "Incremented", count: 0 }]);
+      const inc = yield* Machine.plan(Emitter, next.next, { _tag: "Increment" });
+      expect(inc.emittedEvents).toEqual([{ _tag: "Incremented", count: 1 }]);
+      expect(inc.next.state.value).toMatchObject({ count: 1 });
+    }),
+  );
 
   it("plans transitions with MachineTest", async () => {
     const trace = await Effect.runPromise(

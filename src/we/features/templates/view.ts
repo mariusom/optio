@@ -1,4 +1,3 @@
-import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
@@ -7,7 +6,6 @@ import {
   confirmSheet,
   emptyState,
   groupedList,
-  hint,
   icon,
   notice,
   page,
@@ -18,8 +16,6 @@ import {
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
-import { inputClass } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
 import type { TemplateSummary } from "../../../we/types";
@@ -81,68 +77,6 @@ const addSamplesButton = (h: HtmlBuilder<Message>) =>
   );
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
-
-const createSheet = (newName: string, h: HtmlBuilder<Message>) => {
-  const canCreate = newName.trim() !== "";
-  return sheet(
-    {
-      id: "new-template",
-      title: "New template",
-      onDismiss: Message.CanceledCreateTemplate(),
-      dismissLabel: "Cancel creating template",
-      footer: [
-        button(
-          {
-            size: "lg",
-            isDisabled: !canCreate,
-            onClick: Message.ConfirmedCreateTemplate(),
-            attributes: [h.AriaLabel("Create template")],
-          },
-          "Create",
-          h,
-        ),
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.CanceledCreateTemplate(),
-            attributes: [h.AriaLabel("Cancel")],
-          },
-          "Cancel",
-          h,
-        ),
-      ],
-    },
-    [
-      h.div(
-        [h.Class("flex flex-col gap-2 pb-1")],
-        [
-          h.label([h.For("new-template-name"), h.Class("sr-only")], ["Template name"]),
-          h.input([
-            h.Id("new-template-name"),
-            h.Type("text"),
-            h.Class(cn(inputClass)),
-            h.Value(newName),
-            h.Placeholder("Morning observations"),
-            h.AriaLabel("Template name"),
-            h.Autocomplete("off"),
-            h.Autocapitalize("sentences"),
-            h.EnterKeyHint("done"),
-            h.Autofocus(true),
-            h.OnInput((value) => Message.ChangedNewName({ text: value })),
-            h.OnKeyDownPreventDefault((key) =>
-              key === "Enter" && canCreate
-                ? Option.some(Message.ConfirmedCreateTemplate())
-                : Option.none(),
-            ),
-          ]),
-          ...(canCreate ? [] : [hint("Give the template a name to continue.", h)]),
-        ],
-      ),
-    ],
-    h,
-  );
-};
 
 const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
   sheet(
@@ -271,7 +205,6 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
     [
       ...(model.lastError === null ? [] : [notice({ tone: "error", text: model.lastError }, h)]),
       body,
-      ...(model.showCreate ? [createSheet(model.newName, h)] : []),
       ...(openFor === null ? [] : [actionsSheet(openFor, h)]),
       ...(model.pendingDelete === null ? [] : [deleteSheet(model.pendingDelete, h)]),
     ],

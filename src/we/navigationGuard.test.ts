@@ -51,7 +51,7 @@ describe("template editor navigation guard", () => {
 
     const confirmed = update(next.model, Message.ConfirmedDiscard());
     expect(confirmed.model.pendingNavigationUrl).toBeNull();
-    expect(confirmed.model.editor?.pendingDiscard).toBe(false);
+    expect(confirmed.model.editor).toBeNull();
     expect(JSON.stringify(confirmed.commands ?? [])).toContain("#/settings");
 
     const canceled = update(next.model, Message.CanceledDiscard());

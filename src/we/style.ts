@@ -26,8 +26,12 @@ export const setCurrentStyle = (style: FoldcnStyle): void => {
 export const readStyle = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(storageKey);
-  return foldcnStyles.includes(value as FoldcnStyle) ? (value as FoldcnStyle) : "default";
+  return yield* S.decodeUnknownEffect(FoldcnStyle)(value).pipe(
+    Effect.catch(() => Effect.succeed("default" as const)),
+  );
 });
 
-export const saveStyle = (style: FoldcnStyle) =>
-  Effect.flatMap(KeyValueStore.KeyValueStore, (store) => store.set(storageKey, style));
+export const saveStyle = Effect.fn("saveStyle")(function* (style: FoldcnStyle) {
+  const store = yield* KeyValueStore.KeyValueStore;
+  yield* store.set(storageKey, style);
+});

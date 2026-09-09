@@ -112,10 +112,18 @@ export const planSession = (
   event: SessionEvent,
 ): SessionPlan => {
   try {
-    const decoded = Effect.runSync(
-      Machine.decodeSnapshot(SessionMachine, toEncoded(runner, phase) as never),
+    // The one application-owned synchronous execution seam: FoldKit update
+    // must return the next model and emissions together, before another message.
+    // Machine exposes Effect-only planning/decoding; keep both in one program.
+    const plan = Effect.runSync(
+      Effect.gen(function* () {
+        const decoded = yield* Machine.decodeSnapshot(
+          SessionMachine,
+          toEncoded(runner, phase) as never,
+        );
+        return yield* Machine.plan(SessionMachine, decoded as never, event as never);
+      }),
     );
-    const plan = Effect.runSync(Machine.plan(SessionMachine, decoded as never, event as never));
     const { runner: nextRunner, phase: nextPhase } = snapshotToRunner(
       plan.next as never,
       runner?.now ?? Date.now(),

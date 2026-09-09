@@ -4,13 +4,14 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { friendlyFailure } from "../../errors";
 import { getStore } from "../../../livestore/client";
-import { events, type FieldDef } from "../../../livestore/schema";
+import { events, tables, type FieldDef } from "../../../livestore/schema";
 
 export const SaveTemplate = Command.define("SaveTemplate", {
   args: {
     id: S.String,
     name: S.String,
     isDefault: S.Boolean,
+    isNew: S.optionalKey(S.Boolean),
     fields: S.Array(
       S.Struct({
         id: S.String,
@@ -25,7 +26,7 @@ export const SaveTemplate = Command.define("SaveTemplate", {
     ),
   },
   messages: [Message.TemplateSaved, Message.FailedTemplateOp],
-  execute: ({ id, name, isDefault, fields }) =>
+  execute: ({ id, name, isDefault, fields, isNew }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
       const trimmedName = name.trim();
@@ -36,7 +37,14 @@ export const SaveTemplate = Command.define("SaveTemplate", {
           sortOrder: index,
         }),
       );
-      if (isDefault) {
+      if (isNew) {
+        const first = store.query(tables.templates.select()).length === 0;
+        store.commit(
+          events.templateCreated({ id, name: trimmedName, isDefault: isDefault || first }),
+          events.fieldsReplaced({ templateId: id, fields: dense }),
+          ...(isDefault || first ? [events.templateDefaultSet({ id })] : []),
+        );
+      } else if (isDefault) {
         store.commit(
           events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense }),
           events.templateDefaultSet({ id }),

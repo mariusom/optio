@@ -1,5 +1,13 @@
-import { Effect, Option, pipe, Schema as S } from "effect";
-import { defineRouteUnion, literal, mapTo, oneOf, slash, string } from "foldkit/route";
+import { Option, pipe, Schema as S } from "effect";
+import {
+  defineRouteUnion,
+  literal,
+  mapTo,
+  oneOf,
+  parseUrlWithFallback,
+  slash,
+  string,
+} from "foldkit/route";
 import type { Url } from "foldkit/url";
 
 // ROUTE VALUES — tagged schemas, usable as Model fields and Message payloads
@@ -53,22 +61,15 @@ const router = oneOf(
 
 // PARSE — Url (hash-driven; offline/GH-Pages friendly) → Route
 
-const segmentsFromHash = (hash: Option.Option<string>): ReadonlyArray<string> =>
-  Option.getOrElse(hash, () => "")
-    .replace(/^#/, "")
-    .split("/")
-    .filter((segment) => segment !== "");
+const parsePath = parseUrlWithFallback(router, { make: () => StartTab() });
 
 /** Parse a foldkit Url into a Route; anything unrecognized lands on Start. */
 export const parseRoute = (url: Url): Route =>
-  pipe(
-    router.parse(segmentsFromHash(url.hash)),
-    Effect.match({
-      onFailure: () => StartTab(),
-      onSuccess: ([route]) => route,
-    }),
-    Effect.runSync,
-  );
+  parsePath({
+    ...url,
+    pathname: Option.getOrElse(url.hash, () => "").replace(/^#/, ""),
+    search: Option.none(),
+  });
 
 // PRINT — Route → href string for anchors
 

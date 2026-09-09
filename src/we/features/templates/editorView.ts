@@ -7,7 +7,6 @@ import {
   Plus,
   Trash2,
   X,
-  choiceRows,
   confirmSheet,
   controlRow,
   groupedList,
@@ -19,11 +18,11 @@ import {
   page,
   row,
   rowAction,
-  sheet,
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { nativeSelect } from "@/components/ui/native-select";
 import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -33,9 +32,7 @@ import { hasOptions, supportsRequired } from "../../fields";
 import { hrefFor } from "../../routes";
 import { hasChanges, isDraftValid, isTemplateValid } from "./editor";
 
-// Template editor — a nav bar with Save, a grouped form for the template
-// itself and an ordered list of questions. Editing a question happens in a
-// sheet, so the list never turns into a nested form.
+// One workspace for template details and inline question editing.
 
 /** Answer types, simplest first — the order they are offered in. */
 const ANSWER_TYPES: ReadonlyArray<FieldKind> = [
@@ -65,6 +62,7 @@ export const answerTypeName = (kind: FieldKind): string => {
 // ── Model shape expected by the view ───────────────────────────────────────
 
 type EditorModel = {
+  readonly showCreate?: boolean;
   readonly editor: {
     readonly id: string;
     readonly name: string;
@@ -116,7 +114,13 @@ const moveButton = (
     h,
   );
 
-const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<Message>) =>
+const questionRow = (
+  field: FieldDef,
+  index: number,
+  total: number,
+  isDisabled: boolean,
+  h: HtmlBuilder<Message>,
+) =>
   h.keyed("div")(
     field.id,
     [h.Class("lazy-row flex w-full items-stretch")],
@@ -128,6 +132,7 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
           trailing: field.isRequired ? statusPill({ tone: "primary" }, ["Required"], h) : undefined,
           className: "min-w-0 flex-1",
           onClick: Message.ClickedEditField({ id: field.id }),
+          isDisabled,
           attributes: [h.AriaLabel(`Edit question ${field.name}`)],
         },
         h,
@@ -139,7 +144,7 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
             {
               label: `Move ${field.name} up`,
               up: true,
-              isDisabled: index === 0,
+              isDisabled: isDisabled || index === 0,
               onClick: Message.ClickedMoveFieldUp({ id: field.id }),
             },
             h,
@@ -148,7 +153,7 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
             {
               label: `Move ${field.name} down`,
               up: false,
-              isDisabled: index === total - 1,
+              isDisabled: isDisabled || index === total - 1,
               onClick: Message.ClickedMoveFieldDown({ id: field.id }),
             },
             h,
@@ -210,15 +215,15 @@ const draftHint = (draft: Editor["draft"] & object): string => {
 };
 
 const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
-  choiceRows(
+  nativeSelect(
     {
+      id: "answer-type",
       label: "Answer type",
-      header: "Answer type",
-      choices: ANSWER_TYPES.map((candidate) => ({
-        label: answerTypeName(candidate),
-        selected: candidate === kind,
-        onSelect: Message.ChangedFieldKind({ kind: candidate }),
-      })),
+      value: kind,
+      onChange: (value) => Message.ChangedFieldKind({ kind: value }),
+      options: ANSWER_TYPES.map((candidate) =>
+        h.option([h.Value(candidate)], [answerTypeName(candidate)]),
+      ),
     },
     h,
   );
@@ -389,44 +394,45 @@ const defaultAnswerSection = (
   );
 };
 
-const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
+const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
   const draft = editor.draft;
   if (draft === null) return h.div([], []);
   const isEditing = editor.editingFieldId !== null;
   const kind = draft.kind as FieldKind;
   const valid = isDraftValid(draft as unknown as Parameters<typeof isDraftValid>[0]);
 
-  return sheet(
-    {
-      id: "question-editor",
-      title: isEditing ? "Edit question" : "New question",
-      size: "md",
-      onDismiss: Message.CanceledAddField(),
-      dismissLabel: "Cancel editing question",
-      footer: [
-        button(
-          {
-            size: "lg",
-            isDisabled: !valid,
-            onClick: Message.ConfirmedSaveField(),
-            attributes: [h.AriaLabel("Save question")],
-          },
-          "Save",
-          h,
-        ),
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.CanceledAddField(),
-            attributes: [h.AriaLabel("Cancel editing question")],
-          },
-          "Cancel",
-          h,
-        ),
-      ],
-    },
+  const actions = [
+    button(
+      {
+        size: "lg",
+        isDisabled: !valid,
+        onClick: Message.ConfirmedSaveField(),
+        attributes: [h.AriaLabel("Save question")],
+      },
+      isEditing ? "Done editing" : "Add to template",
+      h,
+    ),
+    button(
+      {
+        variant: "secondary",
+        size: "lg",
+        onClick: Message.CanceledAddField(),
+        attributes: [h.AriaLabel("Cancel editing question")],
+      },
+      "Cancel",
+      h,
+    ),
+  ];
+  return h.section(
     [
+      h.Id("question-editor"),
+      h.Class(
+        "flex min-w-0 scroll-mt-16 flex-col gap-4 rounded-lg border border-primary/40 bg-card p-4",
+      ),
+      h.AriaLabel(isEditing ? "Edit question" : "New question"),
+    ],
+    [
+      h.h2([h.Class("text-lg font-semibold")], [isEditing ? "Edit question" : "New question"]),
       h.div(
         [h.Class("flex flex-col gap-5 pb-2")],
         [
@@ -445,7 +451,6 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
                     h.Autocomplete("off"),
                     h.Autocapitalize("sentences"),
                     h.EnterKeyHint("done"),
-                    h.Autofocus(true),
                     h.OnInput((value) => Message.ChangedFieldName({ text: value })),
                   ]),
                 ],
@@ -505,8 +510,8 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
           ...(valid ? [] : [hint(draftHint(draft), h)]),
         ],
       ),
+      h.div([h.Class("flex flex-wrap gap-2 border-t border-border pt-4")], actions),
     ],
-    h,
   );
 };
 
@@ -535,19 +540,23 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
   const editor = model.editor;
   const isValid = isTemplateValid(editor);
   const changed = hasChanges(editor as unknown as Parameters<typeof hasChanges>[0]);
-  const canSave = isValid && changed && !editor.isSaving;
-  const saveHint = !isValid
-    ? "Give the template a name to save it."
-    : !changed
-      ? "Nothing to save yet."
-      : null;
+  const canSave = isValid && changed && !editor.isSaving && editor.draft === null;
+  const saveHint =
+    editor.draft !== null
+      ? "Finish or cancel the question below before saving the template."
+      : !isValid
+        ? "Give the template a name to save it."
+        : !changed
+          ? "Nothing to save yet."
+          : null;
 
   return h.div(
     [h.Class("template-editor flex min-h-full flex-col")],
     [
       navBar(
         {
-          title: "Template",
+          title: model.showCreate ? "New template" : "Template builder",
+          wide: true,
           back: guardedBackLink,
           trailing: [
             navBarAction(
@@ -565,41 +574,81 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
         h,
       ),
       page(
-        { className: "pt-6" },
+        { className: "pt-6", wide: true },
         [
           ...(model.lastError === null
             ? []
             : [notice({ tone: "error", text: model.lastError }, h)]),
-          groupedList({ header: "Template" }, [nameRow(editor, h), defaultRow(editor, h)], h),
-          groupedList(
-            {
-              header: "Questions",
-              footer:
-                editor.fields.length === 0
-                  ? "Add a question for each thing you note down, such as activity, location or notes."
-                  : `${editor.fields.length} question${editor.fields.length === 1 ? "" : "s"}`,
-            },
+          h.div(
             [
-              ...editor.fields.map((field, index) =>
-                questionRow(field, index, editor.fields.length, h),
-              ),
-              row(
-                {
-                  title: "Add question",
-                  leading: icon(h, Plus, "size-5 text-primary"),
-                  onClick: Message.ClickedAddField(),
-                  attributes: [h.AriaLabel("Add question")],
-                },
-                h,
+              h.Class(
+                "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start",
               ),
             ],
-            h,
+            [
+              groupedList(
+                {
+                  header: "1. Template details",
+                  footer:
+                    "Name your template, then build the questions in the order you’ll answer them.",
+                },
+                [nameRow(editor, h), defaultRow(editor, h)],
+                h,
+              ),
+              h.div(
+                [h.Class("flex min-w-0 flex-col gap-4")],
+                [
+                  groupedList(
+                    {
+                      header: "2. Questions",
+                      footer:
+                        editor.fields.length === 0
+                          ? "Add a question for each thing you note down, such as activity, location or notes."
+                          : `${editor.fields.length} question${editor.fields.length === 1 ? "" : "s"}`,
+                    },
+                    [
+                      ...editor.fields.map((field, index) =>
+                        h.keyed("div")(
+                          field.id,
+                          [],
+                          [
+                            questionRow(
+                              field,
+                              index,
+                              editor.fields.length,
+                              editor.draft !== null || editor.isSaving,
+                              h,
+                            ),
+                            ...(editor.editingFieldId === field.id
+                              ? [questionForm(editor, h)]
+                              : []),
+                          ],
+                        ),
+                      ),
+                      row(
+                        {
+                          title: "Add question",
+                          leading: icon(h, Plus, "size-5 text-primary"),
+                          onClick: Message.ClickedAddField(),
+                          isDisabled: editor.draft !== null || editor.isSaving,
+                          attributes: [h.AriaLabel("Add question")],
+                        },
+                        h,
+                      ),
+                    ],
+                    h,
+                  ),
+                  ...(editor.draft !== null && editor.editingFieldId === null
+                    ? [questionForm(editor, h)]
+                    : []),
+                ],
+              ),
+            ],
           ),
           ...(saveHint === null ? [] : [hint(saveHint, h)]),
         ],
         h,
       ),
-      ...(editor.draft !== null ? [questionSheet(editor, h)] : []),
       ...(editor.pendingDiscard
         ? [
             confirmSheet(
