@@ -15,7 +15,7 @@ import {
   sheet,
   sheetAction,
 } from "@/components/app";
-import { button } from "@/components/ui/button";
+import { button, buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
@@ -59,25 +59,25 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
         {
           title: session.displayName,
           subtitle: summaryFor(session),
-          value: h.span([h.Class("text-[0.9375rem]")], [formatTimeOnly(session.startedAt)]),
+          value: h.span([h.Class("text-sm")], [formatTimeOnly(session.startedAt)]),
           onClick: Message.ClickedHistoryRow({ id: session.id }),
           chevron: true,
           lazy: true,
-          className: "min-w-0 flex-1 gap-2 pr-1",
+          className: "min-w-0 flex-1",
           attributes: [h.AriaLabel(`Open session ${session.displayName}`)],
         },
         h,
       ),
-      h.button(
-        [
-          h.Type("button"),
-          h.Class(
-            "grid min-h-11 w-11 shrink-0 place-items-center text-muted-foreground active:opacity-60",
-          ),
-          h.AriaLabel(`Actions for "${session.displayName}"`),
-          h.OnClick(Message.OpenedHistoryActions({ id: session.id })),
-        ],
+      button(
+        {
+          variant: "ghost",
+          size: "icon",
+          className: "self-center",
+          attributes: [h.AriaLabel(`Actions for "${session.displayName}"`)],
+          onClick: Message.OpenedHistoryActions({ id: session.id }),
+        },
         [icon(h, Ellipsis, "size-5")],
+        h,
       ),
     ],
   );
@@ -97,7 +97,6 @@ const actionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: Message.ClosedHistoryActions(),
             attributes: [h.AriaLabel("Cancel actions")],
           },
@@ -149,9 +148,7 @@ const noSessionsView = (h: HtmlBuilder<Message>) =>
       description: "Finished sessions appear here and can be exported as a spreadsheet.",
       action: h.a(
         [
-          h.Class(
-            "inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-base font-semibold text-primary-foreground active:opacity-80",
-          ),
+          h.Class(buttonClass({ size: "lg" })),
           h.Href(hrefFor({ _tag: "StartTab" })),
           h.AriaLabel("Start a session"),
         ],

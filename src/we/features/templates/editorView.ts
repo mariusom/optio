@@ -25,7 +25,6 @@ import { button } from "@/components/ui/button";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import type { FieldDef, FieldKind } from "../../../livestore/schema";
 import { hasOptions, supportsRequired } from "../../fields";
@@ -105,17 +104,16 @@ const moveButton = (
   config: Readonly<{ label: string; onClick: Message; isDisabled: boolean; up: boolean }>,
   h: HtmlBuilder<Message>,
 ): Html =>
-  h.button(
-    [
-      h.Type("button"),
-      h.Class(
-        "grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:opacity-60 disabled:opacity-30",
-      ),
-      h.Disabled(config.isDisabled),
-      h.AriaLabel(config.label),
-      h.OnClick(config.onClick),
-    ],
+  button(
+    {
+      variant: "ghost",
+      size: "icon",
+      isDisabled: config.isDisabled,
+      attributes: [h.AriaLabel(config.label)],
+      onClick: config.onClick,
+    },
     [icon(h, config.up ? ArrowUp : ArrowDown, "size-5")],
+    h,
   );
 
 const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuilder<Message>) =>
@@ -123,28 +121,16 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
     field.id,
     [h.Class("lazy-row flex w-full items-stretch")],
     [
-      h.button(
-        [
-          h.Type("button"),
-          h.Class(
-            "flex min-h-11 min-w-0 flex-1 items-center gap-2 py-2.5 pl-4 text-left text-[1.0625rem] leading-snug transition-colors hover:bg-muted/60 active:bg-muted",
-          ),
-          h.OnClick(Message.ClickedEditField({ id: field.id })),
-          h.AriaLabel(`Edit question ${field.name}`),
-        ],
-        [
-          h.span(
-            [h.Class("flex min-w-0 flex-1 flex-col")],
-            [
-              h.span([h.Class("truncate")], [field.name === "" ? "Untitled question" : field.name]),
-              h.span(
-                [h.Class("truncate text-[0.9375rem] text-muted-foreground")],
-                [answerTypeName(field.kind as FieldKind)],
-              ),
-            ],
-          ),
-          ...(field.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
-        ],
+      row(
+        {
+          title: field.name === "" ? "Untitled question" : field.name,
+          subtitle: answerTypeName(field.kind as FieldKind),
+          trailing: field.isRequired ? statusPill({ tone: "primary" }, ["Required"], h) : undefined,
+          className: "min-w-0 flex-1",
+          onClick: Message.ClickedEditField({ id: field.id }),
+          attributes: [h.AriaLabel(`Edit question ${field.name}`)],
+        },
+        h,
       ),
       h.div(
         [h.Class("flex shrink-0 items-center self-center pr-1")],
@@ -177,17 +163,11 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
 const nameRow = (editor: Editor, h: HtmlBuilder<Message>) =>
   controlRow(
     [
-      h.label(
-        [
-          h.For("template-name"),
-          h.Class(cn(inputLabelClass, "text-[0.8125rem] text-muted-foreground")),
-        ],
-        ["Name"],
-      ),
+      h.label([h.For("template-name"), h.Class(inputLabelClass)], ["Name"]),
       h.input([
         h.Id("template-name"),
         h.Type("text"),
-        h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+        h.Class(inputClass),
         h.Value(editor.name),
         h.Placeholder("Morning observations"),
         h.Autocomplete("off"),
@@ -252,9 +232,9 @@ const choiceRow = (
 ) =>
   h.keyed("div")(
     `choice-${index}-${option}`,
-    [h.Class("flex w-full items-center gap-2 px-4 py-2")],
+    [h.Class("flex w-full flex-wrap items-center gap-2 p-4")],
     [
-      h.span([h.Class("min-w-0 flex-1 truncate text-[1.0625rem]")], [option]),
+      h.span([h.Class("min-w-0 basis-full break-words text-sm sm:basis-auto sm:flex-1")], [option]),
       ...(showExclusive
         ? [
             switch_(
@@ -264,23 +244,21 @@ const choiceRow = (
                 onToggle: () => Message.ToggledExclusiveOption({ index }),
                 label: "Clears other choices",
                 size: "sm",
-                wrapperClass: "flex-row-reverse gap-2",
-                labelClass: "text-[0.8125rem] text-muted-foreground",
+                wrapperClass: "flex-1 flex-row-reverse justify-end sm:flex-none",
               },
               h,
             ),
           ]
         : []),
-      h.button(
-        [
-          h.Type("button"),
-          h.Class(
-            "grid size-11 shrink-0 place-items-center rounded-full text-destructive transition-colors hover:bg-destructive/10 active:opacity-60",
-          ),
-          h.OnClick(Message.ClickedDeleteOption({ index })),
-          h.AriaLabel(`Remove choice ${option}`),
-        ],
+      button(
+        {
+          variant: "destructive",
+          size: "icon",
+          onClick: Message.ClickedDeleteOption({ index }),
+          attributes: [h.AriaLabel(`Remove choice ${option}`)],
+        },
         [icon(h, X, "size-4")],
+        h,
       ),
     ],
   );
@@ -311,7 +289,7 @@ const choicesSection = (
               h.input([
                 h.Id("new-choice"),
                 h.Type("text"),
-                h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+                h.Class(inputClass),
                 h.Value(draft.newOptionText),
                 h.Placeholder("Add a choice"),
                 h.AriaLabel("New choice"),
@@ -329,7 +307,7 @@ const choicesSection = (
               button(
                 {
                   size: "lg",
-                  className: "h-11 shrink-0 rounded-lg px-4 text-base font-semibold",
+                  className: "shrink-0",
                   isDisabled: !canAdd,
                   onClick: Message.ConfirmedAddOption(),
                   attributes: [h.AriaLabel("Add choice")],
@@ -382,17 +360,11 @@ const defaultAnswerSection = (
     [
       controlRow(
         [
-          h.label(
-            [
-              h.For("question-default"),
-              h.Class(cn(inputLabelClass, "text-[0.8125rem] text-muted-foreground")),
-            ],
-            ["Default answer"],
-          ),
+          h.label([h.For("question-default"), h.Class(inputLabelClass)], ["Default answer"]),
           kind === "textArea"
             ? h.textarea([
                 h.Id("question-default"),
-                h.Class(cn(textareaClass, "min-h-20 rounded-lg text-base")),
+                h.Class(textareaClass),
                 h.Value(draft.defaultValue),
                 h.Placeholder("Leave empty for none"),
                 h.Autocapitalize("sentences"),
@@ -401,7 +373,7 @@ const defaultAnswerSection = (
             : h.input([
                 h.Id("question-default"),
                 h.Type("text"),
-                h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+                h.Class(inputClass),
                 h.Value(draft.defaultValue),
                 h.Placeholder("Leave empty for none"),
                 h.Autocomplete("off"),
@@ -435,7 +407,6 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
         button(
           {
             size: "lg",
-            className: "h-11 text-base font-semibold",
             isDisabled: !valid,
             onClick: Message.ConfirmedSaveField(),
             attributes: [h.AriaLabel("Save question")],
@@ -447,7 +418,6 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: Message.CanceledAddField(),
             attributes: [h.AriaLabel("Cancel editing question")],
           },
@@ -465,17 +435,11 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
             [
               controlRow(
                 [
-                  h.label(
-                    [
-                      h.For("question-name"),
-                      h.Class(cn(inputLabelClass, "text-[0.8125rem] text-muted-foreground")),
-                    ],
-                    ["Question"],
-                  ),
+                  h.label([h.For("question-name"), h.Class(inputLabelClass)], ["Question"]),
                   h.input([
                     h.Id("question-name"),
                     h.Type("text"),
-                    h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+                    h.Class(inputClass),
                     h.Value(draft.name),
                     h.Placeholder("What are you recording?"),
                     h.Autocomplete("off"),
@@ -624,7 +588,6 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
                   title: "Add question",
                   leading: icon(h, Plus, "size-5 text-primary"),
                   onClick: Message.ClickedAddField(),
-                  className: "text-primary",
                   attributes: [h.AriaLabel("Add question")],
                 },
                 h,

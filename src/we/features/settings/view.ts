@@ -1,6 +1,7 @@
 import type { HtmlBuilder } from "foldkit/html";
 
 import { choiceRows, groupedList, notice, page, row } from "@/components/app";
+import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import type { Theme } from "../../theme";
 
@@ -36,13 +37,14 @@ export const settingsPage = (theme: Theme, saveFailed: boolean, h: HtmlBuilder<M
               },
               h,
             ),
-            h.button(
-              [
-                h.Type("button"),
-                h.Class("mx-auto min-h-11 px-4 text-[1.0625rem] text-primary active:opacity-60"),
-                h.OnClick(Message.SelectedTheme({ theme })),
-              ],
-              ["Try again"],
+            button(
+              {
+                variant: "link",
+                className: "mx-auto",
+                onClick: Message.SelectedTheme({ theme }),
+              },
+              "Try again",
+              h,
             ),
           ]
         : []),

@@ -2,6 +2,7 @@ import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 
 import { cn } from "@/lib/utils";
 import { Option } from "effect";
+import { badge } from "@/components/ui/badge";
 
 import { Check, ChevronRight, icon } from "./icons";
 
@@ -23,27 +24,18 @@ export const page = <M>(
           config.className,
         ),
       ),
+      h.DataAttribute("slot", "page"),
     ],
     children,
   );
 
 /** Section heading above a grouped list (iOS section header). */
 export const sectionHeader = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
-  h.h2(
-    [
-      h.Class(
-        cn(
-          "px-4 pb-1.5 text-[0.8125rem] font-medium uppercase tracking-wide text-muted-foreground",
-          className,
-        ),
-      ),
-    ],
-    [text],
-  );
+  h.h2([h.Class(cn("pb-2 text-sm font-medium text-foreground", className))], [text]);
 
 /** Explanatory text under a grouped list (iOS section footer). */
 export const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
-  h.p([h.Class("px-4 pt-1.5 text-[0.8125rem] leading-snug text-muted-foreground")], [text]);
+  h.p([h.Class("pt-2 text-sm leading-relaxed text-muted-foreground")], [text]);
 
 /**
  * Inset grouped list (SwiftUI `List` with `.insetGrouped`). Children are rows;
@@ -70,7 +62,7 @@ export const groupedList = <M>(
         [
           h.Class(
             cn(
-              "overflow-hidden rounded-xl bg-card text-card-foreground ring-1 ring-foreground/10 divide-y divide-border/80",
+              "overflow-hidden rounded-lg border border-border bg-card text-card-foreground divide-y divide-border",
               config.className,
             ),
           ),
@@ -112,7 +104,7 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
   const interactive = config.href !== undefined || config.onClick !== undefined;
   const chevron = config.chevron ?? config.href !== undefined;
   const classes = cn(
-    "flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-[1.0625rem] leading-snug",
+    "flex w-full min-h-11 items-center gap-3 px-4 py-3 text-left text-sm leading-normal aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
     config.wrap ? "flex-wrap gap-y-1" : "",
     interactive ? "transition-colors hover:bg-muted/60 active:bg-muted disabled:opacity-50" : "",
     config.destructive ? "text-destructive" : "text-foreground",
@@ -129,12 +121,7 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
         h.span([h.Class("truncate")], [config.title]),
         ...(config.subtitle === undefined
           ? []
-          : [
-              h.span(
-                [h.Class("truncate text-[0.9375rem] text-muted-foreground")],
-                [config.subtitle],
-              ),
-            ]),
+          : [h.span([h.Class("truncate text-sm text-muted-foreground")], [config.subtitle])]),
       ],
     ),
     ...(config.value === undefined
@@ -178,7 +165,7 @@ export const controlRow = <M>(
   children: ReadonlyArray<Child>,
   h: HtmlBuilder<M>,
   className?: string,
-): Html => h.div([h.Class(cn("flex flex-col gap-1.5 px-4 py-3", className))], children);
+): Html => h.div([h.Class(cn("flex flex-col gap-2 p-4", className))], children);
 
 /** Chip-style status label. */
 export const statusPill = <M>(
@@ -197,18 +184,7 @@ export const statusPill = <M>(
     warning: "bg-warning/25 text-warning-content",
     destructive: "bg-destructive/12 text-destructive",
   } as const;
-  return h.span(
-    [
-      h.Class(
-        cn(
-          "inline-flex h-6 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium whitespace-nowrap",
-          tones[tone],
-          config.className,
-        ),
-      ),
-    ],
-    children,
-  );
+  return badge({ variant: "secondary", className: cn(tones[tone], config.className) }, children, h);
 };
 
 export type Choice<M> = Readonly<{

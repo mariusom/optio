@@ -84,7 +84,7 @@ const choiceBody = (
   h: HtmlBuilder<Message>,
 ) =>
   h.span(
-    [h.Class("flex w-full min-h-14 items-center gap-3 px-4 py-3 text-[1.0625rem] leading-snug")],
+    [h.Class("flex min-h-14 w-full items-center gap-3 px-4 py-3 text-base leading-snug")],
     [
       h.span(
         [h.Class("flex min-w-0 flex-1 flex-col text-left")],
@@ -92,7 +92,7 @@ const choiceBody = (
           h.span([h.Class("truncate")], [label]),
           ...(caption === null
             ? []
-            : [h.span([h.Class("text-[0.8125rem] text-muted-foreground")], [caption])]),
+            : [h.span([h.Class("text-xs text-muted-foreground")], [caption])]),
         ],
       ),
       indicator,
@@ -199,7 +199,7 @@ const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     [h.Class("px-4 py-3")],
     [
       h.input([
-        h.Class(cn(inputClass, "h-12 rounded-xl text-base md:text-base")),
+        h.Class(inputClass),
         h.Value(section.value),
         h.Placeholder("Type your answer"),
         h.AriaLabel(section.name),
@@ -217,7 +217,7 @@ const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     [h.Class("px-4 py-3")],
     [
       h.textarea([
-        h.Class(cn(textareaClass, "min-h-24 rounded-xl text-base md:text-base")),
+        h.Class(textareaClass),
         h.Value(section.value),
         h.Placeholder("Add anything worth remembering"),
         h.AriaLabel(section.name),
@@ -240,9 +240,7 @@ const yesNoAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Messa
           id: `${scope}-runner-toggle-${section.id}`,
           isChecked: isOn,
           label: isOn ? "Yes" : "No",
-          labelClass:
-            "flex min-h-11 flex-1 cursor-pointer items-center text-[1.0625rem] font-normal",
-          wrapperClass: "w-full gap-3",
+          wrapperClass: "w-full",
           onToggle: (checked) =>
             Message.ChangedFieldValue({
               taskFieldId: section.id,
@@ -279,19 +277,8 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
       header: h.span(
         [h.Class("flex items-center gap-2 normal-case")],
         [
-          h.span(
-            [h.Class("min-w-0 text-[0.9375rem] font-semibold tracking-normal")],
-            [section.name],
-          ),
-          ...(section.isRequired
-            ? [
-                statusPill(
-                  { tone: "primary", className: "h-5 px-2 text-[0.6875rem]" },
-                  ["Required"],
-                  h,
-                ),
-              ]
-            : []),
+          h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
+          ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
         ],
       ),
       footer: questionFooter(section),
@@ -404,7 +391,6 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
               {
                 variant: "secondary",
                 size: "lg",
-                className: "h-14 rounded-2xl text-base font-semibold",
                 onClick: Message.ClickedCancelEdit(),
                 attributes: [h.AriaLabel("Cancel editing")],
               },
@@ -414,7 +400,6 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
             button(
               {
                 size: "lg",
-                className: "h-14 rounded-2xl text-base font-semibold",
                 isDisabled: !canSave,
                 onClick: Message.ClickedSaveEdit(),
                 attributes: [h.AriaLabel("Save changes")],
@@ -430,7 +415,7 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
         button(
           {
             size: "lg",
-            className: "h-14 w-full rounded-2xl text-base font-semibold",
+            className: "w-full",
             isDisabled: !canRecord,
             onClick: Message.ClickedRecord(),
             attributes: [h.AriaLabel("Record task")],
@@ -502,7 +487,6 @@ export const taskRow = (
         h,
       ),
       onClick: Message.ClickedSelectTask({ taskId: task.id }),
-      className: isCurrent ? "bg-primary/8 text-primary" : "",
       attributes: [
         h.AriaLabel(`Task ${task.orderIndex} ${label}`),
         ...(isCurrent ? [h.AriaCurrent("true")] : []),
@@ -536,7 +520,6 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: Message.ToggledTaskList(),
             attributes: [h.AriaLabel("Close task list")],
           },
@@ -591,12 +574,7 @@ export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
 export const runnerLoadingView = (h: HtmlBuilder<Message>) =>
   h.div(
     [h.Class("flex h-full items-center justify-center p-8")],
-    [
-      h.p(
-        [h.Class("text-[0.9375rem] text-muted-foreground"), h.Role("status")],
-        ["Loading session…"],
-      ),
-    ],
+    [h.p([h.Class("text-sm text-muted-foreground"), h.Role("status")], ["Loading session…"])],
   );
 
 export const runnerEmptyTaskView = (h: HtmlBuilder<Message>) =>

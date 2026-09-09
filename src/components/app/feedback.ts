@@ -2,6 +2,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode } from "lucide";
 
 import { Empty } from "@/components/ui/empty";
+import { button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CircleAlert, Info, TriangleAlert, X, icon } from "./icons";
 
@@ -19,29 +20,20 @@ export const emptyState = <M>(
   h: HtmlBuilder<M>,
 ): Html =>
   Empty(
-    { className: cn("py-16 md:py-24", config.className) },
+    { className: config.className },
     [
       Empty.header(
         {},
         [
-          Empty.media(
-            {
-              variant: "icon",
-              className: "size-14 rounded-2xl bg-primary/10 text-primary [&_svg]:size-7",
-            },
-            [icon(h, config.icon, "size-7")],
-            h,
-          ),
-          Empty.title({ className: "text-lg font-semibold tracking-tight" }, [config.title], h),
+          Empty.media({ variant: "icon" }, [icon(h, config.icon, "")], h),
+          Empty.title({}, [config.title], h),
           ...(config.description === undefined
             ? []
-            : [Empty.description({ className: "text-[0.9375rem]" }, [config.description], h)]),
+            : [Empty.description({}, [config.description], h)]),
         ],
         h,
       ),
-      ...(config.action === undefined
-        ? []
-        : [Empty.content({ className: "mt-2" }, [config.action], h)]),
+      ...(config.action === undefined ? [] : [Empty.content({}, [config.action], h)]),
     ],
     h,
   );
@@ -49,9 +41,9 @@ export const emptyState = <M>(
 export type NoticeTone = "info" | "warning" | "error";
 
 const noticeTones: Record<NoticeTone, { classes: string; icon: IconNode }> = {
-  info: { classes: "bg-primary/8 text-foreground ring-primary/15", icon: Info },
-  warning: { classes: "bg-warning/20 text-warning-content ring-warning/30", icon: TriangleAlert },
-  error: { classes: "bg-destructive/10 text-destructive ring-destructive/20", icon: CircleAlert },
+  info: { classes: "border-primary/15 bg-primary/8 text-foreground", icon: Info },
+  warning: { classes: "border-warning/30 bg-warning/20 text-warning-content", icon: TriangleAlert },
+  error: { classes: "border-destructive/20 bg-destructive/10 text-destructive", icon: CircleAlert },
 };
 
 /** Inline notice (iOS-style callout). Use for state the user can act on. */
@@ -71,7 +63,7 @@ export const notice = <M>(
     [
       h.Class(
         cn(
-          "flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-sm leading-snug ring-1",
+          "flex items-start gap-3 rounded-lg border p-4 text-sm leading-snug",
           tone.classes,
           config.className,
         ),
@@ -84,16 +76,17 @@ export const notice = <M>(
       ...(config.onDismiss === undefined
         ? []
         : [
-            h.button(
-              [
-                h.Type("button"),
-                h.Class(
-                  "-m-3 grid size-11 shrink-0 place-items-center rounded-lg hover:bg-foreground/5",
-                ),
-                h.AriaLabel(config.dismissLabel ?? "Dismiss"),
-                h.OnClick(config.onDismiss),
-              ],
-              [icon(h, X, "size-4")],
+            button(
+              {
+                type: "button",
+                variant: "ghost",
+                size: "icon",
+                className: "shrink-0",
+                onClick: config.onDismiss,
+                attributes: [h.AriaLabel(config.dismissLabel ?? "Dismiss")],
+              },
+              icon(h, X, ""),
+              h,
             ),
           ]),
     ],
@@ -103,9 +96,6 @@ export const notice = <M>(
 /** Short helper text under a disabled primary action ("Answer the 2 starred questions first"). */
 export const hint = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
   h.p(
-    [
-      h.Class(cn("text-center text-[0.8125rem] text-muted-foreground", className)),
-      h.Role("status"),
-    ],
+    [h.Class(cn("text-center text-sm text-muted-foreground", className)), h.Role("status")],
     [text],
   );

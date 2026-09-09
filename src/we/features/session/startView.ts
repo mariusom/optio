@@ -16,7 +16,7 @@ import {
   controlRow,
   emptyState,
 } from "@/components/app";
-import { button } from "@/components/ui/button";
+import { button, buttonClass } from "@/components/ui/button";
 import { nativeSelect } from "@/components/ui/native-select";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -86,7 +86,7 @@ const resumeView = (
           button(
             {
               size: "lg",
-              className: "h-12 w-full rounded-xl text-base font-semibold",
+              className: "w-full",
               onClick: Message.ClickedResumeSession(),
               attributes: [h.AriaLabel(missing ? "Finish Session" : "Resume Session")],
             },
@@ -95,9 +95,9 @@ const resumeView = (
           ),
           button(
             {
-              variant: "ghost",
+              variant: "destructive",
               size: "lg",
-              className: "h-11 w-full rounded-xl text-base text-destructive hover:text-destructive",
+              className: "w-full",
               onClick: Message.ClickedDiscardSession(),
               attributes: [h.AriaLabel("Discard Session")],
             },
@@ -139,9 +139,7 @@ const noTemplatesView = (h: HtmlBuilder<Message>) =>
       description: "A template is the list of things you note down for each task.",
       action: h.a(
         [
-          h.Class(
-            "inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-5 text-base font-semibold text-primary-foreground active:opacity-80",
-          ),
+          h.Class(buttonClass({ size: "lg" })),
           h.Href(hrefFor({ _tag: "TemplatesTab" })),
           h.AriaLabel("Create Template"),
         ],
@@ -163,8 +161,6 @@ const templatePicker = (
     {
       id: "study-template",
       label: "Study template",
-      labelClass: "text-[0.8125rem] text-muted-foreground",
-      className: "h-11 w-full rounded-lg text-base",
       wrapperClass: "w-full",
       value: selectedId ?? "",
       onChange: (id) => Message.SelectedTemplate({ id }),
@@ -188,20 +184,14 @@ const sessionNameField = (placeholderName: string, value: string, h: HtmlBuilder
   h.div(
     [h.Class("group/field flex w-full flex-col gap-1.5")],
     [
-      h.label(
-        [
-          h.For("session-name"),
-          h.Class(cn(inputLabelClass, "text-[0.8125rem] text-muted-foreground")),
-        ],
-        ["Session name"],
-      ),
+      h.label([h.For("session-name"), h.Class(inputLabelClass)], ["Session name"]),
       h.div(
         [h.Class("relative")],
         [
           h.input([
             h.Id("session-name"),
             h.Type("text"),
-            h.Class(cn(inputClass, "h-11 rounded-lg pr-11 text-base")),
+            h.Class(cn(inputClass, "pr-11")),
             h.Value(value),
             h.Placeholder(placeholderName),
             h.Autocomplete("off"),
@@ -214,16 +204,16 @@ const sessionNameField = (placeholderName: string, value: string, h: HtmlBuilder
           ]),
           ...(value.length > 0
             ? [
-                h.button(
-                  [
-                    h.Type("button"),
-                    h.Class(
-                      "absolute inset-y-0 right-0 my-auto grid size-11 place-items-center rounded-full text-muted-foreground hover:text-foreground",
-                    ),
-                    h.OnClick(Message.ChangedSessionNameInput({ text: "" })),
-                    h.AriaLabel("Clear session name"),
-                  ],
+                button(
+                  {
+                    variant: "ghost",
+                    size: "icon",
+                    className: "absolute inset-y-0 right-0 my-auto",
+                    onClick: Message.ChangedSessionNameInput({ text: "" }),
+                    attributes: [h.AriaLabel("Clear session name")],
+                  },
                   [icon(h, X, "size-4")],
+                  h,
                 ),
               ]
             : []),
@@ -261,7 +251,7 @@ const newSessionView = (
           button(
             {
               size: "lg",
-              className: "h-12 w-full rounded-xl text-base font-semibold",
+              className: "w-full",
               isDisabled: !canStart,
               onClick: Message.ClickedStartSession(),
               attributes: [h.AriaLabel("Start Session")],

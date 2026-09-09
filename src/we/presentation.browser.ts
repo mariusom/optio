@@ -111,10 +111,51 @@ const mount = async (
 afterEach(() => {
   handle?.dispose();
   container?.remove();
+  document.documentElement.style.removeProperty("font-size");
   vi.restoreAllMocks();
 });
 
 describe("persistent presentation regressions", () => {
+  it.each([16, 20])("scales base controls with a %ipx root font", async (rootSize) => {
+    await mount((_model, h) =>
+      h.div([], [button({}, "Default control", h), button({ size: "lg" }, "Large control", h)]),
+    );
+    document.documentElement.style.fontSize = `${rootSize}px`;
+    await expect.element(page.getByRole("button", { name: "Large control" })).toBeVisible();
+    for (const [name, height, padding] of [
+      ["Default control", 44, 16],
+      ["Large control", 48, 24],
+    ] as const) {
+      const style = getComputedStyle(page.getByRole("button", { name }).element());
+      expect(parseFloat(style.height)).toBe((height * rootSize) / 16);
+      expect(parseFloat(style.paddingLeft)).toBe((padding * rootSize) / 16);
+      expect(parseFloat(style.paddingRight)).toBe((padding * rootSize) / 16);
+      expect(parseFloat(style.borderRadius)).toBe((8 * rootSize) / 16);
+    }
+  });
+
+  it.each([390, 820, 1440])(
+    "uses base form geometry in the session page at %ipx",
+    async (width) => {
+      await mount((model, h) => startView({ ...model, templates: [template] }, h));
+      await page.viewport(width, 900);
+      await expect.element(page.getByLabelText("Session name", { exact: true })).toBeVisible();
+      for (const name of ["Study template", "Session name"]) {
+        const style = getComputedStyle(page.getByLabelText(name, { exact: true }).element());
+        expect(parseFloat(style.height)).toBe(44);
+        expect(parseFloat(style.paddingLeft)).toBe(12);
+        expect(parseFloat(style.borderRadius)).toBe(8);
+        expect(parseFloat(style.fontSize)).toBe(width < 768 ? 16 : 14);
+      }
+      const action = page.getByRole("button", { name: "Start Session", exact: true }).element();
+      expect(parseFloat(getComputedStyle(action).height)).toBe(48);
+      expect(parseFloat(getComputedStyle(action).paddingLeft)).toBe(24);
+      const content = action.closest('[data-slot="page"]')!;
+      expect(content.scrollWidth).toBe(content.clientWidth);
+      expect(parseFloat(getComputedStyle(content).paddingLeft)).toBe(width < 768 ? 16 : 24);
+    },
+  );
+
   it.each([390, 1280])("keeps the editor within the viewport at %ipx", async (width) => {
     await mount((model, h) =>
       h.div(

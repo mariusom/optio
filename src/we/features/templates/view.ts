@@ -2,7 +2,6 @@ import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
-  ChevronRight,
   Ellipsis,
   LayoutTemplate,
   confirmSheet,
@@ -12,13 +11,13 @@ import {
   icon,
   notice,
   page,
+  row,
   sheet,
   sheetAction,
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
 import type { TemplateSummary } from "../../../we/types";
@@ -42,55 +41,44 @@ const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
     template.id,
     [h.Class("lazy-row flex w-full items-stretch")],
     [
-      h.button(
-        [
-          h.Type("button"),
-          h.Class(
-            "flex min-h-11 min-w-0 flex-1 items-center gap-3 py-2.5 pl-4 text-left text-[1.0625rem] leading-snug transition-colors hover:bg-muted/60 active:bg-muted",
-          ),
-          h.OnClick(Message.ClickedTemplateRow({ id: template.id })),
-          h.AriaLabel(`Open ${template.name}`),
-        ],
-        [
-          h.span(
-            [h.Class("flex min-w-0 flex-1 flex-col")],
-            [
-              h.span([h.Class("truncate")], [template.name]),
-              h.span(
-                [h.Class("truncate text-[0.9375rem] text-muted-foreground")],
-                [questionSummaryLine(template.fieldCount, template.requiredCount)],
-              ),
-            ],
-          ),
-          ...(template.isDefault ? [statusPill({ tone: "primary" }, ["Default"], h)] : []),
-          icon(h, ChevronRight, "size-5 shrink-0 text-muted-foreground/60"),
-        ],
+      row(
+        {
+          title: template.name,
+          subtitle: questionSummaryLine(template.fieldCount, template.requiredCount),
+          trailing: template.isDefault
+            ? statusPill({ tone: "primary" }, ["Default"], h)
+            : undefined,
+          chevron: true,
+          className: "min-w-0 flex-1",
+          onClick: Message.ClickedTemplateRow({ id: template.id }),
+          attributes: [h.AriaLabel(`Open ${template.name}`)],
+        },
+        h,
       ),
-      h.button(
-        [
-          h.Type("button"),
-          h.Class(
-            "grid size-11 shrink-0 place-items-center self-center rounded-full text-muted-foreground transition-colors hover:bg-muted active:opacity-60",
-          ),
-          h.OnClick(Message.OpenedTemplateActions({ id: template.id })),
-          h.AriaLabel(`Actions for "${template.name}"`),
-        ],
+      button(
+        {
+          variant: "ghost",
+          size: "icon",
+          className: "self-center",
+          onClick: Message.OpenedTemplateActions({ id: template.id }),
+          attributes: [h.AriaLabel(`Actions for "${template.name}"`)],
+        },
         [icon(h, Ellipsis, "size-5")],
+        h,
       ),
     ],
   );
 
-const addSamplesButton = (h: HtmlBuilder<Message>, className = "") =>
-  h.button(
-    [
-      h.Type("button"),
-      h.Class(
-        cn("mx-auto min-h-11 px-4 text-[1.0625rem] text-primary active:opacity-60", className),
-      ),
-      h.OnClick(Message.ClickedAddSampleTemplates()),
-      h.AriaLabel("Add sample templates"),
-    ],
-    ["Add sample templates"],
+const addSamplesButton = (h: HtmlBuilder<Message>) =>
+  button(
+    {
+      variant: "link",
+      className: "mx-auto",
+      onClick: Message.ClickedAddSampleTemplates(),
+      attributes: [h.AriaLabel("Add sample templates")],
+    },
+    "Add sample templates",
+    h,
   );
 
 // ── Sheets ─────────────────────────────────────────────────────────────────
@@ -107,7 +95,6 @@ const createSheet = (newName: string, h: HtmlBuilder<Message>) => {
         button(
           {
             size: "lg",
-            className: "h-11 text-base font-semibold",
             isDisabled: !canCreate,
             onClick: Message.ConfirmedCreateTemplate(),
             attributes: [h.AriaLabel("Create template")],
@@ -119,7 +106,6 @@ const createSheet = (newName: string, h: HtmlBuilder<Message>) => {
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: Message.CanceledCreateTemplate(),
             attributes: [h.AriaLabel("Cancel")],
           },
@@ -136,7 +122,7 @@ const createSheet = (newName: string, h: HtmlBuilder<Message>) => {
           h.input([
             h.Id("new-template-name"),
             h.Type("text"),
-            h.Class(cn(inputClass, "h-11 rounded-lg text-base")),
+            h.Class(inputClass),
             h.Value(newName),
             h.Placeholder("Morning observations"),
             h.AriaLabel("Template name"),
@@ -172,7 +158,6 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: Message.ClosedTemplateActions(),
             attributes: [h.AriaLabel("Cancel")],
           },
@@ -258,7 +243,6 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
                 button(
                   {
                     size: "lg",
-                    className: "h-12 rounded-xl px-6 text-base font-semibold",
                     onClick: Message.ClickedNewTemplate(),
                     attributes: [h.AriaLabel("Create template")],
                   },

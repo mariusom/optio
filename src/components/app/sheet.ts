@@ -61,8 +61,8 @@ export const sheet = <M>(
           h.Class(
             cn(
               "relative flex w-full max-h-[calc(100dvh-3rem)] flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl",
-              "rounded-t-2xl pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
-              "sm:rounded-2xl sm:ring-1 sm:ring-foreground/10 sm:zoom-in-95 sm:slide-in-from-bottom-0",
+              "rounded-t-lg pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
+              "sm:rounded-lg sm:border sm:border-border sm:zoom-in-95 sm:slide-in-from-bottom-0",
               config.size === "md" ? "sm:max-w-lg" : "sm:max-w-sm",
               config.className,
             ),
@@ -77,10 +77,10 @@ export const sheet = <M>(
             [],
           ),
           h.div(
-            [h.Class("flex flex-col gap-1 px-5 pt-4 pb-2 text-center sm:text-left")],
+            [h.Class("flex flex-col gap-2 p-6 text-left")],
             [
               h.h2(
-                [h.Id(titleId), h.Class("text-[1.0625rem] font-semibold tracking-tight")],
+                [h.Id(titleId), h.Class("text-lg font-semibold tracking-tight")],
                 [config.title],
               ),
               ...(config.description === undefined
@@ -93,19 +93,10 @@ export const sheet = <M>(
                   ]),
             ],
           ),
-          h.div([h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-2")], children),
+          h.div([h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6")], children),
           ...(config.footer === undefined || config.footer.length === 0
-            ? [h.div([h.Class("h-3")], [])]
-            : [
-                h.div(
-                  [
-                    h.Class(
-                      "flex flex-col gap-2 px-5 pt-3 pb-4 sm:flex-row-reverse sm:[&>*]:flex-1",
-                    ),
-                  ],
-                  config.footer,
-                ),
-              ]),
+            ? [h.div([h.Class("h-6")], [])]
+            : [h.div([h.Class("flex flex-col gap-2 p-6 sm:flex-row-reverse")], config.footer)]),
         ],
       ),
     ],
@@ -142,12 +133,6 @@ export const confirmSheet = <M>(config: ConfirmConfig<M>, h: HtmlBuilder<M>): Ht
           {
             variant: config.destructive ? "destructive" : "default",
             size: "lg",
-            className: cn(
-              "h-11 text-base font-semibold",
-              config.destructive
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : "",
-            ),
             isDisabled: config.isConfirmDisabled,
             onClick: config.onConfirm,
             attributes: [h.AriaLabel(config.confirmAriaLabel ?? config.confirmLabel)],
@@ -159,7 +144,6 @@ export const confirmSheet = <M>(config: ConfirmConfig<M>, h: HtmlBuilder<M>): Ht
           {
             variant: "secondary",
             size: "lg",
-            className: "h-11 text-base",
             onClick: config.onCancel,
             attributes: [h.AriaLabel(config.cancelAriaLabel ?? config.cancelLabel ?? "Cancel")],
           },
@@ -184,18 +168,15 @@ export const sheetAction = <M>(
   }>,
   h: HtmlBuilder<M>,
 ): Html =>
-  h.button(
-    [
-      h.Type("button"),
-      h.Class(
-        cn(
-          "flex min-h-12 w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-[1.0625rem] transition-colors hover:bg-muted active:bg-muted disabled:opacity-40 disabled:pointer-events-none",
-          config.destructive === true ? "text-destructive" : "text-foreground",
-        ),
-      ),
-      h.Disabled(config.isDisabled ?? false),
-      h.OnClick(config.onClick),
-      h.AriaLabel(config.ariaLabel ?? config.label),
-    ],
+  button(
+    {
+      variant: config.destructive ? "destructive" : "ghost",
+      size: "lg",
+      className: "w-full justify-start",
+      isDisabled: config.isDisabled,
+      onClick: config.onClick,
+      attributes: [h.AriaLabel(config.ariaLabel ?? config.label)],
+    },
     [...(config.leading === undefined ? [] : [config.leading]), config.label],
+    h,
   );

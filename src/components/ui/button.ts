@@ -43,15 +43,14 @@ export const buttonSizeKeys = [
 ] as const;
 
 export const buttonSizes: Record<ButtonSize, string> = {
-  default: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-  xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-  sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-  lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-  icon: "size-8",
-  "icon-xs":
-    "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-  "icon-sm": "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-  "icon-lg": "size-9",
+  default: "h-11 gap-2 rounded-md px-4",
+  xs: "h-7 gap-1 rounded-sm px-2 text-xs [&_svg]:size-3",
+  sm: "h-9 gap-1.5 rounded-md px-3 text-sm [&_svg]:size-3.5",
+  lg: "h-12 gap-2 rounded-md px-6 text-base [&_svg]:size-5",
+  icon: "size-11 rounded-md",
+  "icon-xs": "size-7 rounded-sm [&_svg]:size-3",
+  "icon-sm": "size-9 rounded-md [&_svg]:size-3.5",
+  "icon-lg": "size-12 rounded-md [&_svg]:size-5",
 };
 
 export type ButtonSize = (typeof buttonSizeKeys)[number];
@@ -74,6 +73,17 @@ export type ButtonConfig<M> = Readonly<{
 
 export type ButtonLabel = Html | string | ReadonlyArray<Html | string>;
 
+/** Shared styles for buttons and navigation links styled as buttons. */
+export const buttonClass = (
+  config: Readonly<{ variant?: ButtonVariant; size?: ButtonSize; className?: string }> = {},
+): string =>
+  cn(
+    buttonBase,
+    buttonVariants[config.variant ?? "default"],
+    buttonSizes[config.size ?? "default"],
+    config.className,
+  );
+
 /** Styled button built on the @foldkit/ui Button helper. */
 export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: HtmlBuilder<M>): Html =>
   FoldkitButton.view<M>(
@@ -86,14 +96,7 @@ export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: HtmlBu
         h.button(
           [
             ...attributes.button,
-            h.Class(
-              cn(
-                buttonBase,
-                buttonVariants[config.variant ?? "default"],
-                buttonSizes[config.size ?? "default"],
-                config.className,
-              ),
-            ),
+            h.Class(buttonClass(config)),
             h.DataAttribute("slot", "button"),
             h.DataAttribute("size", config.size ?? "default"),
             ...(config.attributes ?? []),

@@ -44,7 +44,7 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 | Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                                   |
 | Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                            |
 | PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                                    |
-| Package manager    | pnpm ≥ 11.25 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                                      |
+| Package manager    | pnpm 12.4.0 (workspace `minimumReleaseAge: 1440` supply-chain guard)                                                                       |
 | Hosting            | GitHub Pages (static SPA + service worker, served under `/optio/`)                                                                         |
 
 ## Standalone-PWA hardening
@@ -76,15 +76,15 @@ node scripts/screenshots/tour.mjs /tmp/tour   # screenshot every screen (needs `
 
 ## Design language
 
-optio is designed phone-first in the vocabulary of SwiftUI / iOS, then the
-same layout is centered on tablets and desktops:
+optio uses Foldcn's neutral light/dark theme and Tailwind v4's spacing scale.
+The layout stays phone-first, centered on tablets and desktops:
 
 - **Shell** — large-title page headers on the four tab roots, a bottom tab bar
   on phones and a sidebar (icon rail on tablets, labeled column on wide
   screens) at `≥768px`. Pushed screens (template editor, session detail, live
   session) draw one 44pt navigation bar with a back link that looks identical
   at every size, so nothing rearranges between breakpoints.
-- **Content** — inset grouped lists with uppercase section headers and muted
+- **Content** — bordered grouped lists with sentence-case section headers and muted
   footers, 44pt rows, checkmarks for selection, chevrons for navigation, one
   full-width primary action per screen, destructive actions in red and always
   confirmed in a sheet.
@@ -106,26 +106,27 @@ same layout is centered on tablets and desktops:
 Two layers, both TypeScript view functions for Foldkit (no React):
 
 1. **`src/components/ui/*`** — [Foldcn](https://foldcn.elianiva.com) registry
-   items, installed **unmodified** so they can be re-synced as foldcn evolves.
+   items owned by this project, following shadcn's copy-and-customize approach.
    `components.json` registers `@foldcn` and maps the `@/components`,
    `@/components/ui`, `@/lib` and `@/hooks` aliases. Add or refresh items with
    the namespaced registry names:
 
    ```sh
-   npx shadcn@latest add @foldcn/button @foldcn/sheet --overwrite
+   npx shadcn@latest add @foldcn/button @foldcn/sheet
    ```
 
    Installed: button, input, textarea, switch, checkbox, radio-group,
    native-select, badge, card, item, empty, label, separator, skeleton,
-   progress, dialog, sheet, alert-dialog. `button.ts` carries one local
-   addition (`data-size` on the element) that an `--overwrite` would drop.
+   progress, dialog, sheet, alert-dialog. Review before overwriting: button,
+   input, native-select, textarea and switch have shared app sizing defaults.
+   Buttons expose `buttonClass` for links and `data-size` for inspection.
    Stateful items (dialog, sheet, alert-dialog, radio-group) are Foldkit
    submodels; the app currently uses the pure-view items plus its own
    pure-view sheet (below).
 
 2. **`src/components/app/*`** — optio's own primitives composed from the
    Foldcn layer and Tailwind tokens: `tabBar`, `sidebar`, `navBar`,
-   `navBarAction`, `pageHeader`, `page`, `groupedList`, `row`, `detailRow`,
+   `navBarAction`, `pageHeader`, `page`, `groupedList`, `row`,
    `controlRow`, `statusPill`, `sheet`, `confirmSheet`, `emptyState`,
    `notice`, `hint`, and lucide `icon`. Every screen is built from these; no
    screen-specific CSS classes exist.
@@ -133,7 +134,24 @@ Two layers, both TypeScript view functions for Foldkit (no React):
 `src/index.css` keeps `@import "tailwindcss";`, the Foldcn `:root`/`.dark`
 tokens (dark mode follows the system unless overridden in Settings), the
 standalone-PWA hardening rules and a handful of `@utility` helpers
-(`pt-safe`, `pb-safe`, `px-safe`, `lazy-row`, `text-large-title`).
+(`pt-safe`, `pb-safe`, `px-safe`, `lazy-row`).
+
+### Shared sizing contract
+
+- Use Tailwind's `--spacing` scale (`gap-2`, `p-4`, `p-6`), semantic colors,
+  and `rounded-md`/`rounded-lg` derived from Foldcn's `--radius` token.
+- Default buttons and single-line fields are `h-11`; large buttons are `h-12`.
+  Button horizontal padding grows from `px-4` to `px-6`; fields use `px-3`.
+  These rem-based sizes scale with the root font. Compact registry sizes remain
+  available for dense interfaces; primary app controls retain 44px touch targets.
+- Page gutters use four spacing units on phones and six at `md`; sheets use
+  `p-6`, grouped controls `p-4`, and page sections `gap-6`.
+- Pages may constrain layout (`w-full`, `flex-1`) but must not override primitive
+  heights, padding, radii, colors or typography. Use existing semantic variants.
+  A new variation belongs in a shared component only when multiple consumers
+  need it; a one-off visual exception is not a reason to add a variant.
+- `statusPill` composes the registry badge; navigation and sheet actions reuse
+  the button primitive; empty states use the registry Empty defaults.
 
 The base registry currently requests Effect `4.0.0-rc.109`; this app keeps
 `4.0.0-rc.112` to match its existing stack. Check dependency changes after any

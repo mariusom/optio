@@ -50,7 +50,6 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
         button(
           {
             size: "lg",
-            className: "h-11 text-base font-semibold",
             onClick: Message.DismissedHistoryTask(),
             attributes: [h.AriaLabel("Done")],
           },
@@ -62,7 +61,7 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
     [
       task.sections.length === 0
         ? h.p(
-            [h.Class("px-1 py-6 text-center text-[0.9375rem] text-muted-foreground")],
+            [h.Class("px-1 py-6 text-center text-sm text-muted-foreground")],
             ["Nothing was answered for this task."],
           )
         : groupedList(

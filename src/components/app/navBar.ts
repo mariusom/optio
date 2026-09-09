@@ -1,5 +1,6 @@
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
 
+import { button, buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, icon } from "./icons";
 
@@ -59,11 +60,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
                 : [],
           ),
           h.h1(
-            [
-              h.Class(
-                "min-w-0 truncate px-1 text-center text-[1.0625rem] font-semibold tracking-tight",
-              ),
-            ],
+            [h.Class("min-w-0 truncate px-1 text-center text-base font-semibold tracking-tight")],
             [config.title],
           ),
           h.div([h.Class("flex min-w-0 items-center justify-end gap-1")], config.trailing ?? []),
@@ -84,8 +81,10 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
     ],
   );
 
-const backClass =
-  "-ml-2 inline-flex h-11 max-w-[9rem] items-center gap-0.5 rounded-lg pr-2 pl-1 text-[1.0625rem] text-primary active:opacity-60";
+const backClass = buttonClass({
+  variant: "ghost",
+  className: "-ml-2 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+});
 
 const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
   const body = [
@@ -95,7 +94,16 @@ const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
   const label = h.AriaLabel(`Back to ${back.label}`);
   return back.onClick === undefined
     ? h.a([h.Class(backClass), h.Href(back.href), label], body)
-    : h.button([h.Type("button"), h.Class(backClass), h.OnClick(back.onClick), label], body);
+    : button(
+        {
+          variant: "ghost",
+          className: "-ml-2 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+          onClick: back.onClick,
+          attributes: [label],
+        },
+        body,
+        h,
+      );
 };
 
 /** Compact text button for nav bar trailing slots ("Done", "Save", "Edit"). */
@@ -112,30 +120,28 @@ export const navBarAction = <M>(
   }>,
   h: HtmlBuilder<M>,
 ): Html => {
-  const classes = cn(
-    "inline-flex h-11 min-w-11 items-center justify-center gap-1 rounded-lg px-2 text-[1.0625rem] text-primary active:opacity-60 disabled:opacity-40 disabled:pointer-events-none",
-    config.emphasized ? "font-semibold" : "",
-  );
+  const className = cn("px-2 text-base text-primary", config.emphasized && "font-semibold");
+  const attributes = [
+    ...(config.ariaLabel ? [h.AriaLabel(config.ariaLabel)] : []),
+    ...(config.attributes ?? []),
+  ];
   if (config.href !== undefined) {
     return h.a(
-      [
-        h.Class(classes),
-        h.Href(config.href),
-        ...(config.ariaLabel ? [h.AriaLabel(config.ariaLabel)] : []),
-      ],
+      [h.Class(buttonClass({ variant: "ghost", className })), h.Href(config.href), ...attributes],
       [config.label],
     );
   }
-  return h.button(
-    [
-      h.Type("button"),
-      h.Class(classes),
-      h.Disabled(config.isDisabled ?? false),
-      ...(config.onClick !== undefined ? [h.OnClick(config.onClick)] : []),
-      ...(config.ariaLabel ? [h.AriaLabel(config.ariaLabel)] : []),
-      ...(config.attributes ?? []),
-    ],
-    [config.label],
+  return button(
+    {
+      type: "button",
+      variant: "ghost",
+      className,
+      isDisabled: config.isDisabled,
+      onClick: config.onClick,
+      attributes: attributes as ReadonlyArray<Attribute<M>>,
+    },
+    config.label,
+    h,
   );
 };
 
@@ -157,14 +163,21 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
       h.div(
         [
           h.Class(
-            "mx-auto flex w-full max-w-3xl items-end justify-between gap-4 px-safe pt-4 pb-3 md:pt-8",
+            "mx-auto flex w-full max-w-3xl items-end justify-between gap-4 px-safe py-4 md:py-8",
           ),
         ],
         [
           h.div(
             [h.Class("min-w-0")],
             [
-              h.h1([h.Class("text-large-title truncate text-foreground")], [config.title]),
+              h.h1(
+                [
+                  h.Class(
+                    "truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl",
+                  ),
+                ],
+                [config.title],
+              ),
               ...(config.subtitle === undefined
                 ? []
                 : [h.p([h.Class("mt-1 text-sm text-muted-foreground")], [config.subtitle])]),

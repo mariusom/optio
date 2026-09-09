@@ -106,7 +106,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                   ),
                 ]),
             h.p(
-              [h.Class("pt-8 text-center text-[0.9375rem] text-muted-foreground")],
+              [h.Class("pt-8 text-center text-sm text-muted-foreground")],
               ["Opening this session…"],
             ),
           ],
