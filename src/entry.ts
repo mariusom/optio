@@ -5,12 +5,13 @@ import { registerSW } from "virtual:pwa-register";
 
 import "./index.css";
 import { applicationConfig } from "./application.ts";
-import { initializeTheme } from "./we/browserTheme";
+import { initializeStyle, initializeTheme } from "./we/browserTheme";
 import { installSheetFocus } from "./we/sheetFocus";
 import { getStore } from "./livestore/client";
 import type { ModelContext } from "./agents/webmcp";
 
 const theme = initializeTheme();
+const style = initializeStyle();
 installSheetFocus();
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ const application = Runtime.makeApplication({
   ...applicationConfig,
   init: (url) => {
     const initial = applicationConfig.init(url);
-    return { ...initial, model: { ...initial.model, theme } };
+    return { ...initial, model: { ...initial.model, theme, style } };
   },
   container: document.getElementById("root")!,
 });

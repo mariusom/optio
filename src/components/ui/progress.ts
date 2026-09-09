@@ -33,7 +33,7 @@ const clampValue = (value: number): number => Math.min(100, Math.max(0, value));
 const progressIndicator = <M>(value: number | undefined, h: HtmlBuilder<M>): Html =>
   h.div(
     [
-      h.Class(progressIndicatorClass),
+      h.Class(cn(progressIndicatorClass)),
       h.DataAttribute("slot", "progress-indicator"),
       // Undefined = indeterminate: empty track until primitives can animate.
       h.Style({
@@ -56,7 +56,7 @@ export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>
     ],
     [
       h.div(
-        [h.Class(progressTrackClass), h.DataAttribute("slot", "progress-track")],
+        [h.Class(cn(progressTrackClass)), h.DataAttribute("slot", "progress-track")],
         [progressIndicator(config.value, h)],
       ),
     ],

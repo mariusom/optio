@@ -107,7 +107,7 @@ export const nativeSelect = <M>(config: NativeSelectConfig<M>, h: HtmlBuilder<M>
                 h.span(
                   [
                     h.DataAttribute("slot", "native-select-icon"),
-                    h.Class(nativeSelectIconClass),
+                    h.Class(cn(nativeSelectIconClass)),
                     h.AriaHidden(true),
                   ],
                   [nativeSelectChevron(h)],

@@ -91,7 +91,7 @@ export const switch_ = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
             ),
             ...(attributes.hiddenInput.length > 0 ? [h.input([...attributes.hiddenInput])] : []),
             h.div(
-              [h.Class(switchTextWrapperClass)],
+              [h.Class(cn(switchTextWrapperClass))],
               [
                 h.label(
                   [...attributes.label, h.Class(cn(switchLabelClass, config.labelClass))],

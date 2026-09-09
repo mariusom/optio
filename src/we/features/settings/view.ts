@@ -4,6 +4,7 @@ import { choiceRows, groupedList, notice, page, row } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import type { Theme } from "../../theme";
+import type { FoldcnStyle } from "../../style";
 
 const THEMES: ReadonlyArray<{ value: Theme; label: string }> = [
   { value: "light", label: "Light" },
@@ -11,7 +12,25 @@ const THEMES: ReadonlyArray<{ value: Theme; label: string }> = [
   { value: "auto", label: "Automatic" },
 ];
 
-export const settingsPage = (theme: Theme, saveFailed: boolean, h: HtmlBuilder<Message>) =>
+const STYLES: ReadonlyArray<{ value: FoldcnStyle; label: string }> = [
+  { value: "default", label: "Default (Nova)" },
+  { value: "nova", label: "Nova" },
+  { value: "vega", label: "Vega" },
+  { value: "maia", label: "Maia" },
+  { value: "lyra", label: "Lyra" },
+  { value: "mira", label: "Mira" },
+  { value: "luma", label: "Luma" },
+  { value: "sera", label: "Sera" },
+  { value: "rhea", label: "Rhea" },
+];
+
+export const settingsPage = (
+  theme: Theme,
+  style: FoldcnStyle,
+  saveFailed: boolean,
+  styleSaveFailed: boolean,
+  h: HtmlBuilder<Message>,
+) =>
   page(
     {},
     [
@@ -24,6 +43,19 @@ export const settingsPage = (theme: Theme, saveFailed: boolean, h: HtmlBuilder<M
             label: option.label,
             selected: theme === option.value,
             onSelect: Message.SelectedTheme({ theme: option.value }),
+          })),
+        },
+        h,
+      ),
+      choiceRows(
+        {
+          label: "Component style",
+          header: "Component style",
+          footer: "Changes component shape, spacing and typography independently of appearance.",
+          choices: STYLES.map((option) => ({
+            label: option.label,
+            selected: style === option.value,
+            onSelect: Message.SelectedStyle({ style: option.value }),
           })),
         },
         h,
@@ -44,6 +76,14 @@ export const settingsPage = (theme: Theme, saveFailed: boolean, h: HtmlBuilder<M
                 onClick: Message.SelectedTheme({ theme }),
               },
               "Try again",
+              h,
+            ),
+          ]
+        : []),
+      ...(styleSaveFailed
+        ? [
+            notice(
+              { tone: "warning", text: "The component style was applied but couldn’t be saved." },
               h,
             ),
           ]

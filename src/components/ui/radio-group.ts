@@ -111,12 +111,15 @@ const defaultOptionRow = <M, Value extends string>(
     [h.Class(cn("flex w-full items-center gap-2", optionClass))],
     [
       h.button(
-        [...info.option, h.DataAttribute("slot", "radio-group-item"), h.Class(radioItemClass)],
+        [...info.option, h.DataAttribute("slot", "radio-group-item"), h.Class(cn(radioItemClass))],
         info.isSelected
           ? [
               h.span(
-                [h.DataAttribute("slot", "radio-group-indicator"), h.Class(radioIndicatorClass)],
-                [h.span([h.Class(radioDotClass)])],
+                [
+                  h.DataAttribute("slot", "radio-group-indicator"),
+                  h.Class(cn(radioIndicatorClass)),
+                ],
+                [h.span([h.Class(cn(radioDotClass))])],
               ),
             ]
           : [],
@@ -125,7 +128,7 @@ const defaultOptionRow = <M, Value extends string>(
         [
           ...info.label,
           h.DataAttribute("slot", "radio-group-item-label"),
-          h.Class(radioItemLabelClass),
+          h.Class(cn(radioItemLabelClass)),
         ],
         [labelText],
       ),
@@ -136,7 +139,7 @@ const defaultOptionRow = <M, Value extends string>(
               [
                 ...info.description,
                 h.DataAttribute("slot", "radio-group-item-description"),
-                h.Class(radioItemDescriptionClass),
+                h.Class(cn(radioItemDescriptionClass)),
               ],
               [descriptionText],
             ),

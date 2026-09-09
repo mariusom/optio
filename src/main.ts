@@ -16,6 +16,8 @@ import {
 import { hrefFor } from "./we/routes";
 import { Theme } from "./we/theme";
 import { changeTheme } from "./we/browserTheme";
+import { FoldcnStyle } from "./we/style";
+import { changeStyle } from "./we/browserTheme";
 import { settingsPage } from "./we/features/settings/view";
 import { getStore } from "./livestore/client";
 import { FieldDef, FieldKind, tables } from "./livestore/schema";
@@ -91,6 +93,8 @@ export const Model = S.Struct({
   route: RouteSchema,
   theme: Theme,
   themeSaveFailed: S.Boolean,
+  style: FoldcnStyle,
+  styleSaveFailed: S.Boolean,
   // Templates tab slice
   templates: S.Array(
     S.Struct({
@@ -260,6 +264,8 @@ const initialModel = (route: Route): Model => ({
   route,
   theme: "auto",
   themeSaveFailed: false,
+  style: "default",
+  styleSaveFailed: false,
   templates: [],
   showCreate: false,
   newName: "",
@@ -308,6 +314,13 @@ const SaveTheme = Command.define("SaveTheme", {
   messages: [Message.ThemeSaveFinished],
   execute: ({ theme }) =>
     Effect.map(changeTheme(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
+});
+
+const SaveStyle = Command.define("SaveStyle", {
+  args: { style: FoldcnStyle },
+  messages: [Message.StyleSaveFinished],
+  execute: ({ style }) =>
+    Effect.map(changeStyle(style), (saved) => Message.StyleSaveFinished({ style, saved })),
 });
 
 const NavigateExternal = Command.define("NavigateExternal", {
@@ -423,6 +436,14 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     }),
     ThemeSaveFinished: ({ theme, saved }) => ({
       model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
+      commands: [],
+    }),
+    SelectedStyle: ({ style }) => ({
+      model: { ...model, style },
+      commands: [SaveStyle({ style })],
+    }),
+    StyleSaveFinished: ({ style, saved }) => ({
+      model: style === model.style ? { ...model, styleSaveFailed: !saved } : model,
       commands: [],
     }),
     // ── Routing ────────────────────────────────────────────────────────────
@@ -1877,7 +1898,13 @@ const pageTitle = (route: Route): string => {
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   switch (model.route._tag) {
     case "SettingsTab":
-      return settingsPage(model.theme, model.themeSaveFailed, h);
+      return settingsPage(
+        model.theme,
+        model.style,
+        model.themeSaveFailed,
+        model.styleSaveFailed,
+        h,
+      );
     case "StartTab":
       return startView(model, h);
     case "TemplatesTab":
