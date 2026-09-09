@@ -136,6 +136,25 @@ tokens (dark mode follows the system unless overridden in Settings), the
 standalone-PWA hardening rules and a handful of `@utility` helpers
 (`pt-safe`, `pb-safe`, `px-safe`, `lazy-row`).
 
+Settings offers Foldcn's Default (Nova), Nova, Vega, Maia, Lyra, Mira, Luma,
+Sera and Rhea component styles independently of Light/Dark/Automatic appearance.
+The style is saved locally as `optio-foldcn-style`. These are component-class
+presets, not separate color palettes. Optio's app-owned navigation and grouped
+lists keep their layout; registry components use the selected preset while
+retaining the app's touch sizing and accessibility customizations.
+
+Refresh the installed components' style table with:
+
+```sh
+node scripts/update-foldcn-styles.mjs
+pnpm exec vp fmt src/we/componentStyles.generated.ts
+```
+
+The generator reads all eight resolved registries, matches named class constants
+and variant entries, and fails on missing/ambiguous matches. It updates styles,
+not component behavior or dependencies; review registry source changes separately.
+Default/Nova retains Optio's owned defaults. Other styles use upstream radii.
+
 ### Shared sizing contract
 
 - Use Tailwind's `--spacing` scale (`gap-2`, `p-4`, `p-6`), semantic colors,

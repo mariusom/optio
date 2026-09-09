@@ -18,6 +18,7 @@ import {
   notice,
   page,
   row,
+  rowAction,
   sheet,
   statusPill,
 } from "@/components/app";
@@ -25,6 +26,7 @@ import { button } from "@/components/ui/button";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import type { FieldDef, FieldKind } from "../../../livestore/schema";
 import { hasOptions, supportsRequired } from "../../fields";
@@ -104,10 +106,8 @@ const moveButton = (
   config: Readonly<{ label: string; onClick: Message; isDisabled: boolean; up: boolean }>,
   h: HtmlBuilder<Message>,
 ): Html =>
-  button(
+  rowAction(
     {
-      variant: "ghost",
-      size: "icon",
       isDisabled: config.isDisabled,
       attributes: [h.AriaLabel(config.label)],
       onClick: config.onClick,
@@ -133,7 +133,7 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
         h,
       ),
       h.div(
-        [h.Class("flex shrink-0 items-center self-center pr-1")],
+        [h.Class("flex shrink-0 items-stretch")],
         [
           moveButton(
             {
@@ -163,11 +163,11 @@ const questionRow = (field: FieldDef, index: number, total: number, h: HtmlBuild
 const nameRow = (editor: Editor, h: HtmlBuilder<Message>) =>
   controlRow(
     [
-      h.label([h.For("template-name"), h.Class(inputLabelClass)], ["Name"]),
+      h.label([h.For("template-name"), h.Class(cn(inputLabelClass))], ["Name"]),
       h.input([
         h.Id("template-name"),
         h.Type("text"),
-        h.Class(inputClass),
+        h.Class(cn(inputClass)),
         h.Value(editor.name),
         h.Placeholder("Morning observations"),
         h.Autocomplete("off"),
@@ -289,7 +289,7 @@ const choicesSection = (
               h.input([
                 h.Id("new-choice"),
                 h.Type("text"),
-                h.Class(inputClass),
+                h.Class(cn(inputClass)),
                 h.Value(draft.newOptionText),
                 h.Placeholder("Add a choice"),
                 h.AriaLabel("New choice"),
@@ -360,11 +360,11 @@ const defaultAnswerSection = (
     [
       controlRow(
         [
-          h.label([h.For("question-default"), h.Class(inputLabelClass)], ["Default answer"]),
+          h.label([h.For("question-default"), h.Class(cn(inputLabelClass))], ["Default answer"]),
           kind === "textArea"
             ? h.textarea([
                 h.Id("question-default"),
-                h.Class(textareaClass),
+                h.Class(cn(textareaClass)),
                 h.Value(draft.defaultValue),
                 h.Placeholder("Leave empty for none"),
                 h.Autocapitalize("sentences"),
@@ -373,7 +373,7 @@ const defaultAnswerSection = (
             : h.input([
                 h.Id("question-default"),
                 h.Type("text"),
-                h.Class(inputClass),
+                h.Class(cn(inputClass)),
                 h.Value(draft.defaultValue),
                 h.Placeholder("Leave empty for none"),
                 h.Autocomplete("off"),
@@ -435,11 +435,11 @@ const questionSheet = (editor: Editor, h: HtmlBuilder<Message>) => {
             [
               controlRow(
                 [
-                  h.label([h.For("question-name"), h.Class(inputLabelClass)], ["Question"]),
+                  h.label([h.For("question-name"), h.Class(cn(inputLabelClass))], ["Question"]),
                   h.input([
                     h.Id("question-name"),
                     h.Type("text"),
-                    h.Class(inputClass),
+                    h.Class(cn(inputClass)),
                     h.Value(draft.name),
                     h.Placeholder("What are you recording?"),
                     h.Autocomplete("off"),

@@ -12,12 +12,14 @@ import {
   notice,
   page,
   row,
+  rowAction,
   sheet,
   sheetAction,
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
 import type { TemplateSummary } from "../../../we/types";
@@ -55,11 +57,8 @@ const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
         },
         h,
       ),
-      button(
+      rowAction(
         {
-          variant: "ghost",
-          size: "icon",
-          className: "self-center",
           onClick: Message.OpenedTemplateActions({ id: template.id }),
           attributes: [h.AriaLabel(`Actions for "${template.name}"`)],
         },
@@ -122,7 +121,7 @@ const createSheet = (newName: string, h: HtmlBuilder<Message>) => {
           h.input([
             h.Id("new-template-name"),
             h.Type("text"),
-            h.Class(inputClass),
+            h.Class(cn(inputClass)),
             h.Value(newName),
             h.Placeholder("Morning observations"),
             h.AriaLabel("Template name"),

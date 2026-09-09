@@ -184,7 +184,7 @@ const sessionNameField = (placeholderName: string, value: string, h: HtmlBuilder
   h.div(
     [h.Class("group/field flex w-full flex-col gap-1.5")],
     [
-      h.label([h.For("session-name"), h.Class(inputLabelClass)], ["Session name"]),
+      h.label([h.For("session-name"), h.Class(cn(inputLabelClass))], ["Session name"]),
       h.div(
         [h.Class("relative")],
         [

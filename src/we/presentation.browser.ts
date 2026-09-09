@@ -14,6 +14,9 @@ import { templatesPage } from "./features/templates/view";
 import { historyPage } from "./features/history/historyView";
 import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
+import { settingsPage } from "./features/settings/view";
+import { foldcnStyles, setCurrentStyle } from "./style";
+import { initializeStyle } from "./browserTheme";
 import { groupedList, navBar, navBarAction, row } from "../components/app";
 import { button } from "../components/ui/button";
 import "../index.css";
@@ -112,10 +115,84 @@ afterEach(() => {
   handle?.dispose();
   container?.remove();
   document.documentElement.style.removeProperty("font-size");
+  setCurrentStyle("default");
+  localStorage.removeItem("optio-foldcn-style");
   vi.restoreAllMocks();
 });
 
 describe("persistent presentation regressions", () => {
+  it.each(foldcnStyles)("fills template action cells in %s", async (style) => {
+    setCurrentStyle(style);
+    await mount((model, h) => templatesPage({ ...model, templates: [template] }, h));
+    const action = page.getByRole("button", { name: 'Actions for "Observation"' });
+    await expect.element(action).toBeVisible();
+    const element = action.element();
+    const bounds = element.getBoundingClientRect();
+    const rowBounds = element.parentElement!.getBoundingClientRect();
+    expect(bounds.top).toBe(rowBounds.top);
+    expect(bounds.bottom).toBe(rowBounds.bottom);
+    expect(bounds.right).toBe(rowBounds.right);
+    expect(getComputedStyle(element).borderRadius).toBe("0px");
+  });
+
+  it.each(foldcnStyles)("fills question move action cells in %s", async (style) => {
+    setCurrentStyle(style);
+    await mount((model, h) => templateEditorPage({ ...model, editor: editor(2, 2) }, h));
+    const down = page.getByRole("button", { name: "Move Outcome down" });
+    await expect.element(down).toBeVisible();
+    for (const name of ["Move Outcome up", "Move Outcome down"]) {
+      const element = page.getByRole("button", { name }).element();
+      const bounds = element.getBoundingClientRect();
+      const rowElement = element.closest(".lazy-row")!;
+      const rowBounds = rowElement.getBoundingClientRect();
+      expect(bounds.top).toBe(rowBounds.top);
+      expect(bounds.bottom).toBe(
+        rowBounds.bottom - parseFloat(getComputedStyle(rowElement).borderBottomWidth),
+      );
+      expect(bounds.width).toBeGreaterThanOrEqual(44);
+      expect(getComputedStyle(element).borderRadius).toBe("0px");
+    }
+    expect(down.element().getBoundingClientRect().right).toBe(
+      down.element().closest(".lazy-row")!.getBoundingClientRect().right,
+    );
+    if (style === "lyra") {
+      const input = page.getByRole("textbox", { name: "Name", exact: true }).element();
+      expect(getComputedStyle(input).borderRadius).toBe("0px");
+      expect(input.getBoundingClientRect().height).toBe(44);
+    }
+  });
+
+  it("applies every settings style and restores the last selection", async () => {
+    await mount((model, h) =>
+      h.div(
+        [],
+        [
+          settingsPage(model.theme, model.style, model.themeSaveFailed, model.styleSaveFailed, h),
+          button({}, "Style sample", h),
+        ],
+      ),
+    );
+    const choices = page.getByRole("radiogroup", { name: "Component style" });
+    await expect.element(choices).toBeVisible();
+    expect(choices.element().querySelectorAll('[role="radio"]')).toHaveLength(9);
+    const renderedClasses = new Set<string>();
+    for (const style of foldcnStyles) {
+      const label =
+        style === "default" ? "Default (Nova)" : style[0]!.toUpperCase() + style.slice(1);
+      const option = choices.getByRole("radio", { name: label, exact: true });
+      await option.click();
+      await expect.element(option).toHaveAttribute("aria-checked", "true");
+      await expect.poll(() => localStorage.getItem("optio-foldcn-style")).toBe(style);
+      const sample = page.getByRole("button", { name: "Style sample" }).element();
+      renderedClasses.add(sample.className);
+      expect(sample.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+    // Styles must change actual rendered components, not only the radio value.
+    expect(renderedClasses.size).toBeGreaterThan(4);
+    setCurrentStyle("default");
+    expect(initializeStyle()).toBe("rhea");
+  });
+
   it.each([16, 20])("scales base controls with a %ipx root font", async (rootSize) => {
     await mount((_model, h) =>
       h.div([], [button({}, "Default control", h), button({ size: "lg" }, "Large control", h)]),

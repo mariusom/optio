@@ -68,7 +68,7 @@ export const checkbox = <M>(config: CheckboxConfig<M>, h: HtmlBuilder<M>): Html 
                         h.span(
                           [
                             h.DataAttribute("slot", "checkbox-indicator"),
-                            h.Class(checkboxIndicatorClass),
+                            h.Class(cn(checkboxIndicatorClass)),
                           ],
                           [icon(h, config.isIndeterminate === true ? Minus : Check, "size-3.5")],
                         ),

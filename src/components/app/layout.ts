@@ -3,11 +3,30 @@ import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { cn } from "@/lib/utils";
 import { Option } from "effect";
 import { badge } from "@/components/ui/badge";
+import { button, type ButtonConfig, type ButtonLabel } from "@/components/ui/button";
 
 import { Check, ChevronRight, icon } from "./icons";
 
 type Child = Html | string;
 type Attrs<M> = ReadonlyArray<Attribute<M> | ChildAttribute>;
+
+/** Edge-to-edge action cell beside a grouped-list row. */
+export const rowAction = <M>(
+  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes">,
+  label: ButtonLabel,
+  h: HtmlBuilder<M>,
+): Html =>
+  button(
+    {
+      ...config,
+      variant: "ghost",
+      size: "icon",
+      className:
+        "h-auto min-h-11 w-11 self-stretch rounded-none border-0 bg-clip-border focus-visible:-outline-offset-3 focus-visible:outline-2 focus-visible:outline-ring active:translate-y-0",
+    },
+    label,
+    h,
+  );
 
 /** Content column: centered, readable width, bottom padding clears the tab bar. */
 export const page = <M>(

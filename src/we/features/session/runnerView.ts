@@ -199,7 +199,7 @@ const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     [h.Class("px-4 py-3")],
     [
       h.input([
-        h.Class(inputClass),
+        h.Class(cn(inputClass)),
         h.Value(section.value),
         h.Placeholder("Type your answer"),
         h.AriaLabel(section.name),
@@ -217,7 +217,7 @@ const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     [h.Class("px-4 py-3")],
     [
       h.textarea([
-        h.Class(textareaClass),
+        h.Class(cn(textareaClass)),
         h.Value(section.value),
         h.Placeholder("Add anything worth remembering"),
         h.AriaLabel(section.name),
