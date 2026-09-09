@@ -239,11 +239,30 @@ const sectionValues = (task: RunnerTask): Record<string, string> => {
 
 // ── Machine definition + handlers ──────────────────────────────────────────
 
+const targets = Machine.targets(SessionStates);
+
 export const SessionMachine = Machine.make({
   id: "Session",
   root: SessionStates,
   events: SessionEvents,
   emittedEvents: SessionEmissions,
+  branches: {
+    idleSync: {
+      stay: { none: true },
+      enter: { initial: targets.root.Live },
+    },
+    liveSync: {
+      gone: { target: targets.root.Idle },
+      fresh: { initial: targets.root.Live },
+      same: { update: targets.root.Live },
+    },
+    updateLive: {
+      live: { update: targets.root.Live },
+    },
+    finishConfirmation: {
+      collecting: { target: targets.root.Live.Collecting },
+    },
+  },
 }).handle({
   states: {
     Idle: {
@@ -251,17 +270,11 @@ export const SessionMachine = Machine.make({
         // Store says a session exists → enter Live with fresh controls.
         // No session (null) ⇒ stay Idle: entering a compound without an active
         // child is invalid and fails planning.
-        DataSynced: (to) =>
-          to
-            .branches({
-              stay: { target: to.none },
-              enter: { target: to.branch.Live.initial },
-            })
-            .resolve(({ event, select }) =>
-              event.data === null
-                ? select.stay()
-                : select.enter.decoded(freshLiveValue(event.data)),
-            ),
+        DataSynced: {
+          branches: "idleSync",
+          resolve: ({ event, select }) =>
+            event.data === null ? select.stay() : select.enter.decoded(freshLiveValue(event.data)),
+        },
       },
     },
 
@@ -270,46 +283,49 @@ export const SessionMachine = Machine.make({
       on: {
         // Store snapshot refresh: gone → Idle, different session → fresh Live,
         // same session → keep controls, swap the data only.
-        DataSynced: (to) =>
-          to
-            .branches({
-              gone: { target: to.branch.Idle() },
-              fresh: { target: to.branch.Live.initial },
-              same: { target: to.local.update },
-            })
-            .resolve(({ event, state, select }) => {
-              if (event.data === null) return select.gone.from();
-              if (event.data.sessionId !== state.data.sessionId) {
-                return select.fresh.decoded(freshLiveValue(event.data));
-              }
-              return select.same.decoded({ ...state, data: event.data });
-            }),
+        DataSynced: {
+          branches: "liveSync",
+          resolve: ({ event, state, select }) => {
+            if (event.data === null) return select.gone.from();
+            if (event.data.sessionId !== state.data.sessionId) {
+              return select.fresh.decoded(freshLiveValue(event.data));
+            }
+            return select.same.decoded({ ...state, data: event.data });
+          },
+        },
 
         // Focus follows the tapped section (no topology change).
-        SectionFocused: (to) =>
-          to.local.update.decoded(({ current, event }) => ({
+        SectionFocused: {
+          update: targets.root.Live,
+          decoded: ({ state: current, event }) => ({
             ...current,
             focusedSectionId: event.fieldId,
-          })),
+          }),
+        },
 
         // Task list sheet toggle.
-        TaskListToggled: (to) =>
-          to.local.update.decoded(({ current }) => ({
+        TaskListToggled: {
+          update: targets.root.Live,
+          decoded: ({ state: current }) => ({
             ...current,
             showTaskList: !current.showTaskList,
-          })),
+          }),
+        },
 
         // Store ack: task recorded → close focus/task list.
-        RecordAcked: (to) =>
-          to.local.update.decoded(({ current }) => ({
+        RecordAcked: {
+          update: targets.root.Live,
+          decoded: ({ state: current }) => ({
             ...current,
             focusedSectionId: null,
             showTaskList: false,
-          })),
+          }),
+        },
 
         // Store ack: edit finished → clear edit state, focus the newest open task.
-        EditAcked: (to) =>
-          to.local.update.decoded(({ current }) => {
+        EditAcked: {
+          update: targets.root.Live,
+          decoded: ({ state: current }) => {
             const fallback = fallbackTaskId(current.data);
             return {
               ...current,
@@ -321,191 +337,178 @@ export const SessionMachine = Machine.make({
                 currentTaskId: fallback ?? current.data.currentTaskId,
               },
             };
-          }),
+          },
+        },
 
         // Store ack: session ended → back to Idle.
-        EndAcked: (to) => to.branch.Idle(),
+        EndAcked: { target: targets.root.Idle },
       },
 
       states: {
         Collecting: {
           on: {
             // Field edit: commit the value, radio auto-advances the focus.
-            FieldChanged: (to) =>
-              to.local
-                .Collecting()
-                .updating(to.branch.Live)
-                .resolve(({ current, target, owner, event }, enqueue) => {
-                  enqueue.emit(
-                    SessionEmissions.CommitFieldValue({
-                      taskFieldId: event.taskFieldId,
-                      value: event.value,
-                    }),
-                  );
-                  const fc = nextFocusForField(current.data, event.taskFieldId, event.value);
-                  return target.from().update(
-                    owner.decoded({
-                      ...current,
-                      focusedSectionId: fc.changed ? fc.next : current.focusedSectionId,
-                    }),
-                  );
-                }),
+            FieldChanged: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, event, select }, enqueue) => {
+                enqueue.emit(
+                  SessionEmissions.CommitFieldValue({
+                    taskFieldId: event.taskFieldId,
+                    value: event.value,
+                  }),
+                );
+                const fc = nextFocusForField(current.data, event.taskFieldId, event.value);
+                return select.live.decoded({
+                  ...current,
+                  focusedSectionId: fc.changed ? fc.next : current.focusedSectionId,
+                });
+              },
+            },
 
             // Record the current task (gated on required fields).
-            RecordRequested: (to) =>
-              to.local
-                .Collecting()
-                .updating(to.branch.Live)
-                .resolve(({ current, target, owner }, enqueue) => {
-                  const cur = currentTask(current.data);
-                  if (cur === null) return target.from().update(owner.decoded(current));
-                  // Completed tasks are saved through the edit flow, never recorded again.
-                  // Check this before required fields so a stale selection is a quiet no-op.
-                  if (cur.endDate !== null || cur.isBeingEdited) {
-                    return target.from().update(owner.decoded(current));
-                  }
-                  if (!isTaskDone(cur)) {
-                    return target.from().update(
-                      owner.decoded({
-                        ...current,
-                        lastError: "Answer the required questions before recording.",
-                      }),
-                    );
-                  }
-                  enqueue.emit(
-                    SessionEmissions.CommitRecord({
-                      sessionId: current.data.sessionId,
-                      taskId: cur.id,
-                    }),
-                  );
-                  return target
-                    .from()
-                    .update(owner.decoded({ ...current, focusedSectionId: null }));
-                }),
+            RecordRequested: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, select }, enqueue) => {
+                const cur = currentTask(current.data);
+                if (cur === null) return select.live.decoded(current);
+                // Completed tasks are saved through the edit flow, never recorded again.
+                // Check this before required fields so a stale selection is a quiet no-op.
+                if (cur.endDate !== null || cur.isBeingEdited) {
+                  return select.live.decoded(current);
+                }
+                if (!isTaskDone(cur)) {
+                  return select.live.decoded({
+                    ...current,
+                    lastError: "Answer the required questions before recording.",
+                  });
+                }
+                enqueue.emit(
+                  SessionEmissions.CommitRecord({
+                    sessionId: current.data.sessionId,
+                    taskId: cur.id,
+                  }),
+                );
+                return select.live.decoded({ ...current, focusedSectionId: null });
+              },
+            },
 
             // Pick a task: finished → edit mode; open → just switch current task.
-            TaskSelected: (to) =>
-              to.local
-                .Collecting()
-                .updating(to.branch.Live)
-                .resolve(({ current, target, owner, event }, enqueue) => {
-                  const picked = current.data.tasks.find((t) => t.id === event.taskId);
-                  if (picked === undefined) return target.from().update(owner.decoded(current));
-                  enqueue.emit(
-                    SessionEmissions.CommitSelectTask({
-                      sessionId: current.data.sessionId,
-                      taskId: event.taskId,
-                    }),
-                  );
-                  const data = { ...current.data, currentTaskId: event.taskId };
-                  const base: Omit<LiveValue, "data" | "editBackup"> = {
-                    _tag: "Live",
-                    focusedSectionId: null,
-                    showTaskList: false,
-                    showSidebar: current.showSidebar,
-                    lastError: current.lastError,
-                  };
-                  const editBackup =
-                    current.editBackup?.taskId === event.taskId
-                      ? current.editBackup
-                      : picked.endDate !== null
-                        ? { taskId: event.taskId, values: sectionValues(picked) }
-                        : null;
-                  return target.from().update(owner.decoded({ ...base, data, editBackup }));
-                }),
+            TaskSelected: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, event, select }, enqueue) => {
+                const picked = current.data.tasks.find((t) => t.id === event.taskId);
+                if (picked === undefined) return select.live.decoded(current);
+                enqueue.emit(
+                  SessionEmissions.CommitSelectTask({
+                    sessionId: current.data.sessionId,
+                    taskId: event.taskId,
+                  }),
+                );
+                const data = { ...current.data, currentTaskId: event.taskId };
+                const base: Omit<LiveValue, "data" | "editBackup"> = {
+                  _tag: "Live",
+                  focusedSectionId: null,
+                  showTaskList: false,
+                  showSidebar: current.showSidebar,
+                  lastError: current.lastError,
+                };
+                const editBackup =
+                  current.editBackup?.taskId === event.taskId
+                    ? current.editBackup
+                    : picked.endDate !== null
+                      ? { taskId: event.taskId, values: sectionValues(picked) }
+                      : null;
+                return select.live.decoded({ ...base, data, editBackup });
+              },
+            },
 
             // Cancel a task edit: restore the backup via the store, go back to
             // the newest open task.
-            EditCancelled: (to) =>
-              to.local
-                .Collecting()
-                .updating(to.branch.Live)
-                .resolve(({ current, target, owner }, enqueue) => {
-                  const backup = current.editBackup;
-                  const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
-                  const fallback = fallbackTaskId(current.data);
-                  const common = {
-                    showTaskList: false,
-                    data: {
-                      ...current.data,
-                      currentTaskId: fallback ?? current.data.currentTaskId,
-                    },
-                  };
-                  if (backup === null || editing === null) {
-                    const targetId = editing?.id ?? backup?.taskId;
-                    if (targetId !== undefined) {
-                      enqueue.emit(
-                        SessionEmissions.CommitCancelEdit({ taskId: targetId, backup: {} }),
-                      );
-                    }
-                    return target.from().update(owner.decoded({ ...current, ...common }));
-                  }
-                  enqueue.emit(
-                    SessionEmissions.CommitCancelEdit({
-                      taskId: backup.taskId,
-                      backup: backup.values,
-                    }),
-                  );
-                  return target.from().update(
-                    owner.decoded({
-                      ...current,
-                      ...common,
-                      focusedSectionId: null,
-                    }),
-                  );
-                }),
-
-            // Save a task edit (gated on required fields).
-            EditSaved: (to) =>
-              to.local
-                .Collecting()
-                .updating(to.branch.Live)
-                .resolve(({ current, target, owner }, enqueue) => {
-                  const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
-                  if (editing === null) {
-                    return target.from().update(owner.decoded({ ...current, editBackup: null }));
-                  }
-                  if (!isTaskDone(editing)) {
-                    return target.from().update(
-                      owner.decoded({
-                        ...current,
-                        lastError: "Answer the required questions before saving.",
-                      }),
+            EditCancelled: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, select }, enqueue) => {
+                const backup = current.editBackup;
+                const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
+                const fallback = fallbackTaskId(current.data);
+                const common = {
+                  showTaskList: false,
+                  data: {
+                    ...current.data,
+                    currentTaskId: fallback ?? current.data.currentTaskId,
+                  },
+                };
+                if (backup === null || editing === null) {
+                  const targetId = editing?.id ?? backup?.taskId;
+                  if (targetId !== undefined) {
+                    enqueue.emit(
+                      SessionEmissions.CommitCancelEdit({ taskId: targetId, backup: {} }),
                     );
                   }
-                  const fallback = fallbackTaskId(current.data);
-                  enqueue.emit(SessionEmissions.CommitSaveEdit({ taskId: editing.id }));
-                  return target.from().update(
-                    owner.decoded({
-                      ...current,
-                      showTaskList: false,
-                      focusedSectionId: null,
-                      data: {
-                        ...current.data,
-                        currentTaskId: fallback ?? current.data.currentTaskId,
-                      },
-                    }),
-                  );
-                }),
+                  return select.live.decoded({ ...current, ...common });
+                }
+                enqueue.emit(
+                  SessionEmissions.CommitCancelEdit({
+                    taskId: backup.taskId,
+                    backup: backup.values,
+                  }),
+                );
+                return select.live.decoded({
+                  ...current,
+                  ...common,
+                  focusedSectionId: null,
+                });
+              },
+            },
+
+            // Save a task edit (gated on required fields).
+            EditSaved: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, select }, enqueue) => {
+                const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
+                if (editing === null) {
+                  return select.live.decoded({ ...current, editBackup: null });
+                }
+                if (!isTaskDone(editing)) {
+                  return select.live.decoded({
+                    ...current,
+                    lastError: "Answer the required questions before saving.",
+                  });
+                }
+                const fallback = fallbackTaskId(current.data);
+                enqueue.emit(SessionEmissions.CommitSaveEdit({ taskId: editing.id }));
+                return select.live.decoded({
+                  ...current,
+                  showTaskList: false,
+                  focusedSectionId: null,
+                  data: {
+                    ...current.data,
+                    currentTaskId: fallback ?? current.data.currentTaskId,
+                  },
+                });
+              },
+            },
 
             // End-session confirmation opens.
-            EndRequested: (to) => to.local.ConfirmingEnd(),
+            EndRequested: { target: targets.root.Live.ConfirmingEnd },
           },
         },
 
         ConfirmingEnd: {
           on: {
-            EndCancelled: (to) => to.local.Collecting(),
+            EndCancelled: { target: targets.root.Live.Collecting },
             // Confirmed: commit the end, return to collecting while the store
             // processes the archive (EndAcked → Idle afterwards).
-            EndConfirmed: (to) =>
-              to.local.Collecting().resolve(({ containingState }, enqueue) => {
+            EndConfirmed: {
+              branches: "finishConfirmation",
+              resolve: ({ containingState, select }, enqueue) => {
                 enqueue.emit(
                   SessionEmissions.CommitEndSession({
                     sessionId: containingState.data.sessionId,
                   }),
                 );
-              }),
+                return select.collecting.from();
+              },
+            },
           },
         },
       },

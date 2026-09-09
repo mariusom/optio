@@ -40,7 +40,7 @@ Installable as a home-screen app; hardening for standalone-PWA constraints
 | UI framework       | [FoldKit](https://foldkit.dev) 0.158 — Elm architecture on Effect (Model / Message / update / view)                                        |
 | Styling            | Tailwind CSS 4 + [Foldcn](https://foldcn.elianiva.com) / `@foldkit/ui` registry components, with optio's app primitives on top (see below) |
 | Local-first data   | [LiveStore](https://livestore.dev) `0.5.0-dev.0` — reactive SQLite (WASM) in a worker, OPFS-persisted, store id `optio-v1`                 |
-| Session logic      | `@typeonce/effect-machine` 0.33 — schema-first statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously             |
+| Session logic      | `@typeonce/effect-machine` 0.34 — declarative statechart (Idle → Live { Collecting \| ConfirmingEnd }), planned synchronously              |
 | Runtime validation | Effect `4.0.0-rc.112` Schema (`decodeUnknownEffect` before every commit)                                                                   |
 | Toolchain          | [Vite+](https://vite.plus) (`vp`) — dev server, Rolldown build, oxlint, oxfmt, type check, Vitest in one binary                            |
 | PWA                | `vite-plugin-pwa` (`generateSW`, autoUpdate) + Workbox (confirmed-refresh update toast)                                                    |
@@ -157,6 +157,16 @@ The base registry currently requests Effect `4.0.0-rc.109`; this app keeps
 `4.0.0-rc.112` to match its existing stack. Check dependency changes after any
 registry update. Run `pnpm check`, `pnpm exec tsc --noEmit`, `pnpm test`, and
 `pnpm build` after adding or updating components.
+
+The session machine uses `Machine.targets` for typed destinations, direct
+`{ target }` / `{ update, decoded }` declarations for pure transitions, and
+named `branches` with `resolve(context, enqueue)` for conditional routing or
+store-command emissions. `from` and `decoded` constructors cannot emit commands.
+Owner-only updates preserve the active collecting/confirmation phase.
+
+Keep Vitest and its browser provider at `4.1.11` while Vite+ `0.3.1` bundles that
+version; Vitest 5 is not compatible with this toolchain. Effect remains pinned
+to `4.0.0-rc.112`, the exact peer required by FoldKit and effect-machine.
 
 ## Keyboard regression tests
 

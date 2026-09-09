@@ -24,6 +24,8 @@ const CounterEvent = Machine.eventsFromSchemas(
   }),
 );
 
+const targets = Machine.targets(States);
+
 const Counter = Machine.make({
   id: "Counter",
   root: States,
@@ -32,13 +34,16 @@ const Counter = Machine.make({
   states: {
     Idle: {
       on: {
-        Start: (to) => to.branch.Running().from(() => ({ count: 0 })),
+        Start: { target: targets.root.Running, from: () => ({ count: 0 }) },
       },
     },
     Running: {
       on: {
-        Increment: (to) => to.branch.Running().from(({ state }) => ({ count: state.count + 1 })),
-        Stop: (to) => to.branch.Idle(),
+        Increment: {
+          target: targets.root.Running,
+          from: ({ state }) => ({ count: state.count + 1 }),
+        },
+        Stop: { target: targets.root.Idle },
       },
     },
   },
@@ -55,25 +60,32 @@ const Emitter = Machine.make({
   root: States,
   events: CounterEvent,
   emittedEvents: Emissions,
+  branches: {
+    running: { next: { target: targets.root.Running } },
+  },
 }).handle({
   states: {
     Idle: {
       on: {
-        Start: (to) =>
-          to.branch.Running().resolve(({ target }, enqueue) => {
+        Start: {
+          branches: "running",
+          resolve: ({ select }, enqueue) => {
             enqueue.emit(Emissions.Incremented({ count: 0 }));
-            return target.from({ count: 0 });
-          }),
+            return select.next.from({ count: 0 });
+          },
+        },
       },
     },
     Running: {
       on: {
-        Increment: (to) =>
-          to.branch.Running().resolve(({ state, target }, enqueue) => {
+        Increment: {
+          branches: "running",
+          resolve: ({ state, select }, enqueue) => {
             enqueue.emit(Emissions.Incremented({ count: state.count + 1 }));
-            return target.from({ count: state.count + 1 });
-          }),
-        Stop: (to) => to.branch.Idle(),
+            return select.next.from({ count: state.count + 1 });
+          },
+        },
+        Stop: { target: targets.root.Idle },
       },
     },
   },

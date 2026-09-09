@@ -17,6 +17,7 @@ allowBuilds:
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - foldkit
+  - "@typeonce/effect-machine@0.34.0"
 
 onlyBuiltDependencies:
   - "@tailwindcss/oxide"

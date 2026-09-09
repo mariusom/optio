@@ -403,6 +403,45 @@ describe("sessionMachine task selection + edit", () => {
 });
 
 describe("sessionMachine end flow", () => {
+  it("same-session sync retains confirmation, but a new session resets it", () => {
+    const confirming = plan(liveRunner({ focusedSectionId: "f-category" }), {
+      _tag: "EndRequested",
+    });
+    const refreshed = planSession(confirming.runner, "confirming", {
+      _tag: "DataSynced",
+      data: data({ sessionName: "Renamed" }),
+    });
+    expect(refreshed.phase).toBe("confirming");
+    expect(refreshed.runner!.sessionName).toBe("Renamed");
+    expect(refreshed.runner!.focusedSectionId).toBe("f-category");
+    expect(refreshed.runner!.showEndConfirm).toBe(true);
+
+    const replaced = planSession(refreshed.runner, "confirming", {
+      _tag: "DataSynced",
+      data: data({ sessionId: "sess-2" }),
+    });
+    expect(replaced.phase).toBe("collecting");
+    expect(replaced.runner!.sessionId).toBe("sess-2");
+    expect(replaced.runner!.focusedSectionId).toBeNull();
+    expect(replaced.runner!.showEndConfirm).toBe(false);
+    expect(replaced.emissions).toEqual([]);
+  });
+
+  it("parent updates preserve confirmation and collecting-only commands stay blocked", () => {
+    const confirming = plan(liveRunner(), { _tag: "EndRequested" });
+    const toggled = planSession(confirming.runner, "confirming", { _tag: "TaskListToggled" });
+    expect(toggled.phase).toBe("confirming");
+    expect(toggled.runner!.showTaskList).toBe(true);
+    const blocked = planSession(toggled.runner, "confirming", {
+      _tag: "FieldChanged",
+      taskFieldId: "f-category",
+      value: "B",
+    });
+    expect(blocked.phase).toBe("confirming");
+    expect(blocked.runner).toEqual(toggled.runner);
+    expect(blocked.emissions).toEqual([]);
+  });
+
   it("EndRequested opens the confirmation (showEndConfirm via phase)", () => {
     const { runner, phase } = plan(liveRunner(), { _tag: "EndRequested" });
     expect(phase).toBe("confirming");
@@ -420,9 +459,11 @@ describe("sessionMachine end flow", () => {
 
   it("EndConfirmed emits CommitEndSession then EndAcked goes Idle", () => {
     const confirming = plan(liveRunner(), { _tag: "EndRequested" });
-    const { emissions } = planSession(confirming.runner, "confirming", { _tag: "EndConfirmed" });
-    expect(emissions).toEqual([{ _tag: "CommitEndSession", sessionId: "sess-1" }]);
-    const acked = planSession(confirming.runner, "confirming", { _tag: "EndAcked" });
+    const confirmed = planSession(confirming.runner, "confirming", { _tag: "EndConfirmed" });
+    expect(confirmed.emissions).toEqual([{ _tag: "CommitEndSession", sessionId: "sess-1" }]);
+    expect(confirmed.phase).toBe("collecting");
+    expect(confirmed.runner!.showEndConfirm).toBe(false);
+    const acked = planSession(confirmed.runner, confirmed.phase, { _tag: "EndAcked" });
     expect(acked.runner).toBeNull();
   });
 });
