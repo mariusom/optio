@@ -1,0 +1,18 @@
+{
+  "specVersion": "1.0",
+  "host": { "displayName": "Optio" },
+  "entries": [
+    {
+      "identifier": "urn:air:mariusom.github.io:optio:agent-guide",
+      "displayName": "Optio browser and assistant guide",
+      "description": "How to record time studies and export CSV in an offline browser app, with optional consent-gated WebMCP tools. No public API server.",
+      "type": "text/markdown",
+      "url": "https://mariusom.github.io/optio/agent-guide.md",
+      "representativeQueries": [
+        "How can I record a time-and-motion study offline?",
+        "How do I export task observations as CSV?",
+        "How can an assistant use Optio with my permission?"
+      ]
+    }
+  ]
+}

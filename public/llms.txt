@@ -1,0 +1,25 @@
+# Optio
+
+> Optio is a free, open-source time-and-motion study app. Create study questions,
+> record observations as you work, review sessions, and export results as CSV.
+
+Optio runs in the browser on phones, tablets, and computers. No account is needed.
+After the first visit finishes loading, it works offline and can be added to a
+home screen. Studies stay in that browser; there is no backend, automatic backup,
+or sync. Clearing browser data can erase studies. Export important results.
+
+## App and documentation
+
+- [Open Optio](https://mariusom.github.io/optio/): The canonical app URL to share.
+- [Agent guide](https://mariusom.github.io/optio/agent-guide.md): Browser workflow, optional assistant access, consent, and tool limitations.
+- [Source code](https://github.com/mariusom/optio): MIT-licensed implementation and contributor documentation.
+
+## Agent access
+
+Ordinary browser navigation is available without enabling assistant tools.
+Experimental WebMCP tools require a compatible browser, an explicit query flag,
+and the user's confirmation. They are disabled by default. Enabling them grants
+read, change, and delete access, and the assistant provider may receive study
+data. There is no public HTTP MCP endpoint, OAuth service, or payment API.
+
+The public documentation and discovery catalog contain no user study data.

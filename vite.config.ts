@@ -34,7 +34,7 @@ export default defineConfig(({ command, mode }) => {
           name: "optio — offline time & motion studies",
           short_name: "optio",
           description:
-            "Record time & motion study sessions offline. Your data never leaves your device.",
+            "Create time studies, record tasks, and export CSV. Works offline after initial loading. No account needed.",
           theme_color: "#f5f8f5",
           background_color: "#f5f8f5",
           display: "standalone",

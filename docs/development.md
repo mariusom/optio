@@ -56,5 +56,43 @@ to `main`, then publishes `dist/` to GitHub Pages. The `/optio/` base path and
 service-worker settings live in [vite.config.ts](../vite.config.ts). Test offline
 behavior against a production build, not just the dev server.
 
+## Public metadata and agent discovery
+
+`index.html` contains static Open Graph metadata (Facebook, Reddit and other
+link previews), X large-image card metadata, and WebApplication structured data.
+Use `https://mariusom.github.io/optio/` when sharing. Hash routes and local study
+IDs have no separate public previews; never put study data in social metadata.
+The 1200×630 `public/social-card.png` is a typography-only sharing asset, not an
+app screenshot. Keep its dimensions and alt text in sync with the HTML.
+
+After `pnpm build`, start `pnpm preview --port 60002` and run
+`node scripts/test-public-metadata.mjs`. The check uses JavaScript-disabled
+Chromium and verifies metadata, image dimensions, structured data, and deployed
+discovery paths. `OPTIO_URL` overrides the preview URL. After deployment, use
+Facebook's Sharing Debugger and X's card tools to request fresh previews where
+available; platforms including Reddit may cache old previews or omit cards.
+
+The app links to `llms.txt`, a public agent guide, a sitemap, and an AI Catalog
+using `rel="ai-catalog"`. The catalog describes documentation, not a public MCP
+server. Update the guide when the agent contract changes. Static Markdown is an
+explicit alternative resource, not HTTP content negotiation.
+
+The 2026-09-10 isitagentready.com baseline for the live app was 0 (default scan).
+Most checks use `https://mariusom.github.io/`, not the `/optio/` project path.
+This repository cannot publish origin-root `robots.txt` or `.well-known` files,
+control `github.io` DNS, or set production Link/Vary headers. Putting those files
+under `/optio/` would not satisfy origin-root discovery. The linked catalog can
+be discovered from the page without root access, but a new score must be measured
+after deployment; local validation is not a scanner score.
+
+For further applicable score gains, an origin-root site or custom-domain hosting
+decision is required. Publish root `robots.txt` with an explicit owner-approved
+AI crawler/content-use policy and the sitemap URL; configure real Link headers
+and `Accept: text/markdown` negotiation with `Vary: Accept` on a host supporting
+them. Rescan the same URL with the same checks. Do not add fake OAuth, commerce,
+MCP server cards, or disable WebMCP consent to satisfy the scanner. Its page-load
+`navigator.modelContext` probe differs from Optio's opt-in `document.modelContext`
+integration. A high protocol-discovery score is not a security or usability audit.
+
 For tool usage, consult [Vite+](https://vite.plus),
 [pnpm](https://pnpm.io), and [Vitest browser testing](https://vitest.dev/guide/browser/).
