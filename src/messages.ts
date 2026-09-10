@@ -25,7 +25,7 @@ export const Message = defineMessageUnion({
   SelectedTheme: { theme: Theme },
   ThemeSaveFinished: { theme: Theme, saved: S.Boolean },
   SelectedStyle: { style: FoldcnStyle },
-  StyleSaveFinished: { style: FoldcnStyle, saved: S.Boolean },
+  StyleSaveFinished: { style: FoldcnStyle, appliedStyle: FoldcnStyle, saved: S.Boolean },
   SelectedFont: { font: Font },
   FontSaveFinished: { font: Font, saved: S.Boolean },
   SelectedIconLibrary: { library: IconLibrary },

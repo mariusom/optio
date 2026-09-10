@@ -3,7 +3,13 @@ import { Effect } from "effect";
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore";
 
 import { buttonClass } from "@/components/ui/button";
-import { readStyle, saveStyle, setCurrentStyle } from "./style";
+import {
+  getCurrentStyle,
+  getCurrentStyleClasses,
+  readStyle,
+  saveStyle,
+  setCurrentStyle,
+} from "./style";
 
 describe("Foldcn component style", () => {
   it.effect("defaults invalid preferences and round-trips every style", () =>
@@ -30,15 +36,24 @@ describe("Foldcn component style", () => {
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
 
-  it("uses resolved upstream classes while retaining Optio's touch target", () => {
-    setCurrentStyle("nova");
+  it("uses resolved upstream classes while retaining Optio's touch target", async () => {
+    await setCurrentStyle("nova");
     const nova = buttonClass();
-    setCurrentStyle("vega");
+    await setCurrentStyle("vega");
     const vega = buttonClass();
-    setCurrentStyle("nova");
+    await setCurrentStyle("nova");
 
     expect(vega).not.toBe(nova);
     expect(vega).toContain("h-11");
     expect(vega).toContain("rounded-md");
+  });
+
+  it("does not let a pending preset override a newer default selection", async () => {
+    const earlier = setCurrentStyle("vega");
+    const latest = setCurrentStyle("nova");
+    expect(await earlier).toBe(false);
+    expect(await latest).toBe(true);
+    expect(getCurrentStyle()).toBe("nova");
+    expect(getCurrentStyleClasses()).toEqual({});
   });
 });

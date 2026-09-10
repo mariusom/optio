@@ -124,11 +124,11 @@ const mount = async (
   );
 };
 
-afterEach(() => {
+afterEach(async () => {
   handle?.dispose();
   container?.remove();
   document.documentElement.style.removeProperty("font-size");
-  setCurrentStyle("nova");
+  await setCurrentStyle("nova");
   setCurrentIconLibrary("lucide");
   localStorage.removeItem("optio-icon-library");
   document.documentElement.removeAttribute("data-icon-library");
@@ -186,7 +186,7 @@ describe("persistent presentation regressions", () => {
   );
 
   it.each(foldcnStyles)("keeps history separators stable in %s", async (style) => {
-    setCurrentStyle(style);
+    await setCurrentStyle(style);
     await mount((model, h) =>
       sessionDetailPage(
         {
@@ -222,7 +222,7 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each(foldcnStyles)("fills the history action cell in %s", async (style) => {
-    setCurrentStyle(style);
+    await setCurrentStyle(style);
     await mount((model, h) => historyPage({ ...model, history: [history] }, h));
     await page.viewport(1184, 900);
     const action = page.getByRole("button", { name: `Actions for "${history.displayName}"` });
@@ -238,7 +238,7 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each(foldcnStyles)("uses %s Card and Item styling in template groups", async (style) => {
-    setCurrentStyle(style);
+    await setCurrentStyle(style);
     await mount((model, h) =>
       h.div(
         [],
@@ -267,7 +267,7 @@ describe("persistent presentation regressions", () => {
   it.each(foldcnStyles)(
     "keeps unboxed question fields free of %s card decoration",
     async (style) => {
-      setCurrentStyle(style);
+      await setCurrentStyle(style);
       const state = editor(1, 1, true);
       await mount((model, h) =>
         templateEditorPage(
@@ -664,7 +664,7 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each(foldcnStyles)("fills template action cells in %s", async (style) => {
-    setCurrentStyle(style);
+    await setCurrentStyle(style);
     await mount((model, h) => templatesPage({ ...model, templates: [template] }, h));
     const action = page.getByRole("button", { name: 'Actions for "Observation"' });
     await expect.element(action).toBeVisible();
@@ -678,7 +678,7 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each(foldcnStyles)("fills question move action cells in %s", async (style) => {
-    setCurrentStyle(style);
+    await setCurrentStyle(style);
     await mount((model, h) => templateEditorPage({ ...model, editor: editor(2, 2) }, h));
     const down = page.getByRole("button", { name: "Move Outcome down" });
     await expect.element(down).toBeVisible();
@@ -748,7 +748,7 @@ describe("persistent presentation regressions", () => {
     // Styles must change actual rendered components, not only the radio value.
     expect(renderedClasses.size).toBeGreaterThan(4);
     expect(choiceClasses.size).toBeGreaterThan(4);
-    setCurrentStyle("nova");
+    await setCurrentStyle("nova");
     expect(await Effect.runPromise(initializeStyle)).toBe("rhea");
   });
 

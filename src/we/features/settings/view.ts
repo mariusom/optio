@@ -227,7 +227,10 @@ export const settingsPage = (
       ...(styleSaveFailed
         ? [
             notice(
-              { tone: "warning", text: "The component style was applied but couldn’t be saved." },
+              {
+                tone: "warning",
+                text: "Couldn't load or save that style. Reload the app before trying again.",
+              },
               h,
             ),
           ]

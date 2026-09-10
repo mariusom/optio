@@ -18,7 +18,7 @@ import {
   type Theme,
 } from "./theme";
 import { setCurrentIconLibrary } from "../lib/iconPreference";
-import { readStyle, saveStyle, setCurrentStyle, type FoldcnStyle } from "./style";
+import { getCurrentStyle, readStyle, saveStyle, setCurrentStyle, type FoldcnStyle } from "./style";
 
 let currentTheme: Theme = "auto";
 
@@ -143,16 +143,26 @@ export const initializeStyle = Effect.gen(function* () {
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.catchCause(() => Effect.succeed("nova" as const)),
   );
-  setCurrentStyle(style);
-  document.documentElement.dataset.foldcnStyle = style;
-  return style;
+  yield* Effect.tryPromise(() => setCurrentStyle(style)).pipe(
+    // A missing preset must not prevent the app from opening. Keep the saved
+    // preference so it can be restored on a subsequent successful load.
+    Effect.catch(() => Effect.promise(() => setCurrentStyle("nova"))),
+  );
+  const appliedStyle = getCurrentStyle();
+  document.documentElement.dataset.foldcnStyle = appliedStyle;
+  return appliedStyle;
 });
 
 export const changeStyle = Effect.fn("changeStyle")(function* (style: FoldcnStyle) {
-  setCurrentStyle(style);
+  const applied = yield* Effect.tryPromise(() => setCurrentStyle(style)).pipe(
+    Effect.catch(() => Effect.succeed(null)),
+  );
+  if (applied === false) return null; // A newer selection superseded this download.
+  if (applied === null) return { appliedStyle: getCurrentStyle(), saved: false };
   document.documentElement.dataset.foldcnStyle = style;
-  return yield* saveStyle(style).pipe(
+  const saved = yield* saveStyle(style).pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
+  return { appliedStyle: style, saved };
 });

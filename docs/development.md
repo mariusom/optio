@@ -53,6 +53,12 @@ Compare the same URL, browser and mobile throttling settings across repeated
 cold runs; scores vary with host load. Startup changes must also preserve real
 OPFS data across reloads and work offline after service-worker installation.
 
+With the same preview running, `node scripts/test-startup.mjs` checks that default
+startup skips optional style presets, failed downloads leave the app usable,
+saved styles restore, and unused presets remain available offline. A failed
+module download needs a page reload before retrying because browsers cache the
+failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
+
 ## Dependencies and generated assets
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.

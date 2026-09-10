@@ -291,9 +291,11 @@ const SaveTheme = Command.define("SaveTheme", {
 
 const SaveStyle = Command.define("SaveStyle", {
   args: { style: FoldcnStyle },
-  messages: [Message.StyleSaveFinished],
+  messages: [Message.StyleSaveFinished, Message.Navigated],
   execute: ({ style }) =>
-    Effect.map(changeStyle(style), (saved) => Message.StyleSaveFinished({ style, saved })),
+    Effect.map(changeStyle(style), (result) =>
+      result === null ? Message.Navigated() : Message.StyleSaveFinished({ style, ...result }),
+    ),
 });
 
 const SaveFont = Command.define("SaveFont", {
@@ -438,8 +440,9 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       model: { ...model, style },
       commands: [SaveStyle({ style })],
     }),
-    StyleSaveFinished: ({ style, saved }) => ({
-      model: style === model.style ? { ...model, styleSaveFailed: !saved } : model,
+    StyleSaveFinished: ({ style, appliedStyle, saved }) => ({
+      model:
+        style === model.style ? { ...model, style: appliedStyle, styleSaveFailed: !saved } : model,
       commands: [],
     }),
     SelectedFont: ({ font }) => ({
