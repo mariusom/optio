@@ -219,7 +219,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
         h,
       ),
       ...(model.historyActionsFor === detail.id && detail.endedAt !== null
-        ? [historyActionsSheet({ ...detail, displayName, endedAt: detail.endedAt }, h)]
+        ? [historyActionsSheet({ ...detail, displayName, endedAt: detail.endedAt }, h, "export")]
         : []),
       ...(selectedTask === null ? [] : [taskDetailView({ task: selectedTask }, h)]),
       editSessionNameSheet(

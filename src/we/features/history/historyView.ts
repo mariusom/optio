@@ -81,23 +81,31 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
 
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
 
-export const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+export const historyActionsSheet = (
+  session: HistorySession,
+  h: HtmlBuilder<Message>,
+  purpose: "actions" | "export" = "actions",
+): Html =>
   sheet(
     {
       id: "history-actions",
-      title: session.displayName,
+      title: purpose === "export" ? "Export CSV" : session.displayName,
       description: summaryFor(session),
       onDismiss: Message.ClosedHistoryActions(),
       dismissLabel: "Close actions",
       footer: {
-        destructive: {
-          label: "Delete",
-          onClick: Message.RequestedHistoryDelete({
-            id: session.id,
-            displayName: session.displayName,
-          }),
-          ariaLabel: `Delete ${session.displayName}`,
-        },
+        ...(purpose === "actions"
+          ? {
+              destructive: {
+                label: "Delete",
+                onClick: Message.RequestedHistoryDelete({
+                  id: session.id,
+                  displayName: session.displayName,
+                }),
+                ariaLabel: `Delete ${session.displayName}`,
+              },
+            }
+          : {}),
         cancel: {
           label: "Cancel",
           onClick: Message.ClosedHistoryActions(),
@@ -135,10 +143,17 @@ export const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Mess
             },
             h,
           ),
-          h.p(
-            [h.Class("px-4 py-3 text-sm text-muted-foreground")],
+          h.ul(
+            [h.Class("list-disc space-y-2 py-3 pl-8 pr-4 text-sm text-muted-foreground")],
             [
-              "Spreadsheet CSV prefixes formula-like cells with an apostrophe. Raw CSV keeps values unchanged; import untrusted cells as text. Spreadsheet protection can be lost when re-saving.",
+              h.li(
+                [],
+                [
+                  "For spreadsheets: adds an apostrophe before formula-like cells to help keep them as text.",
+                ],
+              ),
+              h.li([], ["Raw CSV: keeps every value unchanged. Import untrusted cells as text."]),
+              h.li([], ["Re-saving in a spreadsheet can remove the protection."]),
             ],
           ),
         ],

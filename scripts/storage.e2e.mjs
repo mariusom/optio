@@ -158,9 +158,15 @@ test(
         await page.emulateMedia({ colorScheme });
         await page.goto(archiveUrl);
         await page
+          .getByRole("button", { name: "Delete Assembly observation", exact: true })
+          .waitFor();
+        await page
           .getByRole("button", { name: "Export Assembly observation", exact: true })
           .click();
         await page.getByRole("button", { name: "Export raw CSV", exact: true }).waitFor();
+        const exportSheet = page.getByRole("dialog", { name: "Export CSV", exact: true });
+        assert.equal(await exportSheet.getByRole("button", { name: /Delete/ }).count(), 0);
+        assert.equal(await exportSheet.getByRole("listitem").count(), 3);
         await page.waitForFunction(
           () => document.activeElement?.closest('[role="dialog"]') !== null,
         );
