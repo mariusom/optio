@@ -7,6 +7,7 @@ import { RouteSchema } from "./we/routes";
 import { TemplateSummary } from "./we/types";
 import { Accent, Font, IconLibrary, Theme } from "./we/theme";
 import { FoldcnStyle } from "./we/style";
+import { RunnerDataSchema } from "./we/features/session/runner";
 
 // Central flat Message union. Payload schemas are grouped by feature;
 // reducers live next to their feature views under src/we/features/*.
@@ -119,40 +120,7 @@ export const Message = defineMessageUnion({
 
   // ── Runner (live session form canvas) ─────────────────────────────────────
   GotRunnerData: {
-    data: S.Union([
-      S.Null,
-      S.Struct({
-        sessionId: S.String,
-        templateName: S.String,
-        sessionName: S.String,
-        startedAt: S.Number,
-        tasks: S.Array(
-          S.Struct({
-            id: S.String,
-            orderIndex: S.Number,
-            endDate: S.Union([S.Null, S.Number]),
-            isBeingEdited: S.Boolean,
-            sections: S.Array(
-              S.Struct({
-                id: S.String,
-                taskId: S.String,
-                name: S.String,
-                kind: S.String,
-                isRequired: S.Boolean,
-                defaultValue: S.String,
-                sortOrder: S.Number,
-                options: S.Array(S.String),
-                exclusiveOptions: S.Array(S.String),
-                value: S.String,
-                startDate: S.Union([S.Null, S.Number]),
-              }),
-            ),
-          }),
-        ),
-        currentTaskId: S.Union([S.Null, S.String]),
-        completedCount: S.Number,
-      }),
-    ]),
+    data: S.Union([S.Null, RunnerDataSchema]),
   },
   Tick: { now: S.Number },
   ChangedFieldValue: { taskFieldId: S.String, value: S.String },

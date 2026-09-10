@@ -1,46 +1,55 @@
-// Runner pure helpers — task/section/session semantics (spec §1.5, §1.6, §2, §4)
+import { Schema } from "effect";
 
-export type RunnerSection = {
-  readonly id: string;
-  readonly taskId: string;
-  readonly name: string;
-  readonly kind: string;
-  readonly isRequired: boolean;
-  readonly defaultValue: string;
-  readonly sortOrder: number;
-  readonly options: ReadonlyArray<string>;
-  readonly exclusiveOptions: ReadonlyArray<string>;
-  readonly value: string;
-  readonly startDate: number | null;
-};
+// Shared runner contracts and pure task/section/session semantics.
+const RunnerSectionSchema = Schema.Struct({
+  id: Schema.String,
+  taskId: Schema.String,
+  name: Schema.String,
+  kind: Schema.String,
+  isRequired: Schema.Boolean,
+  defaultValue: Schema.String,
+  sortOrder: Schema.Number,
+  options: Schema.Array(Schema.String),
+  exclusiveOptions: Schema.Array(Schema.String),
+  value: Schema.String,
+  startDate: Schema.Union([Schema.Null, Schema.Number]),
+});
+export type RunnerSection = typeof RunnerSectionSchema.Type;
 
-export type RunnerTask = {
-  readonly id: string;
-  readonly orderIndex: number;
-  readonly endDate: number | null;
-  readonly isBeingEdited: boolean;
-  readonly sections: ReadonlyArray<RunnerSection>;
-};
+const RunnerTaskSchema = Schema.Struct({
+  id: Schema.String,
+  orderIndex: Schema.Number,
+  endDate: Schema.Union([Schema.Null, Schema.Number]),
+  isBeingEdited: Schema.Boolean,
+  sections: Schema.Array(RunnerSectionSchema),
+});
+export type RunnerTask = typeof RunnerTaskSchema.Type;
 
-export type RunnerData = {
-  readonly sessionId: string;
-  readonly templateName: string;
-  readonly sessionName: string;
-  readonly startedAt: number;
-  readonly tasks: ReadonlyArray<RunnerTask>;
-  readonly currentTaskId: string | null;
-  readonly completedCount: number;
-};
+export const RunnerDataSchema = Schema.Struct({
+  sessionId: Schema.String,
+  templateName: Schema.String,
+  sessionName: Schema.String,
+  startedAt: Schema.Number,
+  tasks: Schema.Array(RunnerTaskSchema),
+  currentTaskId: Schema.Union([Schema.Null, Schema.String]),
+  completedCount: Schema.Number,
+});
+export type RunnerData = typeof RunnerDataSchema.Type;
 
-export type RunnerState = RunnerData & {
-  readonly focusedSectionId: string | null;
-  readonly showTaskList: boolean;
-  readonly showSidebar: boolean;
-  readonly showEndConfirm: boolean;
-  readonly lastError: string | null;
-  readonly now: number;
-  readonly editBackup: { readonly taskId: string; readonly values: Record<string, string> } | null;
-};
+export const RunnerStateSchema = Schema.Struct({
+  ...RunnerDataSchema.fields,
+  focusedSectionId: Schema.Union([Schema.Null, Schema.String]),
+  showTaskList: Schema.Boolean,
+  showEndConfirm: Schema.Boolean,
+  showSidebar: Schema.Boolean,
+  lastError: Schema.Union([Schema.Null, Schema.String]),
+  now: Schema.Number,
+  editBackup: Schema.Union([
+    Schema.Null,
+    Schema.Struct({ taskId: Schema.String, values: Schema.Record(Schema.String, Schema.String) }),
+  ]),
+});
+export type RunnerState = typeof RunnerStateSchema.Type;
 
 // ── Section helpers ───────────────────────────────────────────────────────
 

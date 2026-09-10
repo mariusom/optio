@@ -31,6 +31,7 @@ import {
   UpdateFieldValue,
 } from "./we/features/session/runnerCommands";
 import { sessionView } from "./we/features/session/sessionView";
+import { RunnerStateSchema } from "./we/features/session/runner";
 import { planSession, type SessionEmission } from "./machine/session/plan";
 import { safeArray } from "./we/fieldRows";
 import type { SessionEvent } from "./machine/session/sessionMachine";
@@ -170,50 +171,7 @@ export const Model = S.Struct({
   ]),
   pendingDiscardSession: S.Boolean,
   // Runner slice (S4) — live session form canvas
-  runner: S.Union([
-    S.Null,
-    S.Struct({
-      sessionId: S.String,
-      templateName: S.String,
-      sessionName: S.String,
-      startedAt: S.Number,
-      tasks: S.Array(
-        S.Struct({
-          id: S.String,
-          orderIndex: S.Number,
-          endDate: S.Union([S.Null, S.Number]),
-          isBeingEdited: S.Boolean,
-          sections: S.Array(
-            S.Struct({
-              id: S.String,
-              taskId: S.String,
-              name: S.String,
-              kind: S.String,
-              isRequired: S.Boolean,
-              defaultValue: S.String,
-              sortOrder: S.Number,
-              options: S.Array(S.String),
-              exclusiveOptions: S.Array(S.String),
-              value: S.String,
-              startDate: S.Union([S.Null, S.Number]),
-            }),
-          ),
-        }),
-      ),
-      currentTaskId: S.Union([S.Null, S.String]),
-      completedCount: S.Number,
-      focusedSectionId: S.Union([S.Null, S.String]),
-      showTaskList: S.Boolean,
-      showEndConfirm: S.Boolean,
-      showSidebar: S.Boolean,
-      lastError: S.Union([S.Null, S.String]),
-      now: S.Number,
-      editBackup: S.Union([
-        S.Null,
-        S.Struct({ taskId: S.String, values: S.Record(S.String, S.String) }),
-      ]),
-    }),
-  ]),
+  runner: S.Union([S.Null, RunnerStateSchema]),
   // Machine phase for the live Session statechart (Idle ⇔ runner === null)
   runnerPhase: S.Union([S.Literal("collecting"), S.Literal("confirming")]),
   // History slice (S6)

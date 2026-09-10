@@ -18,42 +18,18 @@
 import { Machine } from "@typeonce/effect-machine";
 import { Schema } from "effect";
 
-// ── Data schema (mirrors src/we/features/session/runner.ts RunnerData) ─────
+import {
+  RunnerDataSchema,
+  currentTask,
+  findNextUnfulfilledSectionId,
+  isSectionDone,
+  isTaskDone,
+  type RunnerData,
+  type RunnerSection,
+  type RunnerTask,
+} from "../../we/features/session/runner";
 
-const RunnerSectionSchema = Schema.Struct({
-  id: Schema.String,
-  taskId: Schema.String,
-  name: Schema.String,
-  kind: Schema.String,
-  isRequired: Schema.Boolean,
-  defaultValue: Schema.String,
-  sortOrder: Schema.Number,
-  options: Schema.Array(Schema.String),
-  exclusiveOptions: Schema.Array(Schema.String),
-  value: Schema.String,
-  startDate: Schema.Union([Schema.Null, Schema.Number]),
-});
-export type RunnerSection = typeof RunnerSectionSchema.Type;
-
-const RunnerTaskSchema = Schema.Struct({
-  id: Schema.String,
-  orderIndex: Schema.Number,
-  endDate: Schema.Union([Schema.Null, Schema.Number]),
-  isBeingEdited: Schema.Boolean,
-  sections: Schema.Array(RunnerSectionSchema),
-});
-export type RunnerTask = typeof RunnerTaskSchema.Type;
-
-const RunnerDataSchema = Schema.Struct({
-  sessionId: Schema.String,
-  templateName: Schema.String,
-  sessionName: Schema.String,
-  startedAt: Schema.Number,
-  tasks: Schema.Array(RunnerTaskSchema),
-  currentTaskId: Schema.Union([Schema.Null, Schema.String]),
-  completedCount: Schema.Number,
-});
-export type RunnerData = typeof RunnerDataSchema.Type;
+export type { RunnerData, RunnerSection, RunnerTask } from "../../we/features/session/runner";
 
 /** Value owned by the `Live` compound state (store data + control surface). */
 const LiveValue = Schema.TaggedUnion({
@@ -149,44 +125,12 @@ export type SessionEmission = Machine.EventOf<typeof SessionEmissions>;
 
 // ── Pure domain helpers ────────────────────────────────────────────────────
 
-const isSectionDone = (section: RunnerSection): boolean =>
-  section.isRequired ? section.value !== "" : true;
-
-const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
-
-const currentTask = (data: RunnerData): RunnerTask | null => {
-  if (data.currentTaskId !== null) {
-    const byId = data.tasks.find((t) => t.id === data.currentTaskId);
-    if (byId !== undefined) return byId;
-  }
-  const edited = data.tasks.find((t) => t.isBeingEdited);
-  if (edited !== undefined) return edited;
-  const unfinished = [...data.tasks].filter((t) => t.endDate === null);
-  if (unfinished.length > 0) {
-    return unfinished.reduce((a, b) => (a.orderIndex > b.orderIndex ? a : b));
-  }
-  return data.tasks.length > 0 ? (data.tasks[data.tasks.length - 1] as RunnerTask) : null;
-};
-
 /** Newest unfinished task id — the target after finishing/cancelling an edit. */
 const fallbackTaskId = (data: RunnerData): string | null => {
   const unfinished = [...data.tasks]
     .filter((t) => t.endDate === null)
     .sort((a, b) => b.orderIndex - a.orderIndex);
   return unfinished[0]?.id ?? null;
-};
-
-const findNextUnfulfilledSectionId = (
-  sections: ReadonlyArray<RunnerSection>,
-  currentSectionId: string,
-): string | null => {
-  const currentIndex = sections.findIndex((s) => s.id === currentSectionId);
-  if (currentIndex === -1) return null;
-  for (let i = currentIndex + 1; i < sections.length; i += 1) {
-    const candidate = sections[i] as RunnerSection;
-    if (!isSectionDone(candidate) || candidate.value === "") return candidate.id;
-  }
-  return null;
 };
 
 /**

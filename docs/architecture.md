@@ -14,6 +14,8 @@ subscriptions bring store changes back into the model.
   Keep subscriptions wired: without them the app renders but stops receiving data.
 - [we/features](../src/we/features) contains templates, session recording,
   history and settings. [messages.ts](../src/messages.ts) defines app messages.
+  [session/runner.ts](../src/we/features/session/runner.ts) owns shared runner
+  schemas, types, completion rules and focus traversal.
 - [machine/session](../src/machine/session) plans session transitions and commands.
   Updates to owner data must preserve the collecting or end-confirmation phase.
 - [livestore/schema.ts](../src/livestore/schema.ts) defines data, events and
