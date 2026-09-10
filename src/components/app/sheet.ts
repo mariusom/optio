@@ -94,7 +94,8 @@ export const sheet = <M>(
                   ]),
             ],
           ),
-          h.div([h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6")], children),
+          // Keep outer Card rings inside the scrollport instead of clipping their top/bottom edges.
+          h.div([h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-1")], children),
           ...(config.footer === undefined
             ? [h.div([h.Class("h-6")], [])]
             : [h.div([h.Class("p-6")], [actionGroup(config.footer, h)])]),

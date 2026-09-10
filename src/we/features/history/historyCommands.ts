@@ -3,6 +3,7 @@ import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
 import { friendlyFailure } from "../../errors";
+import { isBooleanTrue } from "../../fields";
 import { getStore } from "../../../livestore/client";
 import { events, tables } from "../../../livestore/schema";
 import { buildArchiveCsv, filenameForArchive, type ArchiveTask } from "./helpers";
@@ -111,7 +112,11 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
           taskId: Number(tr.taskId),
           startedAt,
           endedAt,
-          sections: secs.map((s) => ({ sectionName: s.sectionName, value: s.value })),
+          sections: secs.map((s) => ({
+            sectionName: s.sectionName,
+            // Untouched toggles may be stored empty, but represent No in the UI.
+            value: s.sectionType === "boolean" ? String(isBooleanTrue(s.value)) : s.value,
+          })),
         };
       });
 

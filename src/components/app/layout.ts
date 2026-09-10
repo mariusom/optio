@@ -130,7 +130,8 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
   const classes = cn(
     itemClass,
     itemSizes.default,
-    "min-h-11 flex-nowrap rounded-none border-0 text-left aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
+    "min-h-11 flex-nowrap rounded-none border-0 [[data-slot=grouped-list]>&:not(:last-child)]:border-b text-left aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
+    "focus-visible:border-border focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ring focus-visible:-outline-offset-3",
     config.wrap ? "flex-wrap gap-y-1" : "",
     interactive ? "transition-colors hover:bg-muted/60 active:bg-muted disabled:opacity-50" : "",
     config.destructive ? "text-destructive" : "text-foreground",

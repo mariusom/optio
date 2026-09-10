@@ -17,7 +17,10 @@ export default defineConfig(({ command, mode }) => {
     experimental: { bundledDev },
     base: "/optio/",
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
-    server: { port: 60_001 },
+    server: {
+      port: 60_001,
+      allowedHosts: process.env.PUBLIC_URL ? [new URL(process.env.PUBLIC_URL).hostname] : [],
+    },
     worker: { format: "es" },
     plugins: [
       ...tailwind,

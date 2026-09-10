@@ -163,7 +163,7 @@ export const sidebar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>)
         }),
       ),
       h.div(
-        [h.Class("mt-auto mb-4 flex flex-col gap-3 border-t border-border/70 pt-3")],
+        [h.Class("mt-auto mb-4 flex flex-col gap-1 border-t border-border/70 pt-2")],
         [
           h.a(
             [
@@ -197,7 +197,7 @@ export const sidebar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>)
             ],
           ),
           h.p(
-            [h.Class("hidden xl:block text-xs leading-relaxed text-muted-foreground")],
+            [h.Class("hidden xl:block px-2.5 text-xs leading-relaxed text-muted-foreground")],
             ["Everything stays on this device."],
           ),
         ],

@@ -9,6 +9,8 @@ vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 import { getStore } from "../../../livestore/client";
 import { init, subscriptions, update } from "../../../main";
 import { Message } from "../../../messages";
+import { ExportSessionCsv } from "./historyCommands";
+import * as historyHelpers from "./helpers";
 import { sessionDetailPage } from "./sessionDetailView";
 import { taskDetailView } from "./taskDetailView";
 
@@ -63,6 +65,35 @@ const model = () => ({
 beforeEach(() => vi.resetAllMocks());
 
 describe("history detail regressions", () => {
+  it("exports yes/no answers as true/false, including untouched No answers", async () => {
+    const query = vi
+      .fn()
+      .mockReturnValueOnce([{ id: "s1", sessionName: "Study", templateName: "Template" }])
+      .mockReturnValueOnce([{ id: "t1", taskId: 1, startedAt: null, endedAt: null }])
+      .mockReturnValueOnce([
+        { taskRecordId: "t1", sectionName: "A", sectionType: "boolean", value: "" },
+        { taskRecordId: "t1", sectionName: "B", sectionType: "boolean", value: "false" },
+        { taskRecordId: "t1", sectionName: "C", sectionType: "boolean", value: "true" },
+        { taskRecordId: "t1", sectionName: "D", sectionType: "boolean", value: " TRUE " },
+        { taskRecordId: "t1", sectionName: "E", sectionType: "textInput", value: "" },
+        { taskRecordId: "t1", sectionName: "F", sectionType: "textInput", value: "No" },
+      ]);
+    vi.mocked(getStore).mockResolvedValue({ query } as unknown as Awaited<
+      ReturnType<typeof getStore>
+    >);
+    const csv = vi.spyOn(historyHelpers, "buildArchiveCsv");
+    try {
+      expect(await Effect.runPromise(ExportSessionCsv({ sessionId: "s1" }).effect)).toMatchObject({
+        _tag: "CsvExported",
+      });
+      expect(csv.mock.results[0]?.value).toBe(
+        "id,A,B,C,D,E,F,startTime,endTime\n1,false,false,true,true,,No,,",
+      );
+    } finally {
+      csv.mockRestore();
+    }
+  });
+
   it.each(["subscription", "delete"])(
     "clears open detail UI after %s disappearance before opening another session",
     (source) => {

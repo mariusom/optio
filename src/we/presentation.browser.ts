@@ -145,6 +145,82 @@ afterEach(() => {
 });
 
 describe("persistent presentation regressions", () => {
+  it.each([600, 1224])(
+    "keeps the task answer card ring inside the sheet scrollport at %ipx",
+    async (height) => {
+      await mount(
+        (model, h) =>
+          sessionDetailPage(
+            {
+              ...model,
+              selectedHistorySession: {
+                ...detail,
+                tasks: [
+                  {
+                    ...detail.tasks[0]!,
+                    sections: Array.from({ length: 6 }, (_, index) => ({
+                      ...sections[0]!,
+                      sectionName: index === 5 ? "Notes" : `Question ${index + 1}`,
+                      value: "dsfdsfds",
+                    })),
+                  },
+                ],
+              },
+              selectedHistoryTaskId: "task-1",
+            },
+            h,
+          ),
+        height,
+      );
+      await page.viewport(1184, height);
+      await expect.element(page.getByRole("dialog", { name: "Task 1", exact: true })).toBeVisible();
+      await Promise.all(document.getAnimations().map((animation) => animation.finished));
+      const card = document.querySelector('[data-slot="sheet"] [data-slot="grouped-list"]')!;
+      const scrollport = card.parentElement!.parentElement!;
+      scrollport.scrollTop = scrollport.scrollHeight;
+      await new Promise(requestAnimationFrame);
+      expect(
+        scrollport.getBoundingClientRect().bottom - card.getBoundingClientRect().bottom,
+      ).toBeGreaterThanOrEqual(1);
+    },
+  );
+
+  it.each(foldcnStyles)("keeps history separators stable in %s", async (style) => {
+    setCurrentStyle(style);
+    await mount((model, h) =>
+      sessionDetailPage(
+        {
+          ...model,
+          selectedHistorySession: {
+            ...detail,
+            tasks: [...detail.tasks, { ...detail.tasks[0]!, id: "task-2", taskId: 2 }],
+          },
+        },
+        h,
+      ),
+    );
+    await expect
+      .element(page.getByRole("button", { name: "View details for Task 2" }))
+      .toBeVisible();
+    for (const group of document.querySelectorAll('[data-slot="grouped-list"]')) {
+      const rows = [...group.children];
+      for (const row of rows.slice(0, -1)) {
+        expect(getComputedStyle(row).borderBottomWidth).toBe("1px");
+      }
+      expect(getComputedStyle(rows.at(-1)!).borderBottomWidth).toBe("0px");
+    }
+    const task = page
+      .getByRole("button", { name: "View details for Task 1" })
+      .element() as HTMLButtonElement;
+    const borderColor = getComputedStyle(task).borderBottomColor;
+    task.focus();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(getComputedStyle(task).borderBottomColor).toBe(borderColor);
+    expect(getComputedStyle(task).outlineWidth).toBe("2px");
+    expect(getComputedStyle(task).outlineStyle).toBe("solid");
+    expect(getComputedStyle(task).outlineOffset).toBe("-3px");
+  });
+
   it.each(foldcnStyles)("fills the history action cell in %s", async (style) => {
     setCurrentStyle(style);
     await mount((model, h) => historyPage({ ...model, history: [history] }, h));
