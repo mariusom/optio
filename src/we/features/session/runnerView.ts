@@ -3,22 +3,23 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import {
   Check,
   List,
+  ListX,
   Timer,
+  actionGroup,
   confirmSheet,
   emptyState,
   groupedList,
   hint,
   icon,
-  navBar,
   navBarAction,
   notice,
   row,
   sheet,
   statusPill,
 } from "@/components/app";
-import { button } from "@/components/ui/button";
+import { button, buttonClass } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/input";
-import { switch_ } from "@/components/ui/switch";
+import { switchClass, switchThumbClass } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
@@ -37,7 +38,7 @@ import {
 
 // ── Status line ─────────────────────────────────────────────────────────────
 
-/** Compact live status under the title: "Task 4 · 00:42 · 3 recorded". */
+/** Compact live status under the title: "Task 4 · 00:42". */
 export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const task = currentTask(runner);
   const isEditing = task !== null && task.isBeingEdited;
@@ -47,13 +48,12 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
     taskStart !== null
       ? Math.max(0, runner.now - taskStart)
       : Math.max(0, runner.now - runner.startedAt);
-  const recorded = `${runner.completedCount} recorded`;
   const parts =
     task === null
-      ? [formatClock(elapsed), recorded]
+      ? [formatClock(elapsed)]
       : isEditing
-        ? [`Editing task ${task.orderIndex}`, recorded]
-        : [`Task ${task.orderIndex}`, formatClock(elapsed), recorded];
+        ? [`Editing task ${task.orderIndex}`]
+        : [`Task ${task.orderIndex}`, formatClock(elapsed)];
 
   return h.p(
     [h.Class("flex items-center gap-1.5 text-xs text-muted-foreground tabular")],
@@ -77,39 +77,66 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
 
 // ── Question controls ───────────────────────────────────────────────────────
 
+// Reserve roughly 12 characters for common labels, plus marker/padding space.
+// This is a readable layout budget, not a language-specific word-length estimate.
+const choiceGridClass =
+  "grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,calc(12ch+3rem)),1fr))] gap-2 text-sm";
+
 const choiceBody = (
   label: string,
-  caption: string | null,
+  isExclusive: boolean,
   indicator: Html,
   h: HtmlBuilder<Message>,
 ) =>
   h.span(
-    [h.Class("flex min-h-14 w-full items-center gap-3 px-4 py-3 text-base leading-snug")],
+    [h.Class("relative flex min-h-14 w-full items-center gap-2 px-3 py-2 text-sm leading-snug")],
     [
-      h.span(
-        [h.Class("flex min-w-0 flex-1 flex-col text-left")],
-        [
-          h.span([h.Class("truncate")], [label]),
-          ...(caption === null
-            ? []
-            : [h.span([h.Class("text-xs text-muted-foreground")], [caption])]),
-        ],
-      ),
       indicator,
+      h.span(
+        [h.Class("min-w-0 flex-1 text-left")],
+        label
+          .split(/(\s+)/)
+          .map((word) =>
+            /^\s+$/.test(word)
+              ? word
+              : h.span([h.Class("inline-block max-w-full break-words")], [word]),
+          ),
+      ),
+      ...(isExclusive
+        ? [
+            h.span(
+              [
+                h.Class("absolute right-1 top-1 text-muted-foreground"),
+                h.Attribute("title", "Exclusive choice — clears other choices"),
+                h.AriaHidden(true),
+              ],
+              [icon(h, ListX, "size-3")],
+            ),
+          ]
+        : []),
     ],
   );
 
 const checkMark = (isSelected: boolean, h: HtmlBuilder<Message>) =>
-  isSelected
-    ? icon(h, Check, "size-5 shrink-0 text-primary")
-    : h.span([h.Class("size-5 shrink-0"), h.AriaHidden(true)], []);
+  h.span(
+    [
+      h.Class(
+        cn(
+          "grid size-4 shrink-0 place-items-center rounded-full border",
+          isSelected ? "border-primary" : "border-input",
+        ),
+      ),
+      h.AriaHidden(true),
+    ],
+    isSelected ? [h.span([h.Class("size-2 rounded-full bg-primary")], [])] : [],
+  );
 
 const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
   h.span(
     [
       h.Class(
         cn(
-          "grid size-6 shrink-0 place-items-center rounded-md border transition-colors",
+          "grid size-4 shrink-0 place-items-center rounded-sm border transition-colors",
           isSelected
             ? "border-primary bg-primary text-primary-foreground"
             : "border-input text-transparent",
@@ -117,23 +144,30 @@ const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
       ),
       h.AriaHidden(true),
     ],
-    [icon(h, Check, "size-4")],
+    [icon(h, Check, "size-3.5 stroke-[3] [&_*]:stroke-[3]")],
   );
 
 /** Single choice: native radios keep arrow-key and single-tab-stop behaviour. */
 const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("divide-y divide-border/80"), h.Role("radiogroup"), h.AriaLabel(section.name)],
+    [
+      h.Class(choiceGridClass),
+      h.Role("radiogroup"),
+      h.AriaLabel(section.name),
+      h.Attribute("aria-required", String(section.isRequired)),
+    ],
     section.options.map((option) => {
       const isSelected = section.value === option;
       return h.label(
         [
           h.Class(
-            cn(
-              "flex w-full cursor-pointer transition-colors active:bg-muted",
-              "has-[:focus-visible]:bg-muted/70",
-              isSelected ? "bg-primary/8 text-primary" : "hover:bg-muted/60",
-            ),
+            buttonClass({
+              variant: "outline",
+              className: cn(
+                "h-auto min-w-0 cursor-pointer whitespace-normal p-0 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+                isSelected && "border-primary bg-primary/8 text-primary",
+              ),
+            }),
           ),
         ],
         [
@@ -147,7 +181,7 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
             h.AriaLabel(option),
             h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
           ]),
-          choiceBody(option, null, checkMark(isSelected, h), h),
+          choiceBody(option, false, checkMark(isSelected, h), h),
         ],
       );
     }),
@@ -157,7 +191,7 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
 const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) => {
   const selected = new Set(section.value.split(",").filter((value) => value !== ""));
   return h.div(
-    [h.Class("divide-y divide-border/80"), h.Role("group"), h.AriaLabel(section.name)],
+    [h.Class(choiceGridClass), h.Role("group"), h.AriaLabel(section.name)],
     section.options.map((option) => {
       const isSelected = selected.has(option);
       const isExclusive = section.exclusiveOptions.includes(option);
@@ -171,24 +205,23 @@ const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
         [
           h.Type("button"),
           h.Class(
-            cn(
-              "flex w-full transition-colors active:bg-muted focus-visible:bg-muted/70",
-              isSelected ? "bg-primary/8 text-primary" : "hover:bg-muted/60",
-            ),
+            buttonClass({
+              variant: "outline",
+              className: cn(
+                "h-auto min-w-0 whitespace-normal p-0",
+                isSelected && "border-primary bg-primary/8 text-primary",
+              ),
+            }),
           ),
           h.Role("checkbox"),
           h.AriaChecked(isSelected),
           h.AriaLabel(option),
+          ...(isExclusive
+            ? [h.Attribute("aria-description", "Selecting this clears all other choices.")]
+            : []),
           h.OnClick(Message.ChangedFieldValue({ taskFieldId: section.id, value: nextValue })),
         ],
-        [
-          choiceBody(
-            option,
-            isExclusive && !isSelected ? "Clears the others" : null,
-            checkBox(isSelected, h),
-            h,
-          ),
-        ],
+        [choiceBody(option, isExclusive, checkBox(isSelected, h), h)],
       );
     }),
   );
@@ -196,7 +229,7 @@ const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
 
 const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("px-4 py-3")],
+    [],
     [
       h.input([
         h.Class(cn(inputClass)),
@@ -214,7 +247,7 @@ const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
 
 const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("px-4 py-3")],
+    [],
     [
       h.textarea([
         h.Class(cn(textareaClass)),
@@ -232,22 +265,42 @@ const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
 
 const yesNoAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
   const isOn = isBooleanTrue(section.value);
-  return h.div(
-    [h.Class("flex min-h-14 items-center px-4 py-1"), h.Role("group"), h.AriaLabel(section.name)],
+  return h.button(
     [
-      switch_(
-        {
-          id: `${scope}-runner-toggle-${section.id}`,
-          isChecked: isOn,
-          label: isOn ? "Yes" : "No",
-          wrapperClass: "w-full",
-          onToggle: (checked) =>
-            Message.ChangedFieldValue({
-              taskFieldId: section.id,
-              value: checked ? "true" : "false",
-            }),
-        },
-        h,
+      h.Type("button"),
+      h.Role("switch"),
+      h.AriaChecked(isOn),
+      h.Attribute("aria-labelledby", `${scope}-runner-toggle-${section.id}-label`),
+      h.Class(
+        "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+      ),
+      h.OnClick(
+        Message.ChangedFieldValue({ taskFieldId: section.id, value: isOn ? "false" : "true" }),
+      ),
+    ],
+    [
+      h.span(
+        [
+          h.Id(`${scope}-runner-toggle-${section.id}-label`),
+          h.Class("min-w-0 flex-1 text-sm font-semibold"),
+        ],
+        [section.name],
+      ),
+      ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
+      h.span([h.Class("text-sm text-muted-foreground"), h.AriaHidden(true)], [isOn ? "Yes" : "No"]),
+      h.span(
+        [
+          h.Class(cn(switchClass, "pointer-events-none")),
+          h.DataAttribute("size", "default"),
+          h.DataAttribute(isOn ? "checked" : "unchecked", ""),
+          h.AriaHidden(true),
+        ],
+        [
+          h.span([
+            h.Class(cn(switchThumbClass)),
+            h.DataAttribute(isOn ? "checked" : "unchecked", ""),
+          ]),
+        ],
       ),
     ],
   );
@@ -268,20 +321,28 @@ const answerControl = (section: RunnerSection, scope: string, h: HtmlBuilder<Mes
   }
 };
 
-const questionFooter = (section: RunnerSection): string | undefined =>
-  section.kind === "checkbox" ? "Pick as many as apply." : undefined;
-
 const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
   groupedList(
     {
-      header: h.span(
-        [h.Class("flex items-center gap-2 normal-case")],
-        [
-          h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
-          ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
-        ],
-      ),
-      footer: questionFooter(section),
+      surface: section.kind === "boolean" ? "card" : "plain",
+      header:
+        section.kind === "boolean"
+          ? undefined
+          : h.span(
+              [h.Class("flex flex-wrap items-center gap-2 normal-case")],
+              [
+                h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
+                ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
+                ...(section.kind === "radio" || section.kind === "checkbox"
+                  ? [
+                      h.span(
+                        [h.Class("ml-auto text-xs font-normal text-muted-foreground")],
+                        [section.kind === "radio" ? "Choose one" : "Choose any"],
+                      ),
+                    ]
+                  : []),
+              ],
+            ),
       attributes: [h.Id(`${scope}-${section.id}`)],
     },
     [answerControl(section, scope, h)],
@@ -321,12 +382,14 @@ export const runnerCanvas = (
 // ── Nav bar pieces ──────────────────────────────────────────────────────────
 
 const endAction = (h: HtmlBuilder<Message>) =>
-  navBarAction(
+  button(
     {
-      label: h.span([h.Class("text-destructive")], ["End"]),
       onClick: Message.ClickedEndSession(),
-      ariaLabel: "End session",
+      className:
+        "bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-400 dark:text-emerald-950 dark:hover:bg-emerald-300",
+      attributes: [h.AriaLabel("End session")],
     },
+    "End",
     h,
   );
 
@@ -335,7 +398,7 @@ const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
     {
       label: h.span(
         [h.Class("flex items-center gap-1.5")],
-        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.tasks.length}`])],
+        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.completedCount}`])],
       ),
       onClick: Message.ToggledTaskList(),
       ariaLabel: "Show task list",
@@ -345,17 +408,39 @@ const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 
 export const runnerNavBar = (
   runner: RunnerState,
-  trailing: ReadonlyArray<Html>,
+  leading: ReadonlyArray<Html>,
   h: HtmlBuilder<Message>,
 ) =>
-  navBar(
-    {
-      title: runner.sessionName === "" ? runner.templateName : runner.sessionName,
-      subtitle: sessionTimerView(runner, h),
-      leading: endAction(h),
-      trailing,
-    },
-    h,
+  h.header(
+    [
+      h.Class(
+        "sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background pt-safe select-none",
+      ),
+      h.DataAttribute("slot", "nav-bar"),
+    ],
+    [
+      h.div(
+        [
+          h.Class(
+            "grid min-h-16 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-3 px-safe py-2",
+          ),
+        ],
+        [
+          h.div([h.Class("flex items-center justify-start")], leading),
+          h.div(
+            [h.Class("min-w-0 text-center")],
+            [
+              h.h1(
+                [h.Class("truncate text-base font-semibold tracking-tight")],
+                [runner.sessionName === "" ? runner.templateName : runner.sessionName],
+              ),
+              h.div([h.Class("text-xs text-muted-foreground")], [sessionTimerView(runner, h)]),
+            ],
+          ),
+          h.div([h.Class("flex items-center justify-end")], [endAction(h)]),
+        ],
+      ),
+    ],
   );
 
 export const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
@@ -384,30 +469,21 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
 
   const actions = isEditing
     ? [
-        h.div(
-          [h.Class("flex gap-3 [&>*]:flex-1")],
-          [
-            button(
-              {
-                variant: "secondary",
-                size: "lg",
-                onClick: Message.ClickedCancelEdit(),
-                attributes: [h.AriaLabel("Cancel editing")],
-              },
-              "Cancel",
-              h,
-            ),
-            button(
-              {
-                size: "lg",
-                isDisabled: !canSave,
-                onClick: Message.ClickedSaveEdit(),
-                attributes: [h.AriaLabel("Save changes")],
-              },
-              [icon(h, Check, "size-5"), "Save"],
-              h,
-            ),
-          ],
+        actionGroup(
+          {
+            cancel: {
+              label: "Cancel",
+              onClick: Message.ClickedCancelEdit(),
+              ariaLabel: "Cancel editing",
+            },
+            confirm: {
+              label: "Save",
+              onClick: Message.ClickedSaveEdit(),
+              isDisabled: !canSave,
+              ariaLabel: "Save changes",
+            },
+          },
+          h,
         ),
         ...(canSave ? [] : [hint(recordHint(task), h)]),
       ]
@@ -515,18 +591,13 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
       onDismiss: Message.ToggledTaskList(),
       dismissLabel: "Close task list",
       size: "md",
-      footer: [
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.ToggledTaskList(),
-            attributes: [h.AriaLabel("Close task list")],
-          },
-          "Done",
-          h,
-        ),
-      ],
+      footer: {
+        confirm: {
+          label: "Done",
+          onClick: Message.ToggledTaskList(),
+          ariaLabel: "Close task list",
+        },
+      },
     },
     [groupedList({}, [...taskRows(runner, h)], h)],
     h,

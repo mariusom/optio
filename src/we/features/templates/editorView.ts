@@ -5,8 +5,8 @@ import {
   ArrowDown,
   ArrowUp,
   Plus,
-  Trash2,
   X,
+  actionGroup,
   confirmSheet,
   controlRow,
   groupedList,
@@ -22,6 +22,7 @@ import {
 } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { itemSizes } from "@/components/ui/item";
 import { nativeSelect } from "@/components/ui/native-select";
 import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
@@ -32,7 +33,7 @@ import { hasOptions, supportsRequired } from "../../fields";
 import { hrefFor } from "../../routes";
 import { hasChanges, isDraftValid, isTemplateValid } from "./editor";
 
-// One workspace for template details and inline question editing.
+// Template overview and focused question editing share the same draft state.
 
 /** Answer types, simplest first — the order they are offered in. */
 const ANSWER_TYPES: ReadonlyArray<FieldKind> = [
@@ -219,6 +220,7 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
     {
       id: "answer-type",
       label: "Answer type",
+      wrapperClass: "[&>[data-slot=native-select-wrapper]]:w-full",
       value: kind,
       onChange: (value) => Message.ChangedFieldKind({ kind: value }),
       options: ANSWER_TYPES.map((candidate) =>
@@ -231,13 +233,14 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
 const choiceRow = (
   option: string,
   index: number,
+  total: number,
   isExclusive: boolean,
   showExclusive: boolean,
   h: HtmlBuilder<Message>,
 ) =>
   h.keyed("div")(
-    `choice-${index}-${option}`,
-    [h.Class("flex w-full flex-wrap items-center gap-2 p-4")],
+    option,
+    [h.Class(cn(itemSizes.default, "flex w-full flex-wrap items-center"))],
     [
       h.span([h.Class("min-w-0 basis-full break-words text-sm sm:basis-auto sm:flex-1")], [option]),
       ...(showExclusive
@@ -255,6 +258,29 @@ const choiceRow = (
             ),
           ]
         : []),
+      h.div(
+        [h.Class("ml-auto flex shrink-0 items-stretch")],
+        [
+          moveButton(
+            {
+              label: `Move choice ${option} up`,
+              up: true,
+              isDisabled: index === 0,
+              onClick: Message.ClickedMoveOption({ index, direction: -1 }),
+            },
+            h,
+          ),
+          moveButton(
+            {
+              label: `Move choice ${option} down`,
+              up: false,
+              isDisabled: index === total - 1,
+              onClick: Message.ClickedMoveOption({ index, direction: 1 }),
+            },
+            h,
+          ),
+        ],
+      ),
       button(
         {
           variant: "destructive",
@@ -283,7 +309,14 @@ const choicesSection = (
     },
     [
       ...draft.options.map((option, index) =>
-        choiceRow(option, index, draft.exclusiveOptions.includes(option), kind === "checkbox", h),
+        choiceRow(
+          option,
+          index,
+          draft.options.length,
+          draft.exclusiveOptions.includes(option),
+          kind === "checkbox",
+          h,
+        ),
       ),
       controlRow(
         [
@@ -339,7 +372,7 @@ const defaultAnswerSection = (
 ) => {
   if (kind === "boolean") {
     return groupedList(
-      { header: "Default answer" },
+      { header: "Default answer", surface: "plain" },
       [
         controlRow(
           [
@@ -349,19 +382,24 @@ const defaultAnswerSection = (
                 isChecked: draft.defaultValue === "true",
                 onToggle: () => Message.ToggledFieldDefaultBoolean(),
                 label: "Starts as Yes",
+                className: "after:inset-x-0",
                 wrapperClass: "flex-row-reverse justify-between gap-4",
               },
               h,
             ),
           ],
           h,
+          "p-0",
         ),
       ],
       h,
     );
   }
   return groupedList(
-    { header: "Default answer", footer: "Filled in for you; you can still change it." },
+    {
+      surface: "plain",
+      footer: "Filled in for you; you can still change it.",
+    },
     [
       controlRow(
         [
@@ -388,6 +426,7 @@ const defaultAnswerSection = (
               ]),
         ],
         h,
+        "p-0",
       ),
     ],
     h,
@@ -401,43 +440,41 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
   const kind = draft.kind as FieldKind;
   const valid = isDraftValid(draft as unknown as Parameters<typeof isDraftValid>[0]);
 
-  const actions = [
-    button(
-      {
-        size: "lg",
-        isDisabled: !valid,
-        onClick: Message.ConfirmedSaveField(),
-        attributes: [h.AriaLabel("Save question")],
-      },
-      isEditing ? "Done editing" : "Add to template",
-      h,
-    ),
-    button(
-      {
-        variant: "secondary",
-        size: "lg",
+  const actions = actionGroup(
+    {
+      destructive: isEditing
+        ? {
+            label: "Delete question",
+            onClick: Message.ClickedDeleteField({ id: draft.id }),
+            ariaLabel: `Delete question ${draft.name}`,
+          }
+        : undefined,
+      cancel: {
+        label: "Cancel",
         onClick: Message.CanceledAddField(),
-        attributes: [h.AriaLabel("Cancel editing question")],
+        ariaLabel: "Cancel editing question",
       },
-      "Cancel",
-      h,
-    ),
-  ];
+      confirm: {
+        label: isEditing ? "Done editing" : "Add to template",
+        onClick: Message.ConfirmedSaveField(),
+        isDisabled: !valid,
+        ariaLabel: "Save question",
+      },
+    },
+    h,
+  );
   return h.section(
     [
       h.Id("question-editor"),
-      h.Class(
-        "flex min-w-0 scroll-mt-16 flex-col gap-4 rounded-lg border border-primary/40 bg-card p-4",
-      ),
+      h.Class("flex min-w-0 scroll-mt-16 flex-col gap-4"),
       h.AriaLabel(isEditing ? "Edit question" : "New question"),
     ],
     [
-      h.h2([h.Class("text-lg font-semibold")], [isEditing ? "Edit question" : "New question"]),
       h.div(
         [h.Class("flex flex-col gap-5 pb-2")],
         [
           groupedList(
-            {},
+            { surface: "plain" },
             [
               controlRow(
                 [
@@ -455,6 +492,7 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
                   ]),
                 ],
                 h,
+                "p-0",
               ),
             ],
             h,
@@ -463,7 +501,10 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
           ...(supportsRequired(kind)
             ? [
                 groupedList(
-                  { footer: "The task can’t be recorded until this is answered." },
+                  {
+                    surface: "plain",
+                    footer: "The task can’t be recorded until this is answered.",
+                  },
                   [
                     controlRow(
                       [
@@ -473,12 +514,14 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
                             isChecked: draft.isRequired,
                             onToggle: () => Message.ToggledFieldRequired(),
                             label: "Must be answered",
-                            wrapperClass: "flex-row-reverse justify-between gap-4",
+                            className: "after:inset-x-0",
+                            wrapperClass: "flex-row-reverse justify-end gap-3",
                           },
                           h,
                         ),
                       ],
                       h,
+                      "p-0",
                     ),
                   ],
                   h,
@@ -487,30 +530,10 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
             : []),
           ...(hasOptions(kind) ? [choicesSection(draft, kind, h)] : []),
           ...(hasOptions(kind) ? [] : [defaultAnswerSection(draft, kind, h)]),
-          ...(isEditing
-            ? [
-                groupedList(
-                  {},
-                  [
-                    row(
-                      {
-                        title: "Delete question",
-                        destructive: true,
-                        leading: icon(h, Trash2, "size-5"),
-                        onClick: Message.ClickedDeleteField({ id: draft.id }),
-                        attributes: [h.AriaLabel(`Delete question ${draft.name}`)],
-                      },
-                      h,
-                    ),
-                  ],
-                  h,
-                ),
-              ]
-            : []),
           ...(valid ? [] : [hint(draftHint(draft), h)]),
         ],
       ),
-      h.div([h.Class("flex flex-wrap gap-2 border-t border-border pt-4")], actions),
+      h.div([h.Class("border-t border-border pt-4")], [actions]),
     ],
   );
 };
@@ -541,35 +564,42 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
   const isValid = isTemplateValid(editor);
   const changed = hasChanges(editor as unknown as Parameters<typeof hasChanges>[0]);
   const canSave = isValid && changed && !editor.isSaving && editor.draft === null;
-  const saveHint =
-    editor.draft !== null
-      ? "Finish or cancel the question below before saving the template."
-      : !isValid
-        ? "Give the template a name to save it."
-        : !changed
-          ? "Nothing to save yet."
-          : null;
+  const saveHint = !isValid ? "Give the template a name to save it." : null;
 
   return h.div(
     [h.Class("template-editor flex min-h-full flex-col")],
     [
       navBar(
         {
-          title: model.showCreate ? "New template" : "Template builder",
+          title:
+            editor.draft !== null
+              ? editor.editingFieldId === null
+                ? "New question"
+                : "Edit question"
+              : model.showCreate
+                ? "New template"
+                : "Template builder",
+          subtitle: editor.draft !== null ? editor.name || "Untitled template" : undefined,
           wide: true,
-          back: guardedBackLink,
-          trailing: [
-            navBarAction(
-              {
-                label: editor.isSaving ? "Saving…" : "Save",
-                emphasized: true,
-                isDisabled: !canSave,
-                onClick: Message.ClickedSaveTemplate(),
-                ariaLabel: "Save template",
-              },
-              h,
-            ),
-          ],
+          back:
+            editor.draft !== null
+              ? { ...backLink, label: "Template builder", onClick: Message.ClickedBackFromField() }
+              : guardedBackLink,
+          trailing:
+            editor.draft !== null
+              ? []
+              : [
+                  navBarAction(
+                    {
+                      label: editor.isSaving ? "Saving…" : "Save",
+                      emphasized: true,
+                      isDisabled: !canSave,
+                      onClick: Message.ClickedSaveTemplate(),
+                      ariaLabel: "Save template",
+                    },
+                    h,
+                  ),
+                ],
         },
         h,
       ),
@@ -579,73 +609,71 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
           ...(model.lastError === null
             ? []
             : [notice({ tone: "error", text: model.lastError }, h)]),
-          h.div(
-            [
-              h.Class(
-                "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start",
-              ),
-            ],
-            [
-              groupedList(
-                {
-                  header: "1. Template details",
-                  footer:
-                    "Name your template, then build the questions in the order you’ll answer them.",
-                },
-                [nameRow(editor, h), defaultRow(editor, h)],
-                h,
-              ),
-              h.div(
-                [h.Class("flex min-w-0 flex-col gap-4")],
-                [
-                  groupedList(
-                    {
-                      header: "2. Questions",
-                      footer:
-                        editor.fields.length === 0
-                          ? "Add a question for each thing you note down, such as activity, location or notes."
-                          : `${editor.fields.length} question${editor.fields.length === 1 ? "" : "s"}`,
-                    },
-                    [
-                      ...editor.fields.map((field, index) =>
-                        h.keyed("div")(
-                          field.id,
-                          [],
+          ...(editor.draft !== null
+            ? [questionForm(editor, h)]
+            : [
+                h.div(
+                  [
+                    h.Class(
+                      "grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start",
+                    ),
+                  ],
+                  [
+                    groupedList(
+                      {
+                        header: "1. Template details",
+                        footer:
+                          "Name your template, then build the questions in the order you’ll answer them.",
+                      },
+                      [nameRow(editor, h), defaultRow(editor, h)],
+                      h,
+                    ),
+                    h.div(
+                      [h.Class("flex min-w-0 flex-col gap-4")],
+                      [
+                        groupedList(
+                          {
+                            header: "2. Questions",
+                            footer:
+                              editor.fields.length === 0
+                                ? "Add a question for each thing you note down, such as activity, location or notes."
+                                : `${editor.fields.length} question${editor.fields.length === 1 ? "" : "s"}`,
+                          },
                           [
-                            questionRow(
-                              field,
-                              index,
-                              editor.fields.length,
-                              editor.draft !== null || editor.isSaving,
+                            ...editor.fields.map((field, index) =>
+                              h.keyed("div")(
+                                field.id,
+                                [],
+                                [
+                                  questionRow(
+                                    field,
+                                    index,
+                                    editor.fields.length,
+                                    editor.draft !== null || editor.isSaving,
+                                    h,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            row(
+                              {
+                                title: "Add question",
+                                leading: icon(h, Plus, "size-5 text-primary"),
+                                onClick: Message.ClickedAddField(),
+                                isDisabled: editor.draft !== null || editor.isSaving,
+                                attributes: [h.AriaLabel("Add question")],
+                              },
                               h,
                             ),
-                            ...(editor.editingFieldId === field.id
-                              ? [questionForm(editor, h)]
-                              : []),
                           ],
+                          h,
                         ),
-                      ),
-                      row(
-                        {
-                          title: "Add question",
-                          leading: icon(h, Plus, "size-5 text-primary"),
-                          onClick: Message.ClickedAddField(),
-                          isDisabled: editor.draft !== null || editor.isSaving,
-                          attributes: [h.AriaLabel("Add question")],
-                        },
-                        h,
-                      ),
-                    ],
-                    h,
-                  ),
-                  ...(editor.draft !== null && editor.editingFieldId === null
-                    ? [questionForm(editor, h)]
-                    : []),
-                ],
-              ),
-            ],
-          ),
-          ...(saveHint === null ? [] : [hint(saveHint, h)]),
+                      ],
+                    ),
+                  ],
+                ),
+                ...(saveHint === null ? [] : [hint(saveHint, h)]),
+              ]),
         ],
         h,
       ),

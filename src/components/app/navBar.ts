@@ -21,7 +21,7 @@ export type NavBarConfig<M> = Readonly<{
   leading?: Html;
   /** Trailing controls: at most two compact buttons. */
   trailing?: ReadonlyArray<Html>;
-  /** Small caption under the title (e.g. live timer). */
+  /** Muted context beside the title, wrapping underneath when space is limited. */
   subtitle?: Html | string;
   wide?: boolean;
   className?: string;
@@ -49,7 +49,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
         [
           h.Class(
             cn(
-              "mx-auto grid h-11 w-full grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center px-safe",
+              "mx-auto grid min-h-11 w-full grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center px-safe py-1",
               config.wide ? "max-w-5xl" : "max-w-3xl",
             ),
           ),
@@ -63,31 +63,40 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
                 ? [config.leading]
                 : [],
           ),
-          h.h1(
-            [h.Class("min-w-0 truncate px-1 text-center text-base font-semibold tracking-tight")],
-            [config.title],
+          h.div(
+            [
+              h.Class(
+                "flex min-w-0 flex-wrap items-center justify-center gap-x-2 gap-y-1 px-1 text-center",
+              ),
+            ],
+            [
+              h.h1(
+                [h.Class("min-w-0 max-w-full truncate text-base font-semibold tracking-tight")],
+                [config.title],
+              ),
+              ...(config.subtitle === undefined
+                ? []
+                : [
+                    h.span(
+                      [
+                        h.Class(
+                          "min-w-0 max-w-full rounded-md bg-muted px-2 py-0.5 text-xs break-words text-muted-foreground",
+                        ),
+                      ],
+                      [config.subtitle],
+                    ),
+                  ]),
+            ],
           ),
           h.div([h.Class("flex min-w-0 items-center justify-end gap-1")], config.trailing ?? []),
         ],
       ),
-      ...(config.subtitle === undefined
-        ? []
-        : [
-            h.div(
-              [
-                h.Class(
-                  "mx-auto flex w-full max-w-3xl justify-center px-safe pb-1.5 text-xs text-muted-foreground",
-                ),
-              ],
-              [config.subtitle],
-            ),
-          ]),
     ],
   );
 
 const backClass = buttonClass({
   variant: "ghost",
-  className: "-ml-2 min-w-11 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+  className: "-ml-2 min-w-11 max-w-56 justify-start gap-1 px-2 text-base text-primary",
 });
 
 const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
@@ -101,7 +110,7 @@ const backButton = <M>(back: BackLink<M>, h: HtmlBuilder<M>): Html => {
     : button(
         {
           variant: "ghost",
-          className: "-ml-2 min-w-11 max-w-36 justify-start gap-1 px-2 text-base text-primary",
+          className: "-ml-2 min-w-11 max-w-56 justify-start gap-1 px-2 text-base text-primary",
           onClick: back.onClick,
           attributes: [label],
         },

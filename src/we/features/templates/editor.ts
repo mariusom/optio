@@ -187,6 +187,19 @@ export const draftFromField = (field: FieldDef): FieldDraft => ({
 
 // ── Option helpers for drafts ───────────────────────────────────────────────
 
+export const moveOptionInDraft = (
+  draft: FieldDraft,
+  index: number,
+  direction: -1 | 1,
+): FieldDraft => {
+  const target = index + direction;
+  if (index < 0 || index >= draft.options.length || target < 0 || target >= draft.options.length)
+    return draft;
+  const options = [...draft.options];
+  [options[index], options[target]] = [options[target]!, options[index]!];
+  return { ...draft, options };
+};
+
 export const addOptionToDraft = (draft: FieldDraft): FieldDraft => {
   const trimmed = draft.newOptionText.trim();
   if (trimmed === "") return draft;

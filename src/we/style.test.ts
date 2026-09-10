@@ -8,12 +8,13 @@ import { readStyle, saveStyle, setCurrentStyle } from "./style";
 describe("Foldcn component style", () => {
   it.effect("defaults invalid preferences and round-trips every style", () =>
     Effect.gen(function* () {
-      expect(yield* readStyle).toBe("default");
+      expect(yield* readStyle).toBe("nova");
       const store = yield* KeyValueStore.KeyValueStore;
       yield* store.set("optio-foldcn-style", "unknown");
-      expect(yield* readStyle).toBe("default");
+      expect(yield* readStyle).toBe("nova");
+      yield* store.set("optio-foldcn-style", "default");
+      expect(yield* readStyle).toBe("nova");
       for (const style of [
-        "default",
         "nova",
         "vega",
         "maia",
@@ -34,7 +35,7 @@ describe("Foldcn component style", () => {
     const nova = buttonClass();
     setCurrentStyle("vega");
     const vega = buttonClass();
-    setCurrentStyle("default");
+    setCurrentStyle("nova");
 
     expect(vega).not.toBe(nova);
     expect(vega).toContain("h-11");

@@ -2,7 +2,6 @@ import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { sheet } from "@/components/app";
-import { button } from "@/components/ui/button";
 import { inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
@@ -25,27 +24,18 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
       onDismiss: Message.CanceledEditHistoryName(),
       dismissLabel: "Cancel editing session",
       size: "md",
-      footer: [
-        button(
-          {
-            size: "lg",
-            onClick: Message.ConfirmedEditHistoryName(),
-            attributes: [h.AriaLabel("Save session name")],
-          },
-          "Save",
-          h,
-        ),
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.CanceledEditHistoryName(),
-            attributes: [h.AriaLabel("Cancel editing session name")],
-          },
-          "Cancel",
-          h,
-        ),
-      ],
+      footer: {
+        cancel: {
+          label: "Cancel",
+          onClick: Message.CanceledEditHistoryName(),
+          ariaLabel: "Cancel editing session name",
+        },
+        confirm: {
+          label: "Save",
+          onClick: Message.ConfirmedEditHistoryName(),
+          ariaLabel: "Save session name",
+        },
+      },
     },
     [
       h.div(

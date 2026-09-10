@@ -2,7 +2,6 @@ import { Effect, Schema as S } from "effect";
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore";
 
 export const FoldcnStyle = S.Literals([
-  "default",
   "nova",
   "vega",
   "maia",
@@ -16,7 +15,7 @@ export type FoldcnStyle = typeof FoldcnStyle.Type;
 export const foldcnStyles = FoldcnStyle.literals;
 const storageKey = "optio-foldcn-style";
 
-let currentStyle: FoldcnStyle = "default";
+let currentStyle: FoldcnStyle = "nova";
 
 export const getCurrentStyle = (): FoldcnStyle => currentStyle;
 export const setCurrentStyle = (style: FoldcnStyle): void => {
@@ -27,7 +26,7 @@ export const readStyle = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(storageKey);
   return yield* S.decodeUnknownEffect(FoldcnStyle)(value).pipe(
-    Effect.catch(() => Effect.succeed("default" as const)),
+    Effect.catch(() => Effect.succeed("nova" as const)),
   );
 });
 

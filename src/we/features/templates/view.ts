@@ -1,8 +1,11 @@
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
+  Copy,
   Ellipsis,
   LayoutTemplate,
+  Star,
+  Trash2,
   confirmSheet,
   emptyState,
   groupedList,
@@ -86,22 +89,13 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
       description: questionSummaryLine(template.fieldCount, template.requiredCount),
       onDismiss: Message.ClosedTemplateActions(),
       dismissLabel: `Close actions for "${template.name}"`,
-      footer: [
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.ClosedTemplateActions(),
-            attributes: [h.AriaLabel("Cancel")],
-          },
-          "Cancel",
-          h,
-        ),
-      ],
+      footer: {
+        cancel: { label: "Cancel", onClick: Message.ClosedTemplateActions() },
+      },
     },
     [
       h.div(
-        [h.Class("flex flex-col")],
+        [h.Class("flex flex-col gap-2")],
         [
           ...(template.isDefault
             ? []
@@ -109,6 +103,7 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
                 sheetAction(
                   {
                     label: "Set as default",
+                    leading: icon(h, Star),
                     onClick: Message.ClickedSetDefaultTemplate({ id: template.id }),
                   },
                   h,
@@ -117,6 +112,7 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
           sheetAction(
             {
               label: "Duplicate",
+              leading: icon(h, Copy),
               onClick: Message.ClickedDuplicateTemplate({ id: template.id }),
             },
             h,
@@ -124,6 +120,7 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
           sheetAction(
             {
               label: "Delete",
+              leading: icon(h, Trash2),
               destructive: true,
               onClick: Message.RequestedDeleteTemplate({ id: template.id, name: template.name }),
             },

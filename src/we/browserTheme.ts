@@ -1,26 +1,50 @@
 import { Effect } from "effect";
 import * as BrowserKeyValueStore from "@effect/platform-browser/BrowserKeyValueStore";
+import iconSvg from "../../public/icon.svg?raw";
 import {
+  accentForeground,
   isDarkTheme,
   readAccent,
   readFont,
+  readIconLibrary,
   readTheme,
   saveAccent,
   saveFont,
+  saveIconLibrary,
   saveTheme,
   type Accent,
   type Font,
+  type IconLibrary,
   type Theme,
 } from "./theme";
+import { setCurrentIconLibrary } from "../lib/iconPreference";
 import { readStyle, saveStyle, setCurrentStyle, type FoldcnStyle } from "./style";
 
 let currentTheme: Theme = "auto";
+
+const updateFavicon = () => {
+  const styles = getComputedStyle(document.documentElement);
+  const svg = new DOMParser().parseFromString(iconSvg, "image/svg+xml");
+  svg.querySelector("rect")!.setAttribute("fill", styles.getPropertyValue("--primary").trim());
+  const text = svg.querySelector("text")!;
+  text.setAttribute("fill", styles.getPropertyValue("--primary-foreground").trim());
+  text.setAttribute("font-family", styles.fontFamily);
+  let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.rel = "icon";
+    document.head.append(link);
+  }
+  link.type = "image/svg+xml";
+  link.href = `data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+};
 
 const applyTheme = () => {
   document.documentElement.classList.toggle(
     "dark",
     isDarkTheme(currentTheme, window.matchMedia("(prefers-color-scheme: dark)").matches),
   );
+  updateFavicon();
 };
 
 export const initializeTheme = Effect.gen(function* () {
@@ -50,28 +74,64 @@ export const initializeFont = Effect.gen(function* () {
     Effect.catchCause(() => Effect.succeed("sans" as const)),
   );
   document.documentElement.dataset.font = font;
+  updateFavicon();
   return font;
 });
 
 export const changeFont = Effect.fn("changeFont")(function* (font: Font) {
   document.documentElement.dataset.font = font;
+  updateFavicon();
   return yield* saveFont(font).pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
+export const initializeIconLibrary = Effect.gen(function* () {
+  const library = yield* readIconLibrary.pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.catchCause(() => Effect.succeed("hugeicons" as const)),
+  );
+  setCurrentIconLibrary(library);
+  document.documentElement.dataset.iconLibrary = library;
+  return library;
+});
+
+export const changeIconLibrary = Effect.fn("changeIconLibrary")(function* (library: IconLibrary) {
+  setCurrentIconLibrary(library);
+  document.documentElement.dataset.iconLibrary = library;
+  return yield* saveIconLibrary(library).pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
+  );
+});
+
+const applyAccent = (accent: Accent) => {
+  const root = document.documentElement;
+  root.dataset.accent = accent;
+  if (accent.startsWith("#")) {
+    root.style.setProperty("--primary", accent);
+    root.style.setProperty("--primary-foreground", accentForeground(accent));
+    root.style.setProperty("--ring", accent);
+  } else {
+    root.style.removeProperty("--primary");
+    root.style.removeProperty("--primary-foreground");
+    root.style.removeProperty("--ring");
+  }
+  updateFavicon();
+};
+
 export const initializeAccent = Effect.gen(function* () {
   const accent = yield* readAccent.pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.catchCause(() => Effect.succeed("default" as const)),
   );
-  document.documentElement.dataset.accent = accent;
+  applyAccent(accent);
   return accent;
 });
 
 export const changeAccent = Effect.fn("changeAccent")(function* (accent: Accent) {
-  document.documentElement.dataset.accent = accent;
+  applyAccent(accent);
   return yield* saveAccent(accent).pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
@@ -81,7 +141,7 @@ export const changeAccent = Effect.fn("changeAccent")(function* (accent: Accent)
 export const initializeStyle = Effect.gen(function* () {
   const style = yield* readStyle.pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
-    Effect.catchCause(() => Effect.succeed("default" as const)),
+    Effect.catchCause(() => Effect.succeed("nova" as const)),
   );
   setCurrentStyle(style);
   document.documentElement.dataset.foldcnStyle = style;

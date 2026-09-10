@@ -193,10 +193,15 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
       `[role="switch"][aria-labelledby="${label.id}"]`,
     )!;
     expect(control).not.toBeNull();
-    expect(label.textContent).toBe("No");
+    expect(label.textContent).toBe("Enabled flag");
     label.click();
     await expect.poll(() => changes.at(-1)).toEqual({ taskFieldId: "enabled", value: "true" });
-    await expect.element(page.getByRole("switch", { name: "Yes" })).toBeChecked();
+    await expect.element(page.getByRole("switch", { name: "Enabled flag" })).toBeChecked();
+    control.focus();
+    await userEvent.keyboard(" ");
+    await expect.element(page.getByRole("switch", { name: "Enabled flag" })).not.toBeChecked();
+    expect(control.getBoundingClientRect().height).toBe(56);
+    expect(control.getBoundingClientRect().width).toBeGreaterThan(250);
   });
 
   it.each(["Assist", ""])(
@@ -250,7 +255,112 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
   );
 });
 
+describe.each([390, 1184])("choice grids at %ipx", (width) => {
+  it("uses equal tiles and keeps exclusive selection reversible", async () => {
+    const task = runnerFixture("").tasks[0]!;
+    await mount(width, "", {
+      tasks: [
+        {
+          ...task,
+          sections: [
+            {
+              ...task.sections[0]!,
+              options: [
+                "Value-added",
+                "Inspection",
+                "Station 3",
+                "Station 4",
+                "Station 5",
+                "Rework",
+              ],
+            },
+            {
+              ...task.sections[1]!,
+              kind: "checkbox",
+              name: "Tools",
+              options: ["Torque driver", "Scanner", "None"],
+              exclusiveOptions: ["None"],
+              value: "Torque driver,Scanner",
+            },
+          ],
+        },
+      ],
+    });
+    const grid = page.getByRole("radiogroup", { name: "Activity" }).element();
+    const tiles = [...grid.children].map((e) => e.getBoundingClientRect());
+    expect(tiles.filter((r) => r.y === tiles[0]!.y)).toHaveLength(width === 390 ? 2 : 4);
+    for (const tile of [...grid.children].slice(0, 2)) {
+      const word = tile.querySelector(".inline-block")!;
+      expect(word.getBoundingClientRect().height).toBeLessThan(20);
+    }
+    expect(
+      Math.max(...tiles.map((r) => r.width)) - Math.min(...tiles.map((r) => r.width)),
+    ).toBeLessThan(1);
+    expect(new Set(tiles.map((r) => r.height)).size).toBe(1);
+    expect(tiles[0]!.height).toBeGreaterThanOrEqual(44);
+    expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth);
+    expect(grid.getAttribute("aria-required")).toBe("true");
+    const tools = page.getByRole("group", { name: "Tools" });
+    const none = tools.getByRole("checkbox", { name: "None", exact: true });
+    await none.click();
+    await expect.element(none).toBeChecked();
+    await expect.element(tools.getByRole("checkbox", { name: "Torque driver" })).not.toBeChecked();
+    await expect.element(tools.getByRole("checkbox", { name: "Scanner" })).not.toBeChecked();
+    expect(none.element().textContent).toBe("None");
+    expect(
+      none.element().querySelector('[title="Exclusive choice — clears other choices"] svg'),
+    ).not.toBeNull();
+    expect(none.element().getAttribute("aria-description")).toContain("clears all other choices");
+    await tools.getByRole("checkbox", { name: "Scanner" }).click();
+    await expect.element(none).not.toBeChecked();
+    await expect.element(tools.getByRole("checkbox", { name: "Scanner" })).toBeChecked();
+  });
+});
+
 describe.each([390, 820])("runner actions at %ipx", (width) => {
+  it.each([0, 1])(
+    "counts only %i recorded tasks and keeps the timer status concise",
+    async (completedCount) => {
+      const active = { ...runnerFixture("").tasks[0]!, orderIndex: completedCount + 1 };
+      await mount(width, "", {
+        completedCount,
+        now: 59_000,
+        tasks: [
+          ...(completedCount ? [{ ...active, id: "done", orderIndex: 1, endDate: 1_000 }] : []),
+          active,
+        ],
+      });
+      const toggle = page.getByRole("button", {
+        name: width < 768 ? "Show task list" : "Collapse sidebar",
+      });
+      await expect.element(toggle).toBeVisible();
+      expect(toggle.element().textContent).toBe(String(completedCount));
+      const header = toggle.element().closest("header")!;
+      expect(header.textContent).toContain(`Task ${completedCount + 1} · 00:59`);
+      expect(header.textContent).not.toContain("recorded");
+    },
+  );
+
+  it("centers the header controls with task navigation left and End right", async () => {
+    await mount(width);
+    const toggle = page
+      .getByRole("button", { name: width < 768 ? "Show task list" : "Collapse sidebar" })
+      .element()
+      .getBoundingClientRect();
+    const end = page
+      .getByRole("button", { name: "End session", exact: true })
+      .element()
+      .getBoundingClientRect();
+    const title = page
+      .getByRole("heading", { name: "Keyboard accessibility" })
+      .element()
+      .getBoundingClientRect();
+    expect(toggle.right).toBeLessThan(title.left);
+    expect(title.right).toBeLessThan(end.left);
+    expect(Math.abs(toggle.y + toggle.height / 2 - end.y - end.height / 2)).toBeLessThan(1);
+    expect(end.right).toBeLessThanOrEqual(width);
+  });
+
   const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
     const task = runnerFixture(value).tasks[0]!;
     return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
@@ -289,6 +399,10 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     expect(await accessibleTaskNames()).not.toContain("Task navigation sidebar");
     task.focus();
     expect(document.activeElement).not.toBe(task);
+    await userEvent.tab();
+    await expect
+      .element(page.getByRole("button", { name: "End session", exact: true }))
+      .toHaveFocus();
     await userEvent.tab();
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
     await page.getByRole("button", { name: "Expand sidebar" }).click();

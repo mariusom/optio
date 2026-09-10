@@ -9,6 +9,7 @@ import { applicationConfig } from "./application.ts";
 import {
   initializeAccent,
   initializeFont,
+  initializeIconLibrary,
   initializeStyle,
   initializeTheme,
 } from "./we/browserTheme";
@@ -67,6 +68,7 @@ const main = Effect.gen(function* () {
     theme: initializeTheme,
     style: initializeStyle,
     font: initializeFont,
+    iconLibrary: initializeIconLibrary,
     accent: initializeAccent,
   });
   const application = Runtime.makeApplication({

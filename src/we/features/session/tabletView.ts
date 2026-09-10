@@ -21,7 +21,7 @@ const sidebarToggle = (runner: RunnerState, h: HtmlBuilder<Message>) =>
     {
       label: h.span(
         [h.Class("flex items-center gap-1.5")],
-        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.tasks.length}`])],
+        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.completedCount}`])],
       ),
       onClick: Message.ToggledSidebar(),
       ariaLabel: runner.showSidebar ? "Collapse sidebar" : "Expand sidebar",
@@ -44,7 +44,7 @@ const taskSidebar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
     ],
     [
       h.div(
-        [h.Class("flex w-72 shrink-0 items-center pt-safe pb-2")],
+        [h.Class("flex w-72 shrink-0 items-center px-3 pt-safe pb-2")],
         [sectionHeader(`Tasks · ${runner.completedCount} recorded`, h, "pt-4 pb-0")],
       ),
       h.div(

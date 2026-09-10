@@ -17,6 +17,7 @@ import {
   isTemplateValid,
   makeEmptyDraft,
   moveField,
+  moveOptionInDraft,
   renumberFields,
   toggleExclusiveOption,
   withKindChanged,
@@ -64,9 +65,9 @@ describe("template detail regressions", () => {
     model = update(model, Message.ClickedAddField()).model;
     model = update(model, Message.ChangedFieldName({ text: "Unfinished question" })).model;
     const cancelQuestion = update(model, Message.CanceledAddField());
-    const discardedQuestion = update(cancelQuestion.model, Message.ConfirmedDiscard());
-    expect(discardedQuestion.model.showCreate).toBe(true);
-    expect(discardedQuestion.model.editor?.draft).toBeNull();
+    expect(cancelQuestion.model.showCreate).toBe(true);
+    expect(cancelQuestion.model.editor?.draft).toBeNull();
+    expect(cancelQuestion.model.editor?.pendingDiscard).toBe(false);
     const leave = update(model, Message.ClickedCancelEditTemplate());
     const discardedTemplate = update(leave.model, Message.ConfirmedDiscard());
     expect(discardedTemplate.model.editor).toBeNull();
@@ -241,6 +242,33 @@ describe("hasChanges", () => {
 });
 
 describe("cancel existing field", () => {
+  it.each(["", "false", "true"])(
+    "does not warn for an unchanged Yes/No default %j",
+    (defaultValue) => {
+      const existing = field({ id: "boolean", kind: "boolean", defaultValue, isRequired: false });
+      const loaded = update(
+        templateEditorModel(),
+        Message.GotTemplateDetail({
+          template: { id: "t1", name: "Template", isDefault: false, fields: [existing] },
+        }),
+      ).model;
+      const opened = update(loaded, Message.ClickedEditField({ id: existing.id })).model;
+      const back = update(opened, Message.ClickedBackFromField());
+      expect(back.model.editor).toMatchObject({ draft: null, pendingDiscard: false });
+      expect(back.model.editor?.fields).toEqual([existing]);
+
+      const toggled = update(opened, Message.ToggledFieldDefaultBoolean()).model;
+      expect(update(toggled, Message.ClickedBackFromField()).model.editor?.pendingDiscard).toBe(
+        true,
+      );
+      const restored = update(toggled, Message.ToggledFieldDefaultBoolean()).model;
+      expect(update(restored, Message.ClickedBackFromField()).model.editor).toMatchObject({
+        draft: null,
+        pendingDiscard: false,
+      });
+    },
+  );
+
   const openField = () => {
     const existing = field({ id: "f1", name: "Activity", sortOrder: 0 });
     const loaded = update(
@@ -264,7 +292,7 @@ describe("cancel existing field", () => {
 
   it("prompts after an editable attribute changes", () => {
     const changed = update(openField(), Message.ChangedFieldName({ text: "Changed" })).model;
-    const result = update(changed, Message.CanceledAddField());
+    const result = update(changed, Message.ClickedBackFromField());
 
     expect(result.model.editor).toMatchObject({ editingFieldId: "f1", pendingDiscard: true });
   });
@@ -272,7 +300,7 @@ describe("cancel existing field", () => {
   it("does not prompt after a change is restored", () => {
     const changed = update(openField(), Message.ChangedFieldName({ text: "Changed" })).model;
     const restored = update(changed, Message.ChangedFieldName({ text: "Activity" })).model;
-    const result = update(restored, Message.CanceledAddField());
+    const result = update(restored, Message.ClickedBackFromField());
 
     expect(result.model.editor).toMatchObject({
       editingFieldId: null,
@@ -283,7 +311,7 @@ describe("cancel existing field", () => {
 
   it("prompts when option text has not been added", () => {
     const changed = update(openField(), Message.ChangedNewOptionText({ text: "New option" })).model;
-    const result = update(changed, Message.CanceledAddField());
+    const result = update(changed, Message.ClickedBackFromField());
 
     expect(result.model.editor).toMatchObject({ editingFieldId: "f1", pendingDiscard: true });
   });
@@ -329,9 +357,16 @@ describe("cancel new field", () => {
               draft: { ...opened.editor.draft, ...changedDraft },
             },
     };
-    const result = update(changed, Message.CanceledAddField());
+    const result = update(changed, Message.ClickedBackFromField());
 
     expect(result.model.editor).toMatchObject({ showAddField: true, pendingDiscard: true });
+    const canceled = update(changed, Message.CanceledAddField());
+    expect(canceled.model.editor).toMatchObject({
+      draft: null,
+      showAddField: false,
+      pendingDiscard: false,
+    });
+    expect(canceled.model.editor?.fields).toEqual(opened.editor?.fields);
   });
 });
 
@@ -523,6 +558,35 @@ describe("draftToFieldDef normalization", () => {
 });
 
 describe("option helpers", () => {
+  it.each(["radio", "checkbox"] as const)(
+    "reorders %s choices without changing defaults or exclusivity",
+    (kind) => {
+      const draft: FieldDraft = {
+        ...makeEmptyDraft(0),
+        name: "Activity",
+        kind,
+        options: ["Work", "Wait", "None"],
+        defaultValue: "Wait",
+        exclusiveOptions: kind === "checkbox" ? ["None"] : [],
+      };
+      const moved = moveOptionInDraft(draft, 1, -1);
+      expect(moved.options).toEqual(["Wait", "Work", "None"]);
+      expect(moveOptionInDraft(moved, 1, 1).options).toEqual(["Wait", "None", "Work"]);
+      expect(moved.defaultValue).toBe("Wait");
+      expect(moved.exclusiveOptions).toEqual(draft.exclusiveOptions);
+      expect(draft.options).toEqual(["Work", "Wait", "None"]);
+      expect(draftToFieldDef(moved).options).toEqual(["Wait", "Work", "None"]);
+      for (const [index, direction] of [
+        [0, -1],
+        [2, 1],
+        [-1, 1],
+        [3, -1],
+      ] as const) {
+        expect(moveOptionInDraft(draft, index, direction)).toBe(draft);
+      }
+    },
+  );
+
   it("rejects comma-bearing checkbox names without losing the input", () => {
     const draft = {
       ...makeEmptyDraft(0),

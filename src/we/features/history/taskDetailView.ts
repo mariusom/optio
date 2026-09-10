@@ -1,7 +1,6 @@
 import type { HtmlBuilder } from "foldkit/html";
 
 import { groupedList, row, sheet } from "@/components/app";
-import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
 import { formatAnswer } from "./helpers";
@@ -46,17 +45,7 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
       onDismiss: Message.DismissedHistoryTask(),
       dismissLabel: `Close Task ${task.taskId}`,
       size: "md",
-      footer: [
-        button(
-          {
-            size: "lg",
-            onClick: Message.DismissedHistoryTask(),
-            attributes: [h.AriaLabel("Done")],
-          },
-          "Done",
-          h,
-        ),
-      ],
+      footer: { confirm: { label: "Done", onClick: Message.DismissedHistoryTask() } },
     },
     [
       task.sections.length === 0

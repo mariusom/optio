@@ -3,6 +3,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { actionGroup, type ActionGroupConfig } from "./actionGroup";
 
 type Child = Html | string;
 
@@ -15,8 +16,8 @@ export type SheetConfig<M> = Readonly<{
   onDismiss: M;
   /** Accessible name for the backdrop dismiss control. */
   dismissLabel: string;
-  /** Footer actions, stacked on phones. */
-  footer?: ReadonlyArray<Html>;
+  /** Standard destructive / cancel / confirm action groups. */
+  footer?: ActionGroupConfig<M>;
   /** Wider panel on large screens (forms). */
   size?: "sm" | "md";
   className?: string;
@@ -94,9 +95,9 @@ export const sheet = <M>(
             ],
           ),
           h.div([h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6")], children),
-          ...(config.footer === undefined || config.footer.length === 0
+          ...(config.footer === undefined
             ? [h.div([h.Class("h-6")], [])]
-            : [h.div([h.Class("flex flex-col gap-2 p-6 sm:flex-row-reverse")], config.footer)]),
+            : [h.div([h.Class("p-6")], [actionGroup(config.footer, h)])]),
         ],
       ),
     ],
@@ -128,29 +129,19 @@ export const confirmSheet = <M>(config: ConfirmConfig<M>, h: HtmlBuilder<M>): Ht
       description: config.message,
       onDismiss: config.onCancel,
       dismissLabel: config.dismissLabel ?? `Cancel: ${config.title}`,
-      footer: [
-        button(
-          {
-            variant: config.destructive ? "destructive" : "default",
-            size: "lg",
-            isDisabled: config.isConfirmDisabled,
-            onClick: config.onConfirm,
-            attributes: [h.AriaLabel(config.confirmAriaLabel ?? config.confirmLabel)],
-          },
-          config.confirmLabel,
-          h,
-        ),
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: config.onCancel,
-            attributes: [h.AriaLabel(config.cancelAriaLabel ?? config.cancelLabel ?? "Cancel")],
-          },
-          config.cancelLabel ?? "Cancel",
-          h,
-        ),
-      ],
+      footer: {
+        [config.destructive ? "destructive" : "confirm"]: {
+          label: config.confirmLabel,
+          onClick: config.onConfirm,
+          isDisabled: config.isConfirmDisabled,
+          ariaLabel: config.confirmAriaLabel,
+        },
+        cancel: {
+          label: config.cancelLabel ?? "Cancel",
+          onClick: config.onCancel,
+          ariaLabel: config.cancelAriaLabel,
+        },
+      },
     },
     [],
     h,

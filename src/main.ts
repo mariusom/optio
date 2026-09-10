@@ -14,8 +14,8 @@ import {
   requiresConfirmation,
 } from "./agents/actions";
 import { hrefFor } from "./we/routes";
-import { Accent, Font, Theme } from "./we/theme";
-import { changeAccent, changeFont, changeTheme } from "./we/browserTheme";
+import { Accent, Font, HexColour, IconLibrary, Theme } from "./we/theme";
+import { changeAccent, changeFont, changeIconLibrary, changeTheme } from "./we/browserTheme";
 import { FoldcnStyle } from "./we/style";
 import { changeStyle } from "./we/browserTheme";
 import { settingsPage } from "./we/features/settings/view";
@@ -56,6 +56,7 @@ import {
   isTemplateValid,
   makeEmptyDraft,
   moveField,
+  moveOptionInDraft,
   renumberFields,
   toggleExclusiveOption,
 } from "./we/features/templates/editor";
@@ -97,8 +98,11 @@ export const Model = S.Struct({
   styleSaveFailed: S.Boolean,
   font: Font,
   fontSaveFailed: S.Boolean,
+  iconLibrary: IconLibrary,
+  iconLibrarySaveFailed: S.Boolean,
   accent: Accent,
   accentSaveFailed: S.Boolean,
+  accentDraft: S.NullOr(S.String),
   // Templates tab slice
   templates: S.Array(
     S.Struct({
@@ -268,12 +272,15 @@ const initialModel = (route: Route): Model => ({
   route,
   theme: "auto",
   themeSaveFailed: false,
-  style: "default",
+  style: "nova",
   styleSaveFailed: false,
   font: "sans",
   fontSaveFailed: false,
+  iconLibrary: "hugeicons",
+  iconLibrarySaveFailed: false,
   accent: "default",
   accentSaveFailed: false,
+  accentDraft: null,
   templates: [],
   showCreate: false,
   newName: "",
@@ -336,6 +343,15 @@ const SaveFont = Command.define("SaveFont", {
   messages: [Message.FontSaveFinished],
   execute: ({ font }) =>
     Effect.map(changeFont(font), (saved) => Message.FontSaveFinished({ font, saved })),
+});
+
+const SaveIconLibrary = Command.define("SaveIconLibrary", {
+  args: { library: IconLibrary },
+  messages: [Message.IconLibrarySaveFinished],
+  execute: ({ library }) =>
+    Effect.map(changeIconLibrary(library), (saved) =>
+      Message.IconLibrarySaveFinished({ library, saved }),
+    ),
 });
 
 const SaveAccent = Command.define("SaveAccent", {
@@ -475,10 +491,32 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     FontSaveFinished: ({ font, saved }) => ({
       model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
     }),
+    SelectedIconLibrary: ({ library }) => ({
+      model: { ...model, iconLibrary: library },
+      commands: [SaveIconLibrary({ library })],
+    }),
+    IconLibrarySaveFinished: ({ library, saved }) => ({
+      model: library === model.iconLibrary ? { ...model, iconLibrarySaveFailed: !saved } : model,
+    }),
     SelectedAccent: ({ accent }) => ({
-      model: { ...model, accent },
+      model: { ...model, accent, accentDraft: null },
       commands: [SaveAccent({ accent })],
     }),
+    OpenedAccentPicker: () => ({
+      model: { ...model, accentDraft: model.accent.startsWith("#") ? model.accent : "#2563eb" },
+    }),
+    ChangedAccentDraft: ({ colour }) => ({
+      model: model.accentDraft === null ? model : { ...model, accentDraft: colour },
+    }),
+    CanceledAccentPicker: () => ({ model: { ...model, accentDraft: null } }),
+    ConfirmedAccentPicker: () => {
+      if (!S.is(HexColour)(model.accentDraft)) return { model };
+      const accent = model.accentDraft.toLowerCase();
+      return {
+        model: { ...model, accent, accentDraft: null },
+        commands: [SaveAccent({ accent })],
+      };
+    },
     AccentSaveFinished: ({ accent, saved }) => ({
       model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
     }),
@@ -490,7 +528,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             ? { ...model, route, templateActionsFor: null }
             : { ...model, route, editor: null, templateActionsFor: null }
           : { ...model, route, editor: null, templateActionsFor: null };
-      base = { ...base, historyActionsFor: null, showCreate: false };
+      base = { ...base, historyActionsFor: null, showCreate: false, accentDraft: null };
       // Clear history detail when leaving SessionDetail
       if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
         base = {
@@ -721,6 +759,21 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     },
     CanceledAddField: () => {
       if (model.editor === null) return { model };
+      return {
+        model: {
+          ...model,
+          editor: {
+            ...model.editor,
+            showAddField: false,
+            editingFieldId: null,
+            draft: null,
+            pendingDiscard: false,
+          },
+        },
+      };
+    },
+    ClickedBackFromField: () => {
+      if (model.editor === null) return { model };
       const draft = model.editor.draft;
       const editedField = model.editor.fields.find(
         (field) => field.id === model.editor?.editingFieldId,
@@ -736,7 +789,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             draft.newOptionText !== ""
           : draft.newOptionText !== "" ||
             editedField === undefined ||
-            fieldDiffers(draftToFieldDef(draft), editedField));
+            fieldDiffers(draftToFieldDef(draft), draftToFieldDef(draftFromField(editedField))));
       if (isDraftDirty) {
         return { model: { ...model, editor: { ...model.editor, pendingDiscard: true } } };
       }
@@ -825,6 +878,18 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       const nextDraft = addOptionToDraft(model.editor.draft);
       if (nextDraft === model.editor.draft) return { model };
       return { model: { ...model, editor: { ...model.editor, draft: nextDraft } } };
+    },
+    ClickedMoveOption: ({ index, direction }) => {
+      if (model.editor === null || model.editor.draft === null) return { model };
+      return {
+        model: {
+          ...model,
+          editor: {
+            ...model.editor,
+            draft: moveOptionInDraft(model.editor.draft, index, direction),
+          },
+        },
+      };
     },
     ClickedDeleteOption: ({ index }) => {
       if (model.editor === null || model.editor.draft === null) return { model };
@@ -1995,6 +2060,9 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
         model.fontSaveFailed,
         model.accentSaveFailed,
         h,
+        model.accentDraft,
+        model.iconLibrary,
+        model.iconLibrarySaveFailed,
       );
     case "StartTab":
       return startView(model, h);

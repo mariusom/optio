@@ -8,6 +8,7 @@ import type {} from "@vitest/browser-playwright";
 vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
 
 import { init, Model, update, view as appView } from "../main";
+import { Message } from "../messages";
 import { makeEmptyDraft, withKindChanged } from "./features/templates/editor";
 import { templateEditorPage } from "./features/templates/editorView";
 import { templatesPage } from "./features/templates/view";
@@ -16,16 +17,21 @@ import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
 import { settingsPage } from "./features/settings/view";
 import { foldcnStyles, setCurrentStyle } from "./style";
+import { setCurrentIconLibrary } from "../lib/iconPreference";
 import {
   changeAccent,
   changeFont,
+  changeTheme,
   initializeAccent,
   initializeFont,
+  initializeIconLibrary,
   initializeStyle,
   initializeTheme,
 } from "./browserTheme";
-import { groupedList, navBar, navBarAction, row } from "../components/app";
+import { confirmSheet, groupedList, navBar, navBarAction, row } from "../components/app";
 import { button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Item } from "../components/ui/item";
 import "../index.css";
 
 const now = 1_700_000_000_000;
@@ -122,17 +128,156 @@ afterEach(() => {
   handle?.dispose();
   container?.remove();
   document.documentElement.style.removeProperty("font-size");
-  setCurrentStyle("default");
+  setCurrentStyle("nova");
+  setCurrentIconLibrary("lucide");
+  localStorage.removeItem("optio-icon-library");
+  document.documentElement.removeAttribute("data-icon-library");
   localStorage.removeItem("optio-foldcn-style");
   localStorage.removeItem("optio-font");
   localStorage.removeItem("optio-accent");
   document.documentElement.removeAttribute("data-font");
   document.documentElement.removeAttribute("data-accent");
+  document.documentElement.style.removeProperty("--primary");
+  document.documentElement.style.removeProperty("--primary-foreground");
+  document.documentElement.style.removeProperty("--ring");
   document.documentElement.classList.remove("dark");
   vi.restoreAllMocks();
 });
 
 describe("persistent presentation regressions", () => {
+  it.each(foldcnStyles)("fills the history action cell in %s", async (style) => {
+    setCurrentStyle(style);
+    await mount((model, h) => historyPage({ ...model, history: [history] }, h));
+    await page.viewport(1184, 900);
+    const action = page.getByRole("button", { name: `Actions for "${history.displayName}"` });
+    await expect.element(action).toBeVisible();
+    const button = action.element();
+    const bounds = button.getBoundingClientRect();
+    const parent = button.parentElement!.getBoundingClientRect();
+    expect(bounds.top).toBe(parent.top);
+    expect(bounds.bottom).toBe(parent.bottom);
+    expect(bounds.right).toBe(parent.right);
+    expect(bounds.width).toBeGreaterThanOrEqual(44);
+    expect(getComputedStyle(button).borderRadius).toBe("0px");
+  });
+
+  it.each(foldcnStyles)("uses %s Card and Item styling in template groups", async (style) => {
+    setCurrentStyle(style);
+    await mount((model, h) =>
+      h.div(
+        [],
+        [
+          Card({}, [Item({}, ["Reference row"], h)], h),
+          templateEditorPage({ ...model, editor: editor(1, 1) }, h),
+        ],
+      ),
+    );
+    await expect.element(page.getByRole("textbox", { name: "Name", exact: true })).toBeVisible();
+    const css = (selector: string) => getComputedStyle(document.querySelector(selector)!);
+    expect(css('[data-slot="grouped-list"]').borderRadius).toBe(
+      css('[data-slot="card"]').borderRadius,
+    );
+    expect(css('[data-slot="grouped-list"]').boxShadow).toBe(css('[data-slot="card"]').boxShadow);
+    expect(css('[data-slot="grouped-list"]').borderWidth).toBe(
+      css('[data-slot="card"]').borderWidth,
+    );
+    const itemPadding = css('[data-slot="item"]').padding;
+    expect(getComputedStyle(document.querySelector("#template-name")!.parentElement!).padding).toBe(
+      itemPadding,
+    );
+    expect(css('[aria-label="Edit question Outcome"]').padding).toBe(itemPadding);
+  });
+
+  it.each(foldcnStyles)(
+    "keeps unboxed question fields free of %s card decoration",
+    async (style) => {
+      setCurrentStyle(style);
+      const state = editor(1, 1, true);
+      await mount((model, h) =>
+        templateEditorPage(
+          { ...model, editor: { ...state, draft: { ...state.draft!, kind: "textInput" } } },
+          h,
+        ),
+      );
+      await expect
+        .element(page.getByRole("textbox", { name: "Question", exact: true }))
+        .toBeVisible();
+      const groups = document.querySelectorAll('#question-editor [data-slot="grouped-list"]');
+      expect(groups).toHaveLength(3);
+      for (const group of groups) {
+        expect(getComputedStyle(group).borderWidth).toBe("0px");
+        expect(getComputedStyle(group).boxShadow).toBe("none");
+      }
+    },
+  );
+
+  it("switches navigation icons immediately and restores the saved library", async () => {
+    expect(await Effect.runPromise(initializeIconLibrary)).toBe("hugeicons");
+    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h).body);
+    await expect.element(page.getByRole("link", { name: "Templates", exact: true })).toBeVisible();
+    const navigationIcon = () =>
+      page.getByRole("link", { name: "Templates", exact: true }).element().querySelector("svg")!
+        .innerHTML;
+    const original = navigationIcon();
+    const picker = page.getByRole("radiogroup", { name: "Icon style" });
+    expect(
+      [...picker.element().querySelectorAll('[role="radio"]')].map((e) => e.textContent),
+    ).toEqual(["Hugeicons", "Lucide"]);
+    await picker.getByRole("radio", { name: "Lucide", exact: true }).click();
+    await expect.poll(navigationIcon).not.toBe(original);
+    await expect.poll(() => localStorage.getItem("optio-icon-library")).toBe("lucide");
+    const lucide = navigationIcon();
+    setCurrentIconLibrary("hugeicons");
+    expect(await Effect.runPromise(initializeIconLibrary)).toBe("lucide");
+    await picker.getByRole("radio", { name: "Hugeicons", exact: true }).click();
+    await expect.poll(navigationIcon).toBe(original);
+    expect(lucide).not.toBe(original);
+  });
+
+  it.each([390, 1184])("stacks template actions with icons at %ipx", async (width) => {
+    await mount((model, h) =>
+      templatesPage({ ...model, templates: [template], templateActionsFor: template.id }, h),
+    );
+    await page.viewport(width, 1224);
+    const dialog = page.getByRole("dialog", { name: template.name });
+    await expect.element(dialog).toBeVisible();
+    const actions = ["Set as default", "Duplicate", "Delete"].map((name) =>
+      dialog.getByRole("button", { name, exact: true }).element(),
+    );
+    for (const action of actions) expect(action.querySelector("svg")).not.toBeNull();
+    const boxes = actions.map((action) => action.getBoundingClientRect());
+    expect(boxes[0]!.bottom).toBeLessThanOrEqual(boxes[1]!.top);
+    expect(boxes[1]!.bottom).toBeLessThanOrEqual(boxes[2]!.top);
+    expect(new Set(boxes.map((box) => box.left)).size).toBe(1);
+    expect(new Set(boxes.map((box) => box.width)).size).toBe(1);
+    expect(actions[2]!.closest('[data-slot="action-group"]')).toBeNull();
+  });
+
+  it("matches the favicon mark to the sidebar and updates saved/custom/theme colours", async () => {
+    const favicon = () =>
+      new DOMParser().parseFromString(
+        decodeURIComponent(
+          document.querySelector<HTMLLinkElement>('link[rel="icon"]')!.href.split(",")[1]!,
+        ),
+        "image/svg+xml",
+      );
+    await Effect.runPromise(changeAccent("#123456"));
+    expect(favicon().querySelector("text")!.textContent).toBe("o");
+    expect(favicon().querySelector("rect")!.getAttribute("fill")).toBe("#123456");
+    expect(favicon().querySelector("text")!.getAttribute("fill")).toBe("#ffffff");
+    await Effect.runPromise(changeAccent("#eeeeee"));
+    expect(favicon().querySelector("text")!.getAttribute("fill")).toBe("#000000");
+    await Effect.runPromise(initializeAccent);
+    expect(favicon().querySelector("rect")!.getAttribute("fill")).toBe("#eeeeee");
+    await Effect.runPromise(changeAccent("blue"));
+    await Effect.runPromise(changeTheme("light"));
+    const light = favicon().querySelector("rect")!.getAttribute("fill");
+    await Effect.runPromise(changeTheme("dark"));
+    expect(favicon().querySelector("rect")!.getAttribute("fill")).not.toBe(light);
+    expect(document.querySelectorAll('link[rel="icon"]')).toHaveLength(1);
+    await Effect.runPromise(changeTheme("auto"));
+  });
+
   it("loads defaults and reports unsaved choices when browser storage is blocked", async () => {
     const blocked = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
       throw new DOMException("Storage denied", "SecurityError");
@@ -147,7 +292,7 @@ describe("persistent presentation regressions", () => {
             accent: initializeAccent,
           }),
         ),
-      ).toEqual({ theme: "auto", style: "default", font: "sans", accent: "default" });
+      ).toEqual({ theme: "auto", style: "nova", font: "sans", accent: "default" });
       expect(await Effect.runPromise(changeFont("mono"))).toBe(false);
       expect(await Effect.runPromise(changeAccent("rose"))).toBe(false);
       expect(document.documentElement.dataset.font).toBe("mono");
@@ -155,6 +300,53 @@ describe("persistent presentation regressions", () => {
     } finally {
       blocked.mockRestore();
     }
+  });
+
+  it("confirms custom colours, cancels drafts, restores preferences and returns to presets", async () => {
+    await mount((model, h) =>
+      settingsPage(
+        model.theme,
+        model.style,
+        model.font,
+        model.accent,
+        model.themeSaveFailed,
+        model.styleSaveFailed,
+        model.fontSaveFailed,
+        model.accentSaveFailed,
+        h,
+        model.accentDraft,
+      ),
+    );
+    const choices = page.getByRole("radiogroup", { name: "Accent colour" });
+    const other = choices.getByRole("radio", { name: /Other/ });
+    await choices.getByRole("radio", { name: "Blue", exact: true }).click();
+    await expect.poll(() => localStorage.getItem("optio-accent")).toBe("blue");
+    await other.click();
+    const dialog = page.getByRole("dialog", { name: "Custom accent colour" });
+    const hex = dialog.getByRole("textbox", { name: "Hex colour" });
+    await hex.fill("#fff");
+    await expect.element(dialog.getByRole("button", { name: "Use colour" })).toBeDisabled();
+    await hex.fill("#F4C542");
+    expect(localStorage.getItem("optio-accent")).toBe("blue");
+    expect(document.documentElement.dataset.accent).toBe("blue");
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect.element(dialog).not.toBeInTheDocument();
+    await other.click();
+    await hex.fill("#F4C542");
+    await dialog.getByRole("button", { name: "Use colour" }).click();
+    await expect.poll(() => localStorage.getItem("optio-accent")).toBe("#f4c542");
+    await expect.element(other).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement.style.getPropertyValue("--primary-foreground")).toBe("#000000");
+    await other.click();
+    await expect.element(hex).toHaveValue("#f4c542");
+    await hex.fill("#123456");
+    await userEvent.keyboard("{Escape}");
+    await expect.element(dialog).not.toBeInTheDocument();
+    expect(await Effect.runPromise(initializeAccent)).toBe("#f4c542");
+    await choices.getByRole("radio", { name: "Rose", exact: true }).click();
+    await expect.poll(() => localStorage.getItem("optio-accent")).toBe("rose");
+    expect(document.documentElement.style.getPropertyValue("--primary")).toBe("");
+    expect(document.documentElement.style.getPropertyValue("--ring")).toBe("");
   });
 
   it("applies and restores font and accent choices independently", async () => {
@@ -191,7 +383,55 @@ describe("persistent presentation regressions", () => {
     expect(await Effect.runPromise(initializeFont)).toBe("serif");
   });
 
-  it.each([390, 1280])("creates and edits questions inline at %ipx", async (width) => {
+  it.each(
+    [390, 1184].flatMap((width) =>
+      (["textInput", "textArea", "radio", "checkbox", "boolean"] as const).map((kind) => ({
+        width,
+        kind,
+      })),
+    ),
+  )("aligns $kind editor fields at $width px", async ({ width, kind }) => {
+    const state = editor(1, 2, true);
+    await mount((_model, h) =>
+      templateEditorPage(
+        { editor: { ...state, draft: { ...state.draft!, kind } }, lastError: null },
+        h,
+      ),
+    );
+    await page.viewport(width, 1224);
+    const form = document.querySelector<HTMLElement>("#question-editor")!;
+    const bounds = form.getBoundingClientRect();
+    const left = bounds.left;
+    const right = bounds.right;
+    // Unboxed fields, headings, helper text and action footer share the form inset.
+    for (const element of form.querySelectorAll(
+      "#question-name, #answer-type, #question-default, h2, label, :scope > div:last-child",
+    )) {
+      if (element.closest('[data-slot="grouped-list"]')?.querySelector("#new-choice")) continue;
+      const rect = element.getBoundingClientRect();
+      expect(Math.abs(rect.left - left), element.outerHTML).toBeLessThanOrEqual(1);
+      expect(rect.right).toBeLessThanOrEqual(right + 1);
+    }
+    for (const element of form.querySelectorAll(
+      "#question-name, #answer-type, #question-default",
+    )) {
+      expect(Math.abs(element.getBoundingClientRect().right - right)).toBeLessThanOrEqual(1);
+    }
+    const newChoice = form.querySelector("#new-choice");
+    if (newChoice) {
+      const list = newChoice.closest('[data-slot="grouped-list"]')!;
+      expect(Math.abs(list.getBoundingClientRect().left - left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(list.getBoundingClientRect().right - right)).toBeLessThanOrEqual(1);
+      // Nova's Card ring doesn't affect the 12px Item inset.
+      expect(newChoice.getBoundingClientRect().left - list.getBoundingClientRect().left).toBe(12);
+      expect(list.firstElementChild!.firstElementChild!.getBoundingClientRect().left).toBe(
+        newChoice.getBoundingClientRect().left,
+      );
+    }
+    expect(form.scrollWidth).toBeLessThanOrEqual(form.clientWidth);
+  });
+
+  it.each([390, 1280])("creates and edits questions in a focused page at %ipx", async (width) => {
     await mount((model, h) => appView({ ...model, route: { _tag: "TemplatesTab" } }, h).body);
     await page.viewport(width, 900);
     await page.getByRole("button", { name: "Create template", exact: true }).click();
@@ -206,7 +446,9 @@ describe("persistent presentation regressions", () => {
     await page.getByRole("textbox", { name: "Question", exact: true }).fill("Activity");
     const done = page.getByRole("button", { name: "Save question" });
     await expect.element(done).toBeEnabled();
-    await expect.element(page.getByRole("button", { name: "Save template" })).toBeDisabled();
+    expect(document.querySelector('[aria-label="Save template"]')).toBeNull();
+    expect(document.querySelector("#template-name")).toBeNull();
+    await expect.element(page.getByText("Morning study", { exact: true })).toBeVisible();
     await done.click();
     const edit = page.getByRole("button", { name: "Edit question Activity" });
     await expect.element(edit).toBeVisible();
@@ -220,7 +462,81 @@ describe("persistent presentation regressions", () => {
       .toHaveValue("Activity");
     const root = document.querySelector(".template-editor")!;
     expect(root.scrollWidth).toBe(root.clientWidth);
+    const group = root.querySelector('#question-editor [data-slot="action-group"]')!;
+    const buttons = [...group.querySelectorAll("button")];
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Delete question",
+      "Cancel",
+      "Done editing",
+    ]);
+    const [remove, cancel, confirm] = buttons.map((button) => button.getBoundingClientRect());
+    expect(cancel!.right).toBeLessThan(confirm!.left);
+    expect(cancel!.top).toBe(confirm!.top);
+    expect(remove!.left).toBe(group.getBoundingClientRect().left);
+    expect(confirm!.right).toBe(group.getBoundingClientRect().right);
+    if (width === 1280) expect(remove!.top).toBe(confirm!.top);
+    expect(document.querySelector('[aria-label="Edit question Activity"]')).toBeNull();
+    await page.getByRole("textbox", { name: "Question", exact: true }).fill("Canceled change");
+    await page.getByRole("button", { name: "Cancel editing question" }).click();
+    await expect.element(edit).toBeVisible();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await edit.click();
+    await expect
+      .element(page.getByRole("textbox", { name: "Question", exact: true }))
+      .toHaveValue("Activity");
+    await page.getByRole("textbox", { name: "Question", exact: true }).fill("Changed activity");
+    await page.getByRole("button", { name: "Back to Template builder", exact: true }).click();
+    await expect.element(page.getByRole("dialog", { name: "Discard your changes?" })).toBeVisible();
+    await page
+      .getByRole("dialog", { name: "Discard your changes?" })
+      .getByText("Keep editing", { exact: true })
+      .click();
+    await expect
+      .element(page.getByRole("textbox", { name: "Question", exact: true }))
+      .toHaveValue("Changed activity");
+    await page.getByRole("button", { name: "Back to Template builder", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm discard changes" }).click();
+    await expect.element(edit).toBeVisible();
+    await expect
+      .element(page.getByRole("textbox", { name: "Name", exact: true }))
+      .toHaveValue("Morning study");
   });
+
+  it.each([320, 1184])(
+    "keeps confirmation order and destructive separation at %ipx",
+    async (width) => {
+      for (const destructive of [false, true]) {
+        await mount((_model, h) =>
+          confirmSheet(
+            {
+              id: "action-order",
+              title: "Confirm action",
+              message: "Check the action order.",
+              confirmLabel: destructive ? "Delete" : "Save",
+              destructive,
+              onConfirm: Message.CanceledAddField(),
+              onCancel: Message.CanceledAddField(),
+            },
+            h,
+          ),
+        );
+        await page.viewport(width, 900);
+        const dialog = page.getByRole("dialog", { name: "Confirm action" });
+        await expect.element(dialog).toBeVisible();
+        const group = dialog.element().querySelector('[data-slot="action-group"]')!;
+        const buttons = [...group.querySelectorAll("button")];
+        expect(buttons.map((button) => button.textContent)).toEqual(
+          destructive ? ["Delete", "Cancel"] : ["Cancel", "Save"],
+        );
+        const [left, right] = buttons.map((button) => button.getBoundingClientRect());
+        expect(left!.right).toBeLessThan(right!.left);
+        expect(left!.top).toBe(right!.top);
+        expect(group.scrollWidth).toBe(group.clientWidth);
+        handle?.dispose();
+        container?.remove();
+      }
+    },
+  );
 
   it("pins the mobile title and add action together while scrolling", async () => {
     await mount(
@@ -334,11 +650,14 @@ describe("persistent presentation regressions", () => {
     );
     const choices = page.getByRole("radiogroup", { name: "Component style" });
     await expect.element(choices).toBeVisible();
-    expect(choices.element().querySelectorAll('[role="radio"]')).toHaveLength(9);
+    expect(choices.element().querySelectorAll('[role="radio"]')).toHaveLength(8);
+    await expect
+      .element(choices.getByRole("radio", { name: "Nova", exact: true }))
+      .toHaveAttribute("aria-checked", "true");
     const renderedClasses = new Set<string>();
+    const choiceClasses = new Set<string>();
     for (const style of foldcnStyles) {
-      const label =
-        style === "default" ? "Default (Nova)" : style[0]!.toUpperCase() + style.slice(1);
+      const label = style[0]!.toUpperCase() + style.slice(1);
       const option = choices.getByRole("radio", { name: label, exact: true });
       await option.click();
       await expect.element(option).toHaveAttribute("aria-checked", "true");
@@ -346,10 +665,14 @@ describe("persistent presentation regressions", () => {
       const sample = page.getByRole("button", { name: "Style sample" }).element();
       renderedClasses.add(sample.className);
       expect(sample.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      const row = choices.getByRole("radio", { name: "Nova", exact: true }).element();
+      choiceClasses.add(row.className);
+      expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
     // Styles must change actual rendered components, not only the radio value.
     expect(renderedClasses.size).toBeGreaterThan(4);
-    setCurrentStyle("default");
+    expect(choiceClasses.size).toBeGreaterThan(4);
+    setCurrentStyle("nova");
     expect(await Effect.runPromise(initializeStyle)).toBe("rhea");
   });
 
@@ -469,7 +792,13 @@ describe("persistent presentation regressions", () => {
     "uses grammatical editor counts for %i question(s)",
     async (count, options, fieldLabel, optionLabel) => {
       await mount((model, h) =>
-        templateEditorPage({ ...model, editor: editor(count, options, true) }, h),
+        h.div(
+          [],
+          [
+            templateEditorPage({ ...model, editor: editor(count, options) }, h),
+            templateEditorPage({ ...model, editor: editor(count, options, true) }, h),
+          ],
+        ),
       );
       await expect.element(page.getByText(fieldLabel, { exact: true })).toBeVisible();
       await expect.element(page.getByText(optionLabel, { exact: true })).toBeVisible();

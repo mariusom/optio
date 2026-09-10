@@ -179,7 +179,10 @@ describe("audited view accessibility", () => {
   });
 
   it("names every question control with the question it acts on", () => {
-    const all = nodes(templateEditorPage({ editor, lastError: null }, h));
+    const all = [
+      ...nodes(templateEditorPage({ editor, lastError: null }, h)),
+      ...nodes(templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, h)),
+    ];
     for (const label of [
       "Edit question Observed",
       "Move Observed up",
@@ -196,12 +199,13 @@ describe("audited view accessibility", () => {
   it("labels every switch in the template editor with its own clickable label", () => {
     const textEditor = { ...editor, draft: { ...editor.draft!, kind: "textInput" as const } };
     for (const view of [
+      templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, h),
       templateEditorPage({ editor, lastError: null }, h),
       templateEditorPage({ editor: textEditor, lastError: null }, h),
     ]) {
       const all = nodes(view);
       const switches = all.filter((n) => n.data?.attrs?.role === "switch");
-      expect(switches).toHaveLength(2);
+      expect(switches).toHaveLength(1);
       for (const control of switches) {
         expect(control.sel).toBe("button");
         expect(control.data?.props?.type).toBe("button");
@@ -280,10 +284,10 @@ describe("audited view accessibility", () => {
     for (const control of switches) {
       const labelId = control.data?.attrs?.["aria-labelledby"];
       expect(labelId).toEqual(expect.any(String));
-      const labels = all.filter((n) => n.sel === "label" && n.data?.props?.id === labelId);
+      const labels = all.filter((n) => n.data?.props?.id === labelId);
       expect(labels).toHaveLength(1);
-      expect(labels[0]?.children).toContainEqual(expect.objectContaining({ text: "No" }));
-      expect(labels[0]?.data?.on?.click).toBeTypeOf("function");
+      expect(labels[0]?.children).toContainEqual(expect.objectContaining({ text: "Observed" }));
+      expect(control.data?.on?.click).toBeTypeOf("function");
       expect(control.data?.props?.type).toBe("button");
     }
   });

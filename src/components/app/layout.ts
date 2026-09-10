@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Option } from "effect";
 import { badge } from "@/components/ui/badge";
 import { button, type ButtonConfig, type ButtonLabel } from "@/components/ui/button";
+import { cardClass } from "@/components/ui/card";
+import { itemClass, itemSizes, itemTitleClass, itemDescriptionClass } from "@/components/ui/item";
 
 import { Check, ChevronRight, icon } from "./icons";
 
@@ -64,6 +66,8 @@ export const groupedList = <M>(
   config: Readonly<{
     header?: Child;
     footer?: Child;
+    /** Plain groups arrange controls without painting a Card surface. */
+    surface?: "card" | "plain";
     className?: string;
     attributes?: Attrs<M>;
     /** Role and attributes for the list element itself (e.g. radiogroup + its name). */
@@ -81,7 +85,8 @@ export const groupedList = <M>(
         [
           h.Class(
             cn(
-              "overflow-hidden rounded-lg border border-border bg-card text-card-foreground divide-y divide-border",
+              config.surface === "plain" ? "flex flex-col" : cardClass,
+              "gap-0 py-0 divide-y divide-border",
               config.className,
             ),
           ),
@@ -123,7 +128,9 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
   const interactive = config.href !== undefined || config.onClick !== undefined;
   const chevron = config.chevron ?? config.href !== undefined;
   const classes = cn(
-    "flex w-full min-h-11 items-center gap-3 px-4 py-3 text-left text-sm leading-normal aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
+    itemClass,
+    itemSizes.default,
+    "min-h-11 flex-nowrap rounded-none border-0 text-left aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
     config.wrap ? "flex-wrap gap-y-1" : "",
     interactive ? "transition-colors hover:bg-muted/60 active:bg-muted disabled:opacity-50" : "",
     config.destructive ? "text-destructive" : "text-foreground",
@@ -137,10 +144,10 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
     h.span(
       [h.Class("flex min-w-0 flex-1 flex-col")],
       [
-        h.span([h.Class("truncate")], [config.title]),
+        h.span([h.Class(cn(itemTitleClass, "block max-w-full truncate"))], [config.title]),
         ...(config.subtitle === undefined
           ? []
-          : [h.span([h.Class("truncate text-sm text-muted-foreground")], [config.subtitle])]),
+          : [h.span([h.Class(cn(itemDescriptionClass, "truncate"))], [config.subtitle])]),
       ],
     ),
     ...(config.value === undefined
@@ -184,7 +191,7 @@ export const controlRow = <M>(
   children: ReadonlyArray<Child>,
   h: HtmlBuilder<M>,
   className?: string,
-): Html => h.div([h.Class(cn("flex flex-col gap-2 p-4", className))], children);
+): Html => h.div([h.Class(cn(itemSizes.default, "flex flex-col", className))], children);
 
 /** Chip-style status label. */
 export const statusPill = <M>(
@@ -237,18 +244,17 @@ export const choiceRows = <M>(
     {
       header: config.header,
       footer: config.footer,
+      surface: "plain",
+      className: "gap-2 divide-y-0",
       role: "radiogroup",
       listAttributes: [h.AriaLabel(config.label)],
     },
     choices.map((choice, index) =>
-      row(
+      button(
         {
-          title: choice.label,
-          subtitle: choice.subtitle,
+          variant: choice.selected ? "secondary" : "outline",
+          className: "h-auto min-h-11 w-full justify-between whitespace-normal py-3 text-left",
           onClick: choice.onSelect,
-          trailing: choice.selected
-            ? icon(h, Check, "size-5 text-primary")
-            : h.span([h.Class("size-5")], []),
           attributes: [
             h.Role("radio"),
             h.AriaChecked(choice.selected),
@@ -271,6 +277,20 @@ export const choiceRows = <M>(
             }),
           ],
         },
+        [
+          h.span(
+            [h.Class("flex min-w-0 flex-1 flex-col gap-1")],
+            [
+              h.span([], [choice.label]),
+              ...(choice.subtitle === undefined
+                ? []
+                : [h.span([h.Class("text-xs text-muted-foreground")], [choice.subtitle])]),
+            ],
+          ),
+          choice.selected
+            ? icon(h, Check, "size-5 shrink-0 text-primary")
+            : h.span([h.Class("size-5 shrink-0"), h.AriaHidden(true)], []),
+        ],
         h,
       ),
     ),

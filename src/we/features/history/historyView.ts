@@ -4,7 +4,6 @@ import {
   Download,
   Ellipsis,
   History,
-  Trash2,
   confirmSheet,
   emptyState,
   groupedList,
@@ -12,10 +11,11 @@ import {
   notice,
   page,
   row,
+  rowAction,
   sheet,
   sheetAction,
 } from "@/components/app";
-import { button, buttonClass } from "@/components/ui/button";
+import { buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
@@ -68,11 +68,8 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
         },
         h,
       ),
-      button(
+      rowAction(
         {
-          variant: "ghost",
-          size: "icon",
-          className: "self-center",
           attributes: [h.AriaLabel(`Actions for "${session.displayName}"`)],
           onClick: Message.OpenedHistoryActions({ id: session.id }),
         },
@@ -92,18 +89,21 @@ const actionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
       description: summaryFor(session),
       onDismiss: Message.ClosedHistoryActions(),
       dismissLabel: "Close actions",
-      footer: [
-        button(
-          {
-            variant: "secondary",
-            size: "lg",
-            onClick: Message.ClosedHistoryActions(),
-            attributes: [h.AriaLabel("Cancel actions")],
-          },
-          "Cancel",
-          h,
-        ),
-      ],
+      footer: {
+        destructive: {
+          label: "Delete",
+          onClick: Message.RequestedHistoryDelete({
+            id: session.id,
+            displayName: session.displayName,
+          }),
+          ariaLabel: `Delete ${session.displayName}`,
+        },
+        cancel: {
+          label: "Cancel",
+          onClick: Message.ClosedHistoryActions(),
+          ariaLabel: "Cancel actions",
+        },
+      },
     },
     [
       h.div(
@@ -116,19 +116,6 @@ const actionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
               isDisabled: session.taskCount === 0,
               onClick: Message.ClickedExportHistoryCsv({ sessionId: session.id }),
               ariaLabel: `Export ${session.displayName}`,
-            },
-            h,
-          ),
-          sheetAction(
-            {
-              label: "Delete",
-              destructive: true,
-              leading: icon(h, Trash2, "size-5"),
-              onClick: Message.RequestedHistoryDelete({
-                id: session.id,
-                displayName: session.displayName,
-              }),
-              ariaLabel: `Delete ${session.displayName}`,
             },
             h,
           ),

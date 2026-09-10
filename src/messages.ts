@@ -5,7 +5,7 @@ import { UrlRequest } from "foldkit/navigation";
 import { FieldDef } from "./livestore/schema";
 import { RouteSchema } from "./we/routes";
 import { TemplateSummary } from "./we/types";
-import { Accent, Font, Theme } from "./we/theme";
+import { Accent, Font, IconLibrary, Theme } from "./we/theme";
 import { FoldcnStyle } from "./we/style";
 
 // Central flat Message union. Payload schemas are grouped by feature;
@@ -27,8 +27,14 @@ export const Message = defineMessageUnion({
   StyleSaveFinished: { style: FoldcnStyle, saved: S.Boolean },
   SelectedFont: { font: Font },
   FontSaveFinished: { font: Font, saved: S.Boolean },
+  SelectedIconLibrary: { library: IconLibrary },
+  IconLibrarySaveFinished: { library: IconLibrary, saved: S.Boolean },
   SelectedAccent: { accent: Accent },
   AccentSaveFinished: { accent: Accent, saved: S.Boolean },
+  OpenedAccentPicker: {},
+  ChangedAccentDraft: { colour: S.String },
+  ConfirmedAccentPicker: {},
+  CanceledAccentPicker: {},
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: S.Array(TemplateSummary) },
@@ -63,6 +69,7 @@ export const Message = defineMessageUnion({
   ToggledEditorDefault: {},
   ClickedAddField: {},
   CanceledAddField: {},
+  ClickedBackFromField: {},
   ClickedEditField: { id: S.String },
   ChangedFieldName: { text: S.String },
   ChangedFieldKind: { kind: S.String },
@@ -72,6 +79,7 @@ export const Message = defineMessageUnion({
   ChangedNewOptionText: { text: S.String },
   ConfirmedAddOption: {},
   ClickedDeleteOption: { index: S.Number },
+  ClickedMoveOption: { index: S.Int, direction: S.Literals([-1, 1]) },
   ToggledExclusiveOption: { index: S.Number },
   ClickedDeleteField: { id: S.String },
   ClickedMoveFieldUp: { id: S.String },

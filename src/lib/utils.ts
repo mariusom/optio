@@ -3,10 +3,10 @@ import { foldcnComponentStyles } from "@/we/componentStyles.generated";
 import { getCurrentStyle } from "@/we/style";
 
 /** Resolve foldcn's upstream per-style component classes before merging any
- * app-owned sizing/customization classes. `default` is foldcn's Nova alias. */
+ * app-owned sizing/customization classes. */
 export const cn = (...classes: Parameters<typeof mergeClasses>): string => {
   const style = getCurrentStyle();
-  const replacements = foldcnComponentStyles[style === "default" ? "nova" : style] ?? {};
+  const replacements = foldcnComponentStyles[style] ?? {};
   return mergeClasses(
     ...classes.map((value) => (typeof value === "string" ? (replacements[value] ?? value) : value)),
   );

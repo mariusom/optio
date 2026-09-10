@@ -13,7 +13,6 @@ import {
   page,
   row,
   statusPill,
-  controlRow,
   emptyState,
 } from "@/components/app";
 import { button, buttonClass } from "@/components/ui/button";
@@ -161,7 +160,7 @@ const templatePicker = (
     {
       id: "study-template",
       label: "Study template",
-      wrapperClass: "w-full",
+      wrapperClass: "[&>[data-slot=native-select-wrapper]]:w-full",
       value: selectedId ?? "",
       onChange: (id) => Message.SelectedTemplate({ id }),
       options: [
@@ -238,10 +237,12 @@ const newSessionView = (
         {
           header: "New session",
           footer: `Leave the name empty to call it “${placeholderName}”.`,
+          surface: "plain",
+          className: "gap-4 divide-y-0",
         },
         [
-          controlRow([templatePicker(templates, selectedTemplateId, h)], h),
-          controlRow([sessionNameField(placeholderName, sessionNameInput, h)], h),
+          templatePicker(templates, selectedTemplateId, h),
+          sessionNameField(placeholderName, sessionNameInput, h),
         ],
         h,
       ),

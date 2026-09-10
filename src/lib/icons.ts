@@ -1,5 +1,6 @@
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode, SVGProps } from "lucide";
+import { iconNodeForCurrentLibrary, type HugeIconNode } from "./iconPreference";
 
 /**
  * Render a lucide icon as Foldkit virtual DOM.
@@ -57,10 +58,19 @@ const svgAttributes = <M>(
 ];
 
 const nodeToAttributes = <M>(
-  attrs: SVGProps,
+  attrs: SVGProps | Readonly<Record<string, string | number>>,
   h: HtmlBuilder<M>,
 ): ReadonlyArray<Attribute<M> | ChildAttribute> =>
-  Object.entries(attrs).map(([name, value]) => h.Attribute(name, String(value)));
+  Object.entries(attrs).flatMap(([name, value]) =>
+    name === "key"
+      ? []
+      : [
+          h.Attribute(
+            name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
+            String(value),
+          ),
+        ],
+  );
 
 const defaultIconClass = "size-4 shrink-0";
 
@@ -74,5 +84,7 @@ export const icon = <M>(
 ): Html =>
   h.svg(
     [...svgAttributes(className, h), ...(position ? [h.DataAttribute("icon", position)] : [])],
-    node.map(([tag, attrs]) => svgElement(tag, h)(nodeToAttributes(attrs, h))),
+    (iconNodeForCurrentLibrary(node) as HugeIconNode).map(([tag, attrs]) =>
+      svgElement(tag, h)(nodeToAttributes(attrs, h)),
+    ),
   );
