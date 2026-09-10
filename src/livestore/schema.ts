@@ -70,6 +70,10 @@ export const tables = {
       taskType: State.SQLite.text({ default: "single" }),
       endDate: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
       isBeingEdited: State.SQLite.integer({ default: 0 }),
+      editBackup: State.SQLite.json({
+        schema: Schema.Record(Schema.String, Schema.String),
+        nullable: true,
+      }),
     },
     indexes: [{ name: "idx_sessionTasks_session", columns: ["sessionId"] }],
   }),
@@ -121,17 +125,23 @@ export const tables = {
 
 export const events = {
   templateCreated: Events.synced({
-    name: "v2.TemplateCreated",
-    schema: Schema.Struct({ id: Schema.String, name: Schema.String, isDefault: Schema.Boolean }),
+    name: "v3.TemplateCreated",
+    schema: Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+      isDefault: Schema.Boolean,
+      now: Schema.DateFromMillis,
+    }),
   }),
   /** Full editor save: template metadata + wholesale field replacement, atomic. */
   templateUpdated: Events.synced({
-    name: "v2.TemplateUpdated",
+    name: "v3.TemplateUpdated",
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
       isDefault: Schema.Boolean,
       fields: Schema.Array(FieldDef),
+      now: Schema.DateFromMillis,
     }),
   }),
   /** Wholesale field replacement (used by duplicate). */
@@ -150,8 +160,9 @@ export const events = {
   }),
   /** Atomic first-boot seeding of sample content (never leaves user template-less). */
   templatesSeeded: Events.synced({
-    name: "v2.TemplatesSeeded",
+    name: "v3.TemplatesSeeded",
     schema: Schema.Struct({
+      now: Schema.DateFromMillis,
       templates: Schema.Array(
         Schema.Struct({
           id: Schema.String,
@@ -165,12 +176,13 @@ export const events = {
 
   // ── Sessions ────────────────────────────────────────────────────────────
   sessionStarted: Events.synced({
-    name: "v2.SessionStarted",
+    name: "v3.SessionStarted",
     schema: Schema.Struct({
       id: Schema.String,
       templateId: Schema.Union([Schema.Null, Schema.String]),
       templateName: Schema.String,
       sessionName: Schema.String,
+      now: Schema.DateFromMillis,
     }),
   }),
   sessionRenamed: Events.synced({
@@ -231,17 +243,17 @@ export const events = {
     name: "v2.TaskFinished",
     schema: Schema.Struct({ id: Schema.String, endedAt: Schema.DateFromMillis }),
   }),
-  taskReopened: Events.synced({
-    name: "v2.TaskReopened",
-    schema: Schema.Struct({ id: Schema.String }),
-  }),
-  /** Clears edit flags on every task of the session, then flags the target. */
+  /** Snapshots original values atomically with entering edit mode. */
   taskEditStarted: Events.synced({
-    name: "v2.TaskEditStarted",
+    name: "v3.TaskEditStarted",
     schema: Schema.Struct({ sessionId: Schema.String, id: Schema.String }),
   }),
   taskEditFinished: Events.synced({
     name: "v2.TaskEditFinished",
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  taskEditCancelled: Events.synced({
+    name: "v3.TaskEditCancelled",
     schema: Schema.Struct({ id: Schema.String }),
   }),
   /**
@@ -251,11 +263,6 @@ export const events = {
   taskFieldValueChanged: Events.synced({
     name: "v2.TaskFieldValueChanged",
     schema: Schema.Struct({ id: Schema.String, value: Schema.String, now: Schema.DateFromMillis }),
-  }),
-  /** Restores a value WITHOUT touching startDate (edit-cancel rollback). */
-  taskFieldValueRestored: Events.synced({
-    name: "v2.TaskFieldValueRestored",
-    schema: Schema.Struct({ id: Schema.String, value: Schema.String }),
   }),
 };
 
@@ -298,21 +305,19 @@ const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>
   );
 
 const materializers = State.SQLite.materializers(events, {
-  "v2.TemplateCreated": ({ id, name, isDefault }) =>
+  "v3.TemplateCreated": ({ id, name, isDefault, now }) =>
     tables.templates.insert({
       id,
       name,
       isDefault: isDefault ? 1 : 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     }),
-  "v2.TemplateUpdated": ({ id, name, isDefault, fields }) => [
+  "v3.TemplateUpdated": ({ id, name, isDefault, fields, now }) => [
     ...(isDefault
       ? [tables.templates.update({ isDefault: 0 }).where({ id: { op: "!=", value: id } })]
       : []),
-    tables.templates
-      .update({ name, isDefault: isDefault ? 1 : 0, updatedAt: new Date() })
-      .where({ id }),
+    tables.templates.update({ name, isDefault: isDefault ? 1 : 0, updatedAt: now }).where({ id }),
     tables.templateFields.delete().where({ templateId: id }),
     ...insertTemplateFields(id, fields),
   ],
@@ -328,25 +333,25 @@ const materializers = State.SQLite.materializers(events, {
     tables.templates.update({ isDefault: 0 }).where({ id: { op: "!=", value: id } }),
     tables.templates.update({ isDefault: 1 }).where({ id }),
   ],
-  "v2.TemplatesSeeded": ({ templates }) =>
+  "v3.TemplatesSeeded": ({ templates, now }) =>
     templates.flatMap((t) => [
       tables.templates.insert({
         id: t.id,
         name: t.name,
         isDefault: t.isDefault ? 1 : 0,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
       }),
       ...insertTemplateFields(t.id, t.fields),
     ]),
 
-  "v2.SessionStarted": ({ id, templateId, templateName, sessionName }) =>
+  "v3.SessionStarted": ({ id, templateId, templateName, sessionName, now }) =>
     tables.sessions.insert({
       id,
       templateId,
       templateName,
       sessionName,
-      startedAt: new Date(),
+      startedAt: now,
       endedAt: null,
     }),
   "v2.SessionRenamed": ({ id, sessionName }) =>
@@ -361,7 +366,7 @@ const materializers = State.SQLite.materializers(events, {
     return [
       tables.sessions.update({ endedAt: new Date(endedAt) }).where({ id }),
       ...records.flatMap((record) => {
-        const recordId = crypto.randomUUID();
+        const recordId = `${id}:${record.taskIdNumber}`;
         return [
           tables.taskRecords.insert({
             id: recordId,
@@ -371,9 +376,9 @@ const materializers = State.SQLite.materializers(events, {
             startedAt: record.startedAt === null ? null : new Date(record.startedAt),
             endedAt: record.endedAt === null ? null : new Date(record.endedAt),
           }),
-          ...record.sections.map((section) =>
+          ...record.sections.map((section, index) =>
             tables.taskSectionRecords.insert({
-              id: crypto.randomUUID(),
+              id: `${recordId}:${index}`,
               taskRecordId: recordId,
               sectionName: section.sectionName,
               value: section.value,
@@ -425,13 +430,35 @@ const materializers = State.SQLite.materializers(events, {
   ],
   "v2.TaskFinished": ({ id, endedAt }) =>
     tables.sessionTasks.update({ endDate: new Date(endedAt) }).where({ id }),
-  "v2.TaskReopened": ({ id }) =>
-    tables.sessionTasks.update({ endDate: null, isBeingEdited: 1 }).where({ id }),
-  "v2.TaskEditStarted": ({ sessionId, id }) => [
-    tables.sessionTasks.update({ isBeingEdited: 0 }).where({ sessionId }),
-    tables.sessionTasks.update({ isBeingEdited: 1 }).where({ id }),
-  ],
-  "v2.TaskEditFinished": ({ id }) => tables.sessionTasks.update({ isBeingEdited: 0 }).where({ id }),
+  "v3.TaskEditStarted": ({ sessionId, id }, { query }) => {
+    const task = query(tables.sessionTasks.select().where({ id, sessionId }))[0];
+    if (task === undefined || task.endDate === null) return [];
+    const backup =
+      task.editBackup ??
+      Object.fromEntries(
+        query(
+          tables.sessionTaskFields.select().where({ taskId: id }).orderBy("sortOrder", "asc"),
+        ).map((field) => [field.id, field.value]),
+      );
+    return [
+      tables.sessionTasks
+        .update({ isBeingEdited: 0, editBackup: null })
+        .where({ sessionId, id: { op: "!=", value: id } }),
+      tables.sessionTasks.update({ isBeingEdited: 1, editBackup: backup }).where({ id }),
+    ];
+  },
+  "v2.TaskEditFinished": ({ id }) =>
+    tables.sessionTasks.update({ isBeingEdited: 0, editBackup: null }).where({ id }),
+  "v3.TaskEditCancelled": ({ id }, { query }) => {
+    const task = query(tables.sessionTasks.select().where({ id, isBeingEdited: 1 }))[0];
+    if (task?.editBackup == null) return [];
+    return [
+      ...Object.entries(task.editBackup).map(([fieldId, value]) =>
+        tables.sessionTaskFields.update({ value }).where({ id: fieldId, taskId: id }),
+      ),
+      tables.sessionTasks.update({ isBeingEdited: 0, editBackup: null }).where({ id }),
+    ];
+  },
   // COALESCE = first-write-only startDate.
   // Raw SQL with $named binds: the `sql` template tag inlines values
   // unquoted (String(arg)), which breaks on uuids/dates ("near 'Aug': syntax
@@ -441,8 +468,6 @@ const materializers = State.SQLite.materializers(events, {
     bindValues: { value, now: now.getTime(), id },
     writeTables: new Set(["sessionTaskFields"]),
   }),
-  "v2.TaskFieldValueRestored": ({ id, value }) =>
-    tables.sessionTaskFields.update({ value }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

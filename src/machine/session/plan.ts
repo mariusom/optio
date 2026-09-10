@@ -50,7 +50,6 @@ const runnerToValue = (runner: RunnerState): LiveValue => ({
   showTaskList: runner.showTaskList,
   showSidebar: runner.showSidebar,
   lastError: runner.lastError,
-  editBackup: runner.editBackup,
 });
 
 /** Plain (runner, phase) → machine persistence record (decode-safe form). */
@@ -90,7 +89,6 @@ const snapshotToRunner = (
       lastError: value.lastError,
       now,
       showEndConfirm: phase === "confirming",
-      editBackup: value.editBackup,
     },
   };
 };

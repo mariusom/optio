@@ -20,7 +20,7 @@ describe("displayNameFor", () => {
   it("falls back to templateName when sessionName empty", () => {
     expect(displayNameFor("", "Template")).toBe("Template");
   });
-  it("handles spaces and trimming? spec treats empty string only", () => {
+  it("preserves whitespace-only names", () => {
     expect(displayNameFor("   ", "Template")).toBe("   ");
   });
 });
@@ -92,6 +92,54 @@ describe("filenameForArchive", () => {
 });
 
 describe("buildArchiveCsv", () => {
+  it.each([
+    "=1+2",
+    "+1",
+    "-3",
+    "@SUM(A1)",
+    "\t=1",
+    "\r=1",
+    "\n=1",
+    "  =1",
+    "＝1",
+    "＋1",
+    "－1",
+    "＠A1",
+  ])("protects formula-leading headings and values only in spreadsheet exports: %j", (input) => {
+    const records = [
+      {
+        taskId: 7,
+        startedAt: null,
+        endedAt: null,
+        sections: [{ sectionName: input, value: input }],
+      },
+    ];
+    const escaped = `"'${input}"`;
+    expect(buildArchiveCsv(records, true)).toBe(`id,${escaped},startTime,endTime\n7,${escaped},,`);
+    expect(buildArchiveCsv(records)).not.toContain(escaped);
+  });
+
+  it("keeps separators inside protected cells and preserves ordinary study data", () => {
+    const records = [
+      {
+        taskId: 4,
+        startedAt: null,
+        endedAt: null,
+        sections: [
+          { sectionName: "Activity", value: '=1+2";,=3' },
+          { sectionName: "Count", value: "12" },
+          { sectionName: "Notes", value: "Station-2" },
+        ],
+      },
+    ];
+    expect(buildArchiveCsv(records, true)).toBe(
+      'id,Activity,Count,Notes,startTime,endTime\n4,"\'=1+2"";,=3",12,Station-2,,',
+    );
+    expect(buildArchiveCsv(records)).toBe(
+      'id,Activity,Count,Notes,startTime,endTime\n4,"=1+2"";,=3",12,Station-2,,',
+    );
+  });
+
   it("empty records → header only id + times", () => {
     const csv = buildArchiveCsv([]);
     expect(csv).toBe("id,startTime,endTime");

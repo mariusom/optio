@@ -30,6 +30,7 @@ export const SaveTemplate = Command.define("SaveTemplate", {
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
       const trimmedName = name.trim();
+      const now = new Date();
       const dense: ReadonlyArray<FieldDef> = (fields as ReadonlyArray<FieldDef>).map(
         (field, index) => ({
           ...field,
@@ -40,17 +41,19 @@ export const SaveTemplate = Command.define("SaveTemplate", {
       if (isNew) {
         const first = store.query(tables.templates.select()).length === 0;
         store.commit(
-          events.templateCreated({ id, name: trimmedName, isDefault: isDefault || first }),
+          events.templateCreated({ id, name: trimmedName, isDefault: isDefault || first, now }),
           events.fieldsReplaced({ templateId: id, fields: dense }),
           ...(isDefault || first ? [events.templateDefaultSet({ id })] : []),
         );
       } else if (isDefault) {
         store.commit(
-          events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense }),
+          events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
           events.templateDefaultSet({ id }),
         );
       } else {
-        store.commit(events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense }));
+        store.commit(
+          events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
+        );
       }
       return Message.TemplateSaved();
     }).pipe(

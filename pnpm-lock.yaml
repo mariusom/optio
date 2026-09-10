@@ -169,6 +169,7 @@ overrides:
   '@effect/platform-bun': 4.0.0-rc.112
   '@effect/platform-node': 4.0.0-rc.112
   '@effect/platform-node-shared': 4.0.0-rc.112
+  '@livestore/utils@0.5.0-dev.0>nanoid': 5.1.16
 
 patchedDependencies:
   '@livestore/adapter-web@0.5.0-dev.0': a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25
@@ -245,7 +246,7 @@ importers:
         specifier: ^0.3.1
         version: 0.3.1(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-playwright@4.1.11)(jiti@2.7.0)(terser@5.50.0)(typescript@7.0.2)
       vitest:
-        specifier: ^4.1.11
+        specifier: 4.1.11
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.2.0)(@vitest/browser-playwright@4.1.11)(@vitest/browser-preview@4.1.11)(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)(terser@5.50.0))
       workbox-window:
         specifier: ^7.4.1
@@ -2998,8 +2999,8 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  nanoid@5.0.9:
-    resolution: {integrity: sha512-Aooyr6MXU6HpvvWXKoVoXwKMs/KyVakWwg7xQfv5/S/RIgJMy0Ifa45H9qqYy7pTCszrHzP21Uk4PZq2HpEM8Q==}
+  nanoid@5.1.16:
+    resolution: {integrity: sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==}
     engines: {node: ^18 || >=20}
     hasBin: true
 
@@ -4524,7 +4525,7 @@ snapshots:
       '@opentelemetry/resources': 2.10.0(@opentelemetry/api@1.9.1)
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.112
-      nanoid: 5.0.9
+      nanoid: 5.1.16
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
 
@@ -6087,7 +6088,7 @@ snapshots:
 
   nanoid@3.3.18: {}
 
-  nanoid@5.0.9: {}
+  nanoid@5.1.16: {}
 
   node-gyp-build-optional-packages@5.2.2:
     dependencies:

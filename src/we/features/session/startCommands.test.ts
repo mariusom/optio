@@ -152,12 +152,16 @@ describe("StartSession template resolution", () => {
         ).toEqual(Message.SessionStarted({ sessionId: "session" }));
         expect(query).toHaveBeenCalledTimes(3);
         expect(commit).toHaveBeenCalledWith(
-          events.sessionStarted({
-            id: "session",
-            templateId: "empty",
-            templateName: "Shared name",
-            sessionName: "Session",
-          }),
+          {
+            name: "v3.SessionStarted",
+            args: {
+              id: "session",
+              templateId: "empty",
+              templateName: "Shared name",
+              sessionName: "Session",
+              now: expect.any(Date),
+            },
+          },
           events.taskSpawned({
             sessionId: "session",
             id: taskId,

@@ -155,7 +155,7 @@ export const Model = S.Struct({
       pendingDiscard: S.Boolean,
     }),
   ]),
-  // Start tab slice (S3)
+  // Session launcher
   selectedTemplateId: S.Union([S.Null, S.String]),
   sessionNameInput: S.String,
   placeholderName: S.String,
@@ -171,11 +171,11 @@ export const Model = S.Struct({
     }),
   ]),
   pendingDiscardSession: S.Boolean,
-  // Runner slice (S4) — live session form canvas
+  // Live session form
   runner: S.Union([S.Null, RunnerStateSchema]),
   // Machine phase for the live Session statechart (Idle ⇔ runner === null)
   runnerPhase: S.Union([S.Literal("collecting"), S.Literal("confirming")]),
-  // History slice (S6)
+  // Archived sessions
   history: S.Array(
     S.Struct({
       id: S.String,
@@ -340,7 +340,7 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
     case "CommitSelectTask":
       return [SelectTask({ sessionId: emission.sessionId, taskId: emission.taskId })];
     case "CommitCancelEdit":
-      return [CancelEdit({ taskId: emission.taskId, backup: emission.backup })];
+      return [CancelEdit({ taskId: emission.taskId })];
     case "CommitSaveEdit":
       return [SaveEdit({ taskId: emission.taskId })];
     case "CommitEndSession":
@@ -521,7 +521,7 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
           showEditHistoryName: false,
         };
       }
-      // Regenerate placeholder on every entry to Start tab when no active session (spec: onAppear & after start). Preserve typed input via sessionNameInput.
+      // Offer a fresh suggested name on entry; preserve any explicitly typed name.
       if (route._tag === "StartTab" && base.activeSession === null) {
         return { model: { ...base, placeholderName: generateSessionName() } };
       }
@@ -1267,9 +1267,9 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     HistoryNameUpdated: () => ({ model: { ...model, showEditHistoryName: false } }),
     ClickedHistoryTask: ({ taskId }) => ({ model: { ...model, selectedHistoryTaskId: taskId } }),
     DismissedHistoryTask: () => ({ model: { ...model, selectedHistoryTaskId: null } }),
-    ClickedExportHistoryCsv: ({ sessionId }) => ({
+    ClickedExportHistoryCsv: ({ sessionId, spreadsheetSafe = false }) => ({
       model: { ...model, csvError: null, historyActionsFor: null },
-      commands: [ExportSessionCsv({ sessionId })],
+      commands: [ExportSessionCsv({ sessionId, spreadsheetSafe })],
     }),
     CsvExported: () => ({ model }),
     FailedCsvExport: ({ error }) => ({ model: { ...model, csvError: error } }),

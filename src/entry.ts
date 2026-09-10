@@ -20,7 +20,7 @@ import type { ModelContext } from "./agents/webmcp";
 installSheetFocus();
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
-// Design system §5.9: never reload the page out from under the user. When a new
+// Never reload the page out from under the user. When a new
 // service worker takes control (or is `waiting`, prompt-style), show an
 // unobtrusive toast; the user taps it to apply the update — no mid-session
 // surprise reloads while recording a study.

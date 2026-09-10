@@ -7,11 +7,17 @@ import { formatCsvDate } from "../../format";
 export const displayNameFor = (sessionName: string, templateName: string): string =>
   sessionName !== "" ? sessionName : templateName;
 
-/** Filename-safe: spaces → underscores (spec: <name spaces→underscores>) */
+/** Keep exported names readable by replacing spaces with underscores. */
 export const filenameSafe = (name: string): string => name.replace(/ /g, "_");
 
-export const csvEscaped = (value: string): string => {
+export const csvEscaped = (value: string, spreadsheetSafe = false): string => {
   if (value === "") return "";
+  // CSV quoting alone does not prevent formulas. Prefix risky cells as text
+  // only in the explicitly requested spreadsheet format; raw exports stay exact.
+  // Spreadsheet re-saving can remove this protection (see docs/development.md).
+  if (spreadsheetSafe && (/^[\s\p{Cc}]*[=+\-@＝＋－＠]/u.test(value) || /^[\t\r\n]/.test(value))) {
+    return `"'${value.replace(/"/g, '""')}"`;
+  }
   const needsQuoting = /[, \r\n\t"]/.test(value);
   if (!needsQuoting) return value;
   const doubled = value.replace(/"/g, '""');
@@ -37,8 +43,11 @@ export type ArchiveTask = {
   sections: ReadonlyArray<ArchiveSection>;
 };
 
-/** Builds archive CSV string per spec Appendix B */
-export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => {
+/** Archive columns are ordered by question name, with distinct duplicate headings. */
+export const buildArchiveCsv = (
+  records: ReadonlyArray<ArchiveTask>,
+  spreadsheetSafe = false,
+): string => {
   // Align same-name fields across tasks by occurrence in section order.
   // Keep enough columns for the largest number of occurrences in any task.
   const counts = new Map<string, number>();
@@ -81,7 +90,7 @@ export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => 
     cells.push(csvEscaped(String(task.taskId)));
     for (const { name, occurrence } of columns) {
       const v = valueByName.get(name)?.[occurrence] ?? "";
-      cells.push(csvEscaped(v));
+      cells.push(csvEscaped(v, spreadsheetSafe));
     }
     const startStr = task.startedAt ? formatCsvDate(task.startedAt) : "";
     const endStr = task.endedAt ? formatCsvDate(task.endedAt) : "";
@@ -90,7 +99,7 @@ export const buildArchiveCsv = (records: ReadonlyArray<ArchiveTask>): string => 
     return cells.join(",");
   });
 
-  const heading = header.map(csvEscaped).join(",");
+  const heading = header.map((value) => csvEscaped(value, spreadsheetSafe)).join(",");
   if (rows.length === 0) return heading;
   return `${heading}\n${rows.join("\n")}`;
 };

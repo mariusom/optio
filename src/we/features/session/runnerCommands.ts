@@ -40,8 +40,7 @@ export const RecordTask = Command.define("RecordTask", {
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
 
-      // Fetch current task to check canRecord implicitly via isDone? We do light guard:
-      // Find task and its fields
+      // Recheck persisted completion: the model may have changed since dispatch.
       const taskRows = store.query(
         tables.sessionTasks.select().where({ sessionId }),
       ) as ReadonlyArray<{
@@ -214,7 +213,7 @@ export const EndSession = Command.define("EndSession", {
         });
       }
 
-      // Sort records by taskId asc per spec
+      // Keep archive order consistent with the live task list.
       records.sort((a, b) => a.taskIdNumber - b.taskIdNumber);
 
       store.commit(
@@ -264,16 +263,12 @@ export const SelectTask = Command.define("SelectTask", {
 });
 
 export const CancelEdit = Command.define("CancelEdit", {
-  args: { taskId: S.String, backup: S.Record(S.String, S.String) },
+  args: { taskId: S.String },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
-  execute: ({ taskId, backup }) =>
+  execute: ({ taskId }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
-      const entries = Object.entries(backup as Record<string, string>);
-      const restores = entries.map(([fieldId, value]) =>
-        events.taskFieldValueRestored({ id: fieldId, value }),
-      );
-      store.commit(...restores, events.taskEditFinished({ id: taskId }));
+      store.commit(events.taskEditCancelled({ id: taskId }));
       return Message.TaskEditFinished();
     }).pipe(
       Effect.catchCause((cause) =>

@@ -27,19 +27,36 @@ subscriptions bring store changes back into the model.
 
 [LiveStore](https://livestore.dev) runs SQLite in a worker and persists it in
 [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system).
-The store ID is `optio-v1`; older IDs are intentionally ignored, not migrated.
+The store ID is `optio-v3`; older pre-release IDs are intentionally ignored, not
+migrated or deleted. Export any wanted pre-release recordings before updating.
+The reset removes events that omitted creation timestamps; those timestamps
+cannot be recovered accurately from their event payloads alone.
 Reuse the memoized `getStore()` promise: opening competing instances for the same
 ID can leave them waiting on the store lock.
+
+Materializers must be deterministic: capture wall-clock times and random IDs in
+commands and include them in events. Archive IDs derive from session ID, task
+number and section position (not section name). LiveStore
+[rematerializes state on schema changes](https://dev.docs.livestore.dev/building-with-livestore/state/sqlite-schema)
+and recommends [side-effect-free materializers](https://dev.docs.livestore.dev/building-with-livestore/state/materializers).
 
 The live session row is the resume state. A field's first write stamps `startDate`
 with SQL `COALESCE`; defaults do not start its timer, and edit-cancel rollback
 restores values without changing that timestamp. Durations derive from these
 timestamps. Preserve the same rules for UI and agent actions.
 
+Completed-task edit rollback belongs to SQLite, not the UI model.
+`TaskEditStarted` stores the original field values in `sessionTasks.editBackup`
+in the same transaction as its edit flag. Reselecting that task retains the
+snapshot; switching tasks or saving clears it. `TaskEditCancelled` restores the
+snapshot and clears edit mode atomically, including after reload. It restores
+values only, not first-write timestamps. A failed save retains the snapshot.
+
 Validate event payloads with Effect Schema before commits. Template changes stay
 in editor drafts until saved. Completed live tasks can be edited; archived
-observation values are immutable. Live and archived CSV exports use different
-column layouts, so preserve both when changing export behavior.
+observation values are immutable. Archived CSV exports preserve duplicate
+question names in separate columns. The optional spreadsheet format protects
+formula-like cells without modifying stored observations; raw CSV stays exact.
 
 Optio adds no runtime network dependency for studies. Browser storage can still
 be cleared or evicted; persistence is not a backup guarantee. Service-worker

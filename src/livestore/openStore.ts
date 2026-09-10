@@ -13,7 +13,8 @@ const adapter = makePersistedAdapter({
 
 export const openStore = () =>
   createStorePromise({
-    storeId: "optio-v1",
+    // Pre-release reset: old events did not contain creation timestamps.
+    storeId: "optio-v3",
     schema,
     adapter,
   });

@@ -44,10 +44,6 @@ export const RunnerStateSchema = Schema.Struct({
   showSidebar: Schema.Boolean,
   lastError: Schema.Union([Schema.Null, Schema.String]),
   now: Schema.Number,
-  editBackup: Schema.Union([
-    Schema.Null,
-    Schema.Struct({ taskId: Schema.String, values: Schema.Record(Schema.String, Schema.String) }),
-  ]),
 });
 export type RunnerState = typeof RunnerStateSchema.Type;
 

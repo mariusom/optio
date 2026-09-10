@@ -74,7 +74,6 @@ const runner: RunnerState = {
   showSidebar: false,
   showEndConfirm: true,
   lastError: null,
-  editBackup: null,
 };
 const editSheet = () =>
   editSessionNameSheet(

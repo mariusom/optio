@@ -72,7 +72,6 @@ const liveRunner = (overrides: Partial<Parameters<typeof planSession>[0]> = {}) 
   lastError: null,
   now: 1_700_000_001_000,
   showEndConfirm: false,
-  editBackup: null,
   ...overrides,
 });
 
@@ -116,7 +115,6 @@ describe("sessionMachine topology", () => {
     expect(runner!.focusedSectionId).toBeNull();
     expect(runner!.showSidebar).toBe(true);
     expect(runner!.showEndConfirm).toBe(false);
-    expect(runner!.editBackup).toBeNull();
   });
 
   it("returns to Idle when DataSynced null", () => {
@@ -243,16 +241,15 @@ describe("sessionMachine recording", () => {
 });
 
 describe("sessionMachine task selection + edit", () => {
-  it("selecting a finished task opens edit mode (backup + CommitSelectTask)", () => {
+  it("selecting a finished task requests persisted edit mode", () => {
     const { runner, emissions } = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
     expect(emissions).toEqual([
       { _tag: "CommitSelectTask", sessionId: "sess-1", taskId: "task-2" },
     ]);
-    expect(runner!.editBackup).toEqual({ taskId: "task-2", values: { "f-note": "Old note" } });
     expect(runner!.currentTaskId).toBe("task-2");
   });
 
-  it("select → sync → change → sync → reselect → cancel restores the original backup", () => {
+  it("select → sync → change → sync → reselect → cancel requests rollback of the edited task", () => {
     const selected = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
     const editing = data({
       currentTaskId: "task-2",
@@ -281,29 +278,24 @@ describe("sessionMachine task selection + edit", () => {
     };
     const refreshed = plan(changed.runner, { _tag: "DataSynced", data: changedData });
     const reselected = plan(refreshed.runner, { _tag: "TaskSelected", taskId: "task-2" });
-    expect(reselected.runner!.editBackup).toEqual(selected.runner!.editBackup);
     const resynced = plan(reselected.runner, { _tag: "DataSynced", data: changedData });
     const cancelled = plan(resynced.runner, { _tag: "EditCancelled" });
-    expect(cancelled.emissions).toEqual([
-      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
-    ]);
+    expect(cancelled.emissions).toEqual([{ _tag: "CommitCancelEdit", taskId: "task-2" }]);
     const restored = plan(cancelled.runner, {
       _tag: "DataSynced",
       data: data({ currentTaskId: "task-1" }),
     });
     const acked = plan(restored.runner, { _tag: "EditAcked" });
     expect(acked.runner!.tasks[1]!.sections[0]!.value).toBe("Old note");
-    expect(acked.runner!.editBackup).toBeNull();
     expect(acked.runner!.currentTaskId).toBe("task-1");
   });
 
   it("selecting an open task just switches current task", () => {
     const { runner } = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-1" });
-    expect(runner!.editBackup).toBeNull();
     expect(runner!.currentTaskId).toBe("task-1");
   });
 
-  it("EditCancelled commits the backup restore", () => {
+  it("a fresh runner can cancel a recovered edit without a UI backup", () => {
     const editing = data({
       tasks: [
         {
@@ -322,21 +314,13 @@ describe("sessionMachine task selection + edit", () => {
         },
       ],
     });
-    const { runner, emissions } = plan(
-      liveRunner({
-        ...editing,
-        editBackup: { taskId: "task-2", values: { "f-note": "Old note" } },
-      }),
-      { _tag: "EditCancelled" },
-    );
-    expect(emissions).toEqual([
-      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
-    ]);
-    expect(runner!.editBackup).toEqual({ taskId: "task-2", values: { "f-note": "Old note" } });
+    const recovered = plan(null, { _tag: "DataSynced", data: editing });
+    const { runner, emissions } = plan(recovered.runner, { _tag: "EditCancelled" });
+    expect(emissions).toEqual([{ _tag: "CommitCancelEdit", taskId: "task-2" }]);
     expect(runner!.currentTaskId).toBe("task-1");
   });
 
-  it("retains the original backup when cancel fails and the task is reselected and retried", () => {
+  it("allows cancel to be retried when persistence fails", () => {
     const editing = data({
       currentTaskId: "task-2",
       tasks: data().tasks.map((task) => ({
@@ -347,8 +331,7 @@ describe("sessionMachine task selection + edit", () => {
         ),
       })),
     });
-    const originalBackup = { taskId: "task-2", values: { "f-note": "Old note" } };
-    const cancelled = plan(liveRunner({ ...editing, editBackup: originalBackup }), {
+    const cancelled = plan(liveRunner(editing), {
       _tag: "EditCancelled",
     });
 
@@ -357,10 +340,7 @@ describe("sessionMachine task selection + edit", () => {
     const reselected = plan(failed, { _tag: "TaskSelected", taskId: "task-2" });
     const retried = plan(reselected.runner, { _tag: "EditCancelled" });
 
-    expect(reselected.runner!.editBackup).toEqual(originalBackup);
-    expect(retried.emissions).toEqual([
-      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
-    ]);
+    expect(retried.emissions).toEqual([{ _tag: "CommitCancelEdit", taskId: "task-2" }]);
   });
 
   it("EditSaved gates and commits", () => {
@@ -382,18 +362,11 @@ describe("sessionMachine task selection + edit", () => {
         },
       ],
     });
-    const { runner, emissions } = plan(
-      liveRunner({
-        ...editing,
-        editBackup: { taskId: "task-2", values: { "f-note": "Old note" } },
-      }),
-      { _tag: "EditSaved" },
-    );
+    const { emissions } = plan(liveRunner(editing), { _tag: "EditSaved" });
     expect(emissions).toEqual([{ _tag: "CommitSaveEdit", taskId: "task-2" }]);
-    expect(runner!.editBackup).toEqual({ taskId: "task-2", values: { "f-note": "Old note" } });
   });
 
-  it("retains rollback values when save persistence fails", () => {
+  it("allows cancellation when save persistence fails", () => {
     const editing = data({
       currentTaskId: "task-2",
       tasks: data().tasks.map((task) => ({
@@ -404,8 +377,7 @@ describe("sessionMachine task selection + edit", () => {
         ),
       })),
     });
-    const originalBackup = { taskId: "task-2", values: { "f-note": "Old note" } };
-    const saved = plan(liveRunner({ ...editing, editBackup: originalBackup }), {
+    const saved = plan(liveRunner(editing), {
       _tag: "EditSaved",
     });
 
@@ -413,10 +385,7 @@ describe("sessionMachine task selection + edit", () => {
     const failed = { ...saved.runner!, lastError: "write failed" };
     const cancelled = plan(failed, { _tag: "EditCancelled" });
 
-    expect(saved.runner!.editBackup).toEqual(originalBackup);
-    expect(cancelled.emissions).toEqual([
-      { _tag: "CommitCancelEdit", taskId: "task-2", backup: { "f-note": "Old note" } },
-    ]);
+    expect(cancelled.emissions).toEqual([{ _tag: "CommitCancelEdit", taskId: "task-2" }]);
   });
 });
 

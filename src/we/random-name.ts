@@ -1,6 +1,4 @@
-// RandomNameGenerator — curated two-word session names (96 adjectives × nouns)
-// (spec §2.4). Used as the session-name placeholder; a blank input promotes
-// the placeholder to the actual session name.
+// Two-word suggestions become the session name when the input is left blank.
 
 const ADJECTIVES: ReadonlyArray<string> = [
   // Nature & Elements

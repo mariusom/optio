@@ -92,6 +92,7 @@ export const StartSession = Command.define("StartSession", {
           templateId: resolvedTemplateId,
           templateName: resolvedTemplateName,
           sessionName,
+          now: new Date(),
         }),
         events.taskSpawned({
           sessionId: id,

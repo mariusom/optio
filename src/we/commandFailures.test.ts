@@ -89,7 +89,7 @@ const cases = [
   },
   {
     name: "CancelEdit",
-    command: () => CancelEdit({ taskId: "task", backup: { field: "original" } }),
+    command: () => CancelEdit({ taskId: "task" }),
     rows: [],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",

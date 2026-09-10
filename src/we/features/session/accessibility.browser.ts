@@ -29,7 +29,6 @@ const runnerFixture = (value: string, override: Partial<RunnerState> = {}): Runn
   showSidebar: true,
   showEndConfirm: false,
   lastError: null,
-  editBackup: null,
   tasks: [
     {
       id: "task",

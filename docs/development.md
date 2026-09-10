@@ -18,6 +18,8 @@ pnpm check
 pnpm exec tsc --noEmit
 pnpm test
 pnpm build
+pnpm test:e2e
+pnpm audit --audit-level high
 ```
 
 On a fresh Linux host, use `playwright install --with-deps chromium` to install
@@ -30,13 +32,25 @@ system dependencies too. Other commands are in `package.json`.
 view and update loop but mock the LiveStore client. Agent CRUD tests use SQLite
 with LiveStore's in-memory adapter and substitute browser registration and human
 confirmation. Neither proves OPFS persistence, reload recovery, or native agent
-compatibility. Verify those separately when changing storage or startup.
+compatibility.
+
+`pnpm test:e2e` serves the production build on a temporary local port and uses
+a disposable Chromium profile with real OPFS storage and workers. It records a
+session, restarts the browser during an edit, cancels the edit, reloads offline,
+ends the session and checks both downloaded CSV formats. No stored user data or
+deployed service is used. Unit tests separately check deterministic event
+replay. Native WebMCP integration and real Safari/mobile-device behavior still
+need separate verification.
 
 For interface changes, inspect affected states on phone, tablet and desktop,
 including keyboard navigation and light/dark appearance. The screenshot helper
 `node scripts/screenshots/tour.mjs /tmp/optio-tour` expects a production preview
 on port 60002; set `OPTIO_URL` to override its base URL. Screenshots need inspection
 and are not substitutes for assertions.
+
+Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,
+results and export-choice states during the production journey. Inspect captures
+before publishing them; use synthetic data only.
 
 ## Performance audits
 
@@ -63,6 +77,18 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
+- The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
+  protocol expected by this Effect release. Remove it only when an upstream
+  adapter includes the codec and the production storage journey passes.
+- The scoped Nano ID override removes known advisories in LiveStore's pinned
+  version. Reassess it when updating LiveStore. Keep the 24-hour release-age
+  guard; do not bypass it for routine dependency updates.
+- pnpm 12.4.0 is intentionally pinned from its `next-12` release track. Use the
+  pinned version for its two-document lockfile. Verify external scanners and
+  Dependabot parse the app graph, not only the package-manager document.
+- Dependabot proposes grouped lockfile and GitHub Actions updates. Exact
+  manifest pins and workspace overrides need deliberate coordinated updates.
+  Audit includes development dependencies because they can affect shipped code.
 - Registry components are project-owned copies. Review upstream changes before
   replacing them; preserve the [interface conventions](interface.md).
 - Refresh component style presets with `node scripts/update-foldcn-styles.mjs`,
@@ -72,10 +98,37 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Deployment
 
-[The workflow](../.github/workflows/deploy.yml) checks, tests and builds pushes
-to `main`, then publishes `dist/` to GitHub Pages. The `/optio/` base path and
-service-worker settings live in [vite.config.ts](../vite.config.ts). Test offline
-behavior against a production build, not just the dev server.
+[The workflow](../.github/workflows/deploy.yml) audits, checks, tests and builds
+pull requests and pushes to `main`. Only validated `main` builds can reach the
+separate GitHub Pages deployment job; install and test steps have no Pages or
+OIDC write permissions. The `/optio/` base path and service-worker settings live
+in [vite.config.ts](../vite.config.ts).
+
+The current pre-release starts a fresh `optio-v3` store and does not migrate
+older stores. Export any wanted pre-release results using the old build before
+updating. Once data compatibility is promised, treat event and table changes as
+migrations rather than renaming the store.
+
+## CSV exports
+
+**Raw CSV** preserves recorded values for programmatic analysis. Import
+untrusted cells as text instead of opening the file with automatic formula
+interpretation. **CSV for spreadsheets** prefixes formula-like headings and
+values with an apostrophe inside a quoted cell; its filename ends in
+`_spreadsheet.csv`. This changes those exported cells, not stored observations.
+It covers leading formula characters, their full-width variants, and leading
+whitespace/control characters that can hide a formula.
+
+No CSV mitigation is universal across spreadsheet applications. Re-saving can
+remove protection; see [OWASP's CSV guidance](https://owasp.org/www-community/attacks/CSV_Injection).
+Existing agent export actions remain raw unless `spreadsheetSafe: true` is set.
+
+## Project history
+
+Optio began as a web implementation of an earlier Swift time-study app and was
+subsequently redesigned. The public Git history retains that lineage. New
+commit messages should describe the outcome and important tradeoffs, not
+private spec section numbers or tool transcripts.
 
 ## Public metadata and agent discovery
 
@@ -117,3 +170,11 @@ integration. A high protocol-discovery score is not a security or usability audi
 
 For tool usage, consult [Vite+](https://vite.plus),
 [pnpm](https://pnpm.io), and [Vitest browser testing](https://vitest.dev/guide/browser/).
+
+## Third-party source
+
+The [architecture](architecture.md) describes the runtime libraries; the
+[interface conventions](interface.md) describe the copied registry components.
+[Third-party notices](../public/THIRD_PARTY_NOTICES.txt) preserve their applicable
+license text and attribution and are copied into the production build. Keep
+those notices when updating vendored code.

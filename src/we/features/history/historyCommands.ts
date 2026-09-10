@@ -42,9 +42,9 @@ export const RenameHistorySession = Command.define("RenameHistorySession", {
 
 // ExportSessionCsv — archive format only (history is archive)
 export const ExportSessionCsv = Command.define("ExportSessionCsv", {
-  args: { sessionId: S.String },
+  args: { sessionId: S.String, spreadsheetSafe: S.optionalKey(S.Boolean) },
   messages: [Message.CsvExported, Message.FailedCsvExport],
-  execute: ({ sessionId }) =>
+  execute: ({ sessionId, spreadsheetSafe = false }) =>
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
 
@@ -121,9 +121,12 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
       });
 
       // Use helper to build CSV
-      const csv = buildArchiveCsv(records);
+      const csv = buildArchiveCsv(records, spreadsheetSafe);
 
-      const filename = filenameForArchive(displayName, new Date());
+      const rawFilename = filenameForArchive(displayName, new Date());
+      const filename = spreadsheetSafe
+        ? rawFilename.replace(/\.csv$/, "_spreadsheet.csv")
+        : rawFilename;
 
       // Trigger download (Safari-compatible Blob URL + a[download])
       if (typeof document !== "undefined" && typeof URL !== "undefined") {

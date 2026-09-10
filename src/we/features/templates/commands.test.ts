@@ -109,7 +109,10 @@ describe("CreateTemplate", () => {
           }).effect,
         ).toEqual(Message.TemplateSaved());
         expect(commit).toHaveBeenCalledExactlyOnceWith(
-          events.templateCreated({ id: "new", name: "Study", isDefault: first }),
+          {
+            name: "v3.TemplateCreated",
+            args: { id: "new", name: "Study", isDefault: first, now: expect.any(Date) },
+          },
           events.fieldsReplaced({
             templateId: "new",
             fields: [{ ...fields[0]!, name: "Activity", sortOrder: 0 }],
@@ -126,9 +129,10 @@ describe("CreateTemplate", () => {
         expect(yield* CreateTemplate({ id: "new", name: "  Study  " }).effect).toEqual(
           Message.TemplateCreated(),
         );
-        expect(commit).toHaveBeenCalledWith(
-          events.templateCreated({ id: "new", name: "Study", isDefault: true }),
-        );
+        expect(commit).toHaveBeenCalledWith({
+          name: "v3.TemplateCreated",
+          args: { id: "new", name: "Study", isDefault: true, now: expect.any(Date) },
+        });
       }),
   );
 });

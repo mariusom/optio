@@ -39,10 +39,6 @@ const LiveValue = Schema.TaggedUnion({
     showTaskList: Schema.Boolean,
     showSidebar: Schema.Boolean,
     lastError: Schema.Union([Schema.Null, Schema.String]),
-    editBackup: Schema.Union([
-      Schema.Null,
-      Schema.Struct({ taskId: Schema.String, values: Schema.Record(Schema.String, Schema.String) }),
-    ]),
   },
 });
 export type LiveValue = typeof LiveValue.Type;
@@ -115,7 +111,6 @@ const SessionEmissions = Machine.emittedEventsFromSchemas(
     CommitSelectTask: { sessionId: Schema.String, taskId: Schema.String },
     CommitCancelEdit: {
       taskId: Schema.String,
-      backup: Schema.Record(Schema.String, Schema.String),
     },
     CommitSaveEdit: { taskId: Schema.String },
     CommitEndSession: { sessionId: Schema.String },
@@ -171,15 +166,7 @@ const freshLiveValue = (data: RunnerData): LiveValue => ({
   showTaskList: false,
   showSidebar: true,
   lastError: null,
-  editBackup: null,
 });
-
-/** The task field values captured so far (for the edit backup snapshot). */
-const sectionValues = (task: RunnerTask): Record<string, string> => {
-  const values: Record<string, string> = {};
-  for (const s of task.sections) values[s.id] = s.value;
-  return values;
-};
 
 // ── Machine definition + handlers ──────────────────────────────────────────
 
@@ -273,7 +260,6 @@ export const SessionMachine = Machine.make({
             const fallback = fallbackTaskId(current.data);
             return {
               ...current,
-              editBackup: null,
               focusedSectionId: null,
               showTaskList: false,
               data: {
@@ -349,20 +335,12 @@ export const SessionMachine = Machine.make({
                   }),
                 );
                 const data = { ...current.data, currentTaskId: event.taskId };
-                const base: Omit<LiveValue, "data" | "editBackup"> = {
-                  _tag: "Live",
+                return select.live.decoded({
+                  ...current,
+                  data,
                   focusedSectionId: null,
                   showTaskList: false,
-                  showSidebar: current.showSidebar,
-                  lastError: current.lastError,
-                };
-                const editBackup =
-                  current.editBackup?.taskId === event.taskId
-                    ? current.editBackup
-                    : picked.endDate !== null
-                      ? { taskId: event.taskId, values: sectionValues(picked) }
-                      : null;
-                return select.live.decoded({ ...base, data, editBackup });
+                });
               },
             },
 
@@ -371,34 +349,17 @@ export const SessionMachine = Machine.make({
             EditCancelled: {
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
-                const backup = current.editBackup;
                 const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
+                if (editing === null) return select.live.decoded(current);
                 const fallback = fallbackTaskId(current.data);
-                const common = {
+                enqueue.emit(SessionEmissions.CommitCancelEdit({ taskId: editing.id }));
+                return select.live.decoded({
+                  ...current,
                   showTaskList: false,
                   data: {
                     ...current.data,
                     currentTaskId: fallback ?? current.data.currentTaskId,
                   },
-                };
-                if (backup === null || editing === null) {
-                  const targetId = editing?.id ?? backup?.taskId;
-                  if (targetId !== undefined) {
-                    enqueue.emit(
-                      SessionEmissions.CommitCancelEdit({ taskId: targetId, backup: {} }),
-                    );
-                  }
-                  return select.live.decoded({ ...current, ...common });
-                }
-                enqueue.emit(
-                  SessionEmissions.CommitCancelEdit({
-                    taskId: backup.taskId,
-                    backup: backup.values,
-                  }),
-                );
-                return select.live.decoded({
-                  ...current,
-                  ...common,
                   focusedSectionId: null,
                 });
               },
@@ -410,7 +371,7 @@ export const SessionMachine = Machine.make({
               resolve: ({ containingState: current, select }, enqueue) => {
                 const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
                 if (editing === null) {
-                  return select.live.decoded({ ...current, editBackup: null });
+                  return select.live.decoded(current);
                 }
                 if (!isTaskDone(editing)) {
                   return select.live.decoded({

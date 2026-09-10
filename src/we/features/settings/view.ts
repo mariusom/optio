@@ -266,11 +266,16 @@ export const settingsPage = (
       groupedList(
         {
           header: "Privacy",
-          footer: "Optio works without an account or a network connection.",
+          footer:
+            "No account is needed. After the first load, studies work offline. Export important results; browser storage is not a backup.",
         },
         [
           row(
-            { title: "Stored only on this device", subtitle: "Nothing is uploaded or shared." },
+            {
+              title: "Stored in this browser",
+              wrap: true,
+              value: "Optional assistant access can share study data with your assistant provider.",
+            },
             h,
           ),
         ],

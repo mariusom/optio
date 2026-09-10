@@ -20,7 +20,12 @@ export const CreateTemplate = Command.define("CreateTemplate", {
       // First template ever becomes the default automatically
       const existing = store.query(tables.templates.select()) as ReadonlyArray<{ id: string }>;
       store.commit(
-        events.templateCreated({ id, name: name.trim(), isDefault: existing.length === 0 }),
+        events.templateCreated({
+          id,
+          name: name.trim(),
+          isDefault: existing.length === 0,
+          now: new Date(),
+        }),
       );
       return Message.TemplateCreated();
     }).pipe(
@@ -70,7 +75,7 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
         templates.map((t) => t.name),
       );
       store.commit(
-        events.templateCreated({ id: copyId, name: copyName, isDefault: false }),
+        events.templateCreated({ id: copyId, name: copyName, isDefault: false, now: new Date() }),
         events.fieldsReplaced({ templateId: copyId, fields }),
       );
       return Message.DuplicatedTemplate({ id: copyId });
@@ -254,7 +259,7 @@ export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
       const store = yield* Effect.promise(getStore);
       const existing = store.query(tables.templates.select()) as ReadonlyArray<{ id: string }>;
       if (existing.length > 0) return Message.TemplatesSeededCheck();
-      store.commit(events.templatesSeeded({ templates: sampleTemplates() }));
+      store.commit(events.templatesSeeded({ templates: sampleTemplates(), now: new Date() }));
       return Message.TemplatesSeededCheck();
     }).pipe(
       Effect.catchCause((cause) =>
@@ -283,7 +288,8 @@ export const AddSampleTemplates = Command.define("AddSampleTemplates", {
           ...template,
           isDefault: existing.length === 0 && index === 0,
         }));
-      if (missing.length > 0) store.commit(events.templatesSeeded({ templates: missing }));
+      if (missing.length > 0)
+        store.commit(events.templatesSeeded({ templates: missing, now: new Date() }));
       return Message.SampleTemplatesAdded();
     }).pipe(
       Effect.catchCause((cause) =>

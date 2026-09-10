@@ -9,15 +9,14 @@ overrides:
   "@effect/platform-bun": 4.0.0-rc.112
   "@effect/platform-node": 4.0.0-rc.112
   "@effect/platform-node-shared": 4.0.0-rc.112
+  # LiveStore pins 5.0.9; 5.1.16 fixes its three known nanoid advisories.
+  "@livestore/utils@0.5.0-dev.0>nanoid": 5.1.16
 
 allowBuilds:
   msgpackr-extract: false
 
 # Supply-chain guard: refuse dependency versions published less than 24h ago.
 minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - foldkit
-  - "@typeonce/effect-machine@0.34.0"
 
 onlyBuiltDependencies:
   - "@tailwindcss/oxide"

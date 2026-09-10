@@ -205,7 +205,7 @@ export const Message = defineMessageUnion({
   HistoryNameUpdated: {},
   ClickedHistoryTask: { taskId: S.String },
   DismissedHistoryTask: {},
-  ClickedExportHistoryCsv: { sessionId: S.String },
+  ClickedExportHistoryCsv: { sessionId: S.String, spreadsheetSafe: S.optionalKey(S.Boolean) },
   CsvExported: { filename: S.String },
   FailedCsvExport: { error: S.String },
   DismissedCsvError: {},

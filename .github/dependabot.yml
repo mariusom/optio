@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # Exact Effect/LiveStore/Vitest pins and workspace overrides require a
+    # coordinated manual migration. Bot updates stay within our manifest.
+    versioning-strategy: lockfile-only
+    groups:
+      coupled-stack:
+        patterns:
+          - effect
+          - "@effect/*"
+          - foldkit
+          - "@foldkit/*"
+          - "@livestore/*"
+          - "@typeonce/effect-machine"
+          - vite-plus
+          - vitest
+          - "@vitest/*"
+      tailwind:
+        patterns:
+          - tailwindcss
+          - "@tailwindcss/*"
+      pwa:
+        patterns:
+          - vite-plugin-pwa
+          - "workbox-*"
+      maintenance:
+        patterns: ["*"]
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

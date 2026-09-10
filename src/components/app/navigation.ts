@@ -198,7 +198,7 @@ export const sidebar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>)
           ),
           h.p(
             [h.Class("hidden xl:block px-2.5 text-xs leading-relaxed text-muted-foreground")],
-            ["Everything stays on this device."],
+            ["Studies stored in this browser."],
           ),
         ],
       ),

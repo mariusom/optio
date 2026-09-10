@@ -33,7 +33,6 @@ const makeRunner = (
     showSidebar: true,
     lastError: null,
     now: Date.now(),
-    editBackup: null,
     ...overrides,
   } as NonNullable<Model["runner"]>;
   // ensure showSidebar defaults to true if not overridden explicitly as false

@@ -81,7 +81,7 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
 
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
 
-const actionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+export const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
   sheet(
     {
       id: "history-actions",
@@ -111,13 +111,35 @@ const actionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
         [
           sheetAction(
             {
-              label: "Export",
+              label: "CSV for spreadsheets",
               leading: icon(h, Download, "size-5 text-muted-foreground"),
               isDisabled: session.taskCount === 0,
-              onClick: Message.ClickedExportHistoryCsv({ sessionId: session.id }),
-              ariaLabel: `Export ${session.displayName}`,
+              onClick: Message.ClickedExportHistoryCsv({
+                sessionId: session.id,
+                spreadsheetSafe: true,
+              }),
+              ariaLabel: "Export CSV for spreadsheets",
             },
             h,
+          ),
+          sheetAction(
+            {
+              label: "Raw CSV",
+              leading: icon(h, Download, "size-5 text-muted-foreground"),
+              isDisabled: session.taskCount === 0,
+              onClick: Message.ClickedExportHistoryCsv({
+                sessionId: session.id,
+                spreadsheetSafe: false,
+              }),
+              ariaLabel: "Export raw CSV",
+            },
+            h,
+          ),
+          h.p(
+            [h.Class("px-4 py-3 text-sm text-muted-foreground")],
+            [
+              "Spreadsheet CSV prefixes formula-like cells with an apostrophe. Raw CSV keeps values unchanged; import untrusted cells as text. Spreadsheet protection can be lost when re-saving.",
+            ],
           ),
         ],
       ),
@@ -179,7 +201,7 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
               h,
             ),
           )),
-      ...(openActions === null ? [] : [actionsSheet(openActions, h)]),
+      ...(openActions === null ? [] : [historyActionsSheet(openActions, h)]),
       ...(model.pendingHistoryDelete === null
         ? []
         : [
