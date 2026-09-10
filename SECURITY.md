@@ -10,8 +10,8 @@ sensitive observations.
 
 Studies are stored in the browser without automatic backup or sync. Optional
 [agent access](docs/agent-access.md) can expose study data to an assistant
-provider. Exported raw CSV can contain spreadsheet formulas; use the spreadsheet
-export or import untrusted fields explicitly as text.
+provider. UI exports protect formula-like cells automatically. When processing
+raw programmatic exports, import untrusted fields explicitly as text.
 
 CI checks known dependency advisories, including build-time dependencies. A clean
 audit is not proof that the app or its dependencies are free of vulnerabilities.

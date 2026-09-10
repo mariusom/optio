@@ -927,9 +927,11 @@ describe("persistent presentation regressions", () => {
     (trigger.element() as HTMLButtonElement).focus();
     await expect.element(trigger).toHaveFocus();
     await userEvent.click(trigger);
-    const exportAction = page.getByRole("button", { name: "Export CSV for spreadsheets" });
+    const exportAction = page.getByRole("button", { name: "Export Morning observation" });
     await expect.element(exportAction).toBeVisible();
-    await expect.element(page.getByRole("button", { name: "Export raw CSV" })).toBeVisible();
+    expect(document.querySelectorAll('[role="dialog"] button[aria-label^="Export "]')).toHaveLength(
+      1,
+    );
     await expect
       .element(page.getByRole("button", { name: "Delete Morning observation" }))
       .toBeVisible();

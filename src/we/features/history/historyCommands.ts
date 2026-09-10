@@ -123,10 +123,7 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
       // Use helper to build CSV
       const csv = buildArchiveCsv(records, spreadsheetSafe);
 
-      const rawFilename = filenameForArchive(displayName, new Date());
-      const filename = spreadsheetSafe
-        ? rawFilename.replace(/\.csv$/, "_spreadsheet.csv")
-        : rawFilename;
+      const filename = filenameForArchive(displayName, new Date());
 
       // Trigger download (Safari-compatible Blob URL + a[download])
       if (typeof document !== "undefined" && typeof URL !== "undefined") {

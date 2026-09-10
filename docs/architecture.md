@@ -55,8 +55,8 @@ values only, not first-write timestamps. A failed save retains the snapshot.
 Validate event payloads with Effect Schema before commits. Template changes stay
 in editor drafts until saved. Completed live tasks can be edited; archived
 observation values are immutable. Archived CSV exports preserve duplicate
-question names in separate columns. The optional spreadsheet format protects
-formula-like cells without modifying stored observations; raw CSV stays exact.
+question names in separate columns. UI exports protect formula-like cells
+without modifying stored observations; the raw programmatic format stays exact.
 
 Optio adds no runtime network dependency for studies. Browser storage can still
 be cleared or evicted; persistence is not a backup guarantee. Service-worker

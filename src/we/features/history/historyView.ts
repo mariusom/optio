@@ -81,31 +81,23 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
 
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
 
-export const historyActionsSheet = (
-  session: HistorySession,
-  h: HtmlBuilder<Message>,
-  purpose: "actions" | "export" = "actions",
-): Html =>
+const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
   sheet(
     {
       id: "history-actions",
-      title: purpose === "export" ? "Export CSV" : session.displayName,
+      title: session.displayName,
       description: summaryFor(session),
       onDismiss: Message.ClosedHistoryActions(),
       dismissLabel: "Close actions",
       footer: {
-        ...(purpose === "actions"
-          ? {
-              destructive: {
-                label: "Delete",
-                onClick: Message.RequestedHistoryDelete({
-                  id: session.id,
-                  displayName: session.displayName,
-                }),
-                ariaLabel: `Delete ${session.displayName}`,
-              },
-            }
-          : {}),
+        destructive: {
+          label: "Delete",
+          onClick: Message.RequestedHistoryDelete({
+            id: session.id,
+            displayName: session.displayName,
+          }),
+          ariaLabel: `Delete ${session.displayName}`,
+        },
         cancel: {
           label: "Cancel",
           onClick: Message.ClosedHistoryActions(),
@@ -119,42 +111,16 @@ export const historyActionsSheet = (
         [
           sheetAction(
             {
-              label: "CSV for spreadsheets",
+              label: "Export CSV",
               leading: icon(h, Download, "size-5 text-muted-foreground"),
               isDisabled: session.taskCount === 0,
               onClick: Message.ClickedExportHistoryCsv({
                 sessionId: session.id,
                 spreadsheetSafe: true,
               }),
-              ariaLabel: "Export CSV for spreadsheets",
+              ariaLabel: `Export ${session.displayName}`,
             },
             h,
-          ),
-          sheetAction(
-            {
-              label: "Raw CSV",
-              leading: icon(h, Download, "size-5 text-muted-foreground"),
-              isDisabled: session.taskCount === 0,
-              onClick: Message.ClickedExportHistoryCsv({
-                sessionId: session.id,
-                spreadsheetSafe: false,
-              }),
-              ariaLabel: "Export raw CSV",
-            },
-            h,
-          ),
-          h.ul(
-            [h.Class("list-disc space-y-2 py-3 pl-8 pr-4 text-sm text-muted-foreground")],
-            [
-              h.li(
-                [],
-                [
-                  "For spreadsheets: adds an apostrophe before formula-like cells to help keep them as text.",
-                ],
-              ),
-              h.li([], ["Raw CSV: keeps every value unchanged. Import untrusted cells as text."]),
-              h.li([], ["Re-saving in a spreadsheet can remove the protection."]),
-            ],
           ),
         ],
       ),

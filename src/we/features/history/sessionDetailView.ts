@@ -17,7 +17,6 @@ import { formatDurationHm, formatDurationHms, formatTimeOnly } from "../../forma
 import { hrefFor } from "../../routes";
 import { editSessionNameSheet } from "./editSessionNameSheet";
 import { formatAnswer, formatDay, taskCountLabel } from "./helpers";
-import { historyActionsSheet } from "./historyView";
 import { taskDetailView } from "./taskDetailView";
 
 type SessionDetailTask = {
@@ -48,7 +47,6 @@ type SessionDetailModel = {
   readonly editHistoryNameInput: string;
   readonly selectedHistoryTaskId: string | null;
   readonly pendingHistoryDelete: { readonly id: string; readonly displayName: string } | null;
-  readonly historyActionsFor: string | null;
   readonly csvError: string | null;
 };
 
@@ -139,7 +137,10 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
             navBarAction(
               {
                 label: icon(h, Download, "size-5"),
-                onClick: Message.OpenedHistoryActions({ id: detail.id }),
+                onClick: Message.ClickedExportHistoryCsv({
+                  sessionId: detail.id,
+                  spreadsheetSafe: true,
+                }),
                 isDisabled: !canExport,
                 ariaLabel: `Export ${displayName}`,
               },
@@ -218,9 +219,6 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
         ],
         h,
       ),
-      ...(model.historyActionsFor === detail.id && detail.endedAt !== null
-        ? [historyActionsSheet({ ...detail, displayName, endedAt: detail.endedAt }, h, "export")]
-        : []),
       ...(selectedTask === null ? [] : [taskDetailView({ task: selectedTask }, h)]),
       editSessionNameSheet(
         {

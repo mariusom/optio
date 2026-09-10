@@ -37,7 +37,7 @@ compatibility.
 `pnpm test:e2e` serves the production build on a temporary local port and uses
 a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
-ends the session and checks both downloaded CSV formats. No stored user data or
+ends the session and checks the downloaded CSV. No stored user data or
 deployed service is used. Unit tests separately check deterministic event
 replay. Native WebMCP integration and real Safari/mobile-device behavior still
 need separate verification.
@@ -49,7 +49,7 @@ on port 60002; set `OPTIO_URL` to override its base URL. Screenshots need inspec
 and are not substitutes for assertions.
 
 Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,
-results and export-choice states during the production journey. Inspect captures
+results and export states during the production journey. Inspect captures
 before publishing them; use synthetic data only.
 
 ## Performance audits
@@ -111,11 +111,10 @@ migrations rather than renaming the store.
 
 ## CSV exports
 
-**Raw CSV** preserves recorded values for programmatic analysis. Import
-untrusted cells as text instead of opening the file with automatic formula
-interpretation. **CSV for spreadsheets** prefixes formula-like headings and
-values with an apostrophe inside a quoted cell; its filename ends in
-`_spreadsheet.csv`. This changes those exported cells, not stored observations.
+The interface has one **Export CSV** action. It automatically prefixes
+formula-like headings and values with an apostrophe inside a quoted cell.
+This changes those exported cells, not stored observations; scripts reading
+the CSV may see the added apostrophe.
 It covers leading formula characters, their full-width variants, and leading
 whitespace/control characters that can hide a formula.
 

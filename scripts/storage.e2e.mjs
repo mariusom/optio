@@ -125,24 +125,22 @@ test(
       await page.getByRole("button", { name: "View details for Task 2", exact: true }).waitFor();
       await screenshot("results");
 
-      await page.getByRole("button", { name: "Export Assembly observation", exact: true }).click();
-      await screenshot("export-options");
-      const raw = await download("Export raw CSV");
-      assert.ok(!raw.name.endsWith("_spreadsheet.csv"));
-      assert.ok(raw.csv.includes("=1+2"));
-      assert.ok(raw.csv.includes('"Torque bolts"'));
-      assert.ok(raw.csv.includes('"Inspect alignment"'));
-      assert.ok(!raw.csv.includes("Unsaved correction"));
-      assert.equal(raw.csv.split("\n").length, 3);
-      await page.getByRole("button", { name: "Export Assembly observation", exact: true }).click();
-      const spreadsheet = await download("Export CSV for spreadsheets");
-      assert.ok(spreadsheet.name.endsWith("_spreadsheet.csv"));
-      assert.equal(spreadsheet.csv, raw.csv.replace("=1+2", '"\'=1+2"'));
+      const exported = await download("Export Assembly observation");
+      assert.ok(!exported.name.endsWith("_spreadsheet.csv"));
+      assert.ok(exported.csv.includes('"\'=1+2"'));
+      assert.ok(exported.csv.includes('"Torque bolts"'));
+      assert.ok(exported.csv.includes('"Inspect alignment"'));
+      assert.ok(!exported.csv.includes("Unsaved correction"));
+      assert.equal(exported.csv.split("\n").length, 3);
+      assert.equal(await page.getByRole("dialog").count(), 0);
 
       await page.reload();
-      await page.getByRole("button", { name: "Export Assembly observation", exact: true }).click();
-      const reloaded = await download("Export raw CSV");
-      assert.equal(reloaded.csv, raw.csv, "reload must preserve values and timestamps exactly");
+      const reloaded = await download("Export Assembly observation");
+      assert.equal(
+        reloaded.csv,
+        exported.csv,
+        "reload must preserve values and timestamps exactly",
+      );
       await context.setOffline(false);
       const notices = await context.request.get(`${base}THIRD_PARTY_NOTICES.txt`);
       assert.equal(notices.status(), 200);
@@ -160,28 +158,10 @@ test(
         await page
           .getByRole("button", { name: "Delete Assembly observation", exact: true })
           .waitFor();
-        await page
-          .getByRole("button", { name: "Export Assembly observation", exact: true })
-          .click();
-        await page.getByRole("button", { name: "Export raw CSV", exact: true }).waitFor();
-        const exportSheet = page.getByRole("dialog", { name: "Export CSV", exact: true });
-        assert.equal(await exportSheet.getByRole("button", { name: /Delete/ }).count(), 0);
-        assert.equal(await exportSheet.getByRole("listitem").count(), 3);
-        await page.waitForFunction(
-          () => document.activeElement?.closest('[role="dialog"]') !== null,
-        );
-        await page.keyboard.press("Tab");
-        assert.equal(
-          await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')),
-          true,
-        );
+        const downloaded = await download("Export Assembly observation");
+        assert.equal(downloaded.csv, exported.csv);
+        assert.equal(await page.getByRole("dialog").count(), 0);
         await screenshot(`export-${width}-${colorScheme}`);
-        await page.keyboard.press("Escape");
-        await page.getByRole("dialog").waitFor({ state: "detached" });
-        await page.waitForFunction(
-          () =>
-            document.activeElement?.getAttribute("aria-label") === "Export Assembly observation",
-        );
 
         await page.goto(`${base}#/settings`);
         const privacy = page.getByText(
