@@ -38,6 +38,21 @@ including keyboard navigation and light/dark appearance. The screenshot helper
 on port 60002; set `OPTIO_URL` to override its base URL. Screenshots need inspection
 and are not substitutes for assertions.
 
+## Performance audits
+
+Audit a production build, not the dev server. With `pnpm build` complete and
+`pnpm preview --port 60002` running, use:
+
+```sh
+pnpm dlx lighthouse@13.4.1 http://localhost:60002/optio/ --output=html --output-path=/tmp/optio-lighthouse.html
+```
+
+Set `CHROME_PATH` if Chrome is not discovered automatically. In an orb, use a
+supervised preview service and add `--chrome-flags='--headless --no-sandbox'`.
+Compare the same URL, browser and mobile throttling settings across repeated
+cold runs; scores vary with host load. Startup changes must also preserve real
+OPFS data across reloads and work offline after service-worker installation.
+
 ## Dependencies and generated assets
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.

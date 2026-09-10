@@ -1,15 +1,4 @@
-import { makePersistedAdapter } from "@livestore/adapter-web";
-import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
-import { createStorePromise } from "@livestore/livestore";
-import { schema } from "./schema.ts";
-import LiveStoreWorker from "./livestore.worker.ts?worker";
-
-// OPFS-persisted, multi-tab capable adapter — data survives reloads and works offline.
-const adapter = makePersistedAdapter({
-  storage: { type: "opfs" },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-});
+import type { openStore } from "./openStore.ts";
 
 /**
  * Imperative handle on the LiveStore store — FoldKit has no hook bridge,
@@ -21,15 +10,10 @@ const adapter = makePersistedAdapter({
  * competing store attempts on the same storeId — every call after the
  * first hangs awaiting the lock and the app deadlocks into empty states.
  */
-const openStore = () =>
-  createStorePromise({
-    storeId: "optio-v1",
-    schema,
-    adapter,
-  });
-
 export type AppStore = Awaited<ReturnType<typeof openStore>>;
 
 let storePromise: Promise<AppStore> | null = null;
 
-export const getStore = () => (storePromise ??= openStore());
+// SQLite/Wasm must not block evaluation of the initial render's module graph.
+export const getStore = () =>
+  (storePromise ??= import("./openStore.ts").then(({ openStore }) => openStore()));
