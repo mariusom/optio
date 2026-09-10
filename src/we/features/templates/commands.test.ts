@@ -1,5 +1,6 @@
 import { Effect } from "effect";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
@@ -24,6 +25,8 @@ beforeEach(() => {
   query.mockReturnValue([]);
   vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 });
+
+afterEach(() => vi.restoreAllMocks());
 
 const seededTemplates = () => commit.mock.calls[0]?.[0]?.args?.templates ?? [];
 
@@ -53,71 +56,81 @@ describe.each([
     "Couldn't create that. Please try again.",
   ],
 ] as const)("%s template persistence", (_name, command, success, failure) => {
-  it("reports success only after committing", async () => {
-    expect(await Effect.runPromise<Message, never>(command().effect)).toEqual(success);
-    expect(commit).toHaveBeenCalledOnce();
-  });
+  it.effect("reports success only after committing", () =>
+    Effect.gen(function* () {
+      expect(yield* command().effect).toEqual(success);
+      expect(commit).toHaveBeenCalledOnce();
+    }),
+  );
 
-  it("reports a rejected store open in plain language, never a stack trace", async () => {
-    vi.mocked(getStore).mockRejectedValue(new Error("Store unavailable"));
-    expect(await Effect.runPromise<Message, never>(command().effect)).toEqual(
-      Message.FailedTemplateOp({ error: failure }),
-    );
-    expect(commit).not.toHaveBeenCalled();
-  });
+  it.effect("reports a rejected store open in plain language, never a stack trace", () =>
+    Effect.gen(function* () {
+      vi.mocked(getStore).mockRejectedValue(new Error("Store unavailable"));
+      expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 
-  it("reports a synchronous persistence failure in plain language", async () => {
-    commit.mockImplementation(() => {
-      throw new Error("Persistence failed");
-    });
-    expect(await Effect.runPromise<Message, never>(command().effect)).toEqual(
-      Message.FailedTemplateOp({ error: failure }),
-    );
-  });
+  it.effect("reports a synchronous persistence failure in plain language", () =>
+    Effect.gen(function* () {
+      commit.mockImplementation(() => {
+        throw new Error("Persistence failed");
+      });
+      expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
+    }),
+  );
 });
 
 describe("CreateTemplate", () => {
-  it.each([true, false])(
+  it.effect.each([true, false])(
     "commits a new builder template with its fields (first: %s)",
-    async (first) => {
-      query.mockReturnValue(first ? [] : [{ id: "existing" }]);
-      const fields = [
-        {
-          id: "question",
-          name: "  Activity  ",
-          kind: "textInput" as const,
-          isRequired: true,
-          defaultValue: "Observe",
-          sortOrder: 7,
-          options: [],
-          exclusiveOptions: [],
-        },
-      ];
-      expect(
-        await Effect.runPromise(
-          SaveTemplate({ id: "new", name: "  Study  ", isNew: true, isDefault: false, fields })
-            .effect,
-        ),
-      ).toEqual(Message.TemplateSaved());
-      expect(commit).toHaveBeenCalledExactlyOnceWith(
-        events.templateCreated({ id: "new", name: "Study", isDefault: first }),
-        events.fieldsReplaced({
-          templateId: "new",
-          fields: [{ ...fields[0]!, name: "Activity", sortOrder: 0 }],
-        }),
-        ...(first ? [events.templateDefaultSet({ id: "new" })] : []),
-      );
-    },
+    (first) =>
+      Effect.gen(function* () {
+        query.mockReturnValue(first ? [] : [{ id: "existing" }]);
+        const fields = [
+          {
+            id: "question",
+            name: "  Activity  ",
+            kind: "textInput" as const,
+            isRequired: true,
+            defaultValue: "Observe",
+            sortOrder: 7,
+            options: [],
+            exclusiveOptions: [],
+          },
+        ];
+        expect(
+          yield* SaveTemplate({
+            id: "new",
+            name: "  Study  ",
+            isNew: true,
+            isDefault: false,
+            fields,
+          }).effect,
+        ).toEqual(Message.TemplateSaved());
+        expect(commit).toHaveBeenCalledExactlyOnceWith(
+          events.templateCreated({ id: "new", name: "Study", isDefault: first }),
+          events.fieldsReplaced({
+            templateId: "new",
+            fields: [{ ...fields[0]!, name: "Activity", sortOrder: 0 }],
+          }),
+          ...(first ? [events.templateDefaultSet({ id: "new" })] : []),
+        );
+      }),
   );
 
-  it("trims the committed name while reporting success and making the first template default", async () => {
-    expect(
-      await Effect.runPromise(CreateTemplate({ id: "new", name: "  Study  " }).effect),
-    ).toEqual(Message.TemplateCreated());
-    expect(commit).toHaveBeenCalledWith(
-      events.templateCreated({ id: "new", name: "Study", isDefault: true }),
-    );
-  });
+  it.effect(
+    "trims the committed name while reporting success and making the first template default",
+    () =>
+      Effect.gen(function* () {
+        expect(yield* CreateTemplate({ id: "new", name: "  Study  " }).effect).toEqual(
+          Message.TemplateCreated(),
+        );
+        expect(commit).toHaveBeenCalledWith(
+          events.templateCreated({ id: "new", name: "Study", isDefault: true }),
+        );
+      }),
+  );
 });
 
 describe("sampleTemplates", () => {
@@ -145,69 +158,71 @@ describe("sampleTemplates", () => {
 });
 
 describe("template queries", () => {
-  it.each([
+  it.effect.each([
     () => CreateTemplate({ id: "new", name: "Study" }),
     () => EnsureTemplatesSeeded({}),
     () => AddSampleTemplates({}),
-  ])("reports query failures without committing", async (command) => {
-    query.mockImplementation(() => {
-      throw new Error("Query failed");
-    });
-    expect(await Effect.runPromise<Message, never>(command().effect)).toMatchObject({
-      _tag: "FailedTemplateOp",
-    });
-    expect(commit).not.toHaveBeenCalled();
-  });
+  ])("reports query failures without committing", (command) =>
+    Effect.gen(function* () {
+      query.mockImplementation(() => {
+        throw new Error("Query failed");
+      });
+      expect(yield* command().effect).toMatchObject({
+        _tag: "FailedTemplateOp",
+      });
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 
-  it("seeds the three sample templates when the app is empty", async () => {
-    expect(await Effect.runPromise(EnsureTemplatesSeeded({}).effect)).toEqual(
-      Message.TemplatesSeededCheck(),
-    );
-    expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
-      "Assembly line",
-      "Ward round",
-      "Warehouse pick",
-    ]);
-  });
+  it.effect("seeds the three sample templates when the app is empty", () =>
+    Effect.gen(function* () {
+      expect(yield* EnsureTemplatesSeeded({}).effect).toEqual(Message.TemplatesSeededCheck());
+      expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
+        "Assembly line",
+        "Ward round",
+        "Warehouse pick",
+      ]);
+    }),
+  );
 
-  it("skips seeding when templates already exist", async () => {
-    query.mockReturnValue([{ id: "existing" }]);
-    expect(await Effect.runPromise(EnsureTemplatesSeeded({}).effect)).toEqual(
-      Message.TemplatesSeededCheck(),
-    );
-    expect(commit).not.toHaveBeenCalled();
-  });
+  it.effect("skips seeding when templates already exist", () =>
+    Effect.gen(function* () {
+      query.mockReturnValue([{ id: "existing" }]);
+      expect(yield* EnsureTemplatesSeeded({}).effect).toEqual(Message.TemplatesSeededCheck());
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 });
 
 describe("AddSampleTemplates", () => {
-  it("adds only the samples whose names are missing and keeps the current default", async () => {
-    query.mockReturnValue([{ name: "Ward round" }, { name: "My own study" }]);
-    expect(await Effect.runPromise(AddSampleTemplates({}).effect)).toEqual(
-      Message.SampleTemplatesAdded(),
-    );
-    expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
-      "Assembly line",
-      "Warehouse pick",
-    ]);
-    expect(seededTemplates().every((t: { isDefault: boolean }) => !t.isDefault)).toBe(true);
-  });
+  it.effect("adds only the samples whose names are missing and keeps the current default", () =>
+    Effect.gen(function* () {
+      query.mockReturnValue([{ name: "Ward round" }, { name: "My own study" }]);
+      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
+        "Assembly line",
+        "Warehouse pick",
+      ]);
+      expect(seededTemplates().every((t: { isDefault: boolean }) => !t.isDefault)).toBe(true);
+    }),
+  );
 
-  it("commits nothing when every sample is already there", async () => {
-    query.mockReturnValue(sampleTemplates().map((template) => ({ name: template.name })));
-    expect(await Effect.runPromise(AddSampleTemplates({}).effect)).toEqual(
-      Message.SampleTemplatesAdded(),
-    );
-    expect(commit).not.toHaveBeenCalled();
-  });
+  it.effect("commits nothing when every sample is already there", () =>
+    Effect.gen(function* () {
+      query.mockReturnValue(sampleTemplates().map((template) => ({ name: template.name })));
+      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 
-  it("makes the first sample the default when the app has no templates", async () => {
-    expect(await Effect.runPromise(AddSampleTemplates({}).effect)).toEqual(
-      Message.SampleTemplatesAdded(),
-    );
-    expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
-      true,
-      false,
-      false,
-    ]);
-  });
+  it.effect("makes the first sample the default when the app has no templates", () =>
+    Effect.gen(function* () {
+      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
+        true,
+        false,
+        false,
+      ]);
+    }),
+  );
 });

@@ -383,6 +383,25 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
 });
 
 describe.each([820, 1440])("task sidebar at %ipx", (width) => {
+  it("renders tasks newest-first regardless of store order", async () => {
+    const current = { ...runnerFixture("Observe").tasks[0]!, orderIndex: 3 };
+    await mount(width, "Observe", {
+      completedCount: 2,
+      tasks: [
+        { ...current, id: "older", orderIndex: 1, endDate: 1000, sections: [] },
+        current,
+        { ...current, id: "recent", orderIndex: 2, endDate: 2000, sections: [] },
+      ],
+    });
+    const sidebar = page.getByRole("complementary", { name: "Task navigation sidebar" });
+    await expect.element(sidebar).toBeVisible();
+    expect(
+      [...sidebar.element().querySelectorAll("button")].map((button) =>
+        button.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Task 3 in progress", "Task 2 completed", "Task 1 completed"]);
+  });
+
   it("removes collapsed descendants from focus and accessibility, then restores them", async () => {
     await mount(width);
     const sidebar = document.querySelector<HTMLElement>("#runner-task-sidebar")!;

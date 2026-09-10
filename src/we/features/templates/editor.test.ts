@@ -1,5 +1,6 @@
 import { Effect, Option, Stream } from "effect";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "@effect/vitest";
+import { vi } from "vitest";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
@@ -83,30 +84,32 @@ describe("template detail regressions", () => {
     ]);
   });
 
-  it("does not treat the initial empty fields callback as a missing template", async () => {
-    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-    vi.mocked(getStore).mockResolvedValue({
-      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-        callbacks.push(callback);
-        if (callbacks.length === 2) {
-          callbacks[1]!([]);
-          callbacks[0]!([{ id: "t1", name: "Template", isDefault: 0 }]);
-        }
-        return () => {};
-      },
-    } as unknown as Awaited<ReturnType<typeof getStore>>);
+  it.effect("does not treat the initial empty fields callback as a missing template", () =>
+    Effect.gen(function* () {
+      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+      const unsubscribe = vi.fn();
+      vi.mocked(getStore).mockResolvedValue({
+        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+          callbacks.push(callback);
+          if (callbacks.length === 2) {
+            callbacks[1]!([]);
+            callbacks[0]!([{ id: "t1", name: "Template", isDefault: 0 }]);
+          }
+          return unsubscribe;
+        },
+      } as unknown as Awaited<ReturnType<typeof getStore>>);
 
-    const messages = await Effect.runPromise(
-      subscriptions.templateDetail
+      const messages = yield* subscriptions.templateDetail
         .dependenciesToStream({ templateId: "t1" })
-        .pipe(Stream.take(1), Stream.runCollect),
-    );
+        .pipe(Stream.take(1), Stream.runCollect);
 
-    expect(messages[0]).toMatchObject({
-      _tag: "GotTemplateDetail",
-      template: { id: "t1", fields: [] },
-    });
-  });
+      expect(messages[0]).toMatchObject({
+        _tag: "GotTemplateDetail",
+        template: { id: "t1", fields: [] },
+      });
+      expect(unsubscribe).toHaveBeenCalledTimes(2);
+    }),
+  );
 });
 
 const field = (overrides: Partial<FieldDef> & { id: string }): FieldDef => ({

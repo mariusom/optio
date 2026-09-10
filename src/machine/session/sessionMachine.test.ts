@@ -492,8 +492,22 @@ describe("nextFocusForField", () => {
   });
   it("advances to the first unfulfilled section", () => {
     const d = data();
-    const fc = nextFocusForField(d, "f-category", "A");
-    expect(fc.changed).toBe(true);
-    expect(fc.next).toBeNull(); // no sections after the radio
+    const task = d.tasks[0]!;
+    const unsorted = {
+      ...d,
+      tasks: [
+        {
+          ...task,
+          sections: [
+            section("later", "Later", "textInput", true, "", 4),
+            section("radio", "Category", "radio", true, "", 1),
+            section("done", "Done", "textInput", true, "Answered", 2),
+            section("next", "Notes", "textInput", false, "", 3),
+          ],
+        },
+      ],
+    };
+    expect(nextFocusForField(unsorted, "radio", "A")).toEqual({ changed: true, next: "next" });
+    expect(nextFocusForField(unsorted, "radio", "")).toEqual({ changed: false, next: null });
   });
 });

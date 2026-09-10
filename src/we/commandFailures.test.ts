@@ -1,6 +1,7 @@
 import { Effect, Option } from "effect";
+import { describe, expect, it } from "@effect/vitest";
 import * as Scene from "foldkit/scene";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
 
@@ -169,167 +170,178 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
     for (const result of rows) query.mockReturnValueOnce(result);
   });
 
-  it("returns its success message after store operations", async () => {
-    expect(await Effect.runPromise<Message, never>(command().effect)).toMatchObject({
-      _tag: success,
-    });
-    expect(query).toHaveBeenCalledTimes(rows.length);
-    expect(commit).toHaveBeenCalledTimes(writes ? 1 : 0);
-  });
+  it.effect("returns its success message after store operations", () =>
+    Effect.gen(function* () {
+      expect(yield* command().effect).toMatchObject({
+        _tag: success,
+      });
+      expect(query).toHaveBeenCalledTimes(rows.length);
+      expect(commit).toHaveBeenCalledTimes(writes ? 1 : 0);
+    }),
+  );
 
-  it.each(["open", ...(writes ? ["commit"] : []), ...rows.map((_, index) => index)])(
+  it.effect.each(["open", ...(writes ? ["commit"] : []), ...rows.map((_, index) => index)])(
     "converts failure at %s into its declared UI message",
-    async (stage) => {
-      const error = new Error("Store operation failed");
-      if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
-      else if (stage === "commit")
-        commit.mockImplementation(() => {
-          throw error;
-        });
-      else {
-        query.mockReset();
-        rows.forEach((result, index) => {
-          query.mockImplementationOnce(() => {
-            if (index === stage) throw error;
-            return result;
+    (stage) =>
+      Effect.gen(function* () {
+        const error = new Error("Store operation failed");
+        if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
+        else if (stage === "commit")
+          commit.mockImplementation(() => {
+            throw error;
           });
-        });
-      }
-      const message = await Effect.runPromise<Message, never>(command().effect);
-      expect(message).toMatchObject({ _tag: failure });
-      // Users get one short sentence, never the raw cause or a stack trace.
-      const reported = (message as { error: string }).error;
-      expect(reported).toMatch(/^[A-Z].*\.$/);
-      expect(reported).not.toContain(error.message);
-      expect(reported).not.toContain("Error");
-      expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
-      if (stage === "open") expect(query).not.toHaveBeenCalled();
-    },
+        else {
+          query.mockReset();
+          rows.forEach((result, index) => {
+            query.mockImplementationOnce(() => {
+              if (index === stage) throw error;
+              return result;
+            });
+          });
+        }
+        const message = yield* command().effect;
+        expect(message).toMatchObject({ _tag: failure });
+        // Users get one short sentence, never the raw cause or a stack trace.
+        const reported = (message as { error: string }).error;
+        expect(reported).toMatch(/^[A-Z].*\.$/);
+        expect(reported).not.toContain(error.message);
+        expect(reported).not.toContain("Error");
+        expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
+        if (stage === "open") expect(query).not.toHaveBeenCalled();
+      }),
   );
 });
 
 describe("SaveEdit required field validation", () => {
-  it("does not finish the edit when a persisted required field is empty", async () => {
-    query.mockReturnValueOnce([{ isRequired: 1, value: "" }]);
+  it.effect("does not finish the edit when a persisted required field is empty", () =>
+    Effect.gen(function* () {
+      query.mockReturnValueOnce([{ isRequired: 1, value: "" }]);
 
-    expect(
-      await Effect.runPromise<Message, never>(SaveEdit({ taskId: "task" }).effect),
-    ).toMatchObject({
-      _tag: "FailedRunnerOp",
-      error: "Answer the required questions first.",
-    });
-    expect(commit).not.toHaveBeenCalled();
-  });
+      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({
+        _tag: "FailedRunnerOp",
+        error: "Answer the required questions first.",
+      });
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 
-  it("allows persisted optional fields to be empty", async () => {
-    query.mockReturnValueOnce([
-      { isRequired: 0, value: "" },
-      { isRequired: 1, value: "complete" },
-    ]);
+  it.effect("allows persisted optional fields to be empty", () =>
+    Effect.gen(function* () {
+      query.mockReturnValueOnce([
+        { isRequired: 0, value: "" },
+        { isRequired: 1, value: "complete" },
+      ]);
 
-    expect(
-      await Effect.runPromise<Message, never>(SaveEdit({ taskId: "task" }).effect),
-    ).toMatchObject({
-      _tag: "TaskEditFinished",
-    });
-    expect(commit).toHaveBeenCalledTimes(1);
-  });
+      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({
+        _tag: "TaskEditFinished",
+      });
+      expect(commit).toHaveBeenCalledTimes(1);
+    }),
+  );
 });
 
 describe("EndSession idempotency", () => {
-  it.each([
+  it.effect.each([
     ["missing", []],
     ["already ended", [{ ...liveSession, endedAt: new Date(2000) }]],
-  ])("rejects a %s session without reading tasks or committing", async (_name, sessionRows) => {
-    query.mockReturnValueOnce(sessionRows);
+  ])("rejects a %s session without reading tasks or committing", ([_name, sessionRows]) =>
+    Effect.gen(function* () {
+      query.mockReturnValueOnce(sessionRows);
 
-    expect(
-      await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect),
-    ).toMatchObject({
-      _tag: "FailedRunnerOp",
-      error: "This session has already ended.",
-    });
-    expect(query).toHaveBeenCalledTimes(1);
-    expect(commit).not.toHaveBeenCalled();
-  });
+      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+        _tag: "FailedRunnerOp",
+        error: "This session has already ended.",
+      });
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
 
-  it("does not delete an archive when EndSession is repeated", async () => {
-    query
-      .mockReturnValueOnce([liveSession])
-      .mockReturnValueOnce([finishedTask])
-      .mockReturnValueOnce([])
-      .mockReturnValueOnce([{ ...liveSession, endedAt: new Date(2000) }]);
+  it.effect("does not delete an archive when EndSession is repeated", () =>
+    Effect.gen(function* () {
+      query
+        .mockReturnValueOnce([liveSession])
+        .mockReturnValueOnce([finishedTask])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([{ ...liveSession, endedAt: new Date(2000) }]);
 
-    await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect);
-    await Effect.runPromise<Message, never>(EndSession({ sessionId: "session" }).effect);
+      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+        _tag: "SessionEnded",
+      });
+      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+        _tag: "FailedRunnerOp",
+      });
 
-    expect(query).toHaveBeenCalledTimes(4);
-    expect(commit).toHaveBeenCalledTimes(1);
-  });
+      expect(query).toHaveBeenCalledTimes(4);
+      expect(commit).toHaveBeenCalledTimes(1);
+    }),
+  );
 });
 
 describe("template save failure recovery", () => {
-  it.each(["open", "commit"])("resets saving and retains edits after %s failure", async (stage) => {
-    const initial = init({
-      protocol: "https:",
-      host: "example.com",
-      port: Option.none(),
-      pathname: "/optio/",
-      search: Option.none(),
-      hash: Option.some("#/templates/template"),
-    }).model;
-    const model: Model = {
-      ...initial,
-      editor: {
-        ...saveArgs,
-        fields: [
-          {
-            id: "field",
-            name: "Edited field",
-            kind: "textInput",
-            isRequired: true,
-            defaultValue: "Draft value",
-            sortOrder: 0,
-            options: [],
-            exclusiveOptions: [],
-          },
-        ],
-        original: { name: "Original study", isDefault: false, fields: [] },
-        isSaving: false,
-        showAddField: false,
-        editingFieldId: null,
-        draft: null,
-        pendingDiscard: false,
-      },
-    };
-    const saving = update(model, Message.ClickedSaveTemplate());
-    expect(saving.model.editor?.isSaving).toBe(true);
-    Scene.scene(
-      { view: templateEditorPage, update },
-      Scene.given(saving.model),
-      Scene.expect(Scene.role("button", { name: "Save template" })).toBeDisabled(),
-    );
-    const error = new Error("Save unavailable");
-    if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
-    else
-      commit.mockImplementation(() => {
-        throw error;
-      });
-    const command = saving.commands?.[0];
-    expect(command).toBeDefined();
-    const message = await Effect.runPromise(command!.effect);
-    expect(message._tag).toBe("FailedTemplateOp");
-    const recovered = update(saving.model, message);
-    expect(recovered.model.editor).toEqual(model.editor);
-    expect(recovered.model.lastError).toBe("Couldn't save that. Please try again.");
-    expect(recovered.commands ?? []).toEqual([]);
-    Scene.scene(
-      { view: templateEditorPage, update },
-      Scene.given(recovered.model),
-      Scene.expect(Scene.role("button", { name: "Save template" })).toBeEnabled(),
-    );
-    expect(update(recovered.model, Message.ClickedSaveTemplate()).model.editor?.isSaving).toBe(
-      true,
-    );
-  });
+  it.effect.each(["open", "commit"])("resets saving and retains edits after %s failure", (stage) =>
+    Effect.gen(function* () {
+      const initial = init({
+        protocol: "https:",
+        host: "example.com",
+        port: Option.none(),
+        pathname: "/optio/",
+        search: Option.none(),
+        hash: Option.some("#/templates/template"),
+      }).model;
+      const model: Model = {
+        ...initial,
+        editor: {
+          ...saveArgs,
+          fields: [
+            {
+              id: "field",
+              name: "Edited field",
+              kind: "textInput",
+              isRequired: true,
+              defaultValue: "Draft value",
+              sortOrder: 0,
+              options: [],
+              exclusiveOptions: [],
+            },
+          ],
+          original: { name: "Original study", isDefault: false, fields: [] },
+          isSaving: false,
+          showAddField: false,
+          editingFieldId: null,
+          draft: null,
+          pendingDiscard: false,
+        },
+      };
+      const saving = update(model, Message.ClickedSaveTemplate());
+      expect(saving.model.editor?.isSaving).toBe(true);
+      Scene.scene(
+        { view: templateEditorPage, update },
+        Scene.given(saving.model),
+        Scene.expect(Scene.role("button", { name: "Save template" })).toBeDisabled(),
+      );
+      const error = new Error("Save unavailable");
+      if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
+      else
+        commit.mockImplementation(() => {
+          throw error;
+        });
+      const command = saving.commands?.[0];
+      expect(command).toBeDefined();
+      const message = yield* command!.effect;
+      expect(message._tag).toBe("FailedTemplateOp");
+      const recovered = update(saving.model, message);
+      expect(recovered.model.editor).toEqual(model.editor);
+      expect(recovered.model.lastError).toBe("Couldn't save that. Please try again.");
+      expect(recovered.commands ?? []).toEqual([]);
+      Scene.scene(
+        { view: templateEditorPage, update },
+        Scene.given(recovered.model),
+        Scene.expect(Scene.role("button", { name: "Save template" })).toBeEnabled(),
+      );
+      expect(update(recovered.model, Message.ClickedSaveTemplate()).model.editor?.isSaving).toBe(
+        true,
+      );
+    }),
+  );
 });

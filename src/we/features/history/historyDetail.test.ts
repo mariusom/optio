@@ -1,7 +1,8 @@
 import { Effect, Option, Stream } from "effect";
+import { describe, expect, it } from "@effect/vitest";
 import type { Html, HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, vi } from "vitest";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
@@ -70,10 +71,13 @@ describe("history detail regressions", () => {
       state = update(state, Message.ClickedHistoryTask({ taskId: "task-1" })).model;
       expect(state.showEditHistoryName).toBe(true);
       expect(state.selectedHistoryTaskId).toBe("task-1");
-      const openUi = JSON.stringify(render((h) => sessionDetailPage(state, h)));
-      expect(openUi).toContain('"role":"dialog"');
-      expect(openUi).toContain('"aria-labelledby":"edit-session-name-title"');
-      expect(openUi).toContain('"aria-labelledby":"history-task-title"');
+      Scene.scene(
+        { view: sessionDetailPage, update },
+        Scene.given(state),
+        Scene.expect(Scene.role("dialog", { name: "Session name" })).toExist(),
+        Scene.expect(Scene.role("dialog", { name: "Task 1" })).toExist(),
+        Scene.expect(Scene.role("textbox", { name: "Name" })).toHaveValue("Unsaved rename"),
+      );
       state = update(
         state,
         source === "subscription"
@@ -101,9 +105,13 @@ describe("history detail regressions", () => {
         showEditHistoryName: false,
         editHistoryNameInput: "Next",
       });
-      const rendered = JSON.stringify(render((h) => sessionDetailPage(state, h)));
-      expect(rendered).not.toContain("Unsaved rename");
-      expect(rendered).not.toContain('"role":"dialog"');
+      Scene.scene(
+        { view: sessionDetailPage, update },
+        Scene.given(state),
+        Scene.expect(Scene.role("dialog")).toBeAbsent(),
+        Scene.expect(Scene.role("textbox", { name: "Name" })).toBeAbsent(),
+        Scene.expect(Scene.text("Unsaved rename")).toBeAbsent(),
+      );
     },
   );
 
@@ -121,23 +129,25 @@ describe("history detail regressions", () => {
     },
   );
 
-  it.each([
+  it.effect.each([
     ["  New study \n", "New study"],
     [" \t\n ", ""],
-  ])("trims rename %j before persistence", async (input, expected) => {
-    const commit = vi.fn();
-    vi.mocked(getStore).mockResolvedValue({ commit } as unknown as Awaited<
-      ReturnType<typeof getStore>
-    >);
-    const result = update(
-      { ...model(), editHistoryNameInput: input },
-      Message.ConfirmedEditHistoryName(),
-    );
-    for (const command of result.commands ?? []) await Effect.runPromise(command.effect);
-    expect(commit).toHaveBeenCalledWith(
-      expect.objectContaining({ args: { id: "s1", sessionName: expected } }),
-    );
-  });
+  ])("trims rename %j before persistence", ([input, expected]) =>
+    Effect.gen(function* () {
+      const commit = vi.fn();
+      vi.mocked(getStore).mockResolvedValue({ commit } as unknown as Awaited<
+        ReturnType<typeof getStore>
+      >);
+      const result = update(
+        { ...model(), editHistoryNameInput: input },
+        Message.ConfirmedEditHistoryName(),
+      );
+      for (const command of result.commands ?? []) yield* command.effect;
+      expect(commit).toHaveBeenCalledWith(
+        expect.objectContaining({ args: { id: "s1", sessionName: expected } }),
+      );
+    }),
+  );
 
   it.each(["textInput", "textArea", "boolean"])(
     "formats %s by section type in preview and task detail",
@@ -174,57 +184,57 @@ describe("history detail regressions", () => {
     expect(rendered.indexOf("Task 2")).toBeLessThan(rendered.indexOf("Task 3"));
   });
 
-  it.each([
+  it.effect.each([
     ["live session with null endedAt", null, null],
     ["live session with undefined endedAt", undefined, null],
     ["ended session", 100, expect.objectContaining({ id: "s1", endedAt: 100 })],
-  ])("enforces ended-only detail for %s", async (_case, endedAt, expectedDetail) => {
-    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-    vi.mocked(getStore).mockResolvedValue({
-      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-        callbacks.push(callback);
-        if (callbacks.length === 3) {
-          callbacks[1]!([]);
-          callbacks[2]!([]);
-          callbacks[0]!([{ ...detail, endedAt }]);
-        }
-        return () => {};
-      },
-    } as unknown as Awaited<ReturnType<typeof getStore>>);
+  ])("enforces ended-only detail for %s", ([_case, endedAt, expectedDetail]) =>
+    Effect.gen(function* () {
+      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+      vi.mocked(getStore).mockResolvedValue({
+        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+          callbacks.push(callback);
+          if (callbacks.length === 3) {
+            callbacks[1]!([]);
+            callbacks[2]!([]);
+            callbacks[0]!([{ ...detail, endedAt }]);
+          }
+          return () => {};
+        },
+      } as unknown as Awaited<ReturnType<typeof getStore>>);
 
-    const messages = await Effect.runPromise(
-      subscriptions.historyDetail
+      const messages = yield* subscriptions.historyDetail
         .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect),
-    );
+        .pipe(Stream.take(1), Stream.runCollect);
 
-    expect(messages[0]).toMatchObject({
-      _tag: "GotHistoryDetail",
-      detail: expectedDetail,
-    });
-  });
+      expect(messages[0]).toMatchObject({
+        _tag: "GotHistoryDetail",
+        detail: expectedDetail,
+      });
+    }),
+  );
 
-  it("constructs history in taskId order and waits for the session query", async () => {
-    const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-    vi.mocked(getStore).mockResolvedValue({
-      subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-        callbacks.push(callback);
-        if (callbacks.length === 3) {
-          callbacks[1]!(detail.tasks.map((t) => ({ ...t, sessionId: "s1" })));
-          callbacks[2]!([]);
-          callbacks[0]!([detail]);
-        }
-        return () => {};
-      },
-    } as unknown as Awaited<ReturnType<typeof getStore>>);
-    const messages = await Effect.runPromise(
-      subscriptions.historyDetail
+  it.effect("constructs history in taskId order and waits for the session query", () =>
+    Effect.gen(function* () {
+      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
+      vi.mocked(getStore).mockResolvedValue({
+        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
+          callbacks.push(callback);
+          if (callbacks.length === 3) {
+            callbacks[1]!(detail.tasks.map((t) => ({ ...t, sessionId: "s1" })));
+            callbacks[2]!([]);
+            callbacks[0]!([detail]);
+          }
+          return () => {};
+        },
+      } as unknown as Awaited<ReturnType<typeof getStore>>);
+      const messages = yield* subscriptions.historyDetail
         .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect),
-    );
-    expect(messages[0]).toMatchObject({
-      _tag: "GotHistoryDetail",
-      detail: { tasks: [{ taskId: 1 }, { taskId: 2 }, { taskId: 3 }] },
-    });
-  });
+        .pipe(Stream.take(1), Stream.runCollect);
+      expect(messages[0]).toMatchObject({
+        _tag: "GotHistoryDetail",
+        detail: { tasks: [{ taskId: 1 }, { taskId: 2 }, { taskId: 3 }] },
+      });
+    }),
+  );
 });

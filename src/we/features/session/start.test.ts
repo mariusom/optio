@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Scene from "foldkit/scene";
 
 import { Message } from "../../../messages";
@@ -79,20 +79,16 @@ describe("Foldcn session launcher", () => {
 });
 
 describe("generateSessionName", () => {
-  it("returns two words with a space", () => {
-    const name = generateSessionName();
-    expect(name).toMatch(/^[A-Za-z]+ [A-Za-z]+$/);
-    const parts = name.split(" ");
-    expect(parts).toHaveLength(2);
-    expect(parts[0]!.length).toBeGreaterThan(0);
-    expect(parts[1]!.length).toBeGreaterThan(0);
-  });
-
-  it("produces varying names on repeated calls", () => {
-    const set = new Set<string>();
-    for (let i = 0; i < 20; i++) set.add(generateSessionName());
-    // With 96*109 combos, 20 draws should produce >1 distinct value
-    expect(set.size).toBeGreaterThan(1);
+  it("draws adjective and noun independently, including both ends of each list", () => {
+    const random = vi.spyOn(Math, "random");
+    try {
+      random.mockReturnValueOnce(0).mockReturnValueOnce(0.999999);
+      expect(generateSessionName()).toBe("Amber Topaz");
+      random.mockReturnValueOnce(0.999999).mockReturnValueOnce(0);
+      expect(generateSessionName()).toBe("Winding Canyon");
+    } finally {
+      random.mockRestore();
+    }
   });
 });
 
@@ -192,18 +188,6 @@ describe("isTemplateMissing", () => {
     ).toBe(false);
   });
   it("true when template id present but missing", () => {
-    expect(
-      isTemplateMissing([t({ id: "a", name: "Alpha" })], {
-        id: "s1",
-        templateId: "missing",
-        templateName: "Ghost",
-        sessionName: "",
-        startedAt: Date.now(),
-        completedCount: 0,
-      }),
-    ).toBe(true);
-  });
-  it("true when fallback by name also fails", () => {
     expect(
       isTemplateMissing([t({ id: "a", name: "Alpha" })], {
         id: "s1",

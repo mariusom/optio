@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { formatCsvDate } from "../../format";
 import {
   buildArchiveCsv,
   csvEscaped,
@@ -211,13 +210,7 @@ describe("buildArchiveCsv", () => {
       { taskId: 2, startedAt: null, endedAt: null, sections: [] },
     ]);
     const lines = csv.split("\n");
-    const expectedStart = formatCsvDate(start);
-    const expectedEnd = formatCsvDate(end);
-    // first data row should contain formatted dates (may be quoted if space triggers? dates contain space → quoted per spec)
-    // Our csvEscaped will quote dates because they contain space
-    expect(lines[1]).toContain(csvEscaped(expectedStart));
-    expect(lines[1]).toContain(csvEscaped(expectedEnd));
-    // second row has empty times → ,, at end (since startTime,endTime empty)
+    expect(lines[1]).toBe('1,x,"15-06-2026 12:30:45","15-06-2026 12:35:00"');
     expect(lines[2]).toBe("2,,,");
   });
 
@@ -275,21 +268,6 @@ describe("buildArchiveCsv", () => {
     ];
     const csv = buildArchiveCsv(records);
     expect(csv).toBe("id,A,startTime,endTime\n1,1,,\n2,2,,");
-  });
-});
-
-describe("history taskCount (pure)", () => {
-  it("counts tasks per session", () => {
-    const taskRecords = [
-      { sessionId: "s1", id: "r1" },
-      { sessionId: "s1", id: "r2" },
-      { sessionId: "s2", id: "r3" },
-    ] as const;
-    const counts = new Map<string, number>();
-    for (const r of taskRecords) counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
-    expect(counts.get("s1")).toBe(2);
-    expect(counts.get("s2")).toBe(1);
-    expect(counts.get("s3") ?? 0).toBe(0);
   });
 });
 

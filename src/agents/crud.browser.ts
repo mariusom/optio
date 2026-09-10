@@ -168,6 +168,14 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await wait((s) => s.runner?.completedCount === 1);
     await act({ _tag: "ClickedSelectTask", taskId: task.id });
     await wait((s) => s.runner?.tasks[0].isBeingEdited === true);
+    await act({ _tag: "ChangedFieldValue", taskFieldId, value: "Canceled edit" });
+    await wait((s) => s.runner?.tasks[0].sections[0].value === "Canceled edit");
+    await act({ _tag: "ClickedCancelEdit" });
+    state = await wait((s) => s.runner?.tasks[0].isBeingEdited === false);
+    expect(state.runner!.tasks[0].sections[0].value).toBe("Observe");
+    expect(state.runner!.tasks[0].sections[0].startDate).toBe(firstWrite);
+    await act({ _tag: "ClickedSelectTask", taskId: task.id });
+    await wait((s) => s.runner?.tasks[0].isBeingEdited === true);
     await act({ _tag: "ChangedFieldValue", taskFieldId, value: "Corrected" });
     await wait((s) => s.runner?.tasks[0].sections[0].value === "Corrected");
     await act({ _tag: "ClickedSaveEdit" });

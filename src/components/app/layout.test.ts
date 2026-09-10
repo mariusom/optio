@@ -1,5 +1,5 @@
 import { inertHtml, type HtmlBuilder } from "foldkit/html";
-import { Option } from "effect";
+import * as Scene from "foldkit/scene";
 import { describe, expect, it } from "vitest";
 
 import { choiceRows, row } from "./layout";
@@ -12,9 +12,6 @@ const nodes = (node: Node | null): Node[] =>
   node === null
     ? []
     : [node, ...(node.children ?? []).flatMap((c) => (typeof c === "object" ? nodes(c) : []))];
-
-const keyHandler = (node: Node) =>
-  node.data?.on?.keydown as ((event: KeyboardEvent) => void) | undefined;
 
 describe("choiceRows", () => {
   const view = choiceRows(
@@ -43,14 +40,47 @@ describe("choiceRows", () => {
   });
 
   it("moves the selection with arrow keys and wraps", () => {
-    for (const radio of radios) expect(keyHandler(radio)).toBeTypeOf("function");
-    // The keydown handler is foldkit's OnKeyDownPreventDefault wrapper; call the
-    // stored message function directly to check its routing.
-    const handlers = radios.map(
-      (n) =>
-        (n.data as { on?: { keydown?: { f?: (key: string) => Option.Option<Msg> } } }).on?.keydown,
+    const config = {
+      view: (selected: string, h: HtmlBuilder<Msg>) =>
+        choiceRows(
+          {
+            label: "Appearance",
+            choices: ["Light", "Dark", "Automatic"].map((label) => ({
+              label,
+              selected: label === selected,
+              onSelect: { pick: label },
+            })),
+          },
+          h,
+        ),
+      update: (_selected: string, message: Msg) => ({ model: message.pick, outMessage: message }),
+    };
+    for (const [from, key, to] of [
+      ["Dark", "ArrowRight", "Automatic"],
+      ["Automatic", "ArrowDown", "Light"],
+      ["Dark", "ArrowLeft", "Light"],
+      ["Light", "ArrowUp", "Automatic"],
+      ["Dark", "Home", "Light"],
+      ["Light", "End", "Automatic"],
+    ] as const) {
+      Scene.scene(
+        config,
+        Scene.given(from),
+        Scene.keydown(Scene.role("radio", { name: from }), key),
+        Scene.expectHandled(),
+        Scene.expectOutMessage({ pick: to }),
+        Scene.expect(Scene.role("radio", { name: to })).toHaveAttr("aria-checked", "true"),
+        Scene.expect(Scene.role("radio", { name: from })).toHaveAttr("aria-checked", "false"),
+      );
+    }
+    Scene.scene(
+      config,
+      Scene.given("Dark"),
+      Scene.keydown(Scene.role("radio", { name: "Dark" }), "Tab"),
+      Scene.expectIgnored(),
+      Scene.expectNoOutMessage(),
+      Scene.expect(Scene.role("radio", { name: "Dark" })).toHaveAttr("aria-checked", "true"),
     );
-    expect(handlers.every((handler) => handler !== undefined)).toBe(true);
   });
 });
 

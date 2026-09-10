@@ -52,11 +52,17 @@ describe("template editor navigation guard", () => {
     const confirmed = update(next.model, Message.ConfirmedDiscard());
     expect(confirmed.model.pendingNavigationUrl).toBeNull();
     expect(confirmed.model.editor).toBeNull();
-    expect(JSON.stringify(confirmed.commands ?? [])).toContain("#/settings");
+    expect(confirmed.commands).toEqual([
+      expect.objectContaining({
+        name: "NavigateInternal",
+        args: { url: "http://localhost/optio/#/settings" },
+      }),
+    ]);
 
     const canceled = update(next.model, Message.CanceledDiscard());
     expect(canceled.model.pendingNavigationUrl).toBeNull();
     expect(canceled.model.editor?.pendingDiscard).toBe(false);
+    expect(canceled.commands ?? []).toEqual([]);
   });
 
   it("navigates straight away when nothing changed", () => {
@@ -68,6 +74,11 @@ describe("template editor navigation guard", () => {
     const next = update(model, internalLink("#/settings"));
     expect(next.model.pendingNavigationUrl).toBeNull();
     expect(next.model.editor?.pendingDiscard).toBe(false);
-    expect(next.commands ?? []).toHaveLength(1);
+    expect(next.commands).toEqual([
+      expect.objectContaining({
+        name: "NavigateInternal",
+        args: { url: "http://localhost/optio/#/settings" },
+      }),
+    ]);
   });
 });

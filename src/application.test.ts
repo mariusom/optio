@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { Option } from "effect";
+import { fromString } from "foldkit/url";
 
 // The LiveStore workers are browser-only (they read `self.name` at module
 // scope); the wiring test never opens a store, so stub them out.
@@ -17,7 +19,7 @@ import { applicationConfig } from "./application.ts";
 // ticker) ever started — LiveStore wrote and persisted data, but the UI
 // showed empty states forever.
 describe("application wiring", () => {
-  it("passes subscriptions to the runtime (store streams actually start)", () => {
+  it("includes every app subscription in the runtime configuration", () => {
     expect(applicationConfig.subscriptions).toBeDefined();
     const names = Object.keys(applicationConfig.subscriptions ?? {}).sort();
     expect(names).toEqual(
@@ -37,8 +39,16 @@ describe("application wiring", () => {
     );
   });
 
-  it("still wires the hash-router callbacks", () => {
-    expect(applicationConfig.routing.onUrlChange).toBeTypeOf("function");
-    expect(applicationConfig.routing.onUrlRequest).toBeTypeOf("function");
+  it("maps hash changes to routes and forwards internal link requests to the navigation guard", () => {
+    const url = Option.getOrThrow(fromString("https://optio.test/#/history/session-42"));
+    expect(applicationConfig.routing.onUrlChange(url)).toEqual({
+      _tag: "GotRoute",
+      route: { _tag: "SessionDetail", sessionId: "session-42" },
+    });
+    const request = { _tag: "Internal" as const, url };
+    expect(applicationConfig.routing.onUrlRequest(request)).toEqual({
+      _tag: "ClickedLink",
+      request,
+    });
   });
 });
