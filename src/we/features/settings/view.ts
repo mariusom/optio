@@ -74,6 +74,7 @@ export const settingsPage = (
   accentDraft: string | null = null,
   iconLibrary: IconLibrary = "hugeicons",
   iconLibrarySaveFailed = false,
+  styleLoadFailed = false,
 ) =>
   page(
     {},
@@ -224,13 +225,21 @@ export const settingsPage = (
             ),
           ]
         : []),
-      ...(styleSaveFailed
+      ...(styleLoadFailed
         ? [
             notice(
               {
                 tone: "warning",
-                text: "Couldn't load or save that style. Reload the app before trying again.",
+                text: "Couldn't load that style. Reload the app before trying again.",
               },
+              h,
+            ),
+          ]
+        : []),
+      ...(styleSaveFailed
+        ? [
+            notice(
+              { tone: "warning", text: "The component style was applied but couldn’t be saved." },
               h,
             ),
           ]

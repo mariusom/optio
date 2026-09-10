@@ -50,6 +50,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   themeSaveFailed: false,
   style: "nova",
   styleSaveFailed: false,
+  styleLoadFailed: false,
   font: "sans",
   fontSaveFailed: false,
   iconLibrary: "lucide",

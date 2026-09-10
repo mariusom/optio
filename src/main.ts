@@ -97,6 +97,7 @@ export const Model = S.Struct({
   themeSaveFailed: S.Boolean,
   style: FoldcnStyle,
   styleSaveFailed: S.Boolean,
+  styleLoadFailed: S.Boolean,
   font: Font,
   fontSaveFailed: S.Boolean,
   iconLibrary: IconLibrary,
@@ -232,6 +233,7 @@ const initialModel = (route: Route): Model => ({
   themeSaveFailed: false,
   style: "nova",
   styleSaveFailed: false,
+  styleLoadFailed: false,
   font: "sans",
   fontSaveFailed: false,
   iconLibrary: "hugeicons",
@@ -440,9 +442,16 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       model: { ...model, style },
       commands: [SaveStyle({ style })],
     }),
-    StyleSaveFinished: ({ style, appliedStyle, saved }) => ({
+    StyleSaveFinished: ({ style, appliedStyle, saved, loadFailed }) => ({
       model:
-        style === model.style ? { ...model, style: appliedStyle, styleSaveFailed: !saved } : model,
+        style === model.style
+          ? {
+              ...model,
+              style: appliedStyle,
+              styleSaveFailed: !saved && !loadFailed,
+              styleLoadFailed: loadFailed,
+            }
+          : model,
       commands: [],
     }),
     SelectedFont: ({ font }) => ({
@@ -2024,6 +2033,7 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
         model.accentDraft,
         model.iconLibrary,
         model.iconLibrarySaveFailed,
+        model.styleLoadFailed,
       );
     case "StartTab":
       return startView(model, h);

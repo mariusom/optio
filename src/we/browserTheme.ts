@@ -158,11 +158,11 @@ export const changeStyle = Effect.fn("changeStyle")(function* (style: FoldcnStyl
     Effect.catch(() => Effect.succeed(null)),
   );
   if (applied === false) return null; // A newer selection superseded this download.
-  if (applied === null) return { appliedStyle: getCurrentStyle(), saved: false };
+  if (applied === null) return { appliedStyle: getCurrentStyle(), saved: false, loadFailed: true };
   document.documentElement.dataset.foldcnStyle = style;
   const saved = yield* saveStyle(style).pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
-  return { appliedStyle: style, saved };
+  return { appliedStyle: style, saved, loadFailed: false };
 });

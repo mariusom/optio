@@ -20,7 +20,7 @@ try {
   await page.goto(`${base}#/settings`);
   const styles = page.getByRole("radiogroup", { name: "Component style" });
   await styles.getByRole("radio", { name: "Vega", exact: true }).click();
-  await page.getByText("Couldn't load or save that style.", { exact: false }).waitFor();
+  await page.getByText("Couldn't load that style.", { exact: false }).waitFor();
   assert.equal(
     await styles.getByRole("radio", { name: "Nova", exact: true }).getAttribute("aria-checked"),
     "true",
@@ -43,6 +43,27 @@ try {
   assert.equal(await page.evaluate(() => localStorage.getItem("optio-foldcn-style")), "vega");
   console.log("PASS: unavailable saved preset falls back without deleting the preference");
   await context.close();
+
+  const storageFailure = await browser.newContext({ serviceWorkers: "block" });
+  await storageFailure.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "optio-foldcn-style")
+        throw new DOMException("Storage full", "QuotaExceededError");
+      return setItem.call(this, key, value);
+    };
+  });
+  const storagePage = await storageFailure.newPage();
+  await storagePage.goto(`${base}#/settings`);
+  await storagePage.getByRole("radio", { name: "Vega", exact: true }).click();
+  await storagePage.getByText("The component style was applied but couldn’t be saved.").waitFor();
+  assert.equal(
+    await storagePage.evaluate(() => document.documentElement.dataset.foldcnStyle),
+    "vega",
+  );
+  assert.equal(await storagePage.getByText("Reload the app", { exact: false }).count(), 0);
+  console.log("PASS: storage failure keeps the applied style and does not advise reloading");
+  await storageFailure.close();
 
   const offline = await browser.newContext();
   const offlinePage = await offline.newPage();
