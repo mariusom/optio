@@ -12,7 +12,7 @@ import { Message } from "../messages";
 import { getStore } from "../livestore/client";
 import { schema } from "../livestore/schema";
 import { EndSession } from "../we/features/session/runnerCommands";
-import { AgentReply, type AgentAction } from "./actions";
+import { AgentResult, type AgentAction } from "./actions";
 import { connectAgentApplication } from "./connection";
 import { makeToolHandlers } from "./tools";
 import { registerWebMcp, type ModelContext } from "./webmcp";
@@ -49,21 +49,39 @@ it("operates template/field CRUD and the full record → edit → archive → de
   const invoke = async (name: string, input: unknown) =>
     tools.get(name)!.execute(input, { signal: new AbortController().signal });
   const read = async () => {
-    const reply = Schema.decodeUnknownSync(AgentReply)(await invoke("optio_get_state", {}));
-    return Schema.decodeUnknownSync(Model)(reply.state);
+    const reply = Schema.decodeUnknownSync(AgentResult)(await invoke("optio_get_state", {}));
+    return reply.state;
   };
   const act = async (action: AgentAction) => {
-    const reply = Schema.decodeUnknownSync(AgentReply)(await invoke("optio_action", { action }));
-    expect(reply.error).toBeNull();
-    return reply;
+    return Schema.decodeUnknownSync(AgentResult)(await invoke("optio_action", { action }));
   };
-  const wait = async (predicate: (state: Model) => boolean) => {
+  const readInternalModel = () =>
+    new Promise<Model>((resolve, reject) => {
+      const requestId = crypto.randomUUID();
+      const unsubscribe = handle.ports.agentReply.subscribe((reply) => {
+        if (reply.requestId !== requestId) return;
+        unsubscribe();
+        try {
+          resolve(Schema.decodeUnknownSync(Model)(reply.state));
+        } catch (error) {
+          reject(error);
+        }
+      });
+      const sent = handle.ports.agentRequest.send({ requestId, action: null });
+      if (Exit.isFailure(sent)) {
+        unsubscribe();
+        reject(new Error("Could not read the internal model."));
+      }
+    });
+  const wait = async (predicate: (state: Awaited<ReturnType<typeof read>>) => boolean) => {
     await expect.poll(async () => predicate(await read()), { timeout: 15_000 }).toBe(true);
     return read();
   };
   const name = `Agent CRUD ${crypto.randomUUID()}`;
   try {
     await wait((s) => s.templates.length > 0);
+    expect(await invoke("optio_get_state", {})).not.toHaveProperty("requestId");
+    expect(await read()).not.toHaveProperty("agentConfirmationVersion");
     await act({ _tag: "Navigate", route: { _tag: "TemplatesTab" } });
     await wait((s) => s.route._tag === "TemplatesTab");
     await act({ _tag: "ClickedNewTemplate" });
@@ -72,7 +90,8 @@ it("operates template/field CRUD and the full record → edit → archive → de
     let state = await wait((s) => s.templates.some((t) => t.name === name));
     const templateId = state.templates.find((t) => t.name === name)!.id;
     await act({ _tag: "ClickedTemplateRow", id: templateId });
-    await wait((s) => s.editor?.id === templateId);
+    state = await wait((s) => s.editor?.id === templateId);
+    expect(state.editor).not.toHaveProperty("original");
     await act({ _tag: "ChangedEditorName", text: `${name} edited` });
     await act({ _tag: "ClickedAddField" });
     await act({ _tag: "ChangedFieldName", text: "Observation" });
@@ -121,13 +140,12 @@ it("operates template/field CRUD and the full record → edit → archive → de
         raceConfirm,
       );
       const approval = Effect.runPromise(racing.request({ _tag: "ConfirmedDeleteTemplate" }));
+      const rejected = expect(approval).rejects.toThrow("Confirmation changed");
       await vi.waitFor(() => expect(release).toBeDefined());
       await act({ _tag: "RequestedDeleteTemplate", id: otherTemplate.id, name: "Ignored" });
       if (restoreA) await act({ _tag: "RequestedDeleteTemplate", id: templateId, name: "Ignored" });
       release!();
-      const rejected = await approval;
-      expect(rejected.error).toContain("Confirmation changed");
-      expect(rejected.pendingCommands).toBe(0);
+      await rejected;
       expect(raceConfirm).toHaveBeenCalledWith(expect.stringContaining(`(ID: ${templateId})`));
       expect((await read()).templates.map((t) => t.id)).toEqual(
         expect.arrayContaining([templateId, otherTemplate.id]),
@@ -140,6 +158,8 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await act({ _tag: "ChangedSessionNameInput", text: name });
     await act({ _tag: "ClickedStartSession" });
     state = await wait((s) => s.runner?.sessionName === name && s.runner.tasks.length === 1);
+    expect(state.runner).not.toHaveProperty("now");
+    expect(state.runner).not.toHaveProperty("showSidebar");
     const sessionId = state.runner!.sessionId;
     const task = state.runner!.tasks[0];
     const taskFieldId = task.sections[0].id;
@@ -157,8 +177,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
       isError: true,
       error: { message: expect.stringContaining("Select the task") },
     });
-    const invalidRecord = await act({ _tag: "ClickedRecord" });
-    expect(invalidRecord.pendingCommands).toBe(0);
+    await act({ _tag: "ClickedRecord" });
     expect((await read()).runner!.completedCount).toBe(0);
     await act({ _tag: "ChangedFieldValue", taskFieldId, value: "Observe" });
     state = await wait((s) => s.runner?.tasks[0].sections[0].value === "Observe");
@@ -245,7 +264,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     expect((await read()).history.some((s) => s.id === sessionId)).toBe(true);
     // History keeps its pending ID until the asynchronous delete completes.
     // A consumed approval must nevertheless be unusable a second time.
-    const beforeDelete = await read();
+    const beforeDelete = await readInternalModel();
     const approvedDelete = Message.AgentRequest({
       requestId: "replay-test",
       action: { _tag: "ConfirmedHistoryDelete" },

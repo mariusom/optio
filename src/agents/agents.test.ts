@@ -3,7 +3,6 @@ import { Effect, Exit, Scope } from "effect";
 
 import type { AppStore } from "../livestore/client";
 import { makeToolHandlers } from "./tools";
-import { makeMcpHandler } from "./mcp";
 import { registerWebMcp as registration, type ModelContext } from "./webmcp";
 
 type WebTool = Parameters<ModelContext["registerTool"]>[0];
@@ -163,85 +162,6 @@ describe("WebMCP tools", () => {
         isError: true,
         error: { message: "Local study data is unavailable." },
       });
-    } finally {
-      await dispose();
-    }
-  });
-});
-
-describe("MCP Streamable HTTP", () => {
-  it("initializes, lists and calls shared tools; rejects invalid inputs and origins", async () => {
-    const { handlers, open } = fixture();
-    const { handler, dispose } = makeMcpHandler(handlers, ["https://optio.test"]);
-    let sessionId: string | null = null;
-    let id = 0;
-    const request = async (method: string, params: object, origin = "https://optio.test") => {
-      const response = await handler(
-        new Request("https://optio.test/mcp", {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            accept: "application/json, text/event-stream",
-            origin,
-            "mcp-protocol-version": "2025-06-18",
-            ...(sessionId ? { "mcp-session-id": sessionId } : {}),
-          },
-          body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }),
-        }),
-      );
-      sessionId = response.headers.get("mcp-session-id") ?? sessionId;
-      return response;
-    };
-    const body = async (response: Response) => {
-      expect(response.status).toBe(200);
-      const text = await response.text();
-      const data =
-        text.startsWith("event:") || text.startsWith("data:")
-          ? text
-              .split("\n")
-              .filter((line) => line.startsWith("data:"))
-              .map((line) => line.slice(5))
-              .join("\n")
-          : text;
-      return JSON.parse(data);
-    };
-    try {
-      const initialized = await body(
-        await request("initialize", {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: { name: "test", version: "1" },
-        }),
-      );
-      expect(initialized.result.serverInfo.name).toBe("Optio");
-      expect(sessionId).toBeTruthy();
-      const listed = await body(await request("tools/list", {}));
-      expect(listed.result.tools).toHaveLength(5);
-      expect(
-        listed.result.tools.filter(
-          (tool: { annotations: { readOnlyHint: boolean } }) => tool.annotations.readOnlyHint,
-        ),
-      ).toHaveLength(4);
-      expect(open).not.toHaveBeenCalled();
-      const result = await body(
-        await request("tools/call", { name: "optio_list_templates", arguments: { limit: 1 } }),
-      );
-      expect(result.result.structuredContent).toEqual({
-        templates: [{ id: "a", name: "Alpha", isDefault: true }],
-        total: 2,
-      });
-      const invalid = await body(
-        await request("tools/call", { name: "optio_list_templates", arguments: { limit: -1 } }),
-      );
-      expect(invalid.result?.isError || invalid.error).toBeTruthy();
-      const missing = await body(
-        await request("tools/call", {
-          name: "optio_get_session_summary",
-          arguments: { sessionId: "live" },
-        }),
-      );
-      expect(missing.result.isError).toBe(true);
-      expect((await request("tools/list", {}, "https://evil.test")).status).toBe(403);
     } finally {
       await dispose();
     }

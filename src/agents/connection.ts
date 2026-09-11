@@ -4,11 +4,13 @@ import { Model } from "../main";
 
 import {
   type AgentAction,
-  type AgentReply,
+  type AgentPortReply,
+  type AgentResult,
   type agentPorts,
   confirmationTarget,
   requiresConfirmation,
 } from "./actions";
+import { projectAgentState } from "./state";
 
 export class AgentConnectionError extends Schema.TaggedError<AgentConnectionError>()(
   "AgentConnectionError",
@@ -18,7 +20,9 @@ export class AgentConnectionError extends Schema.TaggedError<AgentConnectionErro
 ) {}
 
 export interface AgentApplication {
-  readonly request: (action: AgentAction | null) => Effect.Effect<AgentReply, AgentConnectionError>;
+  readonly request: (
+    action: AgentAction | null,
+  ) => Effect.Effect<AgentResult, AgentConnectionError>;
 }
 
 /** Each request owns its reply subscription; Effect handles interruption and timeout cleanup. */
@@ -26,28 +30,10 @@ export const connectAgentApplication = (
   ports: Runtime.PortHandles<typeof agentPorts>,
   confirm: (message: string) => boolean,
 ): AgentApplication => {
-  const request: AgentApplication["request"] = Effect.fn("agents.request")(
-    function* (action: AgentAction | null) {
-      let confirmationVersion: number | undefined;
-      if (action && requiresConfirmation(action)) {
-        const reply = yield* request(null);
-        const state = yield* Schema.decodeUnknownEffect(Model)(reply.state).pipe(
-          Effect.mapError(() => new AgentConnectionError({ message: "Invalid app state." })),
-        );
-        const target = confirmationTarget(state, action);
-        if (target === null)
-          return yield* new AgentConnectionError({ message: "Request confirmation first." });
-        confirmationVersion = state.agentConfirmationVersion;
-        const approved = yield* Effect.sync(() =>
-          confirm(
-            `Allow the agent to ${action._tag}: ${target.name} (ID: ${target.id})? This can permanently discard data or end recording. Review the pending confirmation in Optio before allowing.`,
-          ),
-        );
-        if (!approved)
-          return yield* new AgentConnectionError({ message: "User declined the action." });
-      }
+  const requestPort = Effect.fn("agents.requestPort")(
+    function* (action: AgentAction | null, confirmationVersion?: number) {
       const requestId = yield* Effect.sync(() => crypto.randomUUID());
-      return yield* Effect.callback<AgentReply, AgentConnectionError>((resume) => {
+      return yield* Effect.callback<AgentPortReply, AgentConnectionError>((resume) => {
         const unsubscribe = ports.agentReply.subscribe((reply) => {
           if (reply.requestId === requestId) resume(Effect.succeed(reply));
         });
@@ -73,5 +59,34 @@ export const connectAgentApplication = (
         ),
     }),
   );
+
+  const decodeModel = (reply: AgentPortReply) =>
+    Schema.decodeUnknownEffect(Model)(reply.state).pipe(
+      Effect.mapError(() => new AgentConnectionError({ message: "Invalid app state." })),
+    );
+
+  const request: AgentApplication["request"] = Effect.fn("agents.request")(function* (
+    action: AgentAction | null,
+  ) {
+    let confirmationVersion: number | undefined;
+    if (action && requiresConfirmation(action)) {
+      const state = yield* decodeModel(yield* requestPort(null));
+      const target = confirmationTarget(state, action);
+      if (target === null)
+        return yield* new AgentConnectionError({ message: "Request confirmation first." });
+      confirmationVersion = state.agentConfirmationVersion;
+      const approved = yield* Effect.sync(() =>
+        confirm(
+          `Allow the agent to ${action._tag}: ${target.name} (ID: ${target.id})? This can permanently discard data or end recording. Review the pending confirmation in Optio before allowing.`,
+        ),
+      );
+      if (!approved)
+        return yield* new AgentConnectionError({ message: "User declined the action." });
+    }
+    const reply = yield* requestPort(action, confirmationVersion);
+    if (reply.error !== null) return yield* new AgentConnectionError({ message: reply.error });
+    const state = yield* decodeModel(reply);
+    return { state: projectAgentState(state) };
+  });
   return { request };
 };

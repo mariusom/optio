@@ -6,11 +6,12 @@ import { toString as urlToString, type Url } from "foldkit/url";
 import { Message } from "./messages";
 import {
   AgentAction,
-  AgentReply,
+  AgentPortReply,
   actionError,
   agentPorts,
   confirmationState,
   confirmationTarget,
+  invalidatesAgentConfirmation,
   requiresConfirmation,
 } from "./agents/actions";
 import { hrefFor } from "./we/routes";
@@ -364,7 +365,7 @@ const applyPlan = (model: Model, event: SessionEvent) => {
 // UPDATE — pure state transitions
 
 const ReplyToAgent = Command.define("ReplyToAgent", {
-  args: { reply: AgentReply },
+  args: { reply: AgentPortReply },
   messages: [Message.Navigated],
   execute: ({ reply }) =>
     Port.emit(agentPorts.outbound.agentReply, reply).pipe(Effect.as(Message.Navigated())),
@@ -377,13 +378,7 @@ export const update = (model: Model, message: Message): Update.Return<Model, Mes
   if (message._tag === "AgentRequest") return result;
   if (
     confirmationState(model) !== confirmationState(result.model) ||
-    message._tag === "ConfirmedDeleteTemplate" ||
-    message._tag === "ConfirmedHistoryDelete" ||
-    message._tag === "ConfirmedDiscardSession" ||
-    message._tag === "ConfirmedEndSession" ||
-    message._tag === "ConfirmedDiscard" ||
-    message._tag === "RequestedDeleteTemplate" ||
-    message._tag === "RequestedHistoryDelete"
+    invalidatesAgentConfirmation(message)
   )
     return {
       ...result,
@@ -422,8 +417,6 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
             reply: {
               requestId,
               state: result.model,
-              changed: result.model !== model || commands.length > 0,
-              pendingCommands: commands.length,
               error,
             },
           }),

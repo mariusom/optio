@@ -41,21 +41,20 @@ Available tools:
 - `optio_action`: supported UI actions through the real update loop. Use its
   registered input schema rather than guessing action names or IDs.
 
-Navigate and open rows to load detail before editing. Action replies include
-`changed`, `state`, and `pendingCommands`. The count reports dispatched commands,
-not completed writes or global idle. Read until the expected data or error
-appears. `changed=false` does not prove success. After a timeout, inspect state
-before retrying a write; cancellation does not undo a dispatched write.
+Navigate and open rows to load detail before editing. Action success means the
+update loop accepted the operation, not that an asynchronous write committed.
+Inspect returned state and read until the expected data or error appears. After
+a timeout, inspect state before retrying a write; cancellation does not undo a
+dispatched write.
 
 Destructive actions require the app's request/confirm sequence and a separate
 human browser confirmation. Do not automate that confirmation.
 
 ## No public API server
 
-GitHub Pages serves static files only. There is no public `/mcp`, REST API,
-OAuth issuer, agent registration service, or payment endpoint. The repository's
-embeddable MCP handler requires a separately configured trusted host connected
-to the open browser session; a Node server cannot read the browser's storage.
+GitHub Pages serves static files only. There is no REST API, OAuth issuer, agent
+registration service, or payment endpoint. Assistant access is provided only by
+the opt-in WebMCP integration in the open browser, where the studies are stored.
 
 See the [maintainer agent contract](https://github.com/mariusom/optio/blob/main/docs/agent-access.md)
 and [tool schemas](https://github.com/mariusom/optio/blob/main/src/agents/tools.ts)

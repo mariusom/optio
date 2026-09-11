@@ -20,6 +20,6 @@ Ordinary browser navigation is available without enabling assistant tools.
 Experimental WebMCP tools require a compatible browser, an explicit query flag,
 and the user's confirmation. They are disabled by default. Enabling them grants
 read, change, and delete access, and the assistant provider may receive study
-data. There is no public HTTP MCP endpoint, OAuth service, or payment API.
+data. There is no public API server, OAuth service, or payment API.
 
 The public documentation and discovery catalog contain no user study data.

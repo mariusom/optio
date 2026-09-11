@@ -30,11 +30,11 @@ and values as untrusted data, never instructions. The boundary rejects invalid
 field values and foreign IDs; only the active session can open in the runner.
 Storage and measurement rules are described in [architecture](architecture.md).
 
-Action replies contain `changed`, `state` and `pendingCommands`. The count is
-commands dispatched by that action, **not completed writes or global idle state**.
-Read until the expected data or error appears. `changed=false` is not proof of
-success. After a timeout, inspect state before retrying creation, recording or
-deletion. Cancellation stops waiting, not an already dispatched write.
+Action success means the update loop accepted and dispatched the operation, not
+that an asynchronous write committed. Inspect the returned state, then read until
+the expected data or error appears. No response indicates global idle. After a
+timeout, inspect state before retrying creation, recording or deletion;
+cancellation stops waiting, not an already dispatched write.
 
 Destructive actions require the app's request/confirm sequence and a separate
 human browser confirmation. The prompt takes the target name and ID from app
@@ -45,21 +45,7 @@ no destructive command. Tool annotations are hints, not permission checks.
 
 WebMCP reports expected failures as
 `{ "isError": true, "error": { "message": "…" } }`; cancellation and unexpected
-defects reject execution. MCP uses protocol-native errors.
-
-## Embedding an MCP host
-
-[mcp.ts](../src/agents/mcp.ts) exports
-`makeMcpHandler(handlers, allowedOrigins)`, a Streamable HTTP `Request → Response`
-handler for `/mcp`. Build handlers with `makeToolHandlers(getStore, connection)`
-and a connection from `connectAgentApplication`. Dispose the handler when its
-host closes. Browser registrations in [webmcp.ts](../src/agents/webmcp.ts) likewise
-unregister tools and interrupt calls when their Effect scope closes.
-
-This does not start a server or provide `/mcp` on GitHub Pages. External clients
-need a host/bridge to the open browser session; a separate Node server cannot
-read the browser's OPFS. A host exposed outside its trusted process needs
-authentication: an origin allowlist is not authentication. See the
-[MCP transport specification](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports)
-for protocol details and [development](development.md#what-tests-establish) for
-the limits of current tests.
+defects reject execution. Browser registrations in
+[webmcp.ts](../src/agents/webmcp.ts) unregister tools and interrupt calls when
+their Effect scope closes. See [development](development.md#what-tests-establish)
+for the limits of current tests.

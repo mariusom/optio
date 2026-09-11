@@ -5,6 +5,7 @@ import { Message } from "../messages";
 import { RouteSchema } from "../we/routes";
 import { FieldKind } from "../livestore/schema";
 import type { Model } from "../main";
+import { AgentState } from "./state";
 
 // Only user operations: never allow fabricated store snapshots, completion
 // messages, arbitrary URLs, or recursive agent requests into the update loop.
@@ -63,10 +64,6 @@ export const AgentAction = Schema.Union([
   Message.ClickedSelectTask,
   Message.ClickedCancelEdit,
   Message.ClickedSaveEdit,
-  Message.ToggledTaskList,
-  Message.ToggledSidebar,
-  Message.FocusedSection,
-  Message.DismissedRunnerError,
   Message.RequestedHistoryDelete,
   Message.CanceledHistoryDelete,
   Message.ConfirmedHistoryDelete,
@@ -75,10 +72,7 @@ export const AgentAction = Schema.Union([
   Message.ChangedEditHistoryName,
   Message.ConfirmedEditHistoryName,
   Message.CanceledEditHistoryName,
-  Message.ClickedHistoryTask,
-  Message.DismissedHistoryTask,
   Message.ClickedExportHistoryCsv,
-  Message.DismissedCsvError,
 ]);
 export type AgentAction = typeof AgentAction.Type;
 
@@ -155,15 +149,16 @@ export const actionError = (model: Model, action: AgentAction): string | null =>
   }
 };
 
-export const AgentReply = Schema.Struct({
+export const AgentPortReply = Schema.Struct({
   requestId: Schema.String,
-  // The complete current application model is JSON data, including loaded field values.
+  // Internal port data; the connection validates and projects it before returning tool output.
   state: Schema.Unknown,
-  changed: Schema.Boolean,
-  pendingCommands: Schema.Number,
   error: Schema.NullOr(Schema.String),
 });
-export type AgentReply = typeof AgentReply.Type;
+export type AgentPortReply = typeof AgentPortReply.Type;
+
+export const AgentResult = Schema.Struct({ state: AgentState });
+export type AgentResult = typeof AgentResult.Type;
 
 export const agentPorts = {
   inbound: {
@@ -175,52 +170,76 @@ export const agentPorts = {
       }),
     ),
   },
-  outbound: { agentReply: Port.outbound(AgentReply) },
+  outbound: { agentReply: Port.outbound(AgentPortReply) },
 };
 
+type ConfirmationTarget = { readonly id: string; readonly name: string };
+
+/**
+ * Destructive agent confirmation policy. Add confirmed actions here so prompting,
+ * target snapshots, stale-approval checks, and UI-originated invalidation stay aligned.
+ */
+const confirmedActions = [
+  {
+    tag: "ConfirmedDeleteTemplate",
+    target: (model: Model) => model.pendingDelete,
+    // Re-requesting the same target must also invalidate an approval (A→A and A→B→A).
+    invalidatedBy: ["RequestedDeleteTemplate"],
+  },
+  {
+    tag: "ConfirmedHistoryDelete",
+    target: (model: Model) =>
+      model.pendingHistoryDelete && {
+        id: model.pendingHistoryDelete.id,
+        name: model.pendingHistoryDelete.displayName,
+      },
+    invalidatedBy: ["RequestedHistoryDelete"],
+  },
+  {
+    tag: "ConfirmedDiscardSession",
+    target: (model: Model) =>
+      model.pendingDiscardSession && model.activeSession
+        ? { id: model.activeSession.id, name: model.activeSession.sessionName }
+        : null,
+    invalidatedBy: [],
+  },
+  {
+    tag: "ConfirmedEndSession",
+    target: (model: Model) =>
+      model.runner?.showEndConfirm
+        ? { id: model.runner.sessionId, name: model.runner.sessionName }
+        : null,
+    invalidatedBy: [],
+  },
+  {
+    tag: "ConfirmedDiscard",
+    target: (model: Model) =>
+      model.editor?.pendingDiscard
+        ? { id: model.editor.id, name: model.editor.name, draft: model.editor }
+        : null,
+    invalidatedBy: [],
+  },
+] as const satisfies ReadonlyArray<{
+  tag: AgentAction["_tag"];
+  target: (model: Model) => ConfirmationTarget | null;
+  invalidatedBy: ReadonlyArray<AgentAction["_tag"]>;
+}>;
+
 export const requiresConfirmation = (action: AgentAction) =>
-  [
-    "ConfirmedDeleteTemplate",
-    "ConfirmedDiscard",
-    "ConfirmedDiscardSession",
-    "ConfirmedHistoryDelete",
-    "ConfirmedEndSession",
-  ].includes(action._tag);
+  confirmedActions.some(({ tag }) => tag === action._tag);
 
 /** Shared by the prompt and the atomic update-loop consent check. */
 export const confirmationTarget = (model: Model, action: AgentAction) => {
-  switch (action._tag) {
-    case "ConfirmedDeleteTemplate":
-      return model.pendingDelete;
-    case "ConfirmedHistoryDelete":
-      return (
-        model.pendingHistoryDelete && {
-          id: model.pendingHistoryDelete.id,
-          name: model.pendingHistoryDelete.displayName,
-        }
-      );
-    case "ConfirmedDiscardSession":
-      return model.pendingDiscardSession && model.activeSession
-        ? { id: model.activeSession.id, name: model.activeSession.sessionName }
-        : null;
-    case "ConfirmedEndSession":
-      return model.runner?.showEndConfirm
-        ? { id: model.runner.sessionId, name: model.runner.sessionName }
-        : null;
-    case "ConfirmedDiscard":
-      return model.editor?.pendingDiscard
-        ? { id: model.editor.id, name: model.editor.name, draft: model.editor }
-        : null;
-    default:
-      return null;
-  }
+  const metadata = confirmedActions.find(({ tag }) => tag === action._tag);
+  return metadata?.target(model) ?? null;
 };
 
 export const confirmationState = (model: Model) =>
-  JSON.stringify([
-    confirmationTarget(model, { _tag: "ConfirmedDeleteTemplate" }),
-    confirmationTarget(model, { _tag: "ConfirmedHistoryDelete" }),
-    confirmationTarget(model, { _tag: "ConfirmedDiscardSession" }),
-    confirmationTarget(model, { _tag: "ConfirmedEndSession" }),
-    confirmationTarget(model, { _tag: "ConfirmedDiscard" }),
-  ]);
+  JSON.stringify(confirmedActions.map(({ target }) => target(model)));
+
+/** Events that consume approval even when their resulting target snapshot is unchanged. */
+export const invalidatesAgentConfirmation = (action: { readonly _tag: string }) =>
+  confirmedActions.some(
+    ({ tag, invalidatedBy }) =>
+      tag === action._tag || invalidatedBy.some((invalidator) => invalidator === action._tag),
+  );
