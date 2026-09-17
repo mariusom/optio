@@ -52,12 +52,10 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
             ? [NavigateInternal({ url: `#${historyRouter()}` })]
             : [],
       };
-    // Preserve edit state if already editing? keep showEdit flag
     return {
       model: {
         ...model,
         selectedHistorySession: detail,
-        // If entering detail first time, seed edit input with sessionName
         editHistoryNameInput:
           model.selectedHistorySession === null || model.selectedHistorySession.id !== detail.id
             ? detail.sessionName
