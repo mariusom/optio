@@ -36,6 +36,8 @@ export const activeTab = (route: Route): TabTag => {
     case "SessionDetail":
       return "HistoryTab";
     case "SettingsTab":
+    case "AgentHelp":
+    case "About":
       return "SettingsTab";
     case "StartTab":
     case "SessionRunner":

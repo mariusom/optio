@@ -20,6 +20,7 @@ import { changeAccent, changeFont, changeIconLibrary, changeTheme } from "./we/b
 import { FoldcnStyle } from "./we/style";
 import { changeStyle } from "./we/browserTheme";
 import { settingsPage } from "./we/features/settings/view";
+import { infoPage, templatePrompt } from "./we/features/settings/infoView";
 import { getStore } from "./livestore/client";
 import { FieldDef, FieldKind, tables } from "./livestore/schema";
 import { generateSessionName } from "./we/random-name";
@@ -224,6 +225,7 @@ export const Model = S.Struct({
   /** Where an internal link wanted to go while the editor had unsaved changes. */
   pendingNavigationUrl: S.Union([S.Null, S.String]),
   csvError: S.Union([S.Null, S.String]),
+  promptCopyStatus: S.Literals(["idle", "copying", "copied", "failed"]),
 });
 export type Model = typeof Model.Type;
 
@@ -265,6 +267,7 @@ const initialModel = (route: Route): Model => ({
   historyActionsFor: null,
   pendingNavigationUrl: null,
   csvError: null,
+  promptCopyStatus: "idle",
 });
 
 // INIT — first paint parses the URL and seeds sample content if the store is
@@ -328,6 +331,25 @@ const NavigateExternal = Command.define("NavigateExternal", {
   args: { href: S.String },
   messages: [Message.Navigated],
   execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
+});
+
+const CopyTemplatePrompt = Command.define("CopyTemplatePrompt", {
+  args: {},
+  messages: [Message.TemplatePromptCopyFinished],
+  execute: () =>
+    Effect.tryPromise(() => navigator.clipboard.writeText(templatePrompt)).pipe(
+      Effect.match({
+        onSuccess: () => Message.TemplatePromptCopyFinished({ copied: true }),
+        onFailure: () => Message.TemplatePromptCopyFinished({ copied: false }),
+      }),
+    ),
+});
+
+const ResetTemplatePromptCopy = Command.define("ResetTemplatePromptCopy", {
+  args: {},
+  messages: [Message.ResetTemplatePromptCopy],
+  execute: () =>
+    Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
 });
 
 // ── Runner state machine bridge (effect-machine → FoldKit) ───────────────
@@ -544,6 +566,15 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
       return { model, commands: [NavigateInternal({ url })] };
     },
     Navigated: () => ({ model }),
+    ClickedCopyTemplatePrompt: () =>
+      model.promptCopyStatus === "copying" || model.promptCopyStatus === "copied"
+        ? { model }
+        : { model: { ...model, promptCopyStatus: "copying" }, commands: [CopyTemplatePrompt({})] },
+    TemplatePromptCopyFinished: ({ copied }) => ({
+      model: { ...model, promptCopyStatus: copied ? "copied" : "failed" },
+      commands: copied ? [ResetTemplatePromptCopy({})] : [],
+    }),
+    ResetTemplatePromptCopy: () => ({ model: { ...model, promptCopyStatus: "idle" } }),
 
     // ── Templates ──────────────────────────────────────────────────────────
     GotTemplates: ({ templates }) => {
@@ -1925,6 +1956,39 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
         ),
     },
   ),
+  helpPageEntry: entry(
+    { page: S.Union([S.Null, S.Literals(["AgentHelp", "About"])]) },
+    {
+      modelToDependencies: (model) => ({
+        page:
+          model.route._tag === "AgentHelp" || model.route._tag === "About"
+            ? model.route._tag
+            : null,
+      }),
+      dependenciesToStream: ({ page }) => {
+        if (page === null) return Stream.empty;
+        return Stream.fromEffect(
+          Effect.callback<void>((resume) => {
+            // Wait for the routed view to be patched, then reset the actual scroll container.
+            let frame = requestAnimationFrame(() => {
+              frame = requestAnimationFrame(() => {
+                const content = document.querySelector(`[data-help-page="${page}"]`);
+                const main = content?.closest("main");
+                const heading = content?.querySelector("h1");
+                if (main && heading) {
+                  main.scrollTop = 0;
+                  heading.tabIndex = -1;
+                  heading.focus({ preventScroll: true });
+                }
+                resume(Effect.void);
+              });
+            });
+            return Effect.sync(() => cancelAnimationFrame(frame));
+          }),
+        ).pipe(Stream.drain);
+      },
+    },
+  ),
   editorDraftFocus: entry(
     { draftId: S.Union([S.Null, S.String]) },
     {
@@ -1995,6 +2059,10 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
 
 const pageTitle = (route: Route): string => {
   switch (route._tag) {
+    case "AgentHelp":
+      return "Use with AI";
+    case "About":
+      return "About Optio";
     case "SettingsTab":
       return "Settings";
     case "StartTab":
@@ -2015,6 +2083,9 @@ const pageTitle = (route: Route): string => {
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   if (model.showCreate) return templateEditorPage(model, h);
   switch (model.route._tag) {
+    case "AgentHelp":
+    case "About":
+      return infoPage(model.route._tag, h, model.promptCopyStatus);
     case "SettingsTab":
       return settingsPage(
         model.theme,
@@ -2074,6 +2145,8 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>) => {
     case "HistoryTab":
     case "SettingsTab":
       return pageHeader({ title: pageTitle(model.route) }, h);
+    case "AgentHelp":
+    case "About":
     case "SessionRunner":
     case "TemplateEditor":
     case "SessionDetail":

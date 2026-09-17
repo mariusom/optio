@@ -16,6 +16,7 @@ import { historyPage } from "./features/history/historyView";
 import { sessionDetailPage } from "./features/history/sessionDetailView";
 import { startView } from "./features/session/startView";
 import { settingsPage } from "./features/settings/view";
+import { infoPage } from "./features/settings/infoView";
 import { foldcnStyles, setCurrentStyle } from "./style";
 import { setCurrentIconLibrary } from "../lib/iconPreference";
 import {
@@ -145,6 +146,104 @@ afterEach(async () => {
 });
 
 describe("persistent presentation regressions", () => {
+  it("copies the public template prompt and announces success before resetting", async () => {
+    const write = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    await mount((model, h) => infoPage("AgentHelp", h, model.promptCopyStatus));
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
+    await expect.element(page.getByRole("button", { name: "Copied", exact: true })).toBeDisabled();
+    expect(write).toHaveBeenCalledExactlyOnceWith(
+      "Help me create a template for Optio: https://mariusom.github.io/optio/\nRead its guide: https://mariusom.github.io/optio/agent-guide.md\n\nI want to study [describe the work]. Suggest questions and choices, then review the template with me. If you have an authorized WebMCP connection to my Optio tab, create it after I approve; otherwise, give me the questions to add manually.",
+    );
+    await expect.element(page.getByRole("status")).toHaveTextContent("Prompt copied to clipboard.");
+    await expect
+      .element(page.getByRole("button", { name: "Copy prompt", exact: true }))
+      .toBeEnabled();
+  });
+
+  it("keeps the prompt selectable and offers retry when clipboard access fails", async () => {
+    const write = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockRejectedValue(new Error("Permission denied"));
+    await mount((model, h) => infoPage("AgentHelp", h, model.promptCopyStatus));
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
+    await expect
+      .element(page.getByRole("status"))
+      .toHaveTextContent(
+        "Couldn’t copy. Select the prompt above and copy it manually, or try again.",
+      );
+    await expect
+      .element(page.getByText("Help me create a template for Optio:", { exact: false }))
+      .toBeVisible();
+    write.mockResolvedValue();
+    await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
+    await expect.element(page.getByRole("button", { name: "Copied", exact: true })).toBeVisible();
+  });
+
+  it("keeps help links behind a keyboard-operable disclosure", async () => {
+    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h).body);
+    const about = page.getByRole("link", { name: "About Optio", exact: true, includeHidden: true });
+    await expect.element(about).not.toBeVisible();
+    const summary = document.querySelector("summary")!;
+    summary.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(about).toBeVisible();
+    await expect
+      .element(page.getByRole("link", { name: "Use with AI", exact: true }))
+      .toHaveAttribute("href", "#/use-with-ai");
+    await expect.element(about).toHaveAttribute("href", "#/about");
+    expect(document.querySelector("details [data-slot='grouped-list']")).toBeNull();
+  });
+
+  it("leads with template help and hides technical setup until requested", async () => {
+    await mount((_, h) => infoPage("AgentHelp", h));
+    await expect
+      .element(page.getByRole("heading", { name: "Create a template with AI" }))
+      .toBeVisible();
+    const guide = page.getByRole("link", { name: "Agent guide", includeHidden: true });
+    await expect.element(guide).not.toBeVisible();
+    document.querySelector("summary")!.focus();
+    await userEvent.keyboard("{Enter}");
+    await expect.element(guide).toBeVisible();
+    await expect
+      .element(page.getByText("WebMCP is not a remote MCP server.", { exact: false }))
+      .toBeVisible();
+    const sections = Array.from(document.querySelectorAll("details section"));
+    for (const section of sections) {
+      const previous = section.previousElementSibling!;
+      expect(
+        section.getBoundingClientRect().top - previous.getBoundingClientRect().bottom,
+      ).toBeGreaterThanOrEqual(24);
+    }
+    await expect.element(guide).toHaveAttribute("target", "_blank");
+  });
+
+  it.each([false, true])(
+    "only offers template AI help outside an active session (active=%s)",
+    async (active) => {
+      await mount((model, h) =>
+        startView(
+          {
+            ...model,
+            activeSession: active
+              ? {
+                  id: "session-1",
+                  templateId: template.id,
+                  templateName: template.name,
+                  sessionName: "Study",
+                  startedAt: now,
+                  completedCount: 0,
+                }
+              : null,
+          },
+          h,
+        ),
+      );
+      const link = page.getByRole("link", { name: "Create templates with AI" });
+      if (active) await expect.element(link).not.toBeInTheDocument();
+      else await expect.element(link).toHaveAttribute("href", "#/use-with-ai");
+    },
+  );
+
   it.each([600, 1224])(
     "keeps the task answer card ring inside the sheet scrollport at %ipx",
     async (height) => {

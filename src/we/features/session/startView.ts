@@ -295,6 +295,22 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
               model.sessionNameInput,
               h,
             ),
+      ...(model.activeSession === null
+        ? [
+            h.a(
+              [
+                h.Class(
+                  buttonClass({
+                    variant: "link",
+                    className: "min-h-11 self-center text-muted-foreground",
+                  }),
+                ),
+                h.Href(hrefFor({ _tag: "AgentHelp" })),
+              ],
+              ["Create templates with AI"],
+            ),
+          ]
+        : []),
     ],
     h,
   );

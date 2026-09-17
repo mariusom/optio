@@ -29,6 +29,7 @@ describe("application wiring", () => {
         "currentTaskScroll",
         "editorDraftFocus",
         "focusedSectionScroll",
+        "helpPageEntry",
         "history",
         "historyDetail",
         "runner",

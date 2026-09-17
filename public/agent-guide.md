@@ -17,6 +17,13 @@ Export important results; do not promise permanent storage.
 
 ## Optional assistant tools
 
+User-facing setup is in [Use with AI](https://mariusom.github.io/optio/#/use-with-ai),
+also accessible from Settings. WebMCP is not a remote MCP server: Claude,
+ChatGPT or Gemini needs a browser integration that explicitly supports WebMCP
+in this tab. A normal chat or remote MCP connector alone cannot access it.
+Google's [WebMCP inspector](https://developer.chrome.com/docs/ai/webmcp) can test
+tools using Gemini; that is separate from Gemini chat and Gemini in Chrome.
+
 WebMCP is experimental. Optio uses `document.modelContext` in browsers supporting
 that API. No polyfill is bundled. A scanner testing only `navigator.modelContext`
 or ordinary page load will not detect the opt-in registration.

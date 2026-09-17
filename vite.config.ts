@@ -63,7 +63,9 @@ export default defineConfig(({ command, mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ["**/*.{js,css,html,svg,wasm}"],
+          globPatterns: ["**/*.{js,css,html,svg,wasm,md,txt}"],
+          // Public documents are resources, not hash-routed app pages.
+          navigateFallbackDenylist: [/\.(?:md|txt)(?:\?|$)/],
         },
       }),
     ],

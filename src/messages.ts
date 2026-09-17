@@ -41,6 +41,9 @@ export const Message = defineMessageUnion({
   ChangedAccentDraft: { colour: S.String },
   ConfirmedAccentPicker: {},
   CanceledAccentPicker: {},
+  ClickedCopyTemplatePrompt: {},
+  TemplatePromptCopyFinished: { copied: S.Boolean },
+  ResetTemplatePromptCopy: {},
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: S.Array(TemplateSummary) },
