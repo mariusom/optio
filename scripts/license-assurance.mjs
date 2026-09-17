@@ -108,7 +108,7 @@ export function collectLicenseTexts(entry, version, options = {}) {
       isFile(resolve(installedPath, name)),
   );
   const files = names
-    .sort((a, b) => a.localeCompare(b))
+    .toSorted((a, b) => a.localeCompare(b))
     .map((name) => ({
       provenance: `installed package file ${name}`,
       text: normalizeText(read(resolve(installedPath, name), "utf8")),
@@ -154,7 +154,7 @@ export function normalizeReport(report, role, options = {}) {
           role,
           ...(entry.homepage ? { homepage: entry.homepage } : {}),
           licenseTexts: texts.map(({ provenance, sha256: hash }) => ({ provenance, sha256: hash })),
-          _texts: texts,
+          texts,
         });
       }
     }
@@ -162,7 +162,7 @@ export function normalizeReport(report, role, options = {}) {
   return packages;
 }
 
-function report(prod) {
+function readLicenseReport(prod) {
   const args = ["licenses", "list", "--json"];
   if (prod) args.push("--prod");
   return JSON.parse(execFileSync("pnpm", args, { cwd: root, encoding: "utf8" }));
@@ -186,7 +186,7 @@ export function buildInventory(prodReport, allReport, options = {}) {
     "build-time distribution contributor",
     options,
   ).filter(({ name, version }) => !runtimeKeys.has(`${name}@${version}`));
-  const packages = [...runtime, ...contributors].sort(
+  const packages = [...runtime, ...contributors].toSorted(
     (a, b) =>
       a.name.localeCompare(b.name) ||
       a.version.localeCompare(b.version) ||
@@ -217,9 +217,9 @@ export function renderArtifacts(prodReport, allReport, options = {}) {
   ];
   for (const pkg of built.packages) {
     notices.push(
-      `${pkg.name}@${pkg.version}\n${"-".repeat(pkg.name.length + pkg.version.length + 1)}\nDeclared license: ${pkg.license}\nRole: ${pkg.role}\n\n${pkg._texts.map(({ provenance, sha256: hash, text }) => `Source: ${provenance}\nSHA-256: ${hash}\n\n${text}`).join("\n\n")}`,
+      `${pkg.name}@${pkg.version}\n${"-".repeat(pkg.name.length + pkg.version.length + 1)}\nDeclared license: ${pkg.license}\nRole: ${pkg.role}\n\n${pkg.texts.map(({ provenance, sha256: hash, text }) => `Source: ${provenance}\nSHA-256: ${hash}\n\n${text}`).join("\n\n")}`,
     );
-    delete pkg._texts;
+    delete pkg.texts;
   }
   return {
     inventory: `${JSON.stringify(built, null, 2)}\n`,
@@ -229,7 +229,7 @@ export function renderArtifacts(prodReport, allReport, options = {}) {
 
 function main() {
   const check = process.argv.includes("--check");
-  const output = renderArtifacts(report(true), report(false));
+  const output = renderArtifacts(readLicenseReport(true), readLicenseReport(false));
   const files = [
     [inventoryPath, output.inventory],
     [noticesPath, output.notices],

@@ -1,40 +1,34 @@
 # Contributing to Optio
 
-Bug reports, documentation improvements and focused pull requests are welcome.
-For larger changes, open an issue first so we can agree on the intended behavior.
-Use synthetic data in issues, screenshots and tests; never upload real study
-records, credentials or someone else's personal information.
+Optio is for recording observations while you work and reviewing where the time
+went. Bug reports, clearer documentation and focused pull requests are welcome.
+For larger changes, open an issue so we can discuss how they fit.
 
-## Before submitting
+## Making a change
 
-- Work on a feature branch and open a pull request targeting `main`; do not
-  push changes directly to `main`. Keep the branch up to date and wait for the
-  required `validate` check to pass before merging. Merges deploy automatically.
-- Follow the setup and checks in [development](docs/development.md), and the
-  applicable architecture and interface guidance linked there.
-- Describe the problem, the intended result, and how you verified it. Include
-  screenshots for visual changes and note browser/device coverage honestly.
-- Keep changes focused. Preserve offline use, accessibility, existing records,
-  and the human confirmation required for destructive actions.
-- For dependency changes, regenerate the license artifacts with
-  `pnpm licenses:generate`, review the changes and run `pnpm licenses:check`.
-  Do not approve unfamiliar licenses just to make CI pass.
+1. Follow [development](docs/development.md) to run the app and its checks.
+   [Architecture](docs/architecture.md) explains where behavior lives;
+   [interface conventions](docs/interface.md) covers UI changes.
+2. Work on a branch and open a PR targeting `main`. Describe the problem, your
+   change and how you tested it. Screenshots help with visual changes.
+3. Keep the branch up to date and wait for `validate` to pass before merging.
+   Merges deploy automatically, so changes go straight to the live app.
 
-## Rights and attribution
+Use made-up study data in reports, tests and screenshots. When changing recording
+or storage, check that offline use and existing records still work. UI changes
+should remain keyboard-accessible and ask before deleting data.
 
-Submit only work you have the right to contribute under the project's
-[MIT license](LICENSE). Identify copied or adapted code and assets with their
-source, version/revision and license. Preserve copyright and notice text.
-Third-party code retains its own license; this project does not relicense it.
-Follow the same rules for AI-assisted contributions and verify their behavior
-and provenance yourself. Do not imply endorsement by upstream authors.
+For dependency changes, run `pnpm licenses:generate`, review the notices and run
+`pnpm licenses:check`. See [dependency guidance](docs/development.md#dependencies-and-generated-assets)
+for version constraints and generated files.
 
-No CLA or mandatory DCO sign-off is currently required. A commit signature
-verifies identity/provenance, not that the submitted work is legally cleared.
+## Sharing code and reporting problems
 
-## Community and security
+Please contribute original work you have the right to license under
+[MIT](LICENSE). Copied or adapted code and assets retain their own licenses;
+include their source, version/revision and required notices. Review AI-assisted
+work for behavior and provenance too. No CLA or DCO sign-off is required.
 
-Follow the [code of conduct](CODE_OF_CONDUCT.md). Use the
-[security policy](SECURITY.md) for vulnerabilities, not a public exploit report.
-Maintainers review contributions as time permits; submitting a change does not
-guarantee acceptance or a response deadline.
+Use [private reporting](SECURITY.md) for vulnerabilities and public issues for
+other bugs. Please follow the [code of conduct](CODE_OF_CONDUCT.md); this is a
+volunteer project, so reviews may take time.

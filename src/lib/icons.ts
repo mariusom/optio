@@ -2,25 +2,6 @@ import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import type { IconNode, SVGProps } from "lucide";
 import { iconNodeForCurrentLibrary, type HugeIconNode } from "./iconPreference";
 
-/**
- * Render a lucide icon as Foldkit virtual DOM.
- *
- * Lucide ships each icon as a node tree: `[["path", { d: "..." }], ...]`.
- * This renders that tree with the `h` builder, so icons are first-class
- * Foldkit VNodes with no string parsing involved.
- *
- * ```ts
- * import { icon } from '@foldcn/registry/styles/default/lib/icons'
- * import { ChevronDown } from 'lucide'
- *
- * // Default size (size-4 shrink-0)
- * icon(h, ChevronDown)
- *
- * // Custom size
- * icon(h, ChevronDown, 'size-3')
- * ```
- */
-
 const svgElement =
   <M>(tag: string, h: HtmlBuilder<M>) =>
   (attributes: ReadonlyArray<Attribute<M> | ChildAttribute>): Html => {
