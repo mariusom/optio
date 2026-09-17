@@ -77,14 +77,18 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
+  FoldKit 0.159.0 and its Vite plugin 0.21.0 are the newest releases compatible
+  with effect-machine 0.37.0's Effect rc.112 requirement. FoldKit 0.160.0 needs
+  rc.115; newer `@effect/vitest` releases need Vitest 5, while Vite+ 0.3.2
+  still bundles Vitest 4.1.11. Upgrade these groups together when peers align.
 - The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
   protocol expected by this Effect release. Remove it only when an upstream
   adapter includes the codec and the production storage journey passes.
 - The scoped Nano ID override removes known advisories in LiveStore's pinned
   version. Reassess it when updating LiveStore. Keep the 24-hour release-age
   guard; do not bypass it for routine dependency updates.
-- pnpm 12.4.0 is intentionally pinned from its `next-12` release track. Use the
-  pinned version for its two-document lockfile. Verify external scanners and
+- pnpm 12.4.2 is pinned. Use the pinned version for its two-document lockfile.
+  Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.
 - Dependabot proposes grouped lockfile and GitHub Actions updates. Exact
   manifest pins and workspace overrides need deliberate coordinated updates.
