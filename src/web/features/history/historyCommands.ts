@@ -137,8 +137,11 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
           endedAt,
           sections: secs.map((s) => ({
             sectionName: s.sectionName,
-            // Untouched toggles may be stored empty, but represent No in the UI.
-            value: s.sectionType === "boolean" ? String(isBooleanTrue(s.value)) : s.value,
+            // Keep unanswered distinct from an explicit No.
+            value:
+              s.sectionType === "boolean" && s.value !== ""
+                ? String(isBooleanTrue(s.value))
+                : s.value,
           })),
         };
       });

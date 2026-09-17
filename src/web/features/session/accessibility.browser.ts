@@ -180,14 +180,48 @@ afterEach(() => {
 });
 
 describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
-  it("uses unique IDs, visible scroll targets and correctly associated switch labels", async () => {
+  it.each([true, false])(
+    "wraps long labels and focuses their input (sidebar %s)",
+    async (showSidebar) => {
+      const name = "ManufacturingWorkstationIdentificationNumber";
+      const task = runnerFixture("Observe").tasks[0]!;
+      await mount(width, "Observe", {
+        showSidebar,
+        tasks: [
+          {
+            ...task,
+            sections: task.sections.map((section) =>
+              section.id === "notes" ? { ...section, name, isRequired: true } : section,
+            ),
+          },
+        ],
+      });
+      const scope = width < 768 ? "mobile" : "tablet";
+      const input = document.querySelector<HTMLInputElement>(`#${scope}-answer-notes`)!;
+      const label = document.querySelector<HTMLLabelElement>(`label[for="${input.id}"]`)!;
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const bounds = label.getBoundingClientRect();
+      for (const rect of range.getClientRects()) {
+        expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1);
+        expect(rect.right).toBeLessThanOrEqual(bounds.right + 1);
+      }
+      expect(bounds.right).toBeLessThan(input.getBoundingClientRect().left);
+      expect(input.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await userEvent.click(label);
+      await expect.element(page.getByRole("textbox", { name, exact: true })).toHaveFocus();
+      expect(document.activeElement).toBe(input);
+    },
+  );
+
+  it("uses unique IDs, visible scroll targets and labelled Yes/No states", async () => {
     const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
     const scrollTargets = () => scroll.mock.contexts.map((element) => (element as Element).id);
     await mount(width);
     const scope = width < 768 ? "mobile" : "tablet";
     await expect.poll(scrollTargets).toContain(`${scope}-formTop`);
     const ids = [...document.querySelectorAll("[id]")].map((element) => element.id);
-    expect(ids).toContain(`${scope}-runner-toggle-enabled-label`);
+    expect(ids).toContain(`${scope}-enabled`);
     expect(new Set(ids).size).toBe(ids.length);
     await page
       .getByRole("radiogroup", { name: "Activity" })
@@ -195,22 +229,15 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
       .click();
     await expect.poll(scrollTargets).toContain(`${scope}-notes`);
     expect(scrollTargets().every((id) => id.startsWith(`${scope}-`))).toBe(true);
-    const label = document.querySelector<HTMLLabelElement>(
-      `#${scope}-runner-toggle-enabled-label`,
-    )!;
-    const control = document.querySelector<HTMLButtonElement>(
-      `[role="switch"][aria-labelledby="${label.id}"]`,
-    )!;
-    expect(control).not.toBeNull();
-    expect(label.textContent).toBe("Enabled flag");
-    label.click();
+    const group = page.getByRole("radiogroup", { name: "Enabled flag" });
+    await group.getByText("Yes", { exact: true }).click();
     await expect.poll(() => changes.at(-1)).toEqual({ taskFieldId: "enabled", value: "true" });
-    await expect.element(page.getByRole("switch", { name: "Enabled flag" })).toBeChecked();
-    control.focus();
-    await userEvent.keyboard(" ");
-    await expect.element(page.getByRole("switch", { name: "Enabled flag" })).not.toBeChecked();
-    expect(control.getBoundingClientRect().height).toBe(56);
-    expect(control.getBoundingClientRect().width).toBeGreaterThan(250);
+    await expect.element(group.getByRole("radio", { name: "Yes", exact: true })).toBeChecked();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect.element(group.getByRole("radio", { name: "No", exact: true })).toBeChecked();
+    await userEvent.keyboard("{ArrowRight}");
+    await expect.element(group.getByRole("radio", { name: "Unanswered" })).toBeChecked();
+    await expect.poll(() => changes.at(-1)).toEqual({ taskFieldId: "enabled", value: "" });
   });
 
   it.each(["Assist", ""])(
@@ -252,7 +279,7 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
           1,
         );
         // The hidden responsive copy must not uncheck the visible copy.
-        expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(2);
+        expect(document.querySelectorAll('input[name$="-activity"]:checked')).toHaveLength(2);
       }
       await userEvent.tab();
       await expect.element(page.getByRole("textbox", { name: "Notes" })).toHaveFocus();

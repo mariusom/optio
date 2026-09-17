@@ -4,7 +4,7 @@ import { Command } from "foldkit";
 import { Message } from "../../../messages";
 import { friendlyFailure } from "../../errors";
 import { getStore } from "../../../livestore/client";
-import { events, tables, type FieldDef } from "../../../livestore/schema";
+import { events, tables, FieldDef } from "../../../livestore/schema";
 
 export const SaveTemplate = Command.define("SaveTemplate", {
   args: {
@@ -12,18 +12,7 @@ export const SaveTemplate = Command.define("SaveTemplate", {
     name: S.String,
     isDefault: S.Boolean,
     isNew: S.optionalKey(S.Boolean),
-    fields: S.Array(
-      S.Struct({
-        id: S.String,
-        name: S.String,
-        kind: S.Literals(["radio", "checkbox", "textInput", "textArea", "boolean"]),
-        isRequired: S.Boolean,
-        defaultValue: S.String,
-        sortOrder: S.Number,
-        options: S.Array(S.String),
-        exclusiveOptions: S.Array(S.String),
-      }),
-    ),
+    fields: S.Array(FieldDef),
   },
   messages: [Message.TemplateSaved, Message.FailedTemplateOp],
   execute: ({ id, name, isDefault, fields, isNew }) =>

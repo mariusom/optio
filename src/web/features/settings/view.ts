@@ -7,6 +7,7 @@ import { input } from "@/components/ui/input";
 import { Message } from "../../../messages";
 import { HexColour, type Accent, type Font, type IconLibrary, type Theme } from "../../theme";
 import type { FoldcnStyle } from "../../style";
+import { hrefFor } from "../../routes";
 
 const THEMES: ReadonlyArray<{ value: Theme; label: string }> = [
   { value: "light", label: "Light" },
@@ -309,6 +310,26 @@ export const settingsPage = (
           ),
         ],
         h,
+      ),
+      h.details(
+        [h.Class("rounded-lg border border-border")],
+        [
+          h.summary(
+            [
+              h.Class(
+                "min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+              ),
+            ],
+            ["Help & about"],
+          ),
+          h.div(
+            [h.Class("border-t border-border divide-y divide-border")],
+            [
+              row({ title: "Use with AI", href: hrefFor({ _tag: "AgentHelp" }) }, h),
+              row({ title: "About Optio", href: hrefFor({ _tag: "About" }) }, h),
+            ],
+          ),
+        ],
       ),
     ],
     h,

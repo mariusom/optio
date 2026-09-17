@@ -42,3 +42,25 @@ export const scrollToCurrentTask = (taskId: string | null): Stream.Stream<never>
     });
   });
 };
+
+export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream<never> => {
+  if (page === null) return Stream.empty;
+  return Stream.fromEffect(
+    Effect.callback<void>((resume) => {
+      let frame = requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
+          const content = document.querySelector(`[data-help-page="${page}"]`);
+          const main = content?.closest("main");
+          const heading = content?.querySelector("h1");
+          if (main && heading) {
+            main.scrollTop = 0;
+            heading.tabIndex = -1;
+            heading.focus({ preventScroll: true });
+          }
+          resume(Effect.void);
+        });
+      });
+      return Effect.sync(() => cancelAnimationFrame(frame));
+    }),
+  ).pipe(Stream.drain);
+};

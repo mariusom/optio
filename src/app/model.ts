@@ -139,6 +139,7 @@ export const Model = S.Struct({
   /** Where an internal link wanted to go while the editor had unsaved changes. */
   pendingNavigationUrl: S.Union([S.Null, S.String]),
   csvError: S.Union([S.Null, S.String]),
+  promptCopyStatus: S.Literals(["idle", "copying", "copied", "failed"]),
 });
 export type Model = typeof Model.Type;
 
@@ -180,6 +181,7 @@ const initialModel = (route: Route): Model => ({
   historyActionsFor: null,
   pendingNavigationUrl: null,
   csvError: null,
+  promptCopyStatus: "idle",
 });
 
 export { initialModel };

@@ -143,12 +143,18 @@ describe("sampleTemplates", () => {
       "Assembly line",
       "Ward round",
       "Warehouse pick",
+      "Packing measurements",
     ]);
-    expect(sampleTemplates().map((template) => template.isDefault)).toEqual([true, false, false]);
+    expect(sampleTemplates().map((template) => template.isDefault)).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
   });
 
   it("uses every answer type, with one choice that clears the others", () => {
-    for (const template of sampleTemplates()) {
+    for (const template of sampleTemplates().slice(0, 3)) {
       expect(new Set(template.fields.map((f) => f.kind))).toEqual(
         new Set(["radio", "checkbox", "textInput", "textArea", "boolean"]),
       );
@@ -158,6 +164,13 @@ describe("sampleTemplates", () => {
       expect(template.fields.map((f) => f.sortOrder)).toEqual([0, 1, 2, 3, 4, 5]);
       expect(new Set(template.fields.map((f) => f.id)).size).toBe(template.fields.length);
     }
+  });
+
+  it("demonstrates quantitative answers and required unanswered Yes/No", () => {
+    const demo = sampleTemplates().find((t) => t.name === "Packing measurements")!;
+    expect(demo.fields.map((f) => f.kind)).toEqual(["number", "counter", "rating", "boolean"]);
+    expect(demo.fields.map((f) => f.defaultValue)).toEqual(["", "", "", ""]);
+    expect(demo.fields.every((f) => f.isRequired)).toBe(true);
   });
 });
 
@@ -178,13 +191,14 @@ describe("template queries", () => {
     }),
   );
 
-  it.effect("seeds the three sample templates when the app is empty", () =>
+  it.effect("seeds the four sample templates when the app is empty", () =>
     Effect.gen(function* () {
       expect(yield* EnsureTemplatesSeeded({}).effect).toEqual(Message.TemplatesSeededCheck());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Ward round",
         "Warehouse pick",
+        "Packing measurements",
       ]);
     }),
   );
@@ -206,6 +220,7 @@ describe("AddSampleTemplates", () => {
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Warehouse pick",
+        "Packing measurements",
       ]);
       expect(seededTemplates().every((t: { isDefault: boolean }) => !t.isDefault)).toBe(true);
     }),
@@ -224,6 +239,7 @@ describe("AddSampleTemplates", () => {
       expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
       expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
         true,
+        false,
         false,
         false,
       ]);

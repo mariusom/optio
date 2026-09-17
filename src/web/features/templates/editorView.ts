@@ -17,7 +17,7 @@ import {
   rowAction,
   statusPill,
 } from "@/components/app";
-import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
@@ -115,6 +115,7 @@ const nameRow = (editor: Editor, h: HtmlBuilder<Message>) =>
       ]),
     ],
     h,
+    inlineFieldClass,
   );
 
 const defaultRow = (editor: Editor, h: HtmlBuilder<Message>) =>

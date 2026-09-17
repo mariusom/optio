@@ -66,6 +66,8 @@ describe("hrefFor round-trips through parseRoute", () => {
     HistoryTab(),
     TemplatesTab(),
     RouteSchema.SettingsTab(),
+    RouteSchema.AgentHelp(),
+    RouteSchema.About(),
     SessionRunner({ sessionId: "x1" }),
     TemplateEditor({ templateId: "t1" }),
     SessionDetail({ sessionId: "s1" }),

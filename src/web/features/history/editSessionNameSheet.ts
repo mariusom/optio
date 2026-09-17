@@ -2,7 +2,7 @@ import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { sheet } from "@/components/app";
-import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 
@@ -39,7 +39,7 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
     },
     [
       h.div(
-        [h.Class("flex flex-col gap-1.5 py-1")],
+        [h.Class(cn(inlineFieldClass, "py-1"))],
         [
           h.label([h.For("edit-session-name"), h.Class(cn(inputLabelClass))], ["Name"]),
           h.input([
@@ -58,7 +58,7 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
             ),
           ]),
           h.p(
-            [h.Class("text-xs leading-snug text-muted-foreground")],
+            [h.Class("col-span-2 text-xs leading-snug text-muted-foreground")],
             [
               templateName === ""
                 ? "Leave it empty to use the template name."

@@ -12,7 +12,9 @@ import { hasChanges } from "../web/features/templates/editor";
 import {
   NavigateExternal,
   NavigateInternal,
+  CopyTemplatePrompt,
   ReplyToAgent,
+  ResetTemplatePromptCopy,
   SaveAccent,
   SaveFont,
   SaveIconLibrary,
@@ -87,6 +89,9 @@ type ShellHandlers = Pick<
   | "GotRoute"
   | "ClickedLink"
   | "Navigated"
+  | "ClickedCopyTemplatePrompt"
+  | "TemplatePromptCopyFinished"
+  | "ResetTemplatePromptCopy"
 >;
 export const shellHandlers = (model: Model): ShellHandlers => ({
   SelectedTheme: ({ theme }) => ({
@@ -208,4 +213,13 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     return { model, commands: [NavigateInternal({ url })] };
   },
   Navigated: () => ({ model }),
+  ClickedCopyTemplatePrompt: () =>
+    model.promptCopyStatus === "copying" || model.promptCopyStatus === "copied"
+      ? { model }
+      : { model: { ...model, promptCopyStatus: "copying" }, commands: [CopyTemplatePrompt({})] },
+  TemplatePromptCopyFinished: ({ copied }) => ({
+    model: { ...model, promptCopyStatus: copied ? "copied" : "failed" },
+    commands: copied ? [ResetTemplatePromptCopy({})] : [],
+  }),
+  ResetTemplatePromptCopy: () => ({ model: { ...model, promptCopyStatus: "idle" } }),
 });

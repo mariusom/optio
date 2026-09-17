@@ -276,18 +276,15 @@ describe("audited view accessibility", () => {
     }
   });
 
-  it("labels each yes/no answer switch in the live session", () => {
+  it("labels each yes/no answer group and its three states in the live session", () => {
     const all = nodes(formSectionsView(runner.tasks[0]!, h));
-    const switches = all.filter((n) => n.data?.attrs?.role === "switch");
-    expect(switches).toHaveLength(2);
-    for (const control of switches) {
-      const labelId = control.data?.attrs?.["aria-labelledby"];
-      expect(labelId).toEqual(expect.any(String));
-      const labels = all.filter((n) => n.data?.props?.id === labelId);
-      expect(labels).toHaveLength(1);
-      expect(labels[0]?.children).toContainEqual(expect.objectContaining({ text: "Observed" }));
-      expect(control.data?.on?.click).toBeTypeOf("function");
-      expect(control.data?.props?.type).toBe("button");
+    const groups = all.filter(
+      (n) => n.data?.attrs?.role === "radiogroup" && n.data?.attrs?.["aria-label"] === "Observed",
+    );
+    expect(groups).toHaveLength(2);
+    for (const group of groups) {
+      const radios = nodes(group).filter((n) => n.data?.props?.type === "radio");
+      expect(radios.map((n) => n.data?.attrs?.["aria-label"])).toEqual(["Unanswered", "Yes", "No"]);
     }
   });
 });

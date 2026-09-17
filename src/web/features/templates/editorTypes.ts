@@ -6,6 +6,9 @@ export const ANSWER_TYPES: ReadonlyArray<FieldKind> = [
   "radio",
   "checkbox",
   "boolean",
+  "number",
+  "counter",
+  "rating",
 ];
 
 export const answerTypeName = (kind: FieldKind): string => {
@@ -20,6 +23,12 @@ export const answerTypeName = (kind: FieldKind): string => {
       return "Multiple choice";
     case "boolean":
       return "Yes/No";
+    case "number":
+      return "Number";
+    case "counter":
+      return "Counter";
+    case "rating":
+      return "Rating (1–5)";
   }
 };
 

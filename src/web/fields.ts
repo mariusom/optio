@@ -1,6 +1,6 @@
 import type { FieldKind } from "../livestore/schema";
 
-// FieldKind metadata for the five field types.
+// FieldKind metadata shared by templates and observations.
 
 export const FIELD_KINDS: ReadonlyArray<FieldKind> = [
   "radio",
@@ -8,6 +8,9 @@ export const FIELD_KINDS: ReadonlyArray<FieldKind> = [
   "textInput",
   "textArea",
   "boolean",
+  "number",
+  "counter",
+  "rating",
 ];
 
 export const fieldDisplayName = (kind: FieldKind): string => {
@@ -21,11 +24,26 @@ export const fieldDisplayName = (kind: FieldKind): string => {
     case "textArea":
       return "Text Area";
     case "boolean":
-      return "Toggle";
+      return "Yes/No";
+    case "number":
+      return "Number";
+    case "counter":
+      return "Counter";
+    case "rating":
+      return "Rating";
   }
 };
 
-export const supportsRequired = (kind: FieldKind): boolean => kind !== "boolean";
+/** Empty is unanswered; requiredness is checked separately. */
+export const isScalarAnswerValid = (kind: string, value: string): boolean => {
+  if (value === "") return true;
+  if (kind === "boolean") return value === "true" || value === "false";
+  if (kind === "rating") return /^[1-5]$/.test(value);
+  if (kind === "counter") return /^\d+$/.test(value) && Number.isSafeInteger(Number(value));
+  if (kind === "number")
+    return /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(value) && Number.isFinite(Number(value));
+  return true;
+};
 
 export const hasOptions = (kind: FieldKind): boolean => kind === "radio" || kind === "checkbox";
 
@@ -80,4 +98,4 @@ export const toggleCheckboxOption = (
 export const isBooleanTrue = (value: string): boolean => value.trim().toLowerCase() === "true";
 
 export const formatBooleanDisplay = (value: string): string =>
-  isBooleanTrue(value) ? "Yes" : "No";
+  value === "" ? "Unanswered" : isBooleanTrue(value) ? "Yes" : "No";

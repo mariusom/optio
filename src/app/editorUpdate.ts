@@ -17,7 +17,6 @@ import {
   toggleExclusiveOption,
   withKindChanged,
 } from "../web/features/templates/editor";
-import { supportsRequired } from "../web/fields";
 import { templatesRouter } from "../web/routes";
 import { NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
@@ -230,7 +229,6 @@ export const editorFieldHandlers = (model: Model): EditorFieldHandlers => ({
   },
   ToggledFieldRequired: () => {
     if (model.editor === null || model.editor.draft === null) return { model };
-    if (!supportsRequired(model.editor.draft.kind)) return { model };
     return {
       model: {
         ...model,

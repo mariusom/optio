@@ -1,4 +1,4 @@
-import { Effect, Schema as S } from "effect";
+import { Duration, Effect, Schema as S } from "effect";
 import { Command, Navigation, Port, Update } from "foldkit";
 import { Message } from "../messages";
 import { AgentPortReply, agentPorts } from "../agents/actions";
@@ -13,12 +13,14 @@ import { Accent, Font, IconLibrary, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
 import {
   CancelEdit,
+  AdjustCounter,
   EndSession,
   RecordTask,
   SaveEdit,
   SelectTask,
   UpdateFieldValue,
 } from "../web/features/session/runnerCommands";
+import { templatePrompt } from "../web/features/settings/infoView";
 import { planSession, type SessionEmission } from "../machine/session/plan";
 import type { SessionEvent } from "../machine/session/sessionMachine";
 import type { Model } from "./model";
@@ -74,6 +76,25 @@ const NavigateExternal = Command.define("NavigateExternal", {
   execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
 });
 
+const CopyTemplatePrompt = Command.define("CopyTemplatePrompt", {
+  args: {},
+  messages: [Message.TemplatePromptCopyFinished],
+  execute: () =>
+    Effect.tryPromise(() => navigator.clipboard.writeText(templatePrompt)).pipe(
+      Effect.match({
+        onSuccess: () => Message.TemplatePromptCopyFinished({ copied: true }),
+        onFailure: () => Message.TemplatePromptCopyFinished({ copied: false }),
+      }),
+    ),
+});
+
+const ResetTemplatePromptCopy = Command.define("ResetTemplatePromptCopy", {
+  args: {},
+  messages: [Message.ResetTemplatePromptCopy],
+  execute: () =>
+    Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
+});
+
 const ReplyToAgent = Command.define("ReplyToAgent", {
   args: { reply: AgentPortReply },
   messages: [Message.Navigated],
@@ -87,6 +108,8 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
   switch (emission._tag) {
     case "CommitFieldValue":
       return [UpdateFieldValue({ taskFieldId: emission.taskFieldId, value: emission.value })];
+    case "CommitCounterAdjustment":
+      return [AdjustCounter({ taskFieldId: emission.taskFieldId, delta: emission.delta })];
     case "CommitRecord":
       return [RecordTask({ sessionId: emission.sessionId, currentTaskId: emission.taskId })];
     case "CommitSelectTask":
@@ -114,9 +137,11 @@ const applyPlan = (model: Model, event: SessionEvent) => {
 };
 
 export {
+  CopyTemplatePrompt,
   NavigateExternal,
   NavigateInternal,
   ReplyToAgent,
+  ResetTemplatePromptCopy,
   SaveAccent,
   SaveFont,
   SaveIconLibrary,

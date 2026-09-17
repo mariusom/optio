@@ -260,11 +260,17 @@ describe("cancel existing field", () => {
       expect(back.model.editor).toMatchObject({ draft: null, pendingDiscard: false });
       expect(back.model.editor?.fields).toEqual([existing]);
 
-      const toggled = update(opened, Message.ToggledFieldDefaultBoolean()).model;
+      const toggled = update(
+        opened,
+        Message.ChangedFieldDefaultValue({ text: defaultValue === "true" ? "false" : "true" }),
+      ).model;
       expect(update(toggled, Message.ClickedBackFromField()).model.editor?.pendingDiscard).toBe(
         true,
       );
-      const restored = update(toggled, Message.ToggledFieldDefaultBoolean()).model;
+      const restored = update(
+        toggled,
+        Message.ChangedFieldDefaultValue({ text: defaultValue }),
+      ).model;
       expect(update(restored, Message.ClickedBackFromField()).model.editor).toMatchObject({
         draft: null,
         pendingDiscard: false,
@@ -515,7 +521,7 @@ describe("draftToFieldDef normalization", () => {
     }
   });
 
-  it("boolean forces isRequired false and normalizes default", () => {
+  it("boolean preserves requiredness and normalizes invalid defaults to unanswered", () => {
     const draft = {
       ...makeEmptyDraft(0),
       name: "Interrupted",
@@ -524,8 +530,8 @@ describe("draftToFieldDef normalization", () => {
       defaultValue: "maybe",
     };
     const def = draftToFieldDef(draft);
-    expect(def.isRequired).toBe(false);
-    expect(def.defaultValue).toBe("false");
+    expect(def.isRequired).toBe(true);
+    expect(def.defaultValue).toBe("");
     expect(draftToFieldDef({ ...draft, defaultValue: "true" }).defaultValue).toBe("true");
   });
 

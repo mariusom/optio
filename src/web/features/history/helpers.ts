@@ -156,8 +156,8 @@ export const groupByDay = <T extends { readonly startedAt: number }>(
 
 /** A recorded answer in plain language: "Yes"/"No", "A, B", or an em dash. */
 export const formatAnswer = (sectionType: string, value: string): string => {
-  if (sectionType === "boolean") return isBooleanTrue(value) ? "Yes" : "No";
   if (value.trim() === "") return "—";
+  if (sectionType === "boolean") return isBooleanTrue(value) ? "Yes" : "No";
   if (sectionType === "checkbox") {
     const chosen = value
       .split(",")

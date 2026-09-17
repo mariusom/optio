@@ -17,6 +17,8 @@ export const RouteSchema = defineRouteUnion({
   HistoryTab: {},
   TemplatesTab: {},
   SettingsTab: {},
+  AgentHelp: {},
+  About: {},
   SessionRunner: { sessionId: S.String },
   TemplateEditor: { templateId: S.String },
   SessionDetail: { sessionId: S.String },
@@ -31,6 +33,8 @@ export type Route = typeof RouteSchema.Type;
 
 const startRouter = mapTo(StartTab)(literal("start"));
 const settingsRouter = mapTo(RouteSchema.SettingsTab)(literal("settings"));
+const agentHelpRouter = mapTo(RouteSchema.AgentHelp)(literal("use-with-ai"));
+const aboutRouter = mapTo(RouteSchema.About)(literal("about"));
 export const historyRouter = mapTo(HistoryTab)(literal("history"));
 export const templatesRouter = mapTo(TemplatesTab)(literal("templates"));
 export const sessionRunnerRouter = pipe(
@@ -51,6 +55,8 @@ export const sessionDetailRouter = pipe(
 
 const router = oneOf(
   settingsRouter,
+  agentHelpRouter,
+  aboutRouter,
   startRouter,
   historyRouter,
   templatesRouter,
@@ -75,6 +81,10 @@ export const parseRoute = (url: Url): Route =>
 
 export const hrefFor = (route: Route): string => {
   switch (route._tag) {
+    case "AgentHelp":
+      return `#${agentHelpRouter()}`;
+    case "About":
+      return `#${aboutRouter()}`;
     case "SettingsTab":
       return `#${settingsRouter()}`;
     case "HistoryTab":

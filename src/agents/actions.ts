@@ -4,6 +4,7 @@ import { Port } from "foldkit";
 import { Message } from "../messages";
 import { RouteSchema, type Route } from "../web/routes";
 import { FieldKind, type FieldDef } from "../livestore/schema";
+import { isScalarAnswerValid } from "../web/fields";
 import type { Model } from "../main";
 import { AgentState } from "./state";
 
@@ -57,6 +58,7 @@ export const AgentAction = Schema.Union([
   Message.ConfirmedDiscardSession,
   Message.CanceledDiscardSession,
   Message.ChangedFieldValue,
+  Message.AdjustedCounter,
   Message.ClickedRecord,
   Message.ClickedEndSession,
   Message.ConfirmedEndSession,
@@ -145,10 +147,20 @@ const fieldValueError = (
     return "Select the task for editing before changing its fields.";
   if (field.kind === "radio" && !Schema.is(Schema.Literals(["", ...field.options]))(action.value))
     return "Choose a listed radio option.";
-  if (field.kind === "boolean" && !Schema.is(Schema.Literals(["true", "false"]))(action.value))
-    return "Toggle values must be true or false.";
+  if (!isScalarAnswerValid(field.kind, action.value))
+    return "Use a valid answer: a number, a non-negative whole counter, a rating from 1 to 5, or true/false for Yes/No. Empty means unanswered.";
   if (field.kind === "checkbox") return checkboxValueError(field, action.value);
   return null;
+};
+
+const counterError = (model: Model, taskFieldId: string): string | null => {
+  const task = model.runner?.tasks.find(
+    (candidate) => candidate.id === model.runner?.currentTaskId,
+  );
+  const field = task?.sections.find((section) => section.id === taskFieldId);
+  return field?.kind === "counter" && (task?.endDate === null || task?.isBeingEdited)
+    ? null
+    : "Select an editable counter first.";
 };
 
 /** UI controls normally constrain these values/IDs; an external caller must not bypass that. */
@@ -164,6 +176,8 @@ export const actionError = (model: Model, action: AgentAction): string | null =>
       return model.pendingDiscardSession ? null : "Request session discard first.";
     case "ChangedFieldValue":
       return fieldValueError(model, action);
+    case "AdjustedCounter":
+      return counterError(model, action.taskFieldId);
     default:
       return targetError(model, action);
   }

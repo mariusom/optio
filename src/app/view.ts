@@ -4,6 +4,7 @@ import type { Model } from "./model";
 import type { Route } from "../web/routes";
 import { isFullScreenRoute } from "../web/routes";
 import { settingsPage } from "../web/features/settings/view";
+import { infoPage } from "../web/features/settings/infoView";
 import { sessionView } from "../web/features/session/sessionView";
 import { startView } from "../web/features/session/startView";
 import { templateEditorPage } from "../web/features/templates/editorView";
@@ -15,6 +16,10 @@ import { Plus, icon, pageHeader, sidebar, tabBar } from "@/components/app";
 
 const pageTitle = (route: Route): string => {
   switch (route._tag) {
+    case "AgentHelp":
+      return "Use with AI";
+    case "About":
+      return "About Optio";
     case "SettingsTab":
       return "Settings";
     case "StartTab":
@@ -35,6 +40,9 @@ const pageTitle = (route: Route): string => {
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   if (model.showCreate) return templateEditorPage(model, h);
   switch (model.route._tag) {
+    case "AgentHelp":
+    case "About":
+      return infoPage(model.route._tag, h, model.promptCopyStatus);
     case "SettingsTab":
       return settingsPage(model, h);
     case "StartTab":
@@ -80,6 +88,8 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>) => {
     case "HistoryTab":
     case "SettingsTab":
       return pageHeader({ title: pageTitle(model.route) }, h);
+    case "AgentHelp":
+    case "About":
     case "SessionRunner":
     case "TemplateEditor":
     case "SessionDetail":

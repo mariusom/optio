@@ -20,7 +20,7 @@ import { button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
-import { isBooleanTrue } from "../../fields";
+import { isBooleanTrue, isScalarAnswerValid } from "../../fields";
 import { formSectionsView } from "./questionControls";
 import {
   canRecordTask,
@@ -156,6 +156,8 @@ const missingRequiredCount = (task: RunnerTask): number =>
   task.sections.filter((section) => !isSectionDone(section)).length;
 
 const recordHint = (task: RunnerTask): string => {
+  if (task.sections.some((section) => !isScalarAnswerValid(section.kind, section.value)))
+    return "Correct invalid answers before continuing.";
   const missing = missingRequiredCount(task);
   const verb = task.isBeingEdited ? "to save" : "first";
   if (!task.isBeingEdited && task.endDate !== null)

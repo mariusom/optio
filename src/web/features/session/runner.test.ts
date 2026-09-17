@@ -48,11 +48,38 @@ describe("isSectionDone", () => {
       true,
     );
   });
-  it("boolean never required", () => {
+  it("optional boolean can be No", () => {
     expect(
       isSectionDone(
         section({ name: "Interrupted", kind: "boolean", isRequired: false, value: "false" }),
       ),
+    ).toBe(true);
+  });
+  it.each(["number", "counter", "rating", "boolean"])("requires an explicit %s answer", (kind) => {
+    expect(isSectionDone(section({ name: "Value", kind, isRequired: true, value: "" }))).toBe(
+      false,
+    );
+    expect(
+      isSectionDone(
+        section({
+          name: "Value",
+          kind,
+          isRequired: true,
+          value: kind === "boolean" ? "false" : "1",
+        }),
+      ),
+    ).toBe(true);
+  });
+  it.each([
+    ["number", "oops"],
+    ["counter", "-1"],
+    ["rating", "6"],
+  ])("rejects invalid optional %s", (kind, value) => {
+    expect(isSectionDone(section({ name: "Value", kind, value }))).toBe(false);
+  });
+  it("counts zero as an answered required counter", () => {
+    expect(
+      isSectionDone(section({ name: "Count", kind: "counter", isRequired: true, value: "0" })),
     ).toBe(true);
   });
 });

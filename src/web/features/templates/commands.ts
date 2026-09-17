@@ -157,7 +157,7 @@ export type SampleTemplate = {
 };
 
 /**
- * Three ready-made studies, one per setting, each showing every answer type:
+ * Three introductory studies plus a quantitative measurement demo:
  * a short text answer, single choice, multiple choice (with a "None" choice
  * that clears the others), Yes/No and free notes.
  */
@@ -240,9 +240,20 @@ export const sampleTemplates = (): ReadonlyArray<SampleTemplate> => [
       field("Notes", "textArea", { isRequired: false, sortOrder: 5 }),
     ],
   },
+  {
+    id: crypto.randomUUID(),
+    name: "Packing measurements",
+    isDefault: false,
+    fields: [
+      field("Parcel weight (kg)", "number", { isRequired: true, sortOrder: 0 }),
+      field("Items packed", "counter", { isRequired: true, sortOrder: 1 }),
+      field("Effort (1 = easy, 5 = very hard)", "rating", { isRequired: true, sortOrder: 2 }),
+      field("Quality check passed", "boolean", { isRequired: true, sortOrder: 3 }),
+    ],
+  },
 ];
 
-/** Seeds the three sample templates exactly once, when zero templates exist. */
+/** Seeds the sample templates exactly once, when zero templates exist. */
 export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
   args: {},
   messages: [Message.TemplatesSeededCheck, Message.FailedTemplateOp],

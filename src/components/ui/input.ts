@@ -16,7 +16,11 @@ export const inputLabelClass =
 
 export const inputDescriptionClass = "text-sm text-muted-foreground";
 
-export const inputWrapperClass = "group/field flex flex-col gap-1.5 w-full";
+/** Compact label/control pair; descriptions occupy the full row below it. */
+export const inlineFieldClass =
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-center gap-x-4 gap-y-1.5 [&>*]:min-w-0 [&>label]:leading-snug [&>label]:break-words";
+
+export const inputWrapperClass = `group/field w-full ${inlineFieldClass}`;
 
 export type InputConfig<M> = Readonly<{
   id: string;
@@ -77,7 +81,7 @@ export const input = <M>(config: InputConfig<M>, h: HtmlBuilder<M>): Html =>
               : h.span(
                   [
                     ...attributes.description,
-                    h.Class(cn(inputDescriptionClass, config.descriptionClass)),
+                    h.Class(cn(inputDescriptionClass, "col-span-2", config.descriptionClass)),
                   ],
                   [config.description],
                 ),

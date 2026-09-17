@@ -27,6 +27,7 @@ type SessionHandlers = Pick<
   | "GotRunnerData"
   | "Tick"
   | "ChangedFieldValue"
+  | "AdjustedCounter"
   | "ClickedRecord"
   | "TaskRecorded"
   | "ClickedEndSession"
@@ -133,6 +134,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   },
   ChangedFieldValue: ({ taskFieldId, value }) =>
     applyPlan(model, { _tag: "FieldChanged", taskFieldId, value } as SessionEvent),
+  AdjustedCounter: ({ taskFieldId, delta }) =>
+    applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta } as SessionEvent),
   ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
   TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),

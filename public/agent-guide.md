@@ -17,6 +17,13 @@ Export important results; do not promise permanent storage.
 
 ## Optional assistant tools
 
+User-facing setup is in [Use with AI](https://mariusom.github.io/optio/#/use-with-ai),
+also accessible from Settings. WebMCP is not a remote MCP server: Claude,
+ChatGPT or Gemini needs a browser integration that explicitly supports WebMCP
+in this tab. A normal chat or remote MCP connector alone cannot access it.
+Google's [WebMCP inspector](https://developer.chrome.com/docs/ai/webmcp) can test
+tools using Gemini; that is separate from Gemini chat and Gemini in Chrome.
+
 WebMCP is experimental. Optio uses `document.modelContext` in browsers supporting
 that API. No polyfill is bundled. A scanner testing only `navigator.modelContext`
 or ordinary page load will not detect the opt-in registration.
@@ -46,6 +53,12 @@ update loop accepted the operation, not that an asynchronous write committed.
 Inspect returned state and read until the expected data or error appears. After
 a timeout, inspect state before retrying a write; cancellation does not undo a
 dispatched write.
+
+Template answer kinds include `number` (decimal), `counter` (non-negative safe
+integer), and `rating` (integer 1–5). Values are strings; an empty string means
+unanswered, including for `boolean`. Explicit Yes/No values are `true` and
+`false`. All answer types can be required. Put units and rating scale meanings
+in question names. Invalid numeric values prevent recording or saving an edit.
 
 Destructive actions require the app's request/confirm sequence and a separate
 human browser confirmation. Do not automate that confirmation.

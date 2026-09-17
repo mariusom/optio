@@ -6,7 +6,12 @@ import type { Model } from "./model";
 import { historyDetailStream, historyStream } from "./historyStreams";
 import { activeSessionStream, runnerStream } from "./sessionStreams";
 import { templateDetailStream, templatesStream } from "./templateStreams";
-import { focusEditorDraft, scrollToCurrentTask, scrollToSection } from "./domStreams";
+import {
+  focusEditorDraft,
+  focusHelpPage,
+  scrollToCurrentTask,
+  scrollToSection,
+} from "./domStreams";
 
 const tickStream: Stream.Stream<Message> = Stream.tick(Duration.seconds(1)).pipe(
   Stream.map(() => Message.Tick({ now: Date.now() })),
@@ -103,6 +108,18 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           tickStream,
           Effect.sync(() => active),
         ),
+    },
+  ),
+  helpPageEntry: entry(
+    { page: S.Union([S.Null, S.Literals(["AgentHelp", "About"])]) },
+    {
+      modelToDependencies: (model) => ({
+        page:
+          model.route._tag === "AgentHelp" || model.route._tag === "About"
+            ? model.route._tag
+            : null,
+      }),
+      dependenciesToStream: ({ page }) => focusHelpPage(page),
     },
   ),
   editorDraftFocus: entry(
