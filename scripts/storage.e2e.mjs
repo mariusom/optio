@@ -141,6 +141,18 @@ test(
         exported.csv,
         "reload must preserve values and timestamps exactly",
       );
+      const offlineNotices = await page.evaluate(async () => {
+        const response = await fetch("THIRD_PARTY_NOTICES.txt");
+        return { status: response.status, text: await response.text() };
+      });
+      assert.equal(offlineNotices.status, 200);
+      assert.match(offlineNotices.text, /Copyright \(c\) 2026 Marius Matei/);
+      assert.match(offlineNotices.text, /Copyright \(c\) 2015 Simon Friis Vindum/);
+      const offlineInventory = await page.evaluate(async () => {
+        const response = await fetch("dependency-inventory.json");
+        return response.json();
+      });
+      assert.ok(offlineInventory.packages.some(({ name }) => name === "cn"));
       await context.setOffline(false);
       const notices = await context.request.get(`${base}THIRD_PARTY_NOTICES.txt`);
       assert.equal(notices.status(), 200);

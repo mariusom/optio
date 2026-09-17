@@ -27,6 +27,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm licenses:check
       # Build-time dependencies can alter the published application too.
       - run: pnpm audit --audit-level high
       - run: pnpm exec playwright install --with-deps chromium

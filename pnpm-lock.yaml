@@ -172,7 +172,7 @@ overrides:
   '@livestore/utils@0.5.0-dev.0>nanoid': 5.1.16
 
 patchedDependencies:
-  '@livestore/adapter-web@0.5.0-dev.0': a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25
+  '@livestore/adapter-web@0.5.0-dev.0': c9688c9694c86f3b3bac31b607ef2a68513fe79e01b1696df581eb13e2922b72
 
 importers:
 
@@ -189,7 +189,7 @@ importers:
         version: 4.3.2
       '@livestore/adapter-web':
         specifier: 0.5.0-dev.0
-        version: 0.5.0-dev.0(patch_hash=a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)
+        version: 0.5.0-dev.0(patch_hash=c9688c9694c86f3b3bac31b607ef2a68513fe79e01b1696df581eb13e2922b72)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)
       '@livestore/livestore':
         specifier: 0.5.0-dev.0
         version: 0.5.0-dev.0(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)
@@ -4433,7 +4433,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@livestore/adapter-web@0.5.0-dev.0(patch_hash=a1e7808f2e8fb9153421303b3966206ee10fb2ef166ff7885fcd0b6ebc529c25)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)':
+  '@livestore/adapter-web@0.5.0-dev.0(patch_hash=c9688c9694c86f3b3bac31b607ef2a68513fe79e01b1696df581eb13e2922b72)(@effect/opentelemetry@4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112))(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-bun@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node-shared@4.0.0-rc.112(effect@4.0.0-rc.112))(@effect/platform-node@4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1(@opentelemetry/api@1.9.1)))(@effect/vitest@4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11))(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@standard-schema/spec@1.1.0)(effect@4.0.0-rc.112)':
     dependencies:
       '@effect/opentelemetry': 4.0.0-rc.112(@opentelemetry/api@1.9.1)(@opentelemetry/resources@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/semantic-conventions@1.43.0)(effect@4.0.0-rc.112)
       '@effect/platform-browser': 4.0.0-rc.112(effect@4.0.0-rc.112)

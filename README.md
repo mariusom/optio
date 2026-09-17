@@ -20,7 +20,7 @@ This is a pre-release. The current storage revision starts fresh; earlier
 pre-release studies are not migrated. Export anything you want to keep from
 the old build before updating.
 
-For contributors: [development](docs/development.md),
+For contributors: [contributing](CONTRIBUTING.md), [development](docs/development.md),
 [architecture](docs/architecture.md), and [interface conventions](docs/interface.md).
 
 [MIT license](LICENSE) · [Third-party notices](public/THIRD_PARTY_NOTICES.txt) ·

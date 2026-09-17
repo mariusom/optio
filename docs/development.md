@@ -16,6 +16,7 @@ Before submitting code changes:
 pnpm exec playwright install chromium
 pnpm check
 pnpm exec tsc --noEmit
+pnpm licenses:check
 pnpm test
 pnpm build
 pnpm test:e2e
@@ -138,8 +139,9 @@ IDs have no separate public previews; never put study data in social metadata.
 The 1200×630 `public/social-card.png` is a typography-only sharing asset, not an
 app screenshot. Keep its dimensions and alt text in sync with the HTML.
 
-After `pnpm build`, start `pnpm preview --port 60002` and run
-`node scripts/test-public-metadata.mjs`. The check uses JavaScript-disabled
+After `pnpm build`, run `node scripts/test-public-metadata.mjs`; it starts and
+closes a temporary preview and also runs as part of `pnpm test:e2e`.
+The check uses JavaScript-disabled
 Chromium and verifies metadata, image dimensions, structured data, and deployed
 discovery paths. `OPTIO_URL` overrides the preview URL. After deployment, use
 Facebook's Sharing Debugger and X's card tools to request fresh previews where
@@ -177,3 +179,77 @@ The [architecture](architecture.md) describes the runtime libraries; the
 [Third-party notices](../public/THIRD_PARTY_NOTICES.txt) preserve their applicable
 license text and attribution and are copied into the production build. Keep
 those notices when updating vendored code.
+
+`pnpm licenses:generate` collects installed production dependency licenses and
+notices, plus PWA/Workbox/Rollup distribution contributors, into that file and
+[`dependency-inventory.json`](../public/dependency-inventory.json). Run it after
+dependency updates and review the resulting diff. `pnpm licenses:check` tests
+the collector and rejects unknown licenses, missing texts and artifact drift;
+`pnpm build` also rejects drift. The service worker precaches both artifacts,
+and the production E2E journey checks that they remain available offline.
+
+The inventory is conservative, not a byte-level SBOM: the installed production
+graph includes some server/build/type-only packages that do not reach browsers.
+The current MPL-2.0 entry is Lightning CSS, a build tool, not a claim that the
+app is MPL licensed. Dependencies and copied source keep their own licenses.
+Review new bundle-generating tools and embedded assets manually; package
+metadata cannot prove completeness or rights to historical contributions.
+Missing package license files require a version-scoped, reviewed fallback in
+`licenses/reviewed-fallbacks` with provenance in the collector. Do not extend a
+fallback to a new version without checking upstream. Do not edit generated
+notices by hand. Keep the LiveStore patch's modification comments.
+
+`cn` is the Shadcn class-merging package (`shadcn-ui/cn`). `tw-animate-css`
+provides the imported components' composable enter/exit, fade, slide and zoom
+utilities; Tailwind's built-in spin/pulse/bounce utilities do not replace them.
+
+## Maintainer security and releases
+
+Dependabot proposes updates Mondays at 09:00 Europe/London; review them weekly,
+with critical security fixes handled immediately. Exact pins and overrides
+still need deliberate updates. The inspected Dependabot run fetched pnpm
+12.4.0 but subsequently reported 11.17.0. It enumerated application dependencies,
+but a successful lockfile-changing PR is still needed to establish update
+compatibility with the two-document lockfile. A green bot job alone is
+insufficient evidence.
+
+The security workflow adds PR/push CodeQL checks and Monday 08:00 UTC dependency
+audits (including development dependencies). It never deploys. Check the first
+GitHub runs after merging: local workflow linting cannot verify GitHub's security
+permissions. Avoid enabling CodeQL default setup alongside this advanced
+workflow. Review failed scheduled jobs and maintain security-alert notifications.
+
+Repository administrators must enable private vulnerability reporting,
+Dependabot alerts/security updates, secret scanning and push protection in
+GitHub settings. Protect `main` with an active ruleset requiring PRs, `validate`,
+up-to-date branches and resolved conversations, and blocking force pushes and
+deletion. Use no bypass actors by default. Zero required approvals supports a
+solo maintainer; require one independent approval when another reviewer is
+available. Test a contributor PR before adding further required check names.
+The preparation session could not apply these settings: its integration token
+received HTTP 403. They must not be treated as enabled by these files.
+
+Deployment remains automatic after validated `main` pushes. A weekly maintenance
+schedule is not a weekly publication schedule. The manual **Release assurance**
+workflow is restricted to `main`: it validates, builds, packages `dist`, uploads
+an archive and checksum, then attests that archive in a separate job. Build and
+test steps have no attestation/OIDC write permissions. This workflow neither
+deploys nor creates a tag or GitHub release. Do not dispatch it without intending
+to publish the build artifact and provenance to GitHub.
+
+For a release, record the tested commit, version, user-visible changes and data
+compatibility caveats. Check offline updates, exports/recovery, keyboard access
+and real target browsers. Never promise migrations or backups beyond what has
+been tested. Download the archive and `SHA256SUMS` from the same successful
+Release assurance run. Verify before extracting, replacing `<commit>` below
+with that run's complete commit ID:
+
+```sh
+sha256sum --check SHA256SUMS
+gh attestation verify "optio-dist-<commit>.tar.gz" --repo mariusom/optio
+```
+
+Check that the verification output identifies the expected workflow and source
+commit. A matching checksum alone does not authenticate its author. Attestations
+establish provenance, not safety, legal clearance, or native-style PWA signing;
+the browser does not verify them when installing the website.

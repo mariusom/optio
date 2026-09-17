@@ -2,10 +2,11 @@ diff --git a/dist/web-worker/leader-worker/make-leader-worker.js b/dist/web-work
 index 4209c65402d95301e6e4271d80d34022c5e9f8b4..d2677189bcbd7fb0145a90a1c1ed6b73280c9f55 100644
 --- a/dist/web-worker/leader-worker/make-leader-worker.js
 +++ b/dist/web-worker/leader-worker/make-leader-worker.js
-@@ -50,6 +50,7 @@ const makeMessagePortRpcServerProtocol = (port) => Layer.effect(RpcServer.Protoc
+@@ -50,6 +50,8 @@ const makeMessagePortRpcServerProtocol = (port) => Layer.effect(RpcServer.Protoc
          supportsTransferables: true,
          supportsSpanPropagation: true,
          supportsNotifications: true,
++        /*! Modified by Optio: use Effect's JSON schema codec for worker RPC. */
 +        codecFor: Schema.toCodecJson,
          run: (writeRequest) => Effect.gen(function* () {
              const context = yield* Effect.context();
@@ -14,10 +15,11 @@ diff --git a/src/web-worker/leader-worker/make-leader-worker.ts b/src/web-worker
 index ffd415759f8fb9fb5377deb596d02bf18f893d5a..fd38cbabc86305a7788a2af96362e2bca058bdd4 100644
 --- a/src/web-worker/leader-worker/make-leader-worker.ts
 +++ b/src/web-worker/leader-worker/make-leader-worker.ts
-@@ -138,6 +138,7 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
+@@ -138,6 +138,8 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
          supportsTransferables: true,
          supportsSpanPropagation: true,
          supportsNotifications: true,
++        /*! Modified by Optio: use Effect's JSON schema codec for worker RPC. */
 +        codecFor: Schema.toCodecJson,
          run: (writeRequest) =>
            Effect.gen(function* () {

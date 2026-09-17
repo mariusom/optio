@@ -6,12 +6,14 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build",
+    "build": "node scripts/license-assurance.mjs --check && vp build",
     "preview": "vp preview",
     "check": "vp check",
     "test": "vp test run && pnpm test:browser",
     "test:browser": "vp test run --config vitest.browser.config.ts",
-    "test:e2e": "node --test scripts/storage.e2e.mjs"
+    "test:e2e": "node --test scripts/storage.e2e.mjs && node scripts/test-public-metadata.mjs",
+    "licenses:generate": "node scripts/license-assurance.mjs",
+    "licenses:check": "vp test run scripts/license-assurance.test.mjs && node scripts/license-assurance.mjs --check"
   },
   "dependencies": {
     "@effect/platform-browser": "4.0.0-rc.112",
