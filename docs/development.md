@@ -9,6 +9,24 @@ pnpm dev
 
 The dev server uses port 60001 and the `/optio/` path.
 
+Use normal `pnpm dev` for remote previews: it opts into Vite's experimental
+bundled-dev mode to avoid source-module request waterfalls. Source edits currently
+full-reload without preserving FoldKit's in-memory Model, so unsaved input can
+be lost. Use `pnpm dev --mode test` for the slower unbundled pipeline when testing
+model-preserving reloads or plugin behavior. This uses the same pipeline as the
+tests; it does not substitute mock study data. See the measured alternatives and
+upstream discussions in [bundling research](dev-bundling-research.md).
+A dev-only middleware works around Vite's non-root-base
+lazy-import bug ([#23216](https://github.com/vitejs/vite/issues/23216)); remove it
+when the upstream fix is available and the real dev-store check passes.
+
+With the dev server running, `node scripts/measure-dev-load.mjs http://localhost:60001/optio/`
+measures a fresh browser's usable session setup with disabled HTTP cache and
+250 ms simulated network latency. It reports request timing and fails above
+50 requests. Run `node scripts/test-dev-store.mjs http://localhost:60001/optio/`
+to check sample creation and persistence after reload. Both scripts accept
+`CHROMIUM_PATH` for an existing Chromium executable. These use disposable storage.
+
 Before submitting code changes:
 
 ```sh
@@ -66,6 +84,27 @@ Compare the same URL, browser and mobile throttling settings across repeated
 cold runs; scores vary with host load. Startup changes must also preserve real
 OPFS data across reloads and work offline after service-worker installation.
 
+For repeatable application measurements, run:
+
+```sh
+node scripts/measure-production.mjs http://localhost:60002/optio/ /tmp/optio-performance.json
+```
+
+This uses disposable storage, three fresh-browser runs at 250 ms latency and
+three unthrottled runs, service-worker-controlled reloads, and a 30-task
+record/edit/reload journey. `OPTIO_PERF_RUNS`, `OPTIO_PERF_TASKS`, and
+`CHROMIUM_PATH` override the defaults. It separates app render from usable
+study controls and captures the request waterfall and main-thread long tasks.
+Page-target CDP latency/byte totals do not fully cover workers or service-worker
+precaching; interaction timings include Playwright overhead and are not INP.
+
+The 2026-09-17 production baseline was about 0.69 s to render and 2.15 s to usable
+controls at 250 ms latency, 0.19 s on a controlled reload, and 73 ms median to
+record a task. Eager store loading and store-module preloading worsened cold
+readiness to about 2.4 s; preloading Workbox did not reliably improve it. Those
+experiments were reverted. Re-measure rather than treating these orb measurements
+as mobile-device performance targets.
+
 With the same preview running, `node scripts/test-startup.mjs` checks that default
 startup skips optional style presets, failed downloads leave the app usable,
 saved styles restore, and unused presets remain available offline. A failed
@@ -76,14 +115,18 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
+  FoldKit 0.159.0 and its Vite plugin 0.21.0 are the newest releases compatible
+  with effect-machine 0.37.0's Effect rc.112 requirement. FoldKit 0.160.0 needs
+  rc.115; newer `@effect/vitest` releases need Vitest 5, while Vite+ 0.3.2
+  still bundles Vitest 4.1.11. Upgrade these groups together when peers align.
 - The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
   protocol expected by this Effect release. Remove it only when an upstream
   adapter includes the codec and the production storage journey passes.
 - The scoped Nano ID override removes known advisories in LiveStore's pinned
   version. Reassess it when updating LiveStore. Keep the 24-hour release-age
   guard; do not bypass it for routine dependency updates.
-- pnpm 12.4.0 is intentionally pinned from its `next-12` release track. Use the
-  pinned version for its two-document lockfile. Verify external scanners and
+- pnpm 12.4.2 is pinned. Use the pinned version for its two-document lockfile.
+  Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.
 - Dependabot proposes grouped lockfile and GitHub Actions updates. Exact
   manifest pins and workspace overrides need deliberate coordinated updates.

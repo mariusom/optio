@@ -12,6 +12,8 @@ or sync. Clearing browser data can erase studies. Export important results.
 
 - [Open Optio](https://mariusom.github.io/optio/): The canonical app URL to share.
 - [Agent guide](https://mariusom.github.io/optio/agent-guide.md): Browser workflow, optional assistant access, consent, and tool limitations.
+- [Use with AI](https://mariusom.github.io/optio/#/use-with-ai): Template-building prompts and experimental WebMCP setup for users.
+- [About Optio](https://mariusom.github.io/optio/#/about): Product information and the installed app version.
 - [Source code](https://github.com/mariusom/optio): MIT-licensed implementation and contributor documentation.
 
 ## Agent access

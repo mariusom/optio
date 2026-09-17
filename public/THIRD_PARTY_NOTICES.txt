@@ -569,7 +569,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-@foldkit/ui@0.158.2
+@foldkit/ui@0.159.0
 -------------------
 Declared license: MIT
 Role: production dependency graph
@@ -600,12 +600,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@hugeicons/core-free-icons@4.3.2
+@hugeicons/core-free-icons@4.3.3
 --------------------------------
 Declared license: MIT
 Role: production dependency graph
 
-Source: reviewed fallback: https://github.com/hugeicons/hugeicons/blob/3e93f5d38c3ffb38319b1b13b128ad4bd45291c1/LICENSE.md
+Source: installed package file LICENSE.md
 SHA-256: 5b2ce5496b3c2013087267de7cc9f4061282925628c76fff64247e10a619780a
 
 MIT License
@@ -2379,7 +2379,7 @@ SHA-256: 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
    limitations under the License.
 
 
-@opentelemetry/core@2.10.0
+@opentelemetry/core@2.11.0
 --------------------------
 Declared license: Apache-2.0
 Role: production dependency graph
@@ -2590,7 +2590,7 @@ SHA-256: 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
    limitations under the License.
 
 
-@opentelemetry/resources@2.10.0
+@opentelemetry/resources@2.11.0
 -------------------------------
 Declared license: Apache-2.0
 Role: production dependency graph
@@ -3012,7 +3012,7 @@ SHA-256: 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
    limitations under the License.
 
 
-@oxc-project/types@0.146.0
+@oxc-project/types@0.149.0
 --------------------------
 Declared license: MIT
 Role: production dependency graph
@@ -3473,7 +3473,7 @@ SHA-256: 740725f7252e750af735d0028cc534970772f513331e9f68150fede8fb3ce00f
    limitations under the License.
 
 
-@typeonce/effect-machine@0.34.0
+@typeonce/effect-machine@0.37.0
 -------------------------------
 Declared license: MIT
 Role: production dependency graph
@@ -3604,8 +3604,8 @@ SHA-256: d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb
     SOFTWARE
 
 
-@types/node@26.2.0
-------------------
+@types/node@22.20.3
+-------------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -3968,7 +3968,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-cn@0.2.6
+cn@0.3.0
 --------
 Declared license: MIT
 Role: production dependency graph
@@ -4533,8 +4533,8 @@ SHA-256: 3b2aba4633ff0d5541d1561d17339976ccaa75c98eec7ea0552117d481f67495
    END OF TERMS AND CONDITIONS
 
 
-fast-check@4.9.0
-----------------
+fast-check@4.10.1
+-----------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -4581,7 +4581,7 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-foldkit@0.158.2
+foldkit@0.159.0
 ---------------
 Declared license: MIT
 Role: production dependency graph
@@ -5029,7 +5029,7 @@ This Source Code Form is "Incompatible With Secondary Licenses", as
 defined by the Mozilla Public License, v. 2.0.
 
 
-lucide@1.43.0
+lucide@1.46.0
 -------------
 Declared license: ISC
 Role: production dependency graph
@@ -5161,7 +5161,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-nanoid@3.3.18
+nanoid@3.3.19
 -------------
 Declared license: MIT
 Role: production dependency graph
@@ -5221,7 +5221,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-obug@2.1.4
+obug@2.2.1
 ----------
 Declared license: MIT
 Role: production dependency graph
@@ -5577,7 +5577,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-rolldown@1.2.5
+rolldown@1.2.8
 --------------
 Declared license: MIT
 Role: production dependency graph
@@ -5649,7 +5649,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-rollup@4.62.5
+rollup@4.63.3
 -------------
 Declared license: MIT
 Role: build-time distribution contributor
@@ -6492,7 +6492,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-tinyexec@1.3.0
+tinyexec@1.3.1
 --------------
 Declared license: MIT
 Role: production dependency graph
@@ -6616,7 +6616,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-undici@8.10.0
+undici@8.10.2
 -------------
 Declared license: MIT
 Role: production dependency graph
@@ -6647,8 +6647,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-undici-types@8.3.0
-------------------
+undici-types@6.21.0
+-------------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -6678,7 +6678,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-vite@8.2.2
+vite@8.3.0
 ----------
 Declared license: MIT
 Role: production dependency graph

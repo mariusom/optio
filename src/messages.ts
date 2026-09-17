@@ -41,6 +41,9 @@ export const Message = defineMessageUnion({
   ChangedAccentDraft: { colour: S.String },
   ConfirmedAccentPicker: {},
   CanceledAccentPicker: {},
+  ClickedCopyTemplatePrompt: {},
+  TemplatePromptCopyFinished: { copied: S.Boolean },
+  ResetTemplatePromptCopy: {},
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: S.Array(TemplateSummary) },
@@ -129,6 +132,7 @@ export const Message = defineMessageUnion({
   },
   Tick: { now: S.Number },
   ChangedFieldValue: { taskFieldId: S.String, value: S.String },
+  AdjustedCounter: { taskFieldId: S.String, delta: S.Literals([-1, 1]) },
   UpdatedFieldValue: {},
   ClickedRecord: {},
   TaskRecorded: {},

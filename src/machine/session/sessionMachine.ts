@@ -46,14 +46,12 @@ export type LiveValue = typeof LiveValue.Type;
 // ── Topology ────────────────────────────────────────────────────────────────
 
 export const SessionStates = Machine.state({
-  initial: "Idle",
   states: {
     /** No live session (model.runner === null). */
     Idle: {},
     /** One live session; compound so the phases share data + control state. */
     Live: {
       schema: LiveValue.cases.Live,
-      initial: "Collecting",
       states: {
         /** Normal recording flow (record gating, focus, task list, edits). */
         Collecting: {},
@@ -74,6 +72,7 @@ const SessionEvents = Machine.eventsFromSchemas(
     DataSynced: { data: Schema.Union([RunnerDataSchema, Schema.Null]) },
     /** A field value changed (radio/checkbox/text/textarea/boolean). */
     FieldChanged: { taskFieldId: Schema.String, value: Schema.String },
+    CounterAdjusted: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
     /** User tapped a section (focus management). */
     SectionFocused: { fieldId: Schema.Union([Schema.Null, Schema.String]) },
     /** User tapped the Record button. */
@@ -107,6 +106,7 @@ export type SessionEvent = Machine.EventOf<typeof SessionEvents>;
 const SessionEmissions = Machine.emittedEventsFromSchemas(
   Schema.TaggedUnion({
     CommitFieldValue: { taskFieldId: Schema.String, value: Schema.String },
+    CommitCounterAdjustment: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
     CommitRecord: { sessionId: Schema.String, taskId: Schema.String },
     CommitSelectTask: { sessionId: Schema.String, taskId: Schema.String },
     CommitCancelEdit: {
@@ -180,11 +180,11 @@ export const SessionMachine = Machine.make({
   branches: {
     idleSync: {
       stay: { none: true },
-      enter: { initial: targets.root.Live },
+      enter: { target: targets.root.Live },
     },
     liveSync: {
       gone: { target: targets.root.Idle },
-      fresh: { initial: targets.root.Live },
+      fresh: { target: targets.root.Live },
       same: { update: targets.root.Live },
     },
     updateLive: {
@@ -195,6 +195,7 @@ export const SessionMachine = Machine.make({
     },
   },
 }).handle({
+  initial: { target: targets.root.Idle },
   states: {
     Idle: {
       on: {
@@ -204,31 +205,35 @@ export const SessionMachine = Machine.make({
         DataSynced: {
           branches: "idleSync",
           resolve: ({ event, select }) =>
-            event.data === null ? select.stay() : select.enter.decoded(freshLiveValue(event.data)),
+            event.data === null
+              ? select.stay()
+              : select.enter({ decoded: true, data: freshLiveValue(event.data) }),
         },
       },
     },
 
     // Shared behavior for both phases lives on the compound parent.
     Live: {
+      initial: { target: targets.root.Live.Collecting },
       on: {
         // Store snapshot refresh: gone → Idle, different session → fresh Live,
         // same session → keep controls, swap the data only.
         DataSynced: {
           branches: "liveSync",
           resolve: ({ event, state, select }) => {
-            if (event.data === null) return select.gone.from();
+            if (event.data === null) return select.gone();
             if (event.data.sessionId !== state.data.sessionId) {
-              return select.fresh.decoded(freshLiveValue(event.data));
+              return select.fresh({ decoded: true, data: freshLiveValue(event.data) });
             }
-            return select.same.decoded({ ...state, data: event.data });
+            return select.same({ decoded: true, data: { ...state, data: event.data } });
           },
         },
 
         // Focus follows the tapped section (no topology change).
         SectionFocused: {
           update: targets.root.Live,
-          decoded: ({ state: current, event }) => ({
+          decoded: true,
+          data: ({ state: current, event }) => ({
             ...current,
             focusedSectionId: event.fieldId,
           }),
@@ -237,7 +242,8 @@ export const SessionMachine = Machine.make({
         // Task list sheet toggle.
         TaskListToggled: {
           update: targets.root.Live,
-          decoded: ({ state: current }) => ({
+          decoded: true,
+          data: ({ state: current }) => ({
             ...current,
             showTaskList: !current.showTaskList,
           }),
@@ -246,7 +252,8 @@ export const SessionMachine = Machine.make({
         // Store ack: task recorded → close focus/task list.
         RecordAcked: {
           update: targets.root.Live,
-          decoded: ({ state: current }) => ({
+          decoded: true,
+          data: ({ state: current }) => ({
             ...current,
             focusedSectionId: null,
             showTaskList: false,
@@ -256,7 +263,8 @@ export const SessionMachine = Machine.make({
         // Store ack: edit finished → clear edit state, focus the newest open task.
         EditAcked: {
           update: targets.root.Live,
-          decoded: ({ state: current }) => {
+          decoded: true,
+          data: ({ state: current }) => {
             const fallback = fallbackTaskId(current.data);
             return {
               ...current,
@@ -277,6 +285,27 @@ export const SessionMachine = Machine.make({
       states: {
         Collecting: {
           on: {
+            CounterAdjusted: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, event, select }, enqueue) => {
+                const task = currentTask(current.data);
+                if (
+                  task &&
+                  (task.endDate === null || task.isBeingEdited) &&
+                  task.sections.some(
+                    (field) => field.id === event.taskFieldId && field.kind === "counter",
+                  )
+                ) {
+                  enqueue.emit(
+                    SessionEmissions.CommitCounterAdjustment({
+                      taskFieldId: event.taskFieldId,
+                      delta: event.delta,
+                    }),
+                  );
+                }
+                return select.live({ decoded: true, data: current });
+              },
+            },
             // Field edit: commit the value, radio auto-advances the focus.
             FieldChanged: {
               branches: "updateLive",
@@ -288,9 +317,12 @@ export const SessionMachine = Machine.make({
                   }),
                 );
                 const fc = nextFocusForField(current.data, event.taskFieldId, event.value);
-                return select.live.decoded({
-                  ...current,
-                  focusedSectionId: fc.changed ? fc.next : current.focusedSectionId,
+                return select.live({
+                  decoded: true,
+                  data: {
+                    ...current,
+                    focusedSectionId: fc.changed ? fc.next : current.focusedSectionId,
+                  },
                 });
               },
             },
@@ -300,16 +332,19 @@ export const SessionMachine = Machine.make({
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
                 const cur = currentTask(current.data);
-                if (cur === null) return select.live.decoded(current);
+                if (cur === null) return select.live({ decoded: true, data: current });
                 // Completed tasks are saved through the edit flow, never recorded again.
                 // Check this before required fields so a stale selection is a quiet no-op.
                 if (cur.endDate !== null || cur.isBeingEdited) {
-                  return select.live.decoded(current);
+                  return select.live({ decoded: true, data: current });
                 }
                 if (!isTaskDone(cur)) {
-                  return select.live.decoded({
-                    ...current,
-                    lastError: "Answer the required questions before recording.",
+                  return select.live({
+                    decoded: true,
+                    data: {
+                      ...current,
+                      lastError: "Answer the required questions before recording.",
+                    },
                   });
                 }
                 enqueue.emit(
@@ -318,7 +353,10 @@ export const SessionMachine = Machine.make({
                     taskId: cur.id,
                   }),
                 );
-                return select.live.decoded({ ...current, focusedSectionId: null });
+                return select.live({
+                  decoded: true,
+                  data: { ...current, focusedSectionId: null },
+                });
               },
             },
 
@@ -327,7 +365,18 @@ export const SessionMachine = Machine.make({
               branches: "updateLive",
               resolve: ({ containingState: current, event, select }, enqueue) => {
                 const picked = current.data.tasks.find((t) => t.id === event.taskId);
-                if (picked === undefined) return select.live.decoded(current);
+                if (picked === undefined) return select.live({ decoded: true, data: current });
+                const editing = current.data.tasks.find((t) => t.isBeingEdited);
+                if (editing && editing.id !== event.taskId && !isTaskDone(editing)) {
+                  return select.live({
+                    decoded: true,
+                    data: {
+                      ...current,
+                      lastError:
+                        "Complete required questions and correct invalid answers, or cancel the edit first.",
+                    },
+                  });
+                }
                 enqueue.emit(
                   SessionEmissions.CommitSelectTask({
                     sessionId: current.data.sessionId,
@@ -335,11 +384,14 @@ export const SessionMachine = Machine.make({
                   }),
                 );
                 const data = { ...current.data, currentTaskId: event.taskId };
-                return select.live.decoded({
-                  ...current,
-                  data,
-                  focusedSectionId: null,
-                  showTaskList: false,
+                return select.live({
+                  decoded: true,
+                  data: {
+                    ...current,
+                    data,
+                    focusedSectionId: null,
+                    showTaskList: false,
+                  },
                 });
               },
             },
@@ -350,17 +402,20 @@ export const SessionMachine = Machine.make({
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
                 const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
-                if (editing === null) return select.live.decoded(current);
+                if (editing === null) return select.live({ decoded: true, data: current });
                 const fallback = fallbackTaskId(current.data);
                 enqueue.emit(SessionEmissions.CommitCancelEdit({ taskId: editing.id }));
-                return select.live.decoded({
-                  ...current,
-                  showTaskList: false,
+                return select.live({
+                  decoded: true,
                   data: {
-                    ...current.data,
-                    currentTaskId: fallback ?? current.data.currentTaskId,
+                    ...current,
+                    showTaskList: false,
+                    data: {
+                      ...current.data,
+                      currentTaskId: fallback ?? current.data.currentTaskId,
+                    },
+                    focusedSectionId: null,
                   },
-                  focusedSectionId: null,
                 });
               },
             },
@@ -371,23 +426,29 @@ export const SessionMachine = Machine.make({
               resolve: ({ containingState: current, select }, enqueue) => {
                 const editing = current.data.tasks.find((t) => t.isBeingEdited) ?? null;
                 if (editing === null) {
-                  return select.live.decoded(current);
+                  return select.live({ decoded: true, data: current });
                 }
                 if (!isTaskDone(editing)) {
-                  return select.live.decoded({
-                    ...current,
-                    lastError: "Answer the required questions before saving.",
+                  return select.live({
+                    decoded: true,
+                    data: {
+                      ...current,
+                      lastError: "Answer the required questions before saving.",
+                    },
                   });
                 }
                 const fallback = fallbackTaskId(current.data);
                 enqueue.emit(SessionEmissions.CommitSaveEdit({ taskId: editing.id }));
-                return select.live.decoded({
-                  ...current,
-                  showTaskList: false,
-                  focusedSectionId: null,
+                return select.live({
+                  decoded: true,
                   data: {
-                    ...current.data,
-                    currentTaskId: fallback ?? current.data.currentTaskId,
+                    ...current,
+                    showTaskList: false,
+                    focusedSectionId: null,
+                    data: {
+                      ...current.data,
+                      currentTaskId: fallback ?? current.data.currentTaskId,
+                    },
                   },
                 });
               },
@@ -411,7 +472,7 @@ export const SessionMachine = Machine.make({
                     sessionId: containingState.data.sessionId,
                   }),
                 );
-                return select.collecting.from();
+                return select.collecting();
               },
             },
           },

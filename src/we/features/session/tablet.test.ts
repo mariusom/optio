@@ -80,6 +80,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   historyActionsFor: null,
   pendingNavigationUrl: null,
   csvError: null,
+  promptCopyStatus: "idle",
 });
 
 describe("runner dead links", () => {

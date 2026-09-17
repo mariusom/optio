@@ -17,7 +17,7 @@ import {
 } from "@/components/app";
 import { button, buttonClass } from "@/components/ui/button";
 import { nativeSelect } from "@/components/ui/native-select";
-import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimeOnly } from "../../format";
@@ -181,7 +181,7 @@ const templatePicker = (
 
 const sessionNameField = (placeholderName: string, value: string, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Class("group/field flex w-full flex-col gap-1.5")],
+    [h.Class(cn("group/field w-full", inlineFieldClass))],
     [
       h.label([h.For("session-name"), h.Class(cn(inputLabelClass))], ["Session name"]),
       h.div(
@@ -295,6 +295,22 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
               model.sessionNameInput,
               h,
             ),
+      ...(model.activeSession === null
+        ? [
+            h.a(
+              [
+                h.Class(
+                  buttonClass({
+                    variant: "link",
+                    className: "min-h-11 self-center text-muted-foreground",
+                  }),
+                ),
+                h.Href(hrefFor({ _tag: "AgentHelp" })),
+              ],
+              ["Create templates with AI"],
+            ),
+          ]
+        : []),
     ],
     h,
   );

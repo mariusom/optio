@@ -1,14 +1,11 @@
 // Usage: node scripts/measure-dev-load.mjs http://localhost:<port>/optio/
-// Uses disposable browser storage, seeds a session, then measures a cold-cache reload.
+// Measures first usable session setup with disposable storage and 250 ms latency.
 import { chromium } from "playwright";
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(`${process.argv[2]}#/start`);
-  await page.getByRole("button", { name: "Start Session", exact: true }).click();
-  await page.getByRole("switch", { name: "Interrupted" }).waitFor();
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
   await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
@@ -33,8 +30,8 @@ try {
       Object.assign(request, { response: event.timestamp, timing: event.response.timing });
   });
   const start = performance.now();
-  await page.reload();
-  await page.getByRole("switch", { name: "Interrupted" }).waitFor();
+  await page.goto(process.argv[2]);
+  await page.getByRole("button", { name: "Start Session", exact: true }).waitFor();
   const readyMs = performance.now() - start;
   await page.waitForTimeout(500);
   const resources = await page.evaluate(() =>
@@ -58,6 +55,7 @@ try {
       2,
     ),
   );
+  if (requests.size > 50) throw new Error(`Excessive dev waterfall: ${requests.size} requests`);
 } finally {
   await browser.close();
 }

@@ -4,7 +4,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import { icon } from "@/lib/icons";
 import { ChevronDown } from "lucide";
 import { cn } from "@/lib/utils";
-import { inputLabelClass } from "./input";
+import { inlineFieldClass, inputLabelClass } from "./input";
 
 /** Stateless styled native `<select>` — use when every option is always
  *  visible and plain. For a searchable/filterable dropdown submodel, use
@@ -29,8 +29,8 @@ export const nativeSelectOptionClass = "bg-[Canvas] text-[CanvasText]";
 export const nativeSelectOptGroupClass = "bg-[Canvas] text-[CanvasText]";
 
 export const nativeSelectLabelClass = inputLabelClass;
-export const nativeSelectDescriptionClass = "text-sm text-muted-foreground";
-export const nativeSelectFieldWrapperClass = "flex w-full flex-col gap-1.5";
+export const nativeSelectDescriptionClass = "col-span-2 text-sm text-muted-foreground";
+export const nativeSelectFieldWrapperClass = `w-full ${inlineFieldClass}`;
 
 export type NativeSelectConfig<M> = Readonly<{
   id: string;

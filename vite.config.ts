@@ -1,7 +1,7 @@
 import tailwindcss from "@tailwindcss/vite";
 import { foldkit } from "@foldkit/vite-plugin";
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig } from "vite-plus";
+import { defineConfig, type Plugin } from "vite-plus";
 
 // Deployed to GitHub Pages project site: https://mariusom.github.io/optio/
 export default defineConfig(({ command, mode }) => {
@@ -23,6 +23,24 @@ export default defineConfig(({ command, mode }) => {
     },
     worker: { format: "es" },
     plugins: [
+      ...(bundledDev
+        ? [
+            {
+              name: "bundled-dev-lazy-base",
+              configureServer(server) {
+                // Vite emits root-relative lazy URLs even with a project base:
+                // https://github.com/vitejs/vite/issues/23216
+                // Run before Vite's base middleware so it can strip the prefix.
+                server.middlewares.use((req, _res, next) => {
+                  if (req.url?.startsWith("/@vite/lazy?")) {
+                    req.url = `${server.config.base.slice(0, -1)}${req.url}`;
+                  }
+                  next();
+                });
+              },
+            } satisfies Plugin,
+          ]
+        : []),
       ...tailwind,
       foldkit(),
       VitePWA({
@@ -52,7 +70,9 @@ export default defineConfig(({ command, mode }) => {
           ],
         },
         workbox: {
-          globPatterns: ["**/*.{js,css,html,svg,wasm}"],
+          globPatterns: ["**/*.{js,css,html,svg,wasm,md,txt}"],
+          // Public documents are resources, not hash-routed app pages.
+          navigateFallbackDenylist: [/\.(?:md|txt)(?:\?|$)/],
         },
       }),
     ],
