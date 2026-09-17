@@ -12,7 +12,7 @@ component APIs; review local customizations before refreshing a registry item.
   and a labeled sidebar from 1280px. Live sessions hide phone tabs and add a
   task column on larger screens.
 - Use bottom sheets on phones and centered cards on larger screens. Preserve
-  focus entry, containment and restoration in [sheetFocus.ts](../src/we/sheetFocus.ts).
+  focus entry, containment and restoration in [sheetFocus.ts](../src/web/sheetFocus.ts).
   Destructive actions require confirmation.
 - Label fields, explain disabled primary actions, and use plain terms such as
   “question”, “choices” and “must be answered”. Show short errors; send technical

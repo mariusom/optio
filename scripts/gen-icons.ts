@@ -63,6 +63,19 @@ const encodePng = (
 const S = [15 / 255, 23 / 255, 42 / 255]; // #0f172a
 const C = [56 / 255, 189 / 255, 248 / 255]; // #38bdf8
 
+const roundedSquareMask = (px: number, py: number, dimensions: [number, number]) => {
+  const [size, radius] = dimensions;
+  const insideCenter =
+    (px >= radius && px <= size - radius) || (py >= radius && py <= size - radius);
+  if (insideCenter) return 1;
+  const cornerX = px < radius ? radius : size - radius;
+  const cornerY = py < radius ? radius : size - radius;
+  return Math.min(1, Math.max(0, radius - Math.hypot(px - cornerX, py - cornerY) + 1));
+};
+
+const channel = (background: number, foreground: number, glyph: number) =>
+  Math.round((background * (1 - glyph) + foreground * glyph) * 255);
+
 const makePixel = (size: number) => {
   const radius = size * 0.22;
   const ringR = size * 0.32;
@@ -71,31 +84,11 @@ const makePixel = (size: number) => {
   const cx = size / 2;
   const cy = size / 2;
 
-  const coverage = (px: number, py: number, x0: number, y0: number, x1: number, y1: number) => {
-    const cx1 = Math.min(Math.max(px, x0), x1);
-    const cy1 = Math.min(Math.max(py, y0), y1);
-    const dx = px - cx1,
-      dy = py - cy1;
-    return Math.min(1, Math.max(0, 1.5 - Math.sqrt(dx * dx + dy * dy)));
-  };
-
   return (x: number, y: number): [number, number, number, number] => {
     const px = x + 0.5,
       py = y + 0.5;
     // Rounded-rect mask
-    const _rect = Math.min(
-      coverage(px, py, radius, 0, size - radius, size),
-      coverage(px, py, 0, radius, size, size - radius),
-    );
-    const inX = px >= radius && px <= size - radius;
-    const inY = py >= radius && py <= size - radius;
-    const inCorner = (px < radius || px > size - radius) && (py < radius || py > size - radius);
-    const cornerRadius = Math.hypot(
-      px - (px < radius ? radius : size - radius),
-      py - (py < radius ? radius : size - radius),
-    );
-    const mask =
-      inX || inY ? 1 : inCorner ? Math.min(1, Math.max(0, radius - cornerRadius + 1)) : 0;
+    const mask = roundedSquareMask(px, py, [size, radius]);
     const a = mask * 255;
 
     // Ring: circle band + horizontal bar (θ-like)
@@ -104,9 +97,9 @@ const makePixel = (size: number) => {
     const bar = py >= cy - barH / 2 && py <= cy + barH / 2 && Math.abs(px - cx) <= ringR ? 1 : 0;
     const glyph = Math.max(ring, bar);
 
-    const r = Math.round((S[0] * (1 - glyph) + C[0] * glyph) * 255);
-    const g = Math.round((S[1] * (1 - glyph) + C[1] * glyph) * 255);
-    const b = Math.round((S[2] * (1 - glyph) + C[2] * glyph) * 255);
+    const r = channel(S[0], C[0], glyph);
+    const g = channel(S[1], C[1], glyph);
+    const b = channel(S[2], C[2], glyph);
     return [r, g, b, Math.round(a)];
   };
 };

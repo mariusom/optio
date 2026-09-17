@@ -1,9 +1,8 @@
 import { Dialog as FoldkitDialog } from "@foldkit/ui";
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 // Re-export the @foldkit/ui Dialog submodel surface. An alert dialog is a
 // Dialog variant: same headless behavior, destructive-confirm styling.
@@ -220,7 +219,15 @@ export const styledViewInputs = <M>(
   viewInputs: StyledViewInputs<M>,
   h: HtmlBuilder<M>,
 ): FoldkitDialog.ViewInputs => ({
-  toView: ({ dialog, backdrop, panel, closeButton, title, description, isVisible }) =>
+  toView: ({
+    dialog,
+    backdrop,
+    panel,
+    closeButton: closeAttributes,
+    title: titleAttributes,
+    description: descriptionAttributes,
+    isVisible,
+  }) =>
     h.dialog(
       [
         ...dialog,
@@ -241,7 +248,14 @@ export const styledViewInputs = <M>(
                 h.DataAttribute("size", viewInputs.size ?? "default"),
                 h.Class(cn(alertDialogPanelClass, viewInputs.panelClass)),
               ],
-              viewInputs.content({ closeButton, title, description }, h),
+              viewInputs.content(
+                {
+                  closeButton: closeAttributes,
+                  title: titleAttributes,
+                  description: descriptionAttributes,
+                },
+                h,
+              ),
             ),
           ]
         : [],

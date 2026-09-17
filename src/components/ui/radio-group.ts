@@ -82,10 +82,12 @@ export type StyledViewInputs<M, Value extends string = string> = Readonly<{
    *  option value, its per-option render info (`isSelected`, attribute
    *  bundles) and the full render. Mutually exclusive with `optionLabel`. */
   option?: (
-    value: Value,
-    info: FoldkitRadioGroup.OptionInfo<Value>,
-    render: RenderInfo<Value>,
-    h: HtmlBuilder<M>,
+    input: Readonly<{
+      value: Value;
+      info: FoldkitRadioGroup.OptionInfo<Value>;
+      render: RenderInfo<Value>;
+      h: HtmlBuilder<M>;
+    }>,
   ) => Html;
   /** Upstream-anatomy path: plain text label per option, rendered next to a
    *  circle control with the indicator dot. */
@@ -101,13 +103,16 @@ export type StyledViewInputs<M, Value extends string = string> = Readonly<{
 }>;
 
 const defaultOptionRow = <M, Value extends string>(
-  info: FoldkitRadioGroup.OptionInfo<Value>,
-  labelText: string,
-  descriptionText: string | undefined,
-  optionClass: string | undefined,
+  content: Readonly<{
+    info: FoldkitRadioGroup.OptionInfo<Value>;
+    labelText: string;
+    descriptionText?: string;
+    optionClass?: string;
+  }>,
   h: HtmlBuilder<M>,
-): Html =>
-  h.label(
+): Html => {
+  const { info, labelText, descriptionText, optionClass } = content;
+  return h.label(
     [h.Class(cn("flex w-full items-center gap-2", optionClass))],
     [
       h.button(
@@ -146,6 +151,7 @@ const defaultOptionRow = <M, Value extends string>(
           ]),
     ],
   );
+};
 
 /** Build styled `RadioGroup.ViewInputs`. Pass your view's `h`. */
 export const styledViewInputs = <M, Value extends string = string>(
@@ -185,14 +191,16 @@ export const styledViewInputs = <M, Value extends string = string>(
                   h.DataAttribute("slot", "radio-group-item"),
                   h.Class(cn(radioOptionClass, viewInputs.optionClass)),
                 ],
-                [viewInputs.option(option.value, option, render, h)],
+                [viewInputs.option({ value: option.value, info: option, render, h })],
               );
             }
             return defaultOptionRow(
-              option,
-              viewInputs.optionLabel?.(option.value) ?? String(option.value),
-              viewInputs.optionDescription?.(option.value),
-              viewInputs.optionClass,
+              {
+                info: option,
+                labelText: viewInputs.optionLabel?.(option.value) ?? String(option.value),
+                descriptionText: viewInputs.optionDescription?.(option.value),
+                optionClass: viewInputs.optionClass,
+              },
               h,
             );
           }),

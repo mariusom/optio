@@ -23,7 +23,7 @@ const initPerformanceObserver = () => {
     longTasks: [],
     paints: [],
   };
-  window.__optioPerformance = state;
+  window.optioPerformance = state;
   if (PerformanceObserver.supportedEntryTypes.includes("longtask")) {
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
@@ -63,7 +63,7 @@ const initPerformanceObserver = () => {
 
 const round = (value) => Math.round(value * 10) / 10;
 const percentile = (values, fraction) => {
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = values.toSorted((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * fraction) - 1)];
 };
 const summarize = (values) => ({
@@ -84,11 +84,10 @@ const setNetworkLatency = async (cdp, latencyMs) => {
   });
 };
 
-const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) => {
-  await setNetworkLatency(cdp, latencyMs);
+const captureNetwork = ({ context, cdp }) => {
   const requests = new Map();
-  let documentStart;
   const contextRequests = new Map();
+  let documentStart;
   const requestListener = (request) =>
     contextRequests.set(request.url(), {
       path: new URL(request.url()).pathname,
@@ -125,24 +124,34 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
   cdp.on("Network.requestWillBeSent", requestWillBeSent);
   cdp.on("Network.responseReceived", responseReceived);
   cdp.on("Network.loadingFinished", loadingFinished);
-  await cdp.send("Performance.enable");
+  return {
+    contextRequests,
+    requests,
+    getDocumentStart: () => documentStart,
+    stop: () => {
+      context.off("request", requestListener);
+      cdp.off("Network.requestWillBeSent", requestWillBeSent);
+      cdp.off("Network.responseReceived", responseReceived);
+      cdp.off("Network.loadingFinished", loadingFinished);
+    },
+  };
+};
 
-  await navigate();
+const readReadySnapshot = async (page) => {
   await page.getByRole("button", { name: "Start Session", exact: true }).waitFor();
   await page
     .getByRole("option", { name: "Assembly line (default)", exact: true })
     .waitFor({ state: "attached" });
-  await page.waitForFunction(() => typeof window.__optioPerformance?.uiReadyMs === "number");
-  const readySnapshot = await page.evaluate(() => ({ ...window.__optioPerformance }));
+  await page.waitForFunction(() => typeof window.optioPerformance?.uiReadyMs === "number");
+  const snapshot = await page.evaluate(() => ({ ...window.optioPerformance }));
   for (const key of ["appRenderedMs", "shellReadyMs", "storeReadyMs", "uiReadyMs"]) {
-    assert.equal(typeof readySnapshot[key], "number", `Missing readiness signal: ${key}`);
+    assert.equal(typeof snapshot[key], "number", `Missing readiness signal: ${key}`);
   }
-  const afterMetrics = await cdp.send("Performance.getMetrics");
-  const afterTaskDuration =
-    afterMetrics.metrics.find((metric) => metric.name === "TaskDuration")?.value ?? 0;
-  // Let resource completions settle without counting that extra window as startup CPU.
-  await page.waitForTimeout(750);
-  const browserTimings = await page.evaluate(() => {
+  return snapshot;
+};
+
+const readBrowserTimings = (page) =>
+  page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0];
     const resources = performance.getEntriesByType("resource");
     return {
@@ -155,7 +164,10 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
       resourceTransferBytes: resources.reduce((sum, resource) => sum + resource.transferSize, 0),
     };
   });
-  const network = [...requests.values()].map((request) => ({
+
+const normalizeNetwork = (capture) => {
+  const documentStart = capture.getDocumentStart();
+  return [...capture.requests.values()].map((request) => ({
     ...request,
     startMs: documentStart === undefined ? null : round((request.start - documentStart) * 1000),
     responseMs:
@@ -170,15 +182,14 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
     response: undefined,
     finished: undefined,
   }));
+};
+
+const navigationResult = ({ latencyMs, readySnapshot, browserTimings, taskDuration, capture }) => {
+  const network = normalizeNetwork(capture);
   const readyNetwork = network.filter(
     (request) => request.startMs !== null && request.startMs <= readySnapshot.uiReadyMs,
   );
   const documentRequest = network.find((request) => request.type === "Document");
-
-  context.off("request", requestListener);
-  cdp.off("Network.requestWillBeSent", requestWillBeSent);
-  cdp.off("Network.responseReceived", responseReceived);
-  cdp.off("Network.loadingFinished", loadingFinished);
   return {
     latencyMs,
     readiness: {
@@ -192,7 +203,7 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
     ),
     mainThread: {
       // CDP resets TaskDuration when a navigation replaces the document.
-      taskDurationMs: round(afterTaskDuration * 1000),
+      taskDurationMs: round(taskDuration * 1000),
       longTaskCount: readySnapshot.longTasks.length,
       longTaskTotalMs: round(
         readySnapshot.longTasks.reduce((sum, task) => sum + task.durationMs, 0),
@@ -202,7 +213,7 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
     },
     network: {
       targetRequestCount: network.length,
-      contextUniqueRequestCount: contextRequests.size,
+      contextUniqueRequestCount: capture.contextRequests.size,
       scriptRequestCount: network.filter((request) => request.type === "Script").length,
       documentTtfbMs:
         documentRequest?.responseMs === null || documentRequest?.responseMs === undefined
@@ -217,10 +228,34 @@ const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) =>
         0,
       ),
       pageResourceTransferBytes: browserTimings.resourceTransferBytes,
-      contextRequests: [...contextRequests.values()],
+      contextRequests: [...capture.contextRequests.values()],
       requests: network,
     },
   };
+};
+
+const measureNavigation = async ({ context, page, cdp, latencyMs, navigate }) => {
+  await setNetworkLatency(cdp, latencyMs);
+  const capture = captureNetwork({ context, cdp });
+  await cdp.send("Performance.enable");
+
+  await navigate();
+  const readySnapshot = await readReadySnapshot(page);
+  const afterMetrics = await cdp.send("Performance.getMetrics");
+  const taskDuration =
+    afterMetrics.metrics.find((metric) => metric.name === "TaskDuration")?.value ?? 0;
+  // Let resource completions settle without counting that extra window as startup CPU.
+  await page.waitForTimeout(750);
+  const browserTimings = await readBrowserTimings(page);
+  const result = navigationResult({
+    latencyMs,
+    readySnapshot,
+    browserTimings,
+    taskDuration,
+    capture,
+  });
+  capture.stop();
+  return result;
 };
 
 const runStartup = async (browser, latencyMs) => {
@@ -255,21 +290,19 @@ const runStartup = async (browser, latencyMs) => {
   return { cold, controlledReload };
 };
 
-const runInteraction = async (browser) => {
-  const context = await browser.newContext();
-  await context.addInitScript(initPerformanceObserver);
-  const page = await context.newPage();
-  page.setDefaultTimeout(20_000);
+const startInteractionSession = async (page) => {
   await page.goto(base);
   await page
     .getByRole("option", { name: "Assembly line (default)", exact: true })
     .waitFor({ state: "attached" });
   await page.getByRole("textbox", { name: "Session name", exact: true }).fill("Performance run");
-  let started = performance.now();
+  const started = performance.now();
   await page.getByRole("button", { name: "Start Session", exact: true }).click();
   await page.getByRole("textbox", { name: "Operation", exact: true }).waitFor();
-  const startSessionMs = round(performance.now() - started);
-  const runnerUrl = page.url();
+  return { startSessionMs: round(performance.now() - started), runnerUrl: page.url() };
+};
+
+const recordTasks = async (page) => {
   const stations = ["Station 1", "Station 2", "Station 3", "Station 4", "Station 5"];
   const types = ["Value-added", "Walking", "Waiting", "Setup", "Inspection"];
   const tools = ["Torque driver", "Hoist", "Scanner", "Hand tools"];
@@ -290,27 +323,33 @@ const runInteraction = async (browser) => {
     await page
       .getByRole("textbox", { name: "Notes", exact: true })
       .fill(`Synthetic note ${index} with repeated realistic observation text`);
-    started = performance.now();
+    const started = performance.now();
     await page.getByRole("button", { name: "Record task", exact: true }).click();
     await page
       .getByRole("button", { name: `Task ${index + 1} in progress`, exact: true })
       .waitFor();
     recordMs.push(round(performance.now() - started));
   }
+  return summarize(recordMs);
+};
 
+const measurePopulatedReload = async (page, runnerUrl) => {
   // Measure a representative reload after the last commit has had a quiet turn,
   // rather than racing page teardown against the just-rendered subscription update.
   await page.waitForTimeout(500);
-  started = performance.now();
+  const started = performance.now();
   await page.reload();
   await page
     .getByRole("button", { name: `Task ${taskCount + 1} in progress`, exact: true })
     .waitFor();
   const populatedReloadMs = round(performance.now() - started);
   assert.equal(page.url(), runnerUrl);
+  return populatedReloadMs;
+};
 
+const measureEdit = async (page) => {
   const editTask = Math.ceil(taskCount / 2);
-  started = performance.now();
+  let started = performance.now();
   await page.getByRole("button", { name: `Task ${editTask} completed`, exact: true }).click();
   await page.waitForFunction(
     (value) => document.querySelector('input[aria-label="Operation"]')?.value === value,
@@ -335,23 +374,37 @@ const runInteraction = async (browser) => {
   const persisted =
     (await page.getByRole("textbox", { name: "Operation", exact: true }).inputValue()) ===
     `Edited synthetic operation ${editTask}`;
-  const longTasks = await page.evaluate(() => window.__optioPerformance.longTasks);
+  return { openEditMs, saveEditMs, persisted };
+};
+
+const summarizeLongTasks = (longTasks) => ({
+  count: longTasks.length,
+  totalMs: round(longTasks.reduce((sum, task) => sum + task.durationMs, 0)),
+  longestMs: round(Math.max(0, ...longTasks.map((task) => task.durationMs))),
+});
+
+const runInteraction = async (browser) => {
+  const context = await browser.newContext();
+  await context.addInitScript(initPerformanceObserver);
+  const page = await context.newPage();
+  page.setDefaultTimeout(20_000);
+  const { startSessionMs, runnerUrl } = await startInteractionSession(page);
+  const recordTask = await recordTasks(page);
+  const populatedReloadMs = await measurePopulatedReload(page, runnerUrl);
+  const { openEditMs, saveEditMs, persisted } = await measureEdit(page);
+  const longTasks = await page.evaluate(() => window.optioPerformance.longTasks);
   await context.close();
   return {
     scope:
       "Playwright action-to-observed UI commit wall time; includes automation overhead and is not INP",
     taskCount,
     startSessionMs,
-    recordTask: summarize(recordMs),
+    recordTask,
     populatedReloadMs,
     openEditMs,
     saveEditMs,
     editPersistedAfterReload: persisted,
-    finalReloadLongTasks: {
-      count: longTasks.length,
-      totalMs: round(longTasks.reduce((sum, task) => sum + task.durationMs, 0)),
-      longestMs: round(Math.max(0, ...longTasks.map((task) => task.durationMs))),
-    },
+    finalReloadLongTasks: summarizeLongTasks(longTasks),
   };
 };
 

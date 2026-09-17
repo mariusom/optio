@@ -4,7 +4,7 @@
  * FoldKit's `update()` is a pure, synchronous reducer, so the machine is
  * driven through `Machine.plan` (no async MachineRef). This module keeps the
  * snapshot translation (model.runner/runnerPhase ↔ machine snapshot) and
- * returns the machine's emissions; main.ts maps emissions to LiveStore
+ * returns the machine's emissions; app/commands.ts maps emissions to LiveStore
  * commands.
  *
  * `Machine.plan` requires *decoded* snapshots (schema class instances), so
@@ -16,7 +16,7 @@
 import { Effect } from "effect";
 import { Machine } from "@typeonce/effect-machine";
 
-import type { RunnerState } from "../../we/features/session/runner";
+import type { RunnerState } from "../../web/features/session/runner";
 import {
   SessionMachine,
   type LiveValue,
@@ -25,7 +25,7 @@ import {
   type SessionPhase,
 } from "./sessionMachine";
 
-export type { RunnerState, SessionEmission }; // SessionEmission re-exported for main.ts
+export type { RunnerState, SessionEmission };
 
 /** The machine path ↔ model phase mapping (model.runner null ⇒ Idle). */
 const phaseToChildPath = (phase: SessionPhase): "Live.Collecting" | "Live.ConfirmingEnd" =>

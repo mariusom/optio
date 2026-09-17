@@ -110,7 +110,7 @@ Foldkit's state-preserving HMR behavior.
 
 To repeat the input-preservation probe, open a fresh dev browser, type a unique
 session name without submitting, and temporarily change the Start Session
-button's label in `src/we/features/session/startView.ts`. Wait for the changed
+button's label in `src/web/features/session/startView.ts`. Wait for the changed
 label, check whether the session name survived, then restore the source file.
 Repeat with ordinary and bundled dev, without manually reloading the browser.
 

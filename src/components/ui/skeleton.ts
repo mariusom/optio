@@ -1,8 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 export const skeletonClass = "bg-muted rounded-md animate-pulse";
 

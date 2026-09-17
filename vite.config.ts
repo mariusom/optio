@@ -14,6 +14,67 @@ export default defineConfig(({ command, mode }) => {
     for (const plugin of tailwind) delete plugin.hotUpdate;
   }
   return defineConfig({
+    lint: {
+      plugins: ["typescript", "unicorn", "oxc", "import", "promise"],
+      categories: { correctness: "error", suspicious: "error" },
+      rules: {
+        "max-statements": ["error", 25],
+        "max-lines-per-function": ["error", { max: 150, skipBlankLines: true, skipComments: true }],
+        "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
+        "max-depth": ["error", 4],
+        complexity: ["error", 15],
+        "max-params": ["error", 3],
+        "max-nested-callbacks": ["error", 3],
+        "import/no-cycle": "error",
+        "import/first": "error",
+        "import/no-duplicates": "error",
+        "import/no-unassigned-import": [
+          "error",
+          { allow: ["**/*.css", "**/*.woff", "**/*.woff2"] },
+        ],
+        "typescript/no-require-imports": "error",
+        "no-unused-vars": [
+          "error",
+          { args: "all", argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+        ],
+        "promise/catch-or-return": "error",
+        "unicorn/no-abusive-eslint-disable": "error",
+        "import/no-default-export": "off",
+        "no-console": "off",
+        "no-underscore-dangle": ["error", { allow: ["_tag"] }],
+      },
+      overrides: [
+        {
+          // Generated registry data is not hand-maintained application logic.
+          files: ["src/web/componentStyles.generated.ts"],
+          rules: { "max-lines": "off" },
+        },
+        {
+          // Vite supplies default constructors for worker query imports.
+          files: ["src/livestore/openStore.ts"],
+          rules: { "import/default": "off" },
+        },
+        {
+          files: [
+            "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+            "**/{test,tests,__tests__}/**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+            "**/*.stories.{js,jsx,ts,tsx}",
+            "**/*.story.{js,jsx,ts,tsx}",
+            "**/*.browser.ts",
+            "**/*.e2e.mjs",
+          ],
+          rules: {
+            "max-statements": "off",
+            "max-lines-per-function": "off",
+            "max-lines": "off",
+            "max-depth": "off",
+            complexity: "off",
+            "max-params": "off",
+            "max-nested-callbacks": "off",
+          },
+        },
+      ],
+    },
     experimental: { bundledDev },
     base: "/optio/",
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },

@@ -1,8 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 /** Badge variant keys — keep in sync with `badgeVariants`. */
 export const badgeVariantKeys = [

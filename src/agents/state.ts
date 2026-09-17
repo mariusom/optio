@@ -2,10 +2,10 @@ import { Schema } from "effect";
 
 import type { Model } from "../main";
 import { FieldDef, FieldKind } from "../livestore/schema";
-import { RunnerDataSchema } from "../we/features/session/runner";
-import { RouteSchema } from "../we/routes";
-import { Theme } from "../we/theme";
-import { TemplateSummary } from "../we/types";
+import { RunnerDataSchema } from "../web/features/session/runner";
+import { RouteSchema } from "../web/routes";
+import { Theme } from "../web/theme";
+import { TemplateSummary } from "../web/types";
 
 const TemplateEditor = Schema.Struct({
   id: Schema.String,

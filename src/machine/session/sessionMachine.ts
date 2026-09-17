@@ -27,9 +27,9 @@ import {
   type RunnerData,
   type RunnerSection,
   type RunnerTask,
-} from "../../we/features/session/runner";
+} from "../../web/features/session/runner";
 
-export type { RunnerData, RunnerSection, RunnerTask } from "../../we/features/session/runner";
+export type { RunnerData, RunnerSection, RunnerTask } from "../../web/features/session/runner";
 
 /** Value owned by the `Live` compound state (store data + control surface). */
 const LiveValue = Schema.TaggedUnion({
@@ -122,9 +122,9 @@ export type SessionEmission = Machine.EventOf<typeof SessionEmissions>;
 
 /** Newest unfinished task id — the target after finishing/cancelling an edit. */
 const fallbackTaskId = (data: RunnerData): string | null => {
-  const unfinished = [...data.tasks]
+  const unfinished = data.tasks
     .filter((t) => t.endDate === null)
-    .sort((a, b) => b.orderIndex - a.orderIndex);
+    .toSorted((a, b) => b.orderIndex - a.orderIndex);
   return unfinished[0]?.id ?? null;
 };
 
@@ -153,7 +153,7 @@ export const nextFocusForField = (
   const updated: RunnerSection = { ...targetSection, value };
   if (!isSectionDone(updated)) return { changed: false, next: null };
   const base = (currentTask(data) ?? targetTask).sections;
-  const sorted = [...base].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sorted = base.toSorted((a, b) => a.sortOrder - b.sortOrder);
   const updatedSorted = sorted.map((s) => (s.id === taskFieldId ? { ...s, value } : s));
   return { changed: true, next: findNextUnfulfilledSectionId(updatedSorted, taskFieldId) };
 };

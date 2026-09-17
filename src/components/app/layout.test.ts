@@ -41,7 +41,7 @@ describe("choiceRows", () => {
 
   it("moves the selection with arrow keys and wraps", () => {
     const config = {
-      view: (selected: string, h: HtmlBuilder<Msg>) =>
+      view: (selected: string, builder: HtmlBuilder<Msg>) =>
         choiceRows(
           {
             label: "Appearance",
@@ -51,7 +51,7 @@ describe("choiceRows", () => {
               onSelect: { pick: label },
             })),
           },
-          h,
+          builder,
         ),
       update: (_selected: string, message: Msg) => ({ model: message.pick, outMessage: message }),
     };

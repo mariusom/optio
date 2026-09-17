@@ -4,19 +4,19 @@ import { Effect, Exit, Schema, Scope } from "effect";
 import { createStorePromise } from "@livestore/livestore";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
-
 import { applicationConfig } from "../application";
 import { Model, update } from "../main";
 import { Message } from "../messages";
 import { getStore } from "../livestore/client";
 import { schema } from "../livestore/schema";
-import { EndSession } from "../we/features/session/runnerCommands";
+import { EndSession } from "../web/features/session/runnerCommands";
 import { AgentResult, type AgentAction } from "./actions";
 import { connectAgentApplication } from "./connection";
 import { makeToolHandlers } from "./tools";
 import { registerWebMcp, type ModelContext } from "./webmcp";
 import "../index.css";
+
+vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
 
 // Real Foldkit runtime, commands, SQLite queries/materializers, with LiveStore's
 // in-memory adapter. This verifies mutations, not worker/OPFS persistence.
@@ -202,7 +202,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     expect(state.runner!.tasks[0].sections[0].startDate).toBe(firstWrite);
     await act({ _tag: "ClickedEndSession" });
     await act({ _tag: "ConfirmedEndSession" });
-    await wait((s) => s.history.some((s) => s.id === sessionId));
+    await wait((s) => s.history.some((entry) => entry.id === sessionId));
     await wait((s) => s.activeSession === null);
     await expect(
       invoke("optio_action", {
@@ -233,12 +233,14 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await act({ _tag: "ChangedEditHistoryName", text: `${name} renamed` });
     await act({ _tag: "ConfirmedEditHistoryName" });
     await wait((s) =>
-      s.history.some((s) => s.id === sessionId && s.sessionName.endsWith("renamed")),
+      s.history.some((entry) => entry.id === sessionId && entry.sessionName.endsWith("renamed")),
     );
     await act({ _tag: "ClickedEditHistoryName" });
     await act({ _tag: "ChangedEditHistoryName", text: "" });
     await act({ _tag: "ConfirmedEditHistoryName" });
-    await wait((s) => s.history.some((s) => s.id === sessionId && s.sessionName === ""));
+    await wait((s) =>
+      s.history.some((entry) => entry.id === sessionId && entry.sessionName === ""),
+    );
     const archiveDisplayName = (await read()).history.find((s) => s.id === sessionId)!.displayName;
     expect(archiveDisplayName).toBe(`${name} edited`);
     await act({ _tag: "Navigate", route: { _tag: "HistoryTab" } });
@@ -277,7 +279,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     expect(replay.commands).toHaveLength(1); // Reply only, no deletion.
     expect(replay.model).toBe(first.model);
     await act({ _tag: "ConfirmedHistoryDelete" });
-    await wait((s) => !s.history.some((s) => s.id === sessionId));
+    await wait((s) => !s.history.some((entry) => entry.id === sessionId));
     await act({ _tag: "Navigate", route: { _tag: "TemplatesTab" } });
     await wait((s) => s.route._tag === "TemplatesTab");
     await act({ _tag: "RequestedDeleteTemplate", id: templateId, name: "Misleading label" });

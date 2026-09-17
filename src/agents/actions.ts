@@ -2,9 +2,9 @@ import { Schema } from "effect";
 import { Port } from "foldkit";
 
 import { Message } from "../messages";
-import { RouteSchema } from "../we/routes";
-import { FieldKind } from "../livestore/schema";
-import { isScalarAnswerValid } from "../we/fields";
+import { RouteSchema, type Route } from "../web/routes";
+import { FieldKind, type FieldDef } from "../livestore/schema";
+import { isScalarAnswerValid } from "../web/fields";
 import type { Model } from "../main";
 import { AgentState } from "./state";
 
@@ -78,32 +78,27 @@ export const AgentAction = Schema.Union([
 ]);
 export type AgentAction = typeof AgentAction.Type;
 
-/** UI controls normally constrain these values/IDs; an external caller must not bypass that. */
-export const actionError = (model: Model, action: AgentAction): string | null => {
-  switch (action._tag) {
-    case "Navigate": {
-      const route = action.route;
-      switch (route._tag) {
-        case "SessionRunner":
-          return model.activeSession?.id === route.sessionId
-            ? null
-            : "Only the active session can be opened in the runner.";
-        case "TemplateEditor":
-          return model.templates.some((template) => template.id === route.templateId)
-            ? null
-            : "Template not found.";
-        case "SessionDetail":
-          return model.history.some((session) => session.id === route.sessionId)
-            ? null
-            : "Archived session not found.";
-        default:
-          return null;
-      }
-    }
-    case "ClickedStartSession":
-      return model.activeSession === null
+const routeError = (model: Model, route: Route): string | null => {
+  switch (route._tag) {
+    case "SessionRunner":
+      return model.activeSession?.id === route.sessionId
         ? null
-        : "A session is already active. Resume or end it first.";
+        : "Only the active session can be opened in the runner.";
+    case "TemplateEditor":
+      return model.templates.some((template) => template.id === route.templateId)
+        ? null
+        : "Template not found.";
+    case "SessionDetail":
+      return model.history.some((session) => session.id === route.sessionId)
+        ? null
+        : "Archived session not found.";
+    default:
+      return null;
+  }
+};
+
+const targetError = (model: Model, action: AgentAction): string | null => {
+  switch (action._tag) {
     case "ClickedSetDefaultTemplate":
     case "ClickedDuplicateTemplate":
     case "ClickedTemplateRow":
@@ -121,40 +116,70 @@ export const actionError = (model: Model, action: AgentAction): string | null =>
       return model.history.some((session) => session.id === action.sessionId)
         ? null
         : "Archived session not found.";
-    case "ConfirmedDiscardSession":
-      return model.pendingDiscardSession ? null : "Request session discard first.";
-    case "AdjustedCounter": {
-      const task = model.runner?.tasks.find((task) => task.id === model.runner?.currentTaskId);
-      const field = task?.sections.find((field) => field.id === action.taskFieldId);
-      return field?.kind === "counter" && (task?.endDate === null || task?.isBeingEdited)
-        ? null
-        : "Select an editable counter first.";
-    }
-    case "ChangedFieldValue": {
-      const task = model.runner?.tasks.find((task) => task.id === model.runner?.currentTaskId);
-      const field = task?.sections.find((field) => field.id === action.taskFieldId);
-      if (!field || (task?.endDate !== null && !task?.isBeingEdited))
-        return "Select the task for editing before changing its fields.";
-      if (
-        field.kind === "radio" &&
-        !Schema.is(Schema.Literals(["", ...field.options]))(action.value)
-      )
-        return "Choose a listed radio option.";
-      if (!isScalarAnswerValid(field.kind, action.value))
-        return "Use a valid answer: a number, a non-negative whole counter, a rating from 1 to 5, or true/false for Yes/No. Empty means unanswered.";
-      if (field.kind === "checkbox" && action.value !== "") {
-        const selected = action.value.split(",");
-        if (
-          field.options.filter((option) => selected.includes(option)).join(",") !== action.value ||
-          (selected.length > 1 &&
-            selected.some((option) => field.exclusiveOptions.includes(option)))
-        )
-          return "Use valid checkbox options in template order, respecting exclusive options.";
-      }
-      return null;
-    }
     default:
       return null;
+  }
+};
+
+const checkboxValueError = (
+  field: Pick<FieldDef, "options" | "exclusiveOptions">,
+  value: string,
+) => {
+  if (value === "") return null;
+  const selected = value.split(",");
+  if (
+    field.options.filter((option) => selected.includes(option)).join(",") !== value ||
+    (selected.length > 1 && selected.some((option) => field.exclusiveOptions.includes(option)))
+  )
+    return "Use valid checkbox options in template order, respecting exclusive options.";
+  return null;
+};
+
+const fieldValueError = (
+  model: Model,
+  action: Extract<AgentAction, { _tag: "ChangedFieldValue" }>,
+): string | null => {
+  const task = model.runner?.tasks.find(
+    (candidate) => candidate.id === model.runner?.currentTaskId,
+  );
+  const field = task?.sections.find((section) => section.id === action.taskFieldId);
+  if (!field || (task?.endDate !== null && !task?.isBeingEdited))
+    return "Select the task for editing before changing its fields.";
+  if (field.kind === "radio" && !Schema.is(Schema.Literals(["", ...field.options]))(action.value))
+    return "Choose a listed radio option.";
+  if (!isScalarAnswerValid(field.kind, action.value))
+    return "Use a valid answer: a number, a non-negative whole counter, a rating from 1 to 5, or true/false for Yes/No. Empty means unanswered.";
+  if (field.kind === "checkbox") return checkboxValueError(field, action.value);
+  return null;
+};
+
+const counterError = (model: Model, taskFieldId: string): string | null => {
+  const task = model.runner?.tasks.find(
+    (candidate) => candidate.id === model.runner?.currentTaskId,
+  );
+  const field = task?.sections.find((section) => section.id === taskFieldId);
+  return field?.kind === "counter" && (task?.endDate === null || task?.isBeingEdited)
+    ? null
+    : "Select an editable counter first.";
+};
+
+/** UI controls normally constrain these values/IDs; an external caller must not bypass that. */
+export const actionError = (model: Model, action: AgentAction): string | null => {
+  switch (action._tag) {
+    case "Navigate":
+      return routeError(model, action.route);
+    case "ClickedStartSession":
+      return model.activeSession === null
+        ? null
+        : "A session is already active. Resume or end it first.";
+    case "ConfirmedDiscardSession":
+      return model.pendingDiscardSession ? null : "Request session discard first.";
+    case "ChangedFieldValue":
+      return fieldValueError(model, action);
+    case "AdjustedCounter":
+      return counterError(model, action.taskFieldId);
+    default:
+      return targetError(model, action);
   }
 };
 

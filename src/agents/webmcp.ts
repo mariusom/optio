@@ -32,7 +32,7 @@ export const registerWebMcp = Effect.fn("agents.registerWebMcp")(function* (
 ) {
   const runtime = yield* Effect.acquireRelease(
     Effect.sync(() => ManagedRuntime.make(handlers)),
-    (runtime) => Effect.promise(() => runtime.dispose()),
+    (managed) => Effect.promise(() => managed.dispose()),
   );
   const registration = yield* Effect.acquireRelease(
     Effect.sync(() => new AbortController()),

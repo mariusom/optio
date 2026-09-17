@@ -1,8 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 /**
  * foldkit gap: upstream drives the indicator transform and the value text

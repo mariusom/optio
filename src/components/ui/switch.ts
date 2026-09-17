@@ -56,7 +56,7 @@ export type SwitchConfig<M> = Readonly<{
 
 /** Styled switch with label and optional description, built on the
  *  @foldkit/ui Switch helper. */
-export const switch_ = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
+const switchView = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
   FoldkitSwitch.view<M>(
     {
       id: config.id,
@@ -113,3 +113,5 @@ export const switch_ = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
     },
     h,
   );
+
+export { switchView as switch_ };

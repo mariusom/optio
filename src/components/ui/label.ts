@@ -1,8 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 /** Upstream keys label disabling on a native peer-disabled sibling variant
  *  and `group-data-[disabled=true]`, neither of which matches under foldkit

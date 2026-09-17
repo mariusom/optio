@@ -87,6 +87,31 @@ export const OptioTools = Toolkit.make(
   ActOnApp,
 );
 
+const summaries = (store: Pick<AppStore, "query">) => {
+  const counts = new Map<string, number>();
+  for (const record of store.query(tables.taskRecords.select())) {
+    counts.set(record.sessionId, (counts.get(record.sessionId) ?? 0) + 1);
+  }
+  return store
+    .query(tables.sessions.select())
+    .flatMap((session) =>
+      session.endedAt === null
+        ? []
+        : [
+            {
+              id: session.id,
+              sessionName: session.sessionName,
+              templateName: session.templateName,
+              startedAt: Number(session.startedAt),
+              endedAt: Number(session.endedAt),
+              durationMs: Number(session.endedAt) - Number(session.startedAt),
+              taskCount: counts.get(session.id) ?? 0,
+            },
+          ],
+    )
+    .toSorted((a, b) => b.startedAt - a.startedAt || a.id.localeCompare(b.id));
+};
+
 /** Reads use a read-only store handle; all writes go through the app update loop. */
 export const makeToolHandlers = (
   openStore: () => Promise<Pick<AppStore, "query">>,
@@ -114,31 +139,6 @@ export const makeToolHandlers = (
     });
   });
 
-  const summaries = (store: Pick<AppStore, "query">) => {
-    const counts = new Map<string, number>();
-    for (const record of store.query(tables.taskRecords.select())) {
-      counts.set(record.sessionId, (counts.get(record.sessionId) ?? 0) + 1);
-    }
-    return store
-      .query(tables.sessions.select())
-      .flatMap((session) =>
-        session.endedAt === null
-          ? []
-          : [
-              {
-                id: session.id,
-                sessionName: session.sessionName,
-                templateName: session.templateName,
-                startedAt: Number(session.startedAt),
-                endedAt: Number(session.endedAt),
-                durationMs: Number(session.endedAt) - Number(session.startedAt),
-                taskCount: counts.get(session.id) ?? 0,
-              },
-            ],
-      )
-      .sort((a, b) => b.startedAt - a.startedAt || a.id.localeCompare(b.id));
-  };
-
   return OptioTools.toLayer({
     optio_get_state: () => appRequest(null),
     optio_action: ({ action }) => appRequest(action),
@@ -147,7 +147,7 @@ export const makeToolHandlers = (
         const templates = store
           .query(tables.templates.select())
           .map(({ id, name, isDefault }) => ({ id, name, isDefault: isDefault === 1 }))
-          .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+          .toSorted((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
         return { templates: templates.slice(offset, offset + limit), total: templates.length };
       }),
     optio_list_sessions: ({ offset = 0, limit = 50 }) =>

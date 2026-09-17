@@ -214,9 +214,9 @@ test(
     const input = (name) => page.getByRole("textbox", { name, exact: true });
     const waitValue = async (name, value) => {
       await page.waitForFunction(
-        ({ name, value }) =>
+        ({ name: label, value: expected }) =>
           [...document.querySelectorAll("input")].some(
-            (el) => el.getAttribute("aria-label") === name && el.value === value,
+            (el) => el.getAttribute("aria-label") === label && el.value === expected,
           ),
         { name, value },
       );
@@ -267,10 +267,10 @@ test(
       // LiveStore exposes its existing store for debugging; no extra app/test API.
       // A query notification precedes the leader's OPFS commit acknowledgement.
       await page.waitForFunction(
-        () => globalThis.__debugLiveStore?.["optio-v3"]?.syncStatus().pendingCount === 0,
+        () => globalThis["__debugLiveStore"]?.["optio-v3"]?.syncStatus().pendingCount === 0,
       );
       assert.equal(
-        await page.evaluate(() => globalThis.__debugLiveStore["optio-v3"].storageMode),
+        await page.evaluate(() => globalThis["__debugLiveStore"]["optio-v3"].storageMode),
         "persisted",
       );
       await page.reload();
@@ -349,7 +349,7 @@ test(
         "failed end retains live values",
       );
       await page.waitForFunction(
-        () => globalThis.__debugLiveStore?.["optio-v3"]?.syncStatus().pendingCount === 0,
+        () => globalThis["__debugLiveStore"]?.["optio-v3"]?.syncStatus().pendingCount === 0,
       );
       await page.reload();
       await input("Items packed").waitFor();
@@ -358,10 +358,8 @@ test(
       await waitValue("Items packed", "12");
       await input("Items packed").fill("0");
       await waitValue("Items packed", "0");
-      assert.equal(
-        await page.getByRole("button", { name: "Decrease Items packed" }).isDisabled(),
-        true,
-      );
+      // fill() changes the input before the store notification updates sibling controls.
+      await page.getByRole("button", { name: "Decrease Items packed", disabled: true }).waitFor();
       await page.getByRole("button", { name: "Save changes", exact: true }).click();
       await page.getByRole("button", { name: "End session", exact: true }).click();
       await page

@@ -3,12 +3,12 @@ import { Effect } from "effect";
 import { createStorePromise } from "@livestore/livestore";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 
-vi.mock("./client", () => ({ getStore: vi.fn() }));
-
 import { getStore } from "./client";
 import { events, schema, tables, type FieldDef } from "./schema";
-import { CancelEdit, SaveEdit, SelectTask } from "../we/features/session/runnerCommands";
+import { CancelEdit, SaveEdit, SelectTask } from "../web/features/session/runnerCommands";
 import { planSession } from "../machine/session/plan";
+
+vi.mock("./client", () => ({ getStore: vi.fn() }));
 
 const fields: FieldDef[] = [
   {
