@@ -1,6 +1,7 @@
 # optio
 
-[![Checks and deployment](https://github.com/mariusom/optio/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/mariusom/optio/actions/workflows/deploy.yml)
+[![Checks](https://github.com/mariusom/optio/actions/workflows/checks.yml/badge.svg?event=pull_request)](https://github.com/mariusom/optio/actions/workflows/checks.yml)
+[![Deployment](https://github.com/mariusom/optio/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/mariusom/optio/actions/workflows/deploy.yml)
 
 Optio helps you study how time is spent on tasks. Create a set of questions,
 record observations as you work, then review sessions and export them as CSV.

@@ -7,6 +7,9 @@ records, credentials or someone else's personal information.
 
 ## Before submitting
 
+- Work on a feature branch and open a pull request targeting `main`; do not
+  push changes directly to `main`. Keep the branch up to date and wait for the
+  required `validate` check to pass before merging. Merges deploy automatically.
 - Follow the setup and checks in [development](docs/development.md), and the
   applicable architecture and interface guidance linked there.
 - Describe the problem, the intended result, and how you verified it. Include

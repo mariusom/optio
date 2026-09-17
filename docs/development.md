@@ -97,11 +97,22 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Deployment
 
-[The workflow](../.github/workflows/deploy.yml) audits, checks, tests and builds
-pull requests and pushes to `main`. Only validated `main` builds can reach the
-separate GitHub Pages deployment job; install and test steps have no Pages or
-OIDC write permissions. The `/optio/` base path and service-worker settings live
-in [vite.config.ts](../vite.config.ts).
+[Checks](../.github/workflows/checks.yml) runs the `validate` job on every pull
+request targeting `main`: dependency and license audits, lint, types, unit and
+browser tests, a production build, and E2E checks. It has read-only permissions
+and cannot deploy.
+
+[Deployment](../.github/workflows/deploy.yml) runs only on pushes to `main`,
+builds that exact commit and uploads its Pages artifact. A separate deployment
+job has Pages/OIDC write permissions; the build job does not. There is no manual
+deployment trigger. The `/optio/` base path and service-worker settings live in
+[vite.config.ts](../vite.config.ts).
+
+Enable the `main` ruleset described below **before merging this workflow split**:
+require a pull request and a successful, up-to-date `validate` check, with no
+bypass actors. Deployment relies on that merge gate; a push trigger cannot tell
+whether a change arrived through a PR. Do not replace this with privileged
+`pull_request_target` builds of contributor code.
 
 The current pre-release starts a fresh `optio-v3` store and does not migrate
 older stores. Export any wanted pre-release results using the old build before
@@ -215,7 +226,7 @@ solo maintainer; require one independent approval when another reviewer is
 available. Test a contributor PR before adding further required check names.
 These are GitHub settings; committing workflow files does not enable them.
 
-Deployment remains automatic after validated `main` pushes. A weekly maintenance
+Deployment is automatic when a checked PR is merged into protected `main`. A weekly maintenance
 schedule is not a weekly publication schedule. The manual **Release assurance**
 workflow is restricted to `main`: it validates, builds, packages `dist`, uploads
 an archive and checksum, then attests that archive in a separate job. Build and
