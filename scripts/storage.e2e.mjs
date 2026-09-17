@@ -307,6 +307,43 @@ test(
       );
       await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
       await waitValue("Items packed", "12");
+      await input("Items packed").fill("-1");
+      await page
+        .getByText("Correct invalid answers before continuing.")
+        .filter({ visible: true })
+        .waitFor();
+      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).click();
+      await page
+        .getByText(
+          "Complete required questions and correct invalid answers, or cancel the edit first.",
+        )
+        .filter({ visible: true })
+        .waitFor();
+      assert.equal(await input("Items packed").inputValue(), "-1", "invalid edit stays selected");
+      await page.getByRole("button", { name: "End session", exact: true }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "End session", exact: true })
+        .click();
+      await page
+        .getByText(
+          "Open task 1 and complete required questions and correct invalid answers, or cancel the edit first.",
+        )
+        .filter({ visible: true })
+        .waitFor();
+      assert.equal(
+        await input("Items packed").inputValue(),
+        "-1",
+        "failed end retains live values",
+      );
+      await page.waitForFunction(
+        () => globalThis.__debugLiveStore?.["optio-v3"]?.syncStatus().pendingCount === 0,
+      );
+      await page.reload();
+      await input("Items packed").waitFor();
+      await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
+      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await waitValue("Items packed", "12");
       await input("Items packed").fill("0");
       await waitValue("Items packed", "0");
       assert.equal(

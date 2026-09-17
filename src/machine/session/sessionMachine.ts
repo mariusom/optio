@@ -303,7 +303,7 @@ export const SessionMachine = Machine.make({
                     }),
                   );
                 }
-                return select.live.decoded(current);
+                return select.live({ decoded: true, data: current });
               },
             },
             // Field edit: commit the value, radio auto-advances the focus.
@@ -366,6 +366,17 @@ export const SessionMachine = Machine.make({
               resolve: ({ containingState: current, event, select }, enqueue) => {
                 const picked = current.data.tasks.find((t) => t.id === event.taskId);
                 if (picked === undefined) return select.live({ decoded: true, data: current });
+                const editing = current.data.tasks.find((t) => t.isBeingEdited);
+                if (editing && editing.id !== event.taskId && !isTaskDone(editing)) {
+                  return select.live({
+                    decoded: true,
+                    data: {
+                      ...current,
+                      lastError:
+                        "Complete required questions and correct invalid answers, or cancel the edit first.",
+                    },
+                  });
+                }
                 enqueue.emit(
                   SessionEmissions.CommitSelectTask({
                     sessionId: current.data.sessionId,

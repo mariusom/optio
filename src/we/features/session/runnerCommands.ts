@@ -213,6 +213,16 @@ export const EndSession = Command.define("EndSession", {
           startDate: Date | number | null;
         }>;
 
+        if (
+          fieldRows.some(
+            (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
+          )
+        ) {
+          return Message.FailedRunnerOp({
+            error: `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
+          });
+        }
+
         // task startedAt = min startDate among sections (null if untouched)
         const starts = fieldRows
           .map((r) => toEpoch(r.startDate as number | Date | null))
@@ -272,13 +282,27 @@ export const SelectTask = Command.define("SelectTask", {
       const target = taskRows.find((r) => r.id === taskId);
       if (target === undefined) return Message.TaskEditStarted({ taskId });
 
+      const edited = taskRows.find((r) => r.isBeingEdited === 1);
+      if (edited && edited.id !== taskId) {
+        const fields = store.query(tables.sessionTaskFields.select().where({ taskId: edited.id }));
+        if (
+          fields.some(
+            (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
+          )
+        ) {
+          return Message.FailedRunnerOp({
+            error:
+              "Complete required questions and correct invalid answers, or cancel the edit first.",
+          });
+        }
+      }
+
       const isFinished = target.endDate !== null && target.endDate !== undefined;
       if (isFinished) {
         store.commit(events.taskEditStarted({ sessionId, id: taskId }));
         return Message.TaskEditStarted({ taskId });
       } else {
         // Selecting current (unfinished) → clear any editing
-        const edited = taskRows.find((r) => r.isBeingEdited === 1);
         if (edited !== undefined) {
           store.commit(events.taskEditFinished({ id: edited.id }));
         }

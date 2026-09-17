@@ -85,6 +85,33 @@ const plan = (
 // ── Tests ───────────────────────────────────────────────────────────────────
 
 describe("sessionMachine topology", () => {
+  it("dispatches counter adjustments through the planner", () => {
+    const runner = liveRunner();
+    runner.tasks = [
+      { ...runner.tasks[0], sections: [section("count", "Count", "counter", false, "7")] },
+    ];
+    expect(
+      plan(runner, { _tag: "CounterAdjusted", taskFieldId: "count", delta: 1 }).emissions,
+    ).toEqual([{ _tag: "CommitCounterAdjustment", taskFieldId: "count", delta: 1 }]);
+  });
+
+  it("retains an invalid completed edit when another task is selected", () => {
+    const runner = liveRunner();
+    runner.tasks = [
+      runner.tasks[0],
+      {
+        ...runner.tasks[1],
+        isBeingEdited: true,
+        sections: [section("count", "Count", "counter", false, "-1")],
+      },
+    ];
+    runner.currentTaskId = "task-2";
+    const result = plan(runner, { _tag: "TaskSelected", taskId: "task-1" });
+    expect(result.emissions).toEqual([]);
+    expect(result.runner?.currentTaskId).toBe("task-2");
+    expect(result.runner?.lastError).toMatch(/correct invalid answers/);
+  });
+
   it.effect("starts Idle", () =>
     Effect.gen(function* () {
       expect(

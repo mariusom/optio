@@ -83,7 +83,7 @@ const cases = [
   {
     name: "SelectTask current",
     command: () => SelectTask({ sessionId: "session", taskId: "task" }),
-    rows: [[task, { ...finishedTask, id: "edited", isBeingEdited: 1 }]],
+    rows: [[task, { ...finishedTask, id: "edited", isBeingEdited: 1 }], []],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",
     writes: true,
@@ -281,6 +281,36 @@ describe("SaveEdit required field validation", () => {
 });
 
 describe("EndSession idempotency", () => {
+  it.effect.each([
+    { kind: "number", value: "bad", isRequired: 0 },
+    { kind: "counter", value: "-1", isRequired: 0 },
+    { kind: "rating", value: "6", isRequired: 0 },
+    { kind: "boolean", value: "", isRequired: 1 },
+  ])("retains invalid edits instead of switching or archiving: %s", (field) =>
+    Effect.gen(function* () {
+      for (const target of [task, { ...finishedTask, id: "other" }]) {
+        query.mockReturnValueOnce([target, { ...finishedTask, id: "edited", isBeingEdited: 1 }]);
+        query.mockReturnValueOnce([field]);
+        expect(yield* SelectTask({ sessionId: "session", taskId: target.id }).effect).toMatchObject(
+          {
+            _tag: "FailedRunnerOp",
+            error: expect.stringContaining("correct invalid answers"),
+          },
+        );
+        expect(commit).not.toHaveBeenCalled();
+      }
+      query
+        .mockReturnValueOnce([liveSession])
+        .mockReturnValueOnce([finishedTask])
+        .mockReturnValueOnce([field]);
+      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+        _tag: "FailedRunnerOp",
+        error: expect.stringContaining("correct invalid answers"),
+      });
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
+
   it.effect.each([
     ["missing", []],
     ["already ended", [{ ...liveSession, endedAt: new Date(2000) }]],
