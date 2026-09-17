@@ -18,7 +18,7 @@ import {
   statusPill,
 } from "@/components/app";
 import { button, buttonClass } from "@/components/ui/button";
-import { inputClass } from "@/components/ui/input";
+import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { switchClass, switchThumbClass } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -227,11 +227,12 @@ const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
   );
 };
 
-const textAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
+const textAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
   h.div(
     [],
     [
       h.input([
+        h.Id(`${scope}-answer-${section.id}`),
         h.Class(cn(inputClass)),
         h.Value(section.value),
         h.Placeholder("Type your answer"),
@@ -317,37 +318,56 @@ const answerControl = (section: RunnerSection, scope: string, h: HtmlBuilder<Mes
     case "boolean":
       return yesNoAnswer(section, scope, h);
     default:
-      return textAnswer(section, h);
+      return textAnswer(section, scope, h);
   }
 };
 
 const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
-  groupedList(
-    {
-      surface: section.kind === "boolean" ? "card" : "plain",
-      header:
-        section.kind === "boolean"
-          ? undefined
-          : h.span(
-              [h.Class("flex flex-wrap items-center gap-2 normal-case")],
-              [
-                h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
-                ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
-                ...(section.kind === "radio" || section.kind === "checkbox"
-                  ? [
-                      h.span(
-                        [h.Class("ml-auto text-xs font-normal text-muted-foreground")],
-                        [section.kind === "radio" ? "Choose one" : "Choose any"],
-                      ),
-                    ]
-                  : []),
-              ],
-            ),
-      attributes: [h.Id(`${scope}-${section.id}`)],
-    },
-    [answerControl(section, scope, h)],
-    h,
-  );
+  section.kind === "textInput"
+    ? h.div(
+        [h.Id(`${scope}-${section.id}`), h.Class(cn(inlineFieldClass))],
+        [
+          h.label(
+            [h.For(`${scope}-answer-${section.id}`), h.Class(cn(inputLabelClass, "flex-wrap"))],
+            [
+              h.span([h.Class("min-w-0 max-w-full break-words")], [section.name]),
+              ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
+            ],
+          ),
+          textAnswer(section, scope, h),
+        ],
+      )
+    : groupedList(
+        {
+          surface: section.kind === "boolean" ? "card" : "plain",
+          header:
+            section.kind === "boolean"
+              ? undefined
+              : h.span(
+                  [h.Class("flex flex-wrap items-center gap-2 normal-case")],
+                  [
+                    h.span(
+                      [h.Class("min-w-0 text-sm font-semibold tracking-normal")],
+                      [section.name],
+                    ),
+                    ...(section.isRequired
+                      ? [statusPill({ tone: "primary" }, ["Required"], h)]
+                      : []),
+                    ...(section.kind === "radio" || section.kind === "checkbox"
+                      ? [
+                          h.span(
+                            [h.Class("ml-auto text-xs font-normal text-muted-foreground")],
+                            [section.kind === "radio" ? "Choose one" : "Choose any"],
+                          ),
+                        ]
+                      : []),
+                  ],
+                ),
+          attributes: [h.Id(`${scope}-${section.id}`)],
+        },
+        [answerControl(section, scope, h)],
+        h,
+      );
 
 // ── Form canvas ─────────────────────────────────────────────────────────────
 

@@ -21,7 +21,7 @@ import {
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
-import { inputClass, inputLabelClass } from "@/components/ui/input";
+import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { itemSizes } from "@/components/ui/item";
 import { nativeSelect } from "@/components/ui/native-select";
 import { switch_ } from "@/components/ui/switch";
@@ -183,6 +183,7 @@ const nameRow = (editor: Editor, h: HtmlBuilder<Message>) =>
       ]),
     ],
     h,
+    inlineFieldClass,
   );
 
 const defaultRow = (editor: Editor, h: HtmlBuilder<Message>) =>
@@ -426,7 +427,7 @@ const defaultAnswerSection = (
               ]),
         ],
         h,
-        "p-0",
+        cn("p-0", kind !== "textArea" && inlineFieldClass),
       ),
     ],
     h,
@@ -492,7 +493,7 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
                   ]),
                 ],
                 h,
-                "p-0",
+                cn("p-0", inlineFieldClass),
               ),
             ],
             h,

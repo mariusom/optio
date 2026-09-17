@@ -460,7 +460,7 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each(
-    [390, 1184].flatMap((width) =>
+    [390, 820, 1184].flatMap((width) =>
       (["textInput", "textArea", "radio", "checkbox", "boolean"] as const).map((kind) => ({
         width,
         kind,
@@ -479,10 +479,8 @@ describe("persistent presentation regressions", () => {
     const bounds = form.getBoundingClientRect();
     const left = bounds.left;
     const right = bounds.right;
-    // Unboxed fields, headings, helper text and action footer share the form inset.
-    for (const element of form.querySelectorAll(
-      "#question-name, #answer-type, #question-default, h2, label, :scope > div:last-child",
-    )) {
+    // Labels, headings and the action footer retain the form's left inset.
+    for (const element of form.querySelectorAll("h2, label, :scope > div:last-child")) {
       if (element.closest('[data-slot="grouped-list"]')?.querySelector("#new-choice")) continue;
       const rect = element.getBoundingClientRect();
       expect(Math.abs(rect.left - left), element.outerHTML).toBeLessThanOrEqual(1);
@@ -491,7 +489,23 @@ describe("persistent presentation regressions", () => {
     for (const element of form.querySelectorAll(
       "#question-name, #answer-type, #question-default",
     )) {
-      expect(Math.abs(element.getBoundingClientRect().right - right)).toBeLessThanOrEqual(1);
+      const rect = element.getBoundingClientRect();
+      const label = form.querySelector(`label[for="${element.id}"]`)!;
+      const labelRect = label.getBoundingClientRect();
+      expect(Math.abs(rect.right - right)).toBeLessThanOrEqual(1);
+      expect(rect.height).toBeGreaterThanOrEqual(44);
+      if (element.tagName === "TEXTAREA") {
+        expect(Math.abs(rect.left - left)).toBeLessThanOrEqual(1);
+        expect(rect.top).toBeGreaterThanOrEqual(labelRect.bottom);
+      } else {
+        expect(rect.left).toBeGreaterThan(labelRect.right);
+        expect(
+          Math.abs(rect.top + rect.height / 2 - labelRect.top - labelRect.height / 2),
+        ).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs(rect.left - form.querySelector("#question-name")!.getBoundingClientRect().left),
+        ).toBeLessThanOrEqual(1);
+      }
     }
     const newChoice = form.querySelector("#new-choice");
     if (newChoice) {

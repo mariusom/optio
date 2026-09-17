@@ -170,6 +170,40 @@ afterEach(() => {
 });
 
 describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
+  it.each([true, false])(
+    "wraps long labels and focuses their input (sidebar %s)",
+    async (showSidebar) => {
+      const name = "ManufacturingWorkstationIdentificationNumber";
+      const task = runnerFixture("Observe").tasks[0]!;
+      await mount(width, "Observe", {
+        showSidebar,
+        tasks: [
+          {
+            ...task,
+            sections: task.sections.map((section) =>
+              section.id === "notes" ? { ...section, name, isRequired: true } : section,
+            ),
+          },
+        ],
+      });
+      const scope = width < 768 ? "mobile" : "tablet";
+      const input = document.querySelector<HTMLInputElement>(`#${scope}-answer-notes`)!;
+      const label = document.querySelector<HTMLLabelElement>(`label[for="${input.id}"]`)!;
+      const range = document.createRange();
+      range.selectNodeContents(label);
+      const bounds = label.getBoundingClientRect();
+      for (const rect of range.getClientRects()) {
+        expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1);
+        expect(rect.right).toBeLessThanOrEqual(bounds.right + 1);
+      }
+      expect(bounds.right).toBeLessThan(input.getBoundingClientRect().left);
+      expect(input.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      await userEvent.click(label);
+      await expect.element(page.getByRole("textbox", { name, exact: true })).toHaveFocus();
+      expect(document.activeElement).toBe(input);
+    },
+  );
+
   it("uses unique IDs, visible scroll targets and correctly associated switch labels", async () => {
     const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
     const scrollTargets = () => scroll.mock.contexts.map((element) => (element as Element).id);
