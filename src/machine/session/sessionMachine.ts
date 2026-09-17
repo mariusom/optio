@@ -1,19 +1,4 @@
-/**
- * Live-session state machine — schema-first, Effect v4, @typeonce/effect-machine.
- *
- * The live-session runner's control logic (task focus, record gating, task
- * edit lifecycle, end-session confirmation) used to be spread through
- * FoldKit's `update()` reducer in src/main.ts. It now lives here as a pure
- * statechart:
- *
- *   states   Idle → Live (compound: Collecting | ConfirmingEnd)
- *   events   UI messages + RunnerData store snapshots
- *   effects  SessionEmissions (Commit* protocol) → mapped to LiveStore
- *            commands by the adapter in src/machine/session/plan.ts.
- *
- * The machine never touches LiveStore or the DOM. `Machine.plan` plans
- * synchronously, so FoldKit's synchronous `update` drives it directly.
- */
+// Plans transitions without storage or DOM effects; app/commands.ts executes emissions.
 
 import { Machine } from "@typeonce/effect-machine";
 import { Schema } from "effect";
@@ -31,7 +16,6 @@ import {
 
 export type { RunnerData, RunnerSection, RunnerTask } from "../../web/features/session/runner";
 
-/** Value owned by the `Live` compound state (store data + control surface). */
 const LiveValue = Schema.TaggedUnion({
   Live: {
     data: RunnerDataSchema,
@@ -43,19 +27,13 @@ const LiveValue = Schema.TaggedUnion({
 });
 export type LiveValue = typeof LiveValue.Type;
 
-// ── Topology ────────────────────────────────────────────────────────────────
-
 export const SessionStates = Machine.state({
   states: {
-    /** No live session (model.runner === null). */
     Idle: {},
-    /** One live session; compound so the phases share data + control state. */
     Live: {
       schema: LiveValue.cases.Live,
       states: {
-        /** Normal recording flow (record gating, focus, task list, edits). */
         Collecting: {},
-        /** "End session?" confirmation dialog open. */
         ConfirmingEnd: {},
       },
     },
@@ -64,44 +42,27 @@ export const SessionStates = Machine.state({
 
 export type SessionPhase = "collecting" | "confirming";
 
-// ── Events (public input protocol) ─────────────────────────────────────────
-
 const SessionEvents = Machine.eventsFromSchemas(
   Schema.TaggedUnion({
-    /** Store snapshot arrives (runner stream); null = session gone. */
+    /** Null means the live session no longer exists. */
     DataSynced: { data: Schema.Union([RunnerDataSchema, Schema.Null]) },
-    /** A field value changed (radio/checkbox/text/textarea/boolean). */
     FieldChanged: { taskFieldId: Schema.String, value: Schema.String },
     CounterAdjusted: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
-    /** User tapped a section (focus management). */
     SectionFocused: { fieldId: Schema.Union([Schema.Null, Schema.String]) },
-    /** User tapped the Record button. */
     RecordRequested: {},
-    /** User picked a task from the task list. */
     TaskSelected: { taskId: Schema.String },
-    /** Toggle the task list sheet. */
     TaskListToggled: {},
-    /** User tapped End session. */
     EndRequested: {},
-    /** User cancelled the end-session confirmation. */
     EndCancelled: {},
-    /** User confirmed ending the session. */
     EndConfirmed: {},
-    /** User cancelled a task edit. */
     EditCancelled: {},
-    /** User confirmed a task edit. */
     EditSaved: {},
-    /** Store ack: a task was recorded (next task spawned). */
     RecordAcked: {},
-    /** Store ack: edit finished (edit mode closed). */
     EditAcked: {},
-    /** Store ack: session ended — machine returns to Idle. */
     EndAcked: {},
   }),
 );
 export type SessionEvent = Machine.EventOf<typeof SessionEvents>;
-
-// ── Emissions (effects out → LiveStore commands via plan.ts) ───────────────
 
 const SessionEmissions = Machine.emittedEventsFromSchemas(
   Schema.TaggedUnion({
@@ -118,8 +79,6 @@ const SessionEmissions = Machine.emittedEventsFromSchemas(
 );
 export type SessionEmission = Machine.EventOf<typeof SessionEmissions>;
 
-// ── Pure domain helpers ────────────────────────────────────────────────────
-
 /** Newest unfinished task id — the target after finishing/cancelling an edit. */
 const fallbackTaskId = (data: RunnerData): string | null => {
   const unfinished = data.tasks
@@ -128,11 +87,7 @@ const fallbackTaskId = (data: RunnerData): string | null => {
   return unfinished[0]?.id ?? null;
 };
 
-/**
- * Radio auto-advance: when a radio section becomes done, move focus to the
- * next unfulfilled section.
- * `changed: false` means "no auto-advance" (keep the current focus).
- */
+/** `changed: false` preserves focus; `changed: true, next: null` clears it. */
 export const nextFocusForField = (
   data: RunnerData,
   taskFieldId: string,
@@ -158,7 +113,6 @@ export const nextFocusForField = (
   return { changed: true, next: findNextUnfulfilledSectionId(updatedSorted, taskFieldId) };
 };
 
-/** Fresh Live value for a new session (every control reset). */
 const freshLiveValue = (data: RunnerData): LiveValue => ({
   _tag: "Live",
   data,
@@ -167,8 +121,6 @@ const freshLiveValue = (data: RunnerData): LiveValue => ({
   showSidebar: true,
   lastError: null,
 });
-
-// ── Machine definition + handlers ──────────────────────────────────────────
 
 const targets = Machine.targets(SessionStates);
 
@@ -199,7 +151,6 @@ export const SessionMachine = Machine.make({
   states: {
     Idle: {
       on: {
-        // Store says a session exists → enter Live with fresh controls.
         // No session (null) ⇒ stay Idle: entering a compound without an active
         // child is invalid and fails planning.
         DataSynced: {
@@ -212,12 +163,9 @@ export const SessionMachine = Machine.make({
       },
     },
 
-    // Shared behavior for both phases lives on the compound parent.
     Live: {
       initial: { target: targets.root.Live.Collecting },
       on: {
-        // Store snapshot refresh: gone → Idle, different session → fresh Live,
-        // same session → keep controls, swap the data only.
         DataSynced: {
           branches: "liveSync",
           resolve: ({ event, state, select }) => {
@@ -229,7 +177,6 @@ export const SessionMachine = Machine.make({
           },
         },
 
-        // Focus follows the tapped section (no topology change).
         SectionFocused: {
           update: targets.root.Live,
           decoded: true,
@@ -239,7 +186,6 @@ export const SessionMachine = Machine.make({
           }),
         },
 
-        // Task list sheet toggle.
         TaskListToggled: {
           update: targets.root.Live,
           decoded: true,
@@ -249,7 +195,6 @@ export const SessionMachine = Machine.make({
           }),
         },
 
-        // Store ack: task recorded → close focus/task list.
         RecordAcked: {
           update: targets.root.Live,
           decoded: true,
@@ -260,7 +205,6 @@ export const SessionMachine = Machine.make({
           }),
         },
 
-        // Store ack: edit finished → clear edit state, focus the newest open task.
         EditAcked: {
           update: targets.root.Live,
           decoded: true,
@@ -278,7 +222,6 @@ export const SessionMachine = Machine.make({
           },
         },
 
-        // Store ack: session ended → back to Idle.
         EndAcked: { target: targets.root.Idle },
       },
 
@@ -306,7 +249,6 @@ export const SessionMachine = Machine.make({
                 return select.live({ decoded: true, data: current });
               },
             },
-            // Field edit: commit the value, radio auto-advances the focus.
             FieldChanged: {
               branches: "updateLive",
               resolve: ({ containingState: current, event, select }, enqueue) => {
@@ -327,7 +269,6 @@ export const SessionMachine = Machine.make({
               },
             },
 
-            // Record the current task (gated on required fields).
             RecordRequested: {
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
@@ -360,7 +301,6 @@ export const SessionMachine = Machine.make({
               },
             },
 
-            // Pick a task: finished → edit mode; open → just switch current task.
             TaskSelected: {
               branches: "updateLive",
               resolve: ({ containingState: current, event, select }, enqueue) => {
@@ -396,8 +336,6 @@ export const SessionMachine = Machine.make({
               },
             },
 
-            // Cancel a task edit: restore the backup via the store, go back to
-            // the newest open task.
             EditCancelled: {
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
@@ -420,7 +358,6 @@ export const SessionMachine = Machine.make({
               },
             },
 
-            // Save a task edit (gated on required fields).
             EditSaved: {
               branches: "updateLive",
               resolve: ({ containingState: current, select }, enqueue) => {
@@ -454,7 +391,6 @@ export const SessionMachine = Machine.make({
               },
             },
 
-            // End-session confirmation opens.
             EndRequested: { target: targets.root.Live.ConfirmingEnd },
           },
         },

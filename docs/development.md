@@ -171,11 +171,9 @@ job has Pages/OIDC write permissions; the build job does not. There is no manual
 deployment trigger. The `/optio/` base path and service-worker settings live in
 [vite.config.ts](../vite.config.ts).
 
-Enable the `main` ruleset described below **before merging this workflow split**:
-require a pull request and a successful, up-to-date `validate` check, with no
-bypass actors. Deployment relies on that merge gate; a push trigger cannot tell
-whether a change arrived through a PR. Do not replace this with privileged
-`pull_request_target` builds of contributor code.
+Deployment relies on [branch protection](#maintainer-security-and-releases):
+the push trigger also deploys direct pushes, without running the PR checks.
+Keep contributor builds on `pull_request`, not privileged `pull_request_target`.
 
 The current pre-release starts a fresh `optio-v3` store and does not migrate
 older stores. Export any wanted pre-release results using the old build before
@@ -197,8 +195,8 @@ Existing agent export actions remain raw unless `spreadsheetSafe: true` is set.
 
 ## Project history
 
-Optio began as a web implementation of an earlier Swift time-study app and was
-subsequently redesigned. The public Git history retains that lineage.
+Optio is a web implementation of an earlier Swift time-study app. The public
+Git history preserves the web implementation and its later redesign.
 
 ## Public metadata and agent discovery
 
@@ -248,15 +246,11 @@ the collector and rejects unknown licenses, missing texts and artifact drift;
 `pnpm build` also rejects drift. The service worker precaches both artifacts,
 and the production E2E journey checks that they remain available offline.
 
-The inventory is conservative, not a byte-level SBOM: the installed production
-graph includes some server/build/type-only packages that do not reach browsers.
-The current MPL-2.0 entry is Lightning CSS, a build tool, not a claim that the
-app is MPL licensed. Dependencies and copied source keep their own licenses.
-Review new bundle-generating tools and embedded assets manually; package
-metadata cannot prove completeness or rights to historical contributions.
-The gate does not detect new or changed copied source: reviewers must update
-the copied-source provenance when refreshing registry components or adding
-adapted code/assets, even if package checks pass.
+The inventory includes installed production packages, even those absent from
+the browser bundle. Its MPL-2.0 entry is Lightning CSS, a build tool; Optio's own
+code remains MIT-licensed. Review new bundle-generating tools and embedded
+assets manually. The check cannot detect copied source, so update provenance
+when refreshing registry components or adding adapted code and assets.
 Missing package license files require a version-scoped, reviewed fallback in
 `licenses/reviewed-fallbacks` with provenance in the collector. Do not extend a
 fallback to a new version without checking upstream. Do not edit generated
@@ -280,27 +274,26 @@ GitHub runs after merging: local workflow linting cannot verify GitHub's securit
 permissions. Avoid enabling CodeQL default setup alongside this advanced
 workflow. Review failed scheduled jobs and maintain security-alert notifications.
 
-Repository administrators must enable private vulnerability reporting,
-Dependabot alerts/security updates, secret scanning and push protection in
-GitHub settings. Protect `main` with an active ruleset requiring PRs, `validate`,
-up-to-date branches and resolved conversations, and blocking force pushes and
-deletion. Use no bypass actors by default. Zero required approvals supports a
-solo maintainer; require one independent approval when another reviewer is
-available. Test a contributor PR before adding further required check names.
-These are GitHub settings; committing workflow files does not enable them.
+In GitHub settings:
 
-Deployment is automatic when a checked PR is merged into protected `main`. A weekly maintenance
-schedule is not a weekly publication schedule. The manual **Release assurance**
-workflow is restricted to `main`: it validates, builds, packages `dist`, uploads
-an archive and checksum, then attests that archive in a separate job. Build and
-test steps have no attestation/OIDC write permissions. This workflow neither
-deploys nor creates a tag or GitHub release. Do not dispatch it without intending
-to publish the build artifact and provenance to GitHub.
+- Enable private vulnerability reporting, Dependabot alerts/security updates,
+  secret scanning and push protection.
+- Protect `main`: require PRs, `validate`, up-to-date branches and resolved
+  conversations; block force pushes and deletion, with no bypass actors.
+- Use zero required approvals while maintaining solo, or one when another
+  reviewer is available. Test a contributor PR before requiring more checks.
+
+Workflow files don't configure these settings.
+
+The manual **Release assurance** workflow runs only on `main`. It validates,
+builds and uploads a `dist` archive and checksum, then attests the archive in a
+separate job. Build and test steps have no attestation/OIDC write permissions.
+Running it publishes the artifact and provenance to GitHub, but does not deploy,
+tag or create a release.
 
 For a release, record the tested commit, version, user-visible changes and data
 compatibility caveats. Check offline updates, exports/recovery, keyboard access
-and real target browsers. Never promise migrations or backups beyond what has
-been tested. Download the archive and `SHA256SUMS` from the same successful
+and real target browsers. Download the archive and `SHA256SUMS` from the same successful
 Release assurance run. Verify before extracting, replacing `<commit>` below
 with that run's complete commit ID:
 
@@ -310,6 +303,5 @@ gh attestation verify "optio-dist-<commit>.tar.gz" --repo mariusom/optio
 ```
 
 Check that the verification output identifies the expected workflow and source
-commit. A matching checksum alone does not authenticate its author. Attestations
-establish provenance, not safety, legal clearance, or native-style PWA signing;
-the browser does not verify them when installing the website.
+commit. The checksum detects changes; the attestation identifies the build's
+origin. Browsers don't verify these attestations when installing the PWA.

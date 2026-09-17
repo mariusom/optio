@@ -1,16 +1,6 @@
 /**
- * FoldKit ↔ effect-machine bridge — synchronous planning.
- *
- * FoldKit's `update()` is a pure, synchronous reducer, so the machine is
- * driven through `Machine.plan` (no async MachineRef). This module keeps the
- * snapshot translation (model.runner/runnerPhase ↔ machine snapshot) and
- * returns the machine's emissions; app/commands.ts maps emissions to LiveStore
- * commands.
- *
- * `Machine.plan` requires *decoded* snapshots (schema class instances), so
- * the plain model state is first re-encoded through the machine's own
- * persistence boundary (`decodeSnapshot` with an "MachineSnapshot" record).
- * Everything stays pure + synchronous; no module-level machine state.
+ * FoldKit needs synchronous updates. Machine.plan requires decoded schema
+ * instances, so translate the plain runner state through decodeSnapshot first.
  */
 
 import { Effect } from "effect";
@@ -27,14 +17,12 @@ import {
 
 export type { RunnerState, SessionEmission };
 
-/** The machine path ↔ model phase mapping (model.runner null ⇒ Idle). */
 const phaseToChildPath = (phase: SessionPhase): "Live.Collecting" | "Live.ConfirmingEnd" =>
   phase === "confirming" ? "Live.ConfirmingEnd" : "Live.Collecting";
 
 const childPathToPhase = (childPath: string): SessionPhase =>
   childPath === "Live.ConfirmingEnd" ? "confirming" : "collecting";
 
-/** RunnerState → machine value (data + control surface). */
 const runnerToValue = (runner: RunnerState): LiveValue => ({
   _tag: "Live",
   data: {
@@ -52,7 +40,6 @@ const runnerToValue = (runner: RunnerState): LiveValue => ({
   lastError: runner.lastError,
 });
 
-/** Plain (runner, phase) → machine persistence record (decode-safe form). */
 const toEncoded = (runner: RunnerState | null, phase: SessionPhase) =>
   runner === null
     ? {
@@ -70,7 +57,6 @@ const toEncoded = (runner: RunnerState | null, phase: SessionPhase) =>
         ],
       };
 
-/** Machine snapshot → (runner, phase). Idle yields a null runner. */
 const snapshotToRunner = (
   root: { path: string; state?: { path: string; value?: unknown; state?: { path: string } } },
   now: number,
@@ -99,20 +85,12 @@ export type SessionPlan = {
   readonly emissions: ReadonlyArray<SessionEmission>;
 };
 
-/**
- * Plan one event against the current (runner, phase) pair. Pure + sync;
- * falls back to the unchanged state if plan fails (decode/plan errors are
- * caller bugs — log and keep the UI state rather than crash the app).
- */
 export const planSession = (
   runner: RunnerState | null,
   phase: SessionPhase,
   event: SessionEvent,
 ): SessionPlan => {
   try {
-    // The one application-owned synchronous execution seam: FoldKit update
-    // must return the next model and emissions together, before another message.
-    // Machine exposes Effect-only planning/decoding; keep both in one program.
     const plan = Effect.runSync(
       Effect.gen(function* () {
         const decoded = yield* Machine.decodeSnapshot(

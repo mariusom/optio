@@ -5,6 +5,8 @@
 
 Optio helps you study how time is spent on tasks. Create a set of questions,
 record observations as you work, then review sessions and export them as CSV.
+It began as a Swift time-study app and is now a browser app you can use without
+an account or server setup.
 
 ![Recording an assembly-line observation with one completed task](docs/images/recording.webp)
 

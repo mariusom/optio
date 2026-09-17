@@ -112,10 +112,6 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     model: { ...model, lastError: error, pendingDiscardSession: false },
   }),
 
-  // ── Runner (effect-machine state machine) ────────────────────────────
-  // Every runner message is planned through the Session machine
-  // (src/machine/session/): the machine owns the control logic and emits
-  // Commit* effects which become LiveStore commands below.
   GotRunnerData: ({ data }) => {
     const planned = applyPlan(model, { _tag: "DataSynced", data } as SessionEvent);
     // Dead link / store reset mid-session: the runner route has no live
