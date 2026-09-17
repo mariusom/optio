@@ -194,6 +194,9 @@ The current MPL-2.0 entry is Lightning CSS, a build tool, not a claim that the
 app is MPL licensed. Dependencies and copied source keep their own licenses.
 Review new bundle-generating tools and embedded assets manually; package
 metadata cannot prove completeness or rights to historical contributions.
+The gate does not detect new or changed copied source: reviewers must update
+the copied-source provenance when refreshing registry components or adding
+adapted code/assets, even if package checks pass.
 Missing package license files require a version-scoped, reviewed fallback in
 `licenses/reviewed-fallbacks` with provenance in the collector. Do not extend a
 fallback to a new version without checking upstream. Do not edit generated

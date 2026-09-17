@@ -56,7 +56,10 @@ test("refuses a reviewed fallback after its package version changes", () => {
 
 test("inventory hashes and notices include each package's actual asymmetric text", () => {
   const options = fixtureOptions({
-    "/fixture/alpha": { LICENSE: "alpha-only license\n" },
+    "/fixture/alpha": {
+      LICENSE: "alpha-only license\n",
+      "THIRD-PARTY-LICENSE": "alpha embedded dependency terms\n",
+    },
     "/fixture/beta": { LICENSE: "beta license", "THIRD-PARTY-NOTICES.md": "beta-only notice\n" },
   });
   const report = { MIT: [pkg("beta"), pkg("alpha")] };
@@ -73,6 +76,8 @@ test("inventory hashes and notices include each package's actual asymmetric text
   // renderArtifacts reads only the repository's preserved copied-source provenance.
   const rendered = renderArtifacts(report, report, options);
   assert.match(rendered.notices, /alpha-only license/);
+  assert.match(rendered.notices, /alpha embedded dependency terms/);
+  assert.match(rendered.inventory, /THIRD-PARTY-LICENSE/);
   assert.match(rendered.notices, /beta-only notice/);
   assert.match(rendered.notices, /Copyright \(c\) 2026 Marius Matei/);
   assert.match(rendered.inventory, /sha256/);
@@ -81,7 +86,10 @@ test("inventory hashes and notices include each package's actual asymmetric text
     report,
     report,
     fixtureOptions({
-      "/fixture/alpha": { LICENSE: "changed alpha license\n" },
+      "/fixture/alpha": {
+        LICENSE: "alpha-only license\n",
+        "THIRD-PARTY-LICENSE": "changed embedded dependency terms\n",
+      },
       "/fixture/beta": { LICENSE: "beta license", "THIRD-PARTY-NOTICES.md": "beta-only notice\n" },
     }),
   );

@@ -1040,6 +1040,10 @@
         {
           "provenance": "installed package file LICENSE",
           "sha256": "93a675c915fd5846a0d9956bfc10cea9b2deeacf59074abf398f0fdcce10a19b"
+        },
+        {
+          "provenance": "installed package file THIRD-PARTY-LICENSE",
+          "sha256": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c"
         }
       ]
     },

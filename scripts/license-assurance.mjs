@@ -63,8 +63,8 @@ const reviewedFallbacks = new Map([
   ],
 ]);
 
-const licenseFilePattern = /^(?:licen[cs]e|copying)(?:[._-].*)?$/i;
-const noticeFilePattern = /^(?:notice|third[-_]party[-_]notices?)(?:[._-].*)?$/i;
+const licenseFilePattern = /^(?:licen[cs]es?|copying)(?:[._-].*)?$/i;
+const noticeFilePattern = /^(?:notices?|third[-_]party[-_](?:notices?|licen[cs]es?))(?:[._-].*)?$/i;
 
 function sha256(text) {
   return createHash("sha256").update(text).digest("hex");
