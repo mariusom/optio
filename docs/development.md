@@ -25,6 +25,26 @@ pnpm audit --audit-level high
 On a fresh Linux host, use `playwright install --with-deps chromium` to install
 system dependencies too. Other commands are in `package.json`.
 
+## Lint limits and module size
+
+`pnpm check` uses the Oxlint configuration in `vite.config.ts`, including in CI.
+For a lint-only run, use `pnpm exec vp lint`. Hand-maintained production code
+is limited to 500 lines per file, 150 lines per function (both exclude blanks
+and comments), 25 statements per function, complexity 15, nesting depth 4,
+three parameters and three nested callbacks. Imports must come first, be unique
+and avoid cycles; side-effect imports are restricted to CSS and font assets.
+
+Split by responsibility and pass related configuration as an object. Do not
+hide positional parameters inside rest tuples or split code into numbered
+fragments just to meet limits. Keep stateful subscription ownership explicit.
+
+Tests and stories are exempt from size/complexity limits, including this repo's
+`.browser.ts` and `.e2e.mjs` tests; all other rules still apply. The generated
+style table is exempt only from file length. Effect's `_tag` discriminator is
+allowed, and `openStore.ts` is exempt from `import/default` because Vite creates
+the default constructors for its worker query imports. No blanket source or
+registry-component exclusions are used.
+
 ## What tests establish
 
 `pnpm test` runs unit tests followed by Chromium component tests;
@@ -96,7 +116,7 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 - Registry components are project-owned copies. Review upstream changes before
   replacing them; preserve the [interface conventions](interface.md).
 - Refresh component style presets with `node scripts/update-foldcn-styles.mjs`,
-  then `pnpm exec vp fmt src/we/componentStyles.generated.ts`. The generator
+  then `pnpm exec vp fmt src/web/componentStyles.generated.ts`. The generator
   updates classes, not behavior or dependencies; it rejects ambiguous matches.
 - Regenerate PNG app icons with `bun scripts/gen-icons.ts`.
 

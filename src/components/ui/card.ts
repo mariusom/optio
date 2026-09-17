@@ -1,8 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 // Card is a pure layout primitive (no @foldkit/ui backing — there is no
 // headless Card). `Card` itself is the container; sub-builders are attached

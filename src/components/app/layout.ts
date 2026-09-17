@@ -121,6 +121,37 @@ export type RowConfig<M> = Readonly<{
   wrap?: boolean;
 }>;
 
+const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>): Array<Child> => [
+  ...(config.leading === undefined
+    ? []
+    : [h.span([h.Class("shrink-0 text-muted-foreground")], [config.leading])]),
+  h.span(
+    [h.Class("flex min-w-0 flex-1 flex-col")],
+    [
+      h.span([h.Class(cn(itemTitleClass, "block max-w-full truncate"))], [config.title]),
+      ...(config.subtitle === undefined
+        ? []
+        : [h.span([h.Class(cn(itemDescriptionClass, "truncate"))], [config.subtitle])]),
+    ],
+  ),
+  ...(config.value === undefined
+    ? []
+    : [
+        h.span(
+          [
+            h.Class(
+              config.wrap
+                ? "basis-full whitespace-pre-wrap break-words text-muted-foreground"
+                : "shrink-0 max-w-[55%] truncate text-right text-muted-foreground tabular",
+            ),
+          ],
+          [config.value],
+        ),
+      ]),
+  ...(config.trailing === undefined ? [] : [h.span([h.Class("shrink-0")], [config.trailing])]),
+  ...(chevron ? [icon(h, ChevronRight, "size-5 shrink-0 text-muted-foreground/60 -mr-1")] : []),
+];
+
 /**
  * A row in a grouped list: 44pt minimum, whole row tappable when it navigates.
  */
@@ -138,36 +169,7 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
     config.lazy ? "lazy-row" : "",
     config.className,
   );
-  const body: Array<Child> = [
-    ...(config.leading === undefined
-      ? []
-      : [h.span([h.Class("shrink-0 text-muted-foreground")], [config.leading])]),
-    h.span(
-      [h.Class("flex min-w-0 flex-1 flex-col")],
-      [
-        h.span([h.Class(cn(itemTitleClass, "block max-w-full truncate"))], [config.title]),
-        ...(config.subtitle === undefined
-          ? []
-          : [h.span([h.Class(cn(itemDescriptionClass, "truncate"))], [config.subtitle])]),
-      ],
-    ),
-    ...(config.value === undefined
-      ? []
-      : [
-          h.span(
-            [
-              h.Class(
-                config.wrap
-                  ? "basis-full whitespace-pre-wrap break-words text-muted-foreground"
-                  : "shrink-0 max-w-[55%] truncate text-right text-muted-foreground tabular",
-              ),
-            ],
-            [config.value],
-          ),
-        ]),
-    ...(config.trailing === undefined ? [] : [h.span([h.Class("shrink-0")], [config.trailing])]),
-    ...(chevron ? [icon(h, ChevronRight, "size-5 shrink-0 text-muted-foreground/60 -mr-1")] : []),
-  ];
+  const body = rowContent(config, chevron, h);
   const extra = config.attributes ?? [];
   if (config.href !== undefined) {
     return h.a([h.Class(classes), h.Href(config.href), ...extra], body);

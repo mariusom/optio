@@ -1,9 +1,8 @@
 import { Dialog as FoldkitDialog } from "@foldkit/ui";
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+import { cn } from "@/lib/utils";
 
 type Child = Html | string;
-
-import { cn } from "@/lib/utils";
 
 // Re-export the @foldkit/ui Dialog submodel surface. A sheet is a Dialog
 // variant anchored to an edge of the viewport instead of centered.
@@ -160,7 +159,15 @@ export const styledViewInputs = <M>(
 ): FoldkitDialog.ViewInputs => {
   const side = viewInputs.side ?? "right";
   return {
-    toView: ({ dialog, backdrop, panel, closeButton, title, description, isVisible }) =>
+    toView: ({
+      dialog,
+      backdrop,
+      panel,
+      closeButton: closeAttributes,
+      title: titleAttributes,
+      description: descriptionAttributes,
+      isVisible,
+    }) =>
       h.dialog(
         [
           ...dialog,
@@ -182,7 +189,14 @@ export const styledViewInputs = <M>(
                   h.Class(cn(sheetPanelClass[side], sheetMotionClass, viewInputs.panelClass)),
                   ...(viewInputs.panelAttributes ?? []),
                 ],
-                viewInputs.content({ closeButton, title, description }, h),
+                viewInputs.content(
+                  {
+                    closeButton: closeAttributes,
+                    title: titleAttributes,
+                    description: descriptionAttributes,
+                  },
+                  h,
+                ),
               ),
             ]
           : [],

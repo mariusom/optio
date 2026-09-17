@@ -10,11 +10,24 @@ subscriptions bring store changes back into the model.
 - [entry.ts](../src/entry.ts) starts the browser runtime, preferences, sheet focus,
   service-worker update prompt and optional agent registration.
 - [application.ts](../src/application.ts) wires the runtime;
-  [main.ts](../src/main.ts) owns the root model, update, view and subscriptions.
-  Keep subscriptions wired: without them the app renders but stops receiving data.
-- [we/features](../src/we/features) contains templates, session recording,
-  history and settings. [messages.ts](../src/messages.ts) defines app messages.
-  [session/runner.ts](../src/we/features/session/runner.ts) owns shared runner
+  [main.ts](../src/main.ts) initializes and exports the application modules.
+- [app/model.ts](../src/app/model.ts) defines the root model and initial state.
+  [app/update.ts](../src/app/update.ts) exhaustively dispatches messages to
+  feature-named `*Update.ts` handlers and invalidates stale agent approvals.
+  These handlers coordinate root state; feature commands perform storage writes.
+- [app/subscriptions.ts](../src/app/subscriptions.ts) selects reactive streams;
+  feature-named `*Streams.ts` files translate store rows into messages.
+  `managedStream.ts` owns subscription cleanup and `domStreams.ts` owns focus
+  and scroll effects. Keep subscriptions wired: without them the app renders
+  but stops receiving data.
+- [app/view.ts](../src/app/view.ts) composes navigation and feature pages.
+  [web/features](../src/web/features) contains templates, session recording,
+  history and settings: views, commands, pure feature helpers and their tests.
+  Large views delegate to named sections such as `questionControls.ts` and
+  `questionEditor.ts`, rather than numbered fragments.
+- [web](../src/web) also owns shared browser preferences, routes, focus and
+  presentation helpers. [messages.ts](../src/messages.ts) defines app messages.
+  [session/runner.ts](../src/web/features/session/runner.ts) owns shared runner
   schemas, types, completion rules and focus traversal.
 - [machine/session](../src/machine/session) plans session transitions and commands.
   Updates to owner data must preserve the collecting or end-confirmation phase.
@@ -22,6 +35,11 @@ subscriptions bring store changes back into the model.
   materializers; [livestore/client.ts](../src/livestore/client.ts) opens the store.
 - [agents](../src/agents) exposes app operations through the same update loop;
   read [agent access](agent-access.md) before changing that boundary.
+
+Start a change in the feature directory. Follow its message into the matching
+`app/*Update.ts` file for state coordination, or its command into `livestore`
+for persistence. Use type-only imports when handlers or helpers need the
+`Model` type; do not introduce a runtime import cycle through `main.ts`.
 
 ## Storage and timing constraints
 

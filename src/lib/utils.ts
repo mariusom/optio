@@ -1,5 +1,5 @@
 import { cn as mergeClasses } from "cn";
-import { getCurrentStyleClasses } from "@/we/style";
+import { getCurrentStyleClasses } from "@/web/style";
 
 /** Resolve foldcn's upstream per-style component classes before merging any
  * app-owned sizing/customization classes. */

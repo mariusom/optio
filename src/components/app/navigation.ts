@@ -1,7 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode } from "lucide";
 
-import { hrefFor, type Route } from "../../we/routes";
+import { hrefFor, type Route } from "../../web/routes";
 import { cn } from "@/lib/utils";
 import { Clock, FileText, Play, Settings2, icon } from "./icons";
 

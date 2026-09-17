@@ -3,14 +3,14 @@ import { defineMessageUnion } from "foldkit/message";
 import { UrlRequest } from "foldkit/navigation";
 
 import { FieldDef } from "./livestore/schema";
-import { RouteSchema } from "./we/routes";
-import { TemplateSummary } from "./we/types";
-import { Accent, Font, IconLibrary, Theme } from "./we/theme";
-import { FoldcnStyle } from "./we/style";
-import { RunnerDataSchema } from "./we/features/session/runner";
+import { RouteSchema } from "./web/routes";
+import { TemplateSummary } from "./web/types";
+import { Accent, Font, IconLibrary, Theme } from "./web/theme";
+import { FoldcnStyle } from "./web/style";
+import { RunnerDataSchema } from "./web/features/session/runner";
 
 // Central flat Message union. Payload schemas are grouped by feature;
-// reducers live next to their feature views under src/we/features/*.
+// root-model handlers are composed by src/app/update.ts.
 
 export const Message = defineMessageUnion({
   AgentRequest: {

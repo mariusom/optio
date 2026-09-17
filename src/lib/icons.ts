@@ -75,16 +75,19 @@ const nodeToAttributes = <M>(
 const defaultIconClass = "size-4 shrink-0";
 
 export type IconPosition = "inline-start" | "inline-end";
+type IconOptions = Readonly<{ className?: string; position?: IconPosition }>;
 
 export const icon = <M>(
   h: HtmlBuilder<M>,
   node: IconNode,
-  className = defaultIconClass,
-  position?: IconPosition,
-): Html =>
-  h.svg(
+  options: string | IconOptions = defaultIconClass,
+): Html => {
+  const className = typeof options === "string" ? options : (options.className ?? defaultIconClass);
+  const position = typeof options === "string" ? undefined : options.position;
+  return h.svg(
     [...svgAttributes(className, h), ...(position ? [h.DataAttribute("icon", position)] : [])],
     (iconNodeForCurrentLibrary(node) as HugeIconNode).map(([tag, attrs]) =>
       svgElement(tag, h)(nodeToAttributes(attrs, h)),
     ),
   );
+};

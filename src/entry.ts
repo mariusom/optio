@@ -12,8 +12,8 @@ import {
   initializeIconLibrary,
   initializeStyle,
   initializeTheme,
-} from "./we/browserTheme";
-import { installSheetFocus } from "./we/sheetFocus";
+} from "./web/browserTheme";
+import { installSheetFocus } from "./web/sheetFocus";
 import { getStore } from "./livestore/client";
 import type { ModelContext } from "./agents/webmcp";
 
