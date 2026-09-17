@@ -1,6 +1,7 @@
 # optio
 
-[![Checks and deployment](https://github.com/mariusom/optio/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/mariusom/optio/actions/workflows/deploy.yml)
+[![Checks](https://github.com/mariusom/optio/actions/workflows/checks.yml/badge.svg?event=pull_request)](https://github.com/mariusom/optio/actions/workflows/checks.yml)
+[![Deployment](https://github.com/mariusom/optio/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/mariusom/optio/actions/workflows/deploy.yml)
 
 Optio helps you study how time is spent on tasks. Create a set of questions,
 record observations as you work, then review sessions and export them as CSV.
@@ -20,7 +21,7 @@ This is a pre-release. The current storage revision starts fresh; earlier
 pre-release studies are not migrated. Export anything you want to keep from
 the old build before updating.
 
-For contributors: [development](docs/development.md),
+For contributors: [contributing](CONTRIBUTING.md), [development](docs/development.md),
 [architecture](docs/architecture.md), and [interface conventions](docs/interface.md).
 
 [MIT license](LICENSE) · [Third-party notices](public/THIRD_PARTY_NOTICES.txt) ·

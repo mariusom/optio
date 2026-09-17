@@ -74,7 +74,84 @@
     <title>Optio — offline time &amp; motion studies</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <style>
+          .static-fallback {
+            box-sizing: border-box;
+            min-height: 100vh;
+            margin: 0;
+            padding: clamp(2rem, 8vw, 5rem) 1.5rem;
+            color: #17201d;
+            background: #f5f8f5;
+            font:
+              16px/1.6 ui-sans-serif,
+              system-ui,
+              -apple-system,
+              BlinkMacSystemFont,
+              "Segoe UI",
+              sans-serif;
+          }
+          .static-fallback__content {
+            max-width: 42rem;
+            margin: 0 auto;
+          }
+          .static-fallback h1 {
+            margin: 0 0 1rem;
+            font-size: clamp(2.5rem, 10vw, 4.5rem);
+            line-height: 1;
+            letter-spacing: -0.04em;
+          }
+          .static-fallback h2 {
+            margin: 2.5rem 0 0.5rem;
+            font-size: 1.25rem;
+          }
+          .static-fallback p {
+            max-width: 38rem;
+            margin: 0.75rem 0;
+          }
+          .static-fallback a {
+            color: inherit;
+            font-weight: 650;
+          }
+          .static-fallback__action {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.7rem 1rem;
+            border: 1px solid currentColor;
+            border-radius: 0.75rem;
+          }
+          @media (prefers-color-scheme: dark) {
+            .static-fallback {
+              color: #e7eeea;
+              background: #0c1311;
+            }
+          }
+        </style>
+        <main class="static-fallback" data-static-fallback>
+          <div class="static-fallback__content">
+            <h1>Optio</h1>
+            <p>
+              See where your time goes. Optio helps you create time studies, record tasks as you
+              work, review completed sessions, and export results as CSV.
+            </p>
+            <h2>Private by default, with no account</h2>
+            <p>
+              Studies stay in this browser and Optio has no backend or automatic sync. Browser
+              storage can be cleared or lost, so export important results as a backup. After the
+              first successful load, the app can work offline.
+            </p>
+            <h2>Open source</h2>
+            <p>
+              Optio is free, open-source software. You can inspect the code and license on
+              <a href="https://github.com/mariusom/optio">GitHub</a>.
+            </p>
+            <p>This interactive app requires JavaScript and browser storage support.</p>
+            <a class="static-fallback__action" href="./">Try loading Optio again</a>
+          </div>
+        </main>
+      </noscript>
+    </div>
     <script type="module" src="/src/entry.ts"></script>
   </body>
 </html>

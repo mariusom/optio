@@ -4,6 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/London
     # Exact Effect/LiveStore/Vitest pins and workspace overrides require a
     # coordinated manual migration. Bot updates stay within our manifest.
     versioning-strategy: lockfile-only
@@ -34,6 +37,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/London
     groups:
       actions:
         patterns: ["*"]

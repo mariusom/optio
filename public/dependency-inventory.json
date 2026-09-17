@@ -1,0 +1,1481 @@
+{
+  "schemaVersion": 2,
+  "scope": [
+    "Installed production dependency closure reported by pnpm, including browser, worker and WASM packages.",
+    "Installed PWA/Workbox and Rollup packages that can contribute generated code to the distribution; platform-specific Rollup native binaries are omitted.",
+    "This is a conservative package inventory, not a byte-complete bill of materials or a claim of legal clearance.",
+    "Every package has hashed installed license/NOTICE text or an explicitly version-scoped, reviewed fallback.",
+    "License text hashes cover text with CRLF normalized to LF and trailing whitespace removed; wording is preserved.",
+    "Copied/adapted source provenance is recorded in THIRD_PARTY_NOTICES.txt."
+  ],
+  "packages": [
+    {
+      "name": "@cloudflare/workers-types",
+      "version": "4.20251118.0",
+      "license": "MIT OR Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/cloudflare/workerd#readme",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/cloudflare/workerd/blob/17143186b375231689b60a23e53933315fd9e24e/LICENSE",
+          "sha256": "0cec06e0e55fbc3dc5cee4fca9b607f66cb8f4e4dbcf3b3c013594dd156732e9"
+        }
+      ]
+    },
+    {
+      "name": "@effect/opentelemetry",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@effect/platform-browser",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@effect/platform-bun",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@effect/platform-node",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@effect/platform-node-shared",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@effect/vitest",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "@floating-ui/core",
+      "version": "1.8.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://floating-ui.com",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "6c1117dc530c1ffcffb309e6bd53f333c2620453285327bde5ce91516eee1011"
+        }
+      ]
+    },
+    {
+      "name": "@floating-ui/dom",
+      "version": "1.8.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://floating-ui.com",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "6c1117dc530c1ffcffb309e6bd53f333c2620453285327bde5ce91516eee1011"
+        }
+      ]
+    },
+    {
+      "name": "@floating-ui/utils",
+      "version": "0.2.12",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://floating-ui.com",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "6c1117dc530c1ffcffb309e6bd53f333c2620453285327bde5ce91516eee1011"
+        }
+      ]
+    },
+    {
+      "name": "@foldkit/ui",
+      "version": "0.159.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/foldkit/foldkit#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c50d461769563eae01f9aa9ce331af566435d2c4eb454f5082cd92c7f8ece415"
+        }
+      ]
+    },
+    {
+      "name": "@hugeicons/core-free-icons",
+      "version": "4.3.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://hugeicons.com",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE.md",
+          "sha256": "5b2ce5496b3c2013087267de7cc9f4061282925628c76fff64247e10a619780a"
+        }
+      ]
+    },
+    {
+      "name": "@jridgewell/sourcemap-codec",
+      "version": "1.6.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/jridgewell/sourcemaps/tree/main/packages/sourcemap-codec",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "928e59141142e3b9b68a2403e490c6a73ac90833066c5d6f876e2de108e06865"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/adapter-web",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/common",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/common-cf",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/livestore",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/sqlite-wasm",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/utils",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/wa-sqlite",
+      "version": "0.5.0-dev.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c6d2cd9c2bdf657e89571b4f177bde896d8f931f73e727459238c3c38bd937f3"
+        }
+      ]
+    },
+    {
+      "name": "@livestore/webmesh",
+      "version": "0.5.0-dev.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/livestorejs/livestore#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/api",
+      "version": "1.9.1",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/api",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/core",
+      "version": "2.11.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-core",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/resources",
+      "version": "2.11.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/packages/opentelemetry-resources",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.43.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/open-telemetry/opentelemetry-js/tree/main/semantic-conventions",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1"
+        }
+      ]
+    },
+    {
+      "name": "@oxc-project/types",
+      "version": "0.149.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://oxc.rs",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5b0650b078309ba2772569bb419e40e6883874af64d21bd9c27b44cc1a8e46ff"
+        }
+      ]
+    },
+    {
+      "name": "@redis/bloom",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis/tree/master/packages/bloom",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "@redis/client",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis/tree/master/packages/client",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "@redis/json",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis/tree/master/packages/json",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "@redis/search",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis/tree/master/packages/search",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "@redis/time-series",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis/tree/master/packages/time-series",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "@rolldown/pluginutils",
+      "version": "1.0.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/rolldown/plugins/tree/main/packages/pluginutils#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "3a2bf91a2d9811efcf96c0bc7faa2849371a5ae4472565f122b87c24c1aed556"
+        }
+      ]
+    },
+    {
+      "name": "@standard-schema/spec",
+      "version": "1.1.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://standardschema.dev",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "653b779005a3a4d64a7288c940f7b9a0e8f0b1e0375f6aa6af9473caf131e564"
+        }
+      ]
+    },
+    {
+      "name": "@trickfilm400/rollup-plugin-off-main-thread",
+      "version": "3.0.0-pre1",
+      "license": "Apache-2.0",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/Trickfilm400/rollup-plugin-off-main-thread#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "740725f7252e750af735d0028cc534970772f513331e9f68150fede8fb3ce00f"
+        }
+      ]
+    },
+    {
+      "name": "@typeonce/effect-machine",
+      "version": "0.37.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/typeonce-dev/effect-machine#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "bd55a6f767f21a1dfe726f60fe81fc38778b47fd60f1e950f17a23d5c3bffd61"
+        },
+        {
+          "provenance": "installed package file NOTICE",
+          "sha256": "3d30f1c2c812bd296d8e269bf620ef9b4515b09d039ef7d2d1b5a97141c18d78"
+        }
+      ]
+    },
+    {
+      "name": "@types/chai",
+      "version": "5.2.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/chai",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+        }
+      ]
+    },
+    {
+      "name": "@types/deep-eql",
+      "version": "4.0.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/deep-eql",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+        }
+      ]
+    },
+    {
+      "name": "@types/estree",
+      "version": "1.0.9",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+        }
+      ]
+    },
+    {
+      "name": "@types/node",
+      "version": "22.20.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+        }
+      ]
+    },
+    {
+      "name": "@types/ws",
+      "version": "8.18.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ws",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/expect",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vitest.dev/api/expect",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/mocker",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/vitest-dev/vitest/tree/main/packages/mocker",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/pretty-format",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/vitest-dev/vitest/tree/main/packages/pretty-format",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/runner",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vitest.dev/api/advanced/runner",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/snapshot",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vitest.dev/guide/snapshot",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/spy",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vitest.dev/api/mock",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "@vitest/utils",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/vitest-dev/vitest/tree/main/packages/utils",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c7d2b1c2fc0202ec4cf87374860210f4432634cc8a1fc1f1ade41798c59fc247"
+        }
+      ]
+    },
+    {
+      "name": "assertion-error",
+      "version": "2.0.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/chaijs/assertion-error#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "20d86910993ea45682a613f4823f7973e2af5563e593329350effe1d5670a6ee"
+        }
+      ]
+    },
+    {
+      "name": "chai",
+      "version": "6.2.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "http://chaijs.com",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "61a961d71ad33bfc8dae0bd73c002a44f4a0f7181a75e20c0500550e1139d48c"
+        }
+      ]
+    },
+    {
+      "name": "cluster-key-slot",
+      "version": "1.1.2",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/Salakar/cluster-key-slot#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "b73a3698999f0ed76c5efca81e09f779c362f2c55c0f74b22ab143a497ed5a88"
+        }
+      ]
+    },
+    {
+      "name": "cn",
+      "version": "0.3.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/shadcn-ui/cn#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "7cb6a24bd94ee30ecbdd7aaa6b53a54a36cbe1acb4dd502dca42ecf4977ba01c"
+        }
+      ]
+    },
+    {
+      "name": "convert-source-map",
+      "version": "2.0.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/thlorenz/convert-source-map",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "e66591b0b1530a830d6cb1aab72646a6d0e4a4e77adb42e0bb15673a0afa1263"
+        }
+      ]
+    },
+    {
+      "name": "detect-libc",
+      "version": "2.1.2",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/lovell/detect-libc#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c5accbbd8546e94c34aed24afe689a617627d18eed5a6c48277e48db57c23851"
+        }
+      ]
+    },
+    {
+      "name": "effect",
+      "version": "4.0.0-rc.112",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://effect.website",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5f58d41e2a9daa358814269a9f28438196ea456bf551e0cf9ed7f8f635381cad"
+        }
+      ]
+    },
+    {
+      "name": "entities",
+      "version": "8.1.0",
+      "license": "BSD-2-Clause",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/fb55/entities#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "0e57eeaccc07eadeb2c7f720ab2601ef37e02fbc6a86cd6667caf7bf5c614de6"
+        }
+      ]
+    },
+    {
+      "name": "es-module-lexer",
+      "version": "2.3.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/guybedford/es-module-lexer#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "4b48a6b2bcf727a2f27e1bd4892fd047ffed8a0bc1b791b1afc9fe0fec75eba5"
+        }
+      ]
+    },
+    {
+      "name": "estree-walker",
+      "version": "3.0.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/Rich-Harris/estree-walker#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "8a6dcbabe7179f9c8489c08a7d874d0f1e093ae7449e03756ccf87cb9d0e296e"
+        }
+      ]
+    },
+    {
+      "name": "expect-type",
+      "version": "1.4.0",
+      "license": "Apache-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/mmkal/expect-type#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "3b2aba4633ff0d5541d1561d17339976ccaa75c98eec7ea0552117d481f67495"
+        }
+      ]
+    },
+    {
+      "name": "fast-check",
+      "version": "4.10.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://fast-check.dev/",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "fc7c40e5d55fc15c61c2fa2b211976aa719a5f9c54a267d7846f072a21968404"
+        }
+      ]
+    },
+    {
+      "name": "fdir",
+      "version": "6.5.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/thecodrr/fdir#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "15e7786c7e6868263ce41f904c9cd0d38d35edcb8c86d8b49c019ac557a57ad4"
+        }
+      ]
+    },
+    {
+      "name": "foldkit",
+      "version": "0.159.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/foldkit/foldkit#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c50d461769563eae01f9aa9ce331af566435d2c4eb454f5082cd92c7f8ece415"
+        },
+        {
+          "provenance": "installed package file THIRD-PARTY-NOTICES.md",
+          "sha256": "8ff07e62c10c6dcd9c8da72a0b804ef880edca3de215ef7b42d44cd9c04e8e04"
+        }
+      ]
+    },
+    {
+      "name": "lightningcss",
+      "version": "1.33.0",
+      "license": "MPL-2.0",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/parcel-bundler/lightningcss#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "ebff20e64bc5f371d6641999e96b14656b871e011f85de97b9b584e408cc2b5a"
+        }
+      ]
+    },
+    {
+      "name": "lucide",
+      "version": "1.46.0",
+      "license": "ISC",
+      "role": "production dependency graph",
+      "homepage": "https://lucide.dev",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "ee35498e6684b30c9efaae009415884772f4450b3f6a3ae49103cd550a2c8ceb"
+        }
+      ]
+    },
+    {
+      "name": "magic-string",
+      "version": "0.30.21",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/Rich-Harris/magic-string#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "cda0745d0629e42687ac3ce75343ed806d0aeacd1619993a41f118112dabfd5f"
+        }
+      ]
+    },
+    {
+      "name": "mime",
+      "version": "4.1.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/broofa/mime#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "68e28d2ab9d180b8fc3d93fac0cc3e5275e4d19a23ab3dcf5458cf4e31e2233b"
+        }
+      ]
+    },
+    {
+      "name": "msgpackr",
+      "version": "2.1.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/kriszyp/msgpackr#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "2b41a50a006ffc7770db2450283956e4cb1aae567c193aeb1e65e8aef6c9f1f6"
+        }
+      ]
+    },
+    {
+      "name": "nanoid",
+      "version": "3.3.19",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/ai/nanoid#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "33dc6a453e22e1f848a633be48c178791c3b07c70910c646f460e0100882aebe"
+        }
+      ]
+    },
+    {
+      "name": "nanoid",
+      "version": "5.1.16",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/ai/nanoid#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9dbc0bfac235665cd12801d7e08d9cdc6964abbf01d5c9e6483086fcde7cc81a"
+        }
+      ]
+    },
+    {
+      "name": "obug",
+      "version": "2.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/sxzz/obug#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "e200d5c2b112f0301d4cbf0caeff485ae9ce8b9ca52ae55c0e0ea505f8c12b4d"
+        }
+      ]
+    },
+    {
+      "name": "parse5",
+      "version": "8.0.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://parse5.js.org",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "2c01a01133de3c6dddb991ed3793725513ace5b8a3f1581dd040c83a3da7337f"
+        }
+      ]
+    },
+    {
+      "name": "pathe",
+      "version": "2.0.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/unjs/pathe#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "d785edfd5a8ff55734ddd8cf37c398a1e01b02dbb5069f1e01eba1a90523e6f4"
+        }
+      ]
+    },
+    {
+      "name": "picocolors",
+      "version": "1.1.1",
+      "license": "ISC",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/alexeyraspopov/picocolors#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "fa11af88c78d3b5a92fd94c1a8e61d0684c605fb42e72d90f92d01c0ad59df01"
+        }
+      ]
+    },
+    {
+      "name": "picomatch",
+      "version": "4.0.7",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/micromatch/picomatch",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "9219a3ebed1d1e1bc469cc605ca626c8433997a1a3013aba1338e03e381bbe11"
+        }
+      ]
+    },
+    {
+      "name": "postcss",
+      "version": "8.5.28",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://postcss.org/",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "a2764f26c5041bac476cf304efb9f7f2c9474c66409d1c187625885988bbfee0"
+        }
+      ]
+    },
+    {
+      "name": "pretty-bytes",
+      "version": "7.0.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/sindresorhus/pretty-bytes#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file license",
+          "sha256": "1529f88b3675095087120854c6fa2cc1113ab2da2f88c4f6aa4ffe52e98ef81b"
+        }
+      ]
+    },
+    {
+      "name": "pure-rand",
+      "version": "8.4.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/dubzzz/pure-rand#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "c90820850e2f2e023824ebf57e2215252f2053cf7094851ea5774069331c0352"
+        }
+      ]
+    },
+    {
+      "name": "qrcode-generator",
+      "version": "2.0.4",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/kazuhikoarase/qrcode-generator#readme",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: installed dist/qrcode.js copyright and MIT notice; canonical MIT terms",
+          "sha256": "316eecb30585bbe819ff03f96a667552c54de0625cdcf8faa952fc9bd0c93efe"
+        }
+      ]
+    },
+    {
+      "name": "redis",
+      "version": "6.2.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/redis/node-redis",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+          "sha256": "2fbc8ca8462892705c0bfadfc34fc7cd1b0e7887d8d8f6a8589d8ba19c7c7f47"
+        }
+      ]
+    },
+    {
+      "name": "rolldown",
+      "version": "1.2.8",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://rolldown.rs/",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "93a675c915fd5846a0d9956bfc10cea9b2deeacf59074abf398f0fdcce10a19b"
+        },
+        {
+          "provenance": "installed package file THIRD-PARTY-LICENSE",
+          "sha256": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c"
+        }
+      ]
+    },
+    {
+      "name": "rollup",
+      "version": "4.63.3",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://rollupjs.org/",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE.md",
+          "sha256": "a8d4c5f13258dc885d9cc8ac91d63dac165219fd1f3a63aaaf42bbc3c03a10c2"
+        }
+      ]
+    },
+    {
+      "name": "siginfo",
+      "version": "2.0.0",
+      "license": "ISC",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/emilbayes/siginfo#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "56973401b872209181ced400593131232260b094d3da07c3ecc2b27c8ce0f7bb"
+        }
+      ]
+    },
+    {
+      "name": "source-map-js",
+      "version": "1.2.1",
+      "license": "BSD-3-Clause",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/7rulnik/source-map-js",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "49d414f08c7ec11119c7d32ff578334efb17d07718bad8ebc9711eb847b586d7"
+        }
+      ]
+    },
+    {
+      "name": "stackback",
+      "version": "0.0.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/shtylman/node-stackback#readme",
+      "licenseTexts": [
+        {
+          "provenance": "reviewed fallback: https://github.com/shtylman/node-stackback/blob/2963095372abf7b75ba55f01cef08ab1e62c2ff4/package.json (MIT); canonical MIT terms, no inferred copyright",
+          "sha256": "39a5964cfa9f84c9a6d7e5cbe40a68d2e4f89b66b139f9fd434226c10b768e7d"
+        }
+      ]
+    },
+    {
+      "name": "std-env",
+      "version": "4.2.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/unjs/std-env#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENCE",
+          "sha256": "f7673e959327e93e07c08b1772835c239b565a14946d275ed1b5af1c5f7b4a94"
+        }
+      ]
+    },
+    {
+      "name": "tinybench",
+      "version": "2.9.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/tinylibs/tinybench#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "551dde9639240832bb1918281c523cf772bd2391a4a46464adb1498b07f48591"
+        }
+      ]
+    },
+    {
+      "name": "tinyexec",
+      "version": "1.3.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/tinylibs/tinyexec#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "1b5f37fd06c10b0fede3b1baba3592da2a28d50933034a88fb3b4d7b17a327a7"
+        }
+      ]
+    },
+    {
+      "name": "tinyglobby",
+      "version": "0.2.17",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://superchupu.dev/tinyglobby",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "4918b99deb04bad7ac6e3398e28d1a06eca1f713387ea3ee95d8200062f6469b"
+        }
+      ]
+    },
+    {
+      "name": "tinyrainbow",
+      "version": "3.1.1",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/tinylibs/tinyrainbow#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENCE",
+          "sha256": "551dde9639240832bb1918281c523cf772bd2391a4a46464adb1498b07f48591"
+        }
+      ]
+    },
+    {
+      "name": "tw-animate-css",
+      "version": "1.4.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/Wombosvideo/tw-animate-css#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "0757353b681700c270d927226ef210b74b5e7ba932898f80d68c9163843455e1"
+        }
+      ]
+    },
+    {
+      "name": "undici",
+      "version": "8.10.2",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://undici.nodejs.org",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "fe64958bfaef10b1c9628b4ee9f1c48170b0219bd4b2a7ef4a0c41aebd920c9e"
+        }
+      ]
+    },
+    {
+      "name": "undici-types",
+      "version": "6.21.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://undici.nodejs.org",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "fe64958bfaef10b1c9628b4ee9f1c48170b0219bd4b2a7ef4a0c41aebd920c9e"
+        }
+      ]
+    },
+    {
+      "name": "vite",
+      "version": "8.3.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vite.dev",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE.md",
+          "sha256": "f9340566fc1a7502e86eada88bf17743df53432a2baefdcf6784c37b45e7eeaf"
+        }
+      ]
+    },
+    {
+      "name": "vite-plugin-pwa",
+      "version": "1.3.0",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/vite-pwa/vite-plugin-pwa#readme",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "ac1f2978a646f2d409b80c433e49c489c835988e2729a5afddcfe29d352196dc"
+        }
+      ]
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.11",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://vitest.dev",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE.md",
+          "sha256": "ddf26045289f089392d30ba7a05d85f458f43e7fc24c70407ed5c7c068e0cede"
+        }
+      ]
+    },
+    {
+      "name": "why-is-node-running",
+      "version": "2.3.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/mafintosh/why-is-node-running",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "a6147f68efd39af97eeed32d15f445cc84634db1c9f62f213e0a7f412049195a"
+        }
+      ]
+    },
+    {
+      "name": "workbox-background-sync",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-broadcast-update",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-build",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-cacheable-response",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-core",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-expiration",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-google-analytics",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-navigation-preload",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-precaching",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-range-requests",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-recipes",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-routing",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-strategies",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-streams",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-sw",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "workbox-window",
+      "version": "7.4.1",
+      "license": "MIT",
+      "role": "build-time distribution contributor",
+      "homepage": "https://github.com/GoogleChrome/workbox",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "5871de1f8c6611a941a08129b18ac7c09001fbb454fe3e1f49e8393284b90316"
+        }
+      ]
+    },
+    {
+      "name": "ws",
+      "version": "8.21.3",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://github.com/websockets/ws",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "7adebaeee45b60d995843745060fe5486b76eb6c9e8fc7bca6fbc67b8680d96d"
+        }
+      ]
+    }
+  ]
+}

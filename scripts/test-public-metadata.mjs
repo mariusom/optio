@@ -1,9 +1,15 @@
-// Run against a production preview: node scripts/test-public-metadata.mjs
+// Run after pnpm build; starts and closes its own temporary production preview.
 // Override OPTIO_URL to test another deployment without changing canonical URLs.
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
+import { preview } from "vite-plus";
 
-const base = process.env.OPTIO_URL ?? "http://localhost:60002/optio/";
+const server = process.env.OPTIO_URL
+  ? undefined
+  : await preview({
+      preview: { host: "127.0.0.1", port: 0, open: false },
+    });
+const base = process.env.OPTIO_URL ?? `http://127.0.0.1:${server.httpServer.address().port}/optio/`;
 const canonical = "https://mariusom.github.io/optio/";
 const browser = await chromium.launch();
 try {
@@ -11,6 +17,15 @@ try {
   const page = await context.newPage();
   const response = await page.goto(base);
   assert.equal(response.status(), 200);
+  const fallback = page.locator("[data-static-fallback]");
+  await assert.doesNotReject(() => fallback.waitFor({ state: "visible" }));
+  assert.equal(await fallback.locator("h1").textContent(), "Optio");
+  const fallbackText = await fallback.textContent();
+  assert.match(fallbackText, /create time studies.*export results as CSV/s);
+  assert.match(fallbackText, /no backend or automatic sync/i);
+  assert.match(fallbackText, /storage can be cleared or lost/i);
+  assert.match(fallbackText, /open-source software/i);
+  assert.match(fallbackText, /requires JavaScript and browser storage support/i);
   const meta = (key) => page.locator(`meta[property="${key}"], meta[name="${key}"]`);
   const content = (key) => meta(key).getAttribute("content");
   assert.equal(await page.locator('link[rel="canonical"]').getAttribute("href"), canonical);
@@ -75,8 +90,27 @@ try {
   assert.match(resources["llms.txt"], /agent-guide\.md/);
   assert.ok(resources["sitemap.xml"].includes(`<loc>${canonical}</loc>`));
   assert.doesNotMatch(resources["sitemap.xml"], /#|agentTools/);
+
+  await context.close();
+  const appBrowser = await chromium.launch();
+  const fallbackContext = await appBrowser.newContext();
+  try {
+    const appPage = await fallbackContext.newPage();
+    const appResponse = await appPage.goto(base);
+    assert.equal(appResponse.status(), 200);
+    await appPage.getByRole("heading").first().waitFor({ state: "visible" });
+    assert.equal(
+      await appPage.locator("[data-static-fallback]").count(),
+      0,
+      "the no-JavaScript fallback must not remain in the running app",
+    );
+    assert.doesNotMatch(await appPage.locator("body").innerText(), /requires JavaScript/i);
+  } finally {
+    await fallbackContext.close();
+    await appBrowser.close();
+  }
   console.log(
-    "PASS: no-JavaScript social metadata, 1200×630 PNG, structured data, and all /optio/ discovery resources",
+    "PASS: no-JavaScript fallback and social metadata, running-app replacement, 1200×630 PNG, structured data, and all /optio/ discovery resources",
   );
   const appContext = await browser.newContext();
   const app = await appContext.newPage();
@@ -94,7 +128,7 @@ try {
     await appContext.setOffline(offline);
     for (const [route, label, expected] of [
       ["use-with-ai", "Agent guide", "# Using Optio"],
-      ["about", "Third-party notices", "Optio third-party notices"],
+      ["about", "Third-party notices", "Optio\n=====\n\nMIT License"],
     ]) {
       await app.goto(`${base}#/${route}`);
       if (route === "use-with-ai") await app.locator("summary").click();
@@ -213,4 +247,5 @@ try {
   );
 } finally {
   await browser.close();
+  await server?.close();
 }

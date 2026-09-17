@@ -7,8 +7,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The dev server uses port 60001 and the `/optio/` path. In an Amp orb, run it as
-a supervised service with a portal; see the [orb documentation](https://ampcode.com/docs/orbs).
+The dev server uses port 60001 and the `/optio/` path.
 
 Use normal `pnpm dev` for remote previews: it opts into Vite's experimental
 bundled-dev mode to avoid source-module request waterfalls. Source edits currently
@@ -34,6 +33,7 @@ Before submitting code changes:
 pnpm exec playwright install chromium
 pnpm check
 pnpm exec tsc --noEmit
+pnpm licenses:check
 pnpm test
 pnpm build
 pnpm test:e2e
@@ -79,8 +79,7 @@ Audit a production build, not the dev server. With `pnpm build` complete and
 pnpm dlx lighthouse@13.4.1 http://localhost:60002/optio/ --output=html --output-path=/tmp/optio-lighthouse.html
 ```
 
-Set `CHROME_PATH` if Chrome is not discovered automatically. In an orb, use a
-supervised preview service and add `--chrome-flags='--headless --no-sandbox'`.
+Set `CHROME_PATH` if Chrome is not discovered automatically.
 Compare the same URL, browser and mobile throttling settings across repeated
 cold runs; scores vary with host load. Startup changes must also preserve real
 OPFS data across reloads and work offline after service-worker installation.
@@ -141,11 +140,22 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Deployment
 
-[The workflow](../.github/workflows/deploy.yml) audits, checks, tests and builds
-pull requests and pushes to `main`. Only validated `main` builds can reach the
-separate GitHub Pages deployment job; install and test steps have no Pages or
-OIDC write permissions. The `/optio/` base path and service-worker settings live
-in [vite.config.ts](../vite.config.ts).
+[Checks](../.github/workflows/checks.yml) runs the `validate` job on every pull
+request targeting `main`: dependency and license audits, lint, types, unit and
+browser tests, a production build, and E2E checks. It has read-only permissions
+and cannot deploy.
+
+[Deployment](../.github/workflows/deploy.yml) runs only on pushes to `main`,
+builds that exact commit and uploads its Pages artifact. A separate deployment
+job has Pages/OIDC write permissions; the build job does not. There is no manual
+deployment trigger. The `/optio/` base path and service-worker settings live in
+[vite.config.ts](../vite.config.ts).
+
+Enable the `main` ruleset described below **before merging this workflow split**:
+require a pull request and a successful, up-to-date `validate` check, with no
+bypass actors. Deployment relies on that merge gate; a push trigger cannot tell
+whether a change arrived through a PR. Do not replace this with privileged
+`pull_request_target` builds of contributor code.
 
 The current pre-release starts a fresh `optio-v3` store and does not migrate
 older stores. Export any wanted pre-release results using the old build before
@@ -168,9 +178,7 @@ Existing agent export actions remain raw unless `spreadsheetSafe: true` is set.
 ## Project history
 
 Optio began as a web implementation of an earlier Swift time-study app and was
-subsequently redesigned. The public Git history retains that lineage. New
-commit messages should describe the outcome and important tradeoffs, not
-private spec section numbers or tool transcripts.
+subsequently redesigned. The public Git history retains that lineage.
 
 ## Public metadata and agent discovery
 
@@ -181,8 +189,9 @@ IDs have no separate public previews; never put study data in social metadata.
 The 1200×630 `public/social-card.png` is a typography-only sharing asset, not an
 app screenshot. Keep its dimensions and alt text in sync with the HTML.
 
-After `pnpm build`, start `pnpm preview --port 60002` and run
-`node scripts/test-public-metadata.mjs`. The check uses JavaScript-disabled
+After `pnpm build`, run `node scripts/test-public-metadata.mjs`; it starts and
+closes a temporary preview and also runs as part of `pnpm test:e2e`.
+The check uses JavaScript-disabled
 Chromium and verifies metadata, image dimensions, structured data, and deployed
 discovery paths. `OPTIO_URL` overrides the preview URL. After deployment, use
 Facebook's Sharing Debugger and X's card tools to request fresh previews where
@@ -193,22 +202,12 @@ using `rel="ai-catalog"`. The catalog describes documentation, not a public MCP
 server. Update the guide when the agent contract changes. Static Markdown is an
 explicit alternative resource, not HTTP content negotiation.
 
-The 2026-09-10 isitagentready.com baseline for the live app was 0 (default scan).
-Most checks use `https://mariusom.github.io/`, not the `/optio/` project path.
-This repository cannot publish origin-root `robots.txt` or `.well-known` files,
-control `github.io` DNS, or set production Link/Vary headers. Putting those files
-under `/optio/` would not satisfy origin-root discovery. The linked catalog can
-be discovered from the page without root access, but a new score must be measured
-after deployment; local validation is not a scanner score.
-
-For further applicable score gains, an origin-root site or custom-domain hosting
-decision is required. Publish root `robots.txt` with an explicit owner-approved
-AI crawler/content-use policy and the sitemap URL; configure real Link headers
-and `Accept: text/markdown` negotiation with `Vary: Accept` on a host supporting
-them. Rescan the same URL with the same checks. Do not add fake OAuth, commerce,
-MCP server cards, or disable WebMCP consent to satisfy the scanner. Its page-load
-`navigator.modelContext` probe differs from Optio's opt-in `document.modelContext`
-integration. A high protocol-discovery score is not a security or usability audit.
+GitHub Pages project sites cannot publish origin-root `robots.txt` or
+`.well-known` files from this repository, or set arbitrary response headers.
+Files under `/optio/` do not replace origin-root resources. Full control of
+crawler policies and security headers requires control of the origin and a
+host that supports those settings. A custom domain alone does not add header
+configuration to GitHub Pages.
 
 For tool usage, consult [Vite+](https://vite.plus),
 [pnpm](https://pnpm.io), and [Vitest browser testing](https://vitest.dev/guide/browser/).
@@ -220,3 +219,77 @@ The [architecture](architecture.md) describes the runtime libraries; the
 [Third-party notices](../public/THIRD_PARTY_NOTICES.txt) preserve their applicable
 license text and attribution and are copied into the production build. Keep
 those notices when updating vendored code.
+
+`pnpm licenses:generate` collects installed production dependency licenses and
+notices, plus PWA/Workbox/Rollup distribution contributors, into that file and
+[`dependency-inventory.json`](../public/dependency-inventory.json). Run it after
+dependency updates and review the resulting diff. `pnpm licenses:check` tests
+the collector and rejects unknown licenses, missing texts and artifact drift;
+`pnpm build` also rejects drift. The service worker precaches both artifacts,
+and the production E2E journey checks that they remain available offline.
+
+The inventory is conservative, not a byte-level SBOM: the installed production
+graph includes some server/build/type-only packages that do not reach browsers.
+The current MPL-2.0 entry is Lightning CSS, a build tool, not a claim that the
+app is MPL licensed. Dependencies and copied source keep their own licenses.
+Review new bundle-generating tools and embedded assets manually; package
+metadata cannot prove completeness or rights to historical contributions.
+The gate does not detect new or changed copied source: reviewers must update
+the copied-source provenance when refreshing registry components or adding
+adapted code/assets, even if package checks pass.
+Missing package license files require a version-scoped, reviewed fallback in
+`licenses/reviewed-fallbacks` with provenance in the collector. Do not extend a
+fallback to a new version without checking upstream. Do not edit generated
+notices by hand. Keep the LiveStore patch's modification comments.
+
+`cn` is the Shadcn class-merging package (`shadcn-ui/cn`). `tw-animate-css`
+provides the imported components' composable enter/exit, fade, slide and zoom
+utilities; Tailwind's built-in spin/pulse/bounce utilities do not replace them.
+
+## Maintainer security and releases
+
+Dependabot proposes updates Mondays at 09:00 Europe/London; review them weekly,
+with critical security fixes handled immediately. Exact pins and overrides
+still need deliberate updates. Verify compatibility with pnpm's two-document
+lockfile using a successful lockfile-changing PR and a frozen install. A green
+bot job alone does not prove that dependency updates work.
+
+The security workflow adds PR/push CodeQL checks and Monday 08:00 UTC dependency
+audits (including development dependencies). It never deploys. Check the first
+GitHub runs after merging: local workflow linting cannot verify GitHub's security
+permissions. Avoid enabling CodeQL default setup alongside this advanced
+workflow. Review failed scheduled jobs and maintain security-alert notifications.
+
+Repository administrators must enable private vulnerability reporting,
+Dependabot alerts/security updates, secret scanning and push protection in
+GitHub settings. Protect `main` with an active ruleset requiring PRs, `validate`,
+up-to-date branches and resolved conversations, and blocking force pushes and
+deletion. Use no bypass actors by default. Zero required approvals supports a
+solo maintainer; require one independent approval when another reviewer is
+available. Test a contributor PR before adding further required check names.
+These are GitHub settings; committing workflow files does not enable them.
+
+Deployment is automatic when a checked PR is merged into protected `main`. A weekly maintenance
+schedule is not a weekly publication schedule. The manual **Release assurance**
+workflow is restricted to `main`: it validates, builds, packages `dist`, uploads
+an archive and checksum, then attests that archive in a separate job. Build and
+test steps have no attestation/OIDC write permissions. This workflow neither
+deploys nor creates a tag or GitHub release. Do not dispatch it without intending
+to publish the build artifact and provenance to GitHub.
+
+For a release, record the tested commit, version, user-visible changes and data
+compatibility caveats. Check offline updates, exports/recovery, keyboard access
+and real target browsers. Never promise migrations or backups beyond what has
+been tested. Download the archive and `SHA256SUMS` from the same successful
+Release assurance run. Verify before extracting, replacing `<commit>` below
+with that run's complete commit ID:
+
+```sh
+sha256sum --check SHA256SUMS
+gh attestation verify "optio-dist-<commit>.tar.gz" --repo mariusom/optio
+```
+
+Check that the verification output identifies the expected workflow and source
+commit. A matching checksum alone does not authenticate its author. Attestations
+establish provenance, not safety, legal clearance, or native-style PWA signing;
+the browser does not verify them when installing the website.
