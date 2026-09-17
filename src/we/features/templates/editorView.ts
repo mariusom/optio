@@ -29,7 +29,7 @@ import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import type { FieldDef, FieldKind } from "../../../livestore/schema";
-import { hasOptions, supportsRequired } from "../../fields";
+import { hasOptions, isScalarAnswerValid } from "../../fields";
 import { hrefFor } from "../../routes";
 import { hasChanges, isDraftValid, isTemplateValid } from "./editor";
 
@@ -42,6 +42,9 @@ const ANSWER_TYPES: ReadonlyArray<FieldKind> = [
   "radio",
   "checkbox",
   "boolean",
+  "number",
+  "counter",
+  "rating",
 ];
 
 /** Answer types in the words an observer would use. */
@@ -57,6 +60,12 @@ export const answerTypeName = (kind: FieldKind): string => {
       return "Multiple choice";
     case "boolean":
       return "Yes/No";
+    case "number":
+      return "Number";
+    case "counter":
+      return "Counter";
+    case "rating":
+      return "Rating (1–5)";
   }
 };
 
@@ -377,14 +386,17 @@ const defaultAnswerSection = (
       [
         controlRow(
           [
-            switch_(
+            nativeSelect(
               {
                 id: "question-default-boolean",
-                isChecked: draft.defaultValue === "true",
-                onToggle: () => Message.ToggledFieldDefaultBoolean(),
-                label: "Starts as Yes",
-                className: "after:inset-x-0",
-                wrapperClass: "flex-row-reverse justify-between gap-4",
+                value: draft.defaultValue,
+                onChange: (text) => Message.ChangedFieldDefaultValue({ text }),
+                label: "Default answer",
+                options: [
+                  ["", "Unanswered"],
+                  ["true", "Yes"],
+                  ["false", "No"],
+                ].map(([value, label]) => h.option([h.Value(value!)], [label!])),
               },
               h,
             ),
@@ -423,8 +435,29 @@ const defaultAnswerSection = (
                 h.Autocomplete("off"),
                 h.Autocapitalize("sentences"),
                 h.EnterKeyHint("done"),
+                h.Attribute(
+                  "inputmode",
+                  kind === "number"
+                    ? "decimal"
+                    : kind === "counter" || kind === "rating"
+                      ? "numeric"
+                      : "text",
+                ),
+                h.Attribute("aria-invalid", String(!isScalarAnswerValid(kind, draft.defaultValue))),
                 h.OnInput((value) => Message.ChangedFieldDefaultValue({ text: value })),
               ]),
+          ...(kind === "number"
+            ? [hint("A number, including decimals. Put any unit in the question label.", h)]
+            : []),
+          ...(kind === "counter"
+            ? [hint("A whole number of zero or more. Leave empty to start unanswered.", h)]
+            : []),
+          ...(kind === "rating"
+            ? [hint("A whole number from 1 to 5. Describe the scale in the question label.", h)]
+            : []),
+          ...(!isScalarAnswerValid(kind, draft.defaultValue)
+            ? [hint("Enter a valid default answer or leave it empty.", h)]
+            : []),
         ],
         h,
         cn("p-0", kind !== "textArea" && inlineFieldClass),
@@ -499,36 +532,32 @@ const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
             h,
           ),
           answerTypeList(kind, h),
-          ...(supportsRequired(kind)
-            ? [
-                groupedList(
-                  {
-                    surface: "plain",
-                    footer: "The task can’t be recorded until this is answered.",
-                  },
-                  [
-                    controlRow(
-                      [
-                        switch_(
-                          {
-                            id: "question-required",
-                            isChecked: draft.isRequired,
-                            onToggle: () => Message.ToggledFieldRequired(),
-                            label: "Must be answered",
-                            className: "after:inset-x-0",
-                            wrapperClass: "flex-row-reverse justify-end gap-3",
-                          },
-                          h,
-                        ),
-                      ],
-                      h,
-                      "p-0",
-                    ),
-                  ],
-                  h,
-                ),
-              ]
-            : []),
+          groupedList(
+            {
+              surface: "plain",
+              footer: "The task can’t be recorded until this is answered.",
+            },
+            [
+              controlRow(
+                [
+                  switch_(
+                    {
+                      id: "question-required",
+                      isChecked: draft.isRequired,
+                      onToggle: () => Message.ToggledFieldRequired(),
+                      label: "Must be answered",
+                      className: "after:inset-x-0",
+                      wrapperClass: "flex-row-reverse justify-end gap-3",
+                    },
+                    h,
+                  ),
+                ],
+                h,
+                "p-0",
+              ),
+            ],
+            h,
+          ),
           ...(hasOptions(kind) ? [choicesSection(draft, kind, h)] : []),
           ...(hasOptions(kind) ? [] : [defaultAnswerSection(draft, kind, h)]),
           ...(valid ? [] : [hint(draftHint(draft), h)]),

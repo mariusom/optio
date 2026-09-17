@@ -19,12 +19,11 @@ import {
 } from "@/components/app";
 import { button, buttonClass } from "@/components/ui/button";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
-import { switchClass, switchThumbClass } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
-import { isBooleanTrue, toggleCheckboxOption } from "../../fields";
+import { isBooleanTrue, isScalarAnswerValid, toggleCheckboxOption } from "../../fields";
 import {
   canRecordTask,
   currentTask,
@@ -149,15 +148,24 @@ const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
 
 /** Single choice: native radios keep arrow-key and single-tab-stop behaviour. */
 const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
-  h.div(
+  h.keyed("div")(
+    `${scope}-${section.id}`,
     [
-      h.Class(choiceGridClass),
+      h.Class(section.kind === "rating" ? "grid grid-cols-5 gap-2 text-sm" : choiceGridClass),
       h.Role("radiogroup"),
       h.AriaLabel(section.name),
       h.Attribute("aria-required", String(section.isRequired)),
     ],
     section.options.map((option) => {
       const isSelected = section.value === option;
+      const label =
+        section.kind === "boolean"
+          ? option === "true"
+            ? "Yes"
+            : option === "false"
+              ? "No"
+              : "Unanswered"
+          : option;
       return h.label(
         [
           h.Class(
@@ -166,6 +174,7 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
               className: cn(
                 "h-auto min-w-0 cursor-pointer whitespace-normal p-0 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
                 isSelected && "border-primary bg-primary/8 text-primary",
+                isSelected && section.kind === "rating" && "ring-2 ring-primary",
               ),
             }),
           ),
@@ -178,10 +187,15 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
             h.Name(`${scope}-${section.id}`),
             h.Value(option),
             h.Checked(isSelected),
-            h.AriaLabel(option),
+            h.AriaLabel(label),
             h.OnChange(() => Message.ChangedFieldValue({ taskFieldId: section.id, value: option })),
           ]),
-          choiceBody(option, false, checkMark(isSelected, h), h),
+          section.kind === "rating"
+            ? h.span(
+                [h.Class("flex min-h-14 items-center justify-center text-base font-semibold")],
+                [label],
+              )
+            : choiceBody(label, false, checkMark(isSelected, h), h),
         ],
       );
     }),
@@ -264,45 +278,74 @@ const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
     ],
   );
 
-const yesNoAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) => {
-  const isOn = isBooleanTrue(section.value);
-  return h.button(
+const numericAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) => {
+  const valid = isScalarAnswerValid(section.kind, section.value);
+  const counter = section.kind === "counter";
+  return h.div(
+    [],
     [
-      h.Type("button"),
-      h.Role("switch"),
-      h.AriaChecked(isOn),
-      h.Attribute("aria-labelledby", `${scope}-runner-toggle-${section.id}-label`),
-      h.Class(
-        "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-      ),
-      h.OnClick(
-        Message.ChangedFieldValue({ taskFieldId: section.id, value: isOn ? "false" : "true" }),
-      ),
-    ],
-    [
-      h.span(
+      h.div(
+        [h.Class("flex items-center gap-2")],
         [
-          h.Id(`${scope}-runner-toggle-${section.id}-label`),
-          h.Class("min-w-0 flex-1 text-sm font-semibold"),
-        ],
-        [section.name],
-      ),
-      ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
-      h.span([h.Class("text-sm text-muted-foreground"), h.AriaHidden(true)], [isOn ? "Yes" : "No"]),
-      h.span(
-        [
-          h.Class(cn(switchClass, "pointer-events-none")),
-          h.DataAttribute("size", "default"),
-          h.DataAttribute(isOn ? "checked" : "unchecked", ""),
-          h.AriaHidden(true),
-        ],
-        [
-          h.span([
-            h.Class(cn(switchThumbClass)),
-            h.DataAttribute(isOn ? "checked" : "unchecked", ""),
+          ...(counter
+            ? [
+                button(
+                  {
+                    onClick: Message.AdjustedCounter({
+                      taskFieldId: section.id,
+                      delta: -1,
+                    }),
+                    isDisabled: !valid || section.value === "" || Number(section.value) <= 0,
+                    variant: "outline",
+                    className: "h-11 w-11 shrink-0",
+                    attributes: [h.AriaLabel(`Decrease ${section.name}`)],
+                  },
+                  "−",
+                  h,
+                ),
+              ]
+            : []),
+          h.input([
+            h.Type("text"),
+            h.Class(cn(inputClass, counter && "text-center tabular-nums")),
+            h.Value(section.value),
+            h.Placeholder("Unanswered"),
+            h.AriaLabel(section.name),
+            h.Attribute("inputmode", counter ? "numeric" : "decimal"),
+            h.Attribute("aria-required", String(section.isRequired)),
+            h.Attribute("aria-invalid", String(!valid)),
+            h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
           ]),
+          ...(counter
+            ? [
+                button(
+                  {
+                    onClick: Message.AdjustedCounter({
+                      taskFieldId: section.id,
+                      delta: 1,
+                    }),
+                    isDisabled: !valid || Number(section.value) >= Number.MAX_SAFE_INTEGER,
+                    variant: "outline",
+                    className: "h-11 w-11 shrink-0",
+                    attributes: [h.AriaLabel(`Increase ${section.name}`)],
+                  },
+                  "+",
+                  h,
+                ),
+              ]
+            : []),
         ],
       ),
+      ...(!valid
+        ? [
+            hint(
+              counter
+                ? "Enter a whole number of zero or more."
+                : "Enter a valid number, such as 12.5.",
+              h,
+            ),
+          ]
+        : []),
     ],
   );
 };
@@ -316,7 +359,27 @@ const answerControl = (section: RunnerSection, scope: string, h: HtmlBuilder<Mes
     case "textArea":
       return notesAnswer(section, h);
     case "boolean":
-      return yesNoAnswer(section, scope, h);
+      return singleChoiceGroup({ ...section, options: ["", "true", "false"] }, scope, h);
+    case "number":
+    case "counter":
+      return numericAnswer(section, h);
+    case "rating":
+      return h.div(
+        [h.Class("space-y-2")],
+        [
+          singleChoiceGroup({ ...section, options: ["1", "2", "3", "4", "5"] }, scope, h),
+          button(
+            {
+              variant: "ghost",
+              isDisabled: section.value === "",
+              onClick: Message.ChangedFieldValue({ taskFieldId: section.id, value: "" }),
+              attributes: [h.AriaLabel(`Clear ${section.name}`)],
+            },
+            section.value === "" ? "Unanswered" : "Clear answer",
+            h,
+          ),
+        ],
+      );
     default:
       return textAnswer(section, scope, h);
   }
@@ -339,30 +402,22 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
       )
     : groupedList(
         {
-          surface: section.kind === "boolean" ? "card" : "plain",
-          header:
-            section.kind === "boolean"
-              ? undefined
-              : h.span(
-                  [h.Class("flex flex-wrap items-center gap-2 normal-case")],
-                  [
+          surface: "plain",
+          header: h.span(
+            [h.Class("flex flex-wrap items-center gap-2 normal-case")],
+            [
+              h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
+              ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
+              ...(section.kind === "radio" || section.kind === "checkbox"
+                ? [
                     h.span(
-                      [h.Class("min-w-0 text-sm font-semibold tracking-normal")],
-                      [section.name],
+                      [h.Class("ml-auto text-xs font-normal text-muted-foreground")],
+                      [section.kind === "radio" ? "Choose one" : "Choose any"],
                     ),
-                    ...(section.isRequired
-                      ? [statusPill({ tone: "primary" }, ["Required"], h)]
-                      : []),
-                    ...(section.kind === "radio" || section.kind === "checkbox"
-                      ? [
-                          h.span(
-                            [h.Class("ml-auto text-xs font-normal text-muted-foreground")],
-                            [section.kind === "radio" ? "Choose one" : "Choose any"],
-                          ),
-                        ]
-                      : []),
-                  ],
-                ),
+                  ]
+                : []),
+            ],
+          ),
           attributes: [h.Id(`${scope}-${section.id}`)],
         },
         [answerControl(section, scope, h)],
@@ -472,6 +527,8 @@ const missingRequiredCount = (task: RunnerTask): number =>
   task.sections.filter((section) => !isSectionDone(section)).length;
 
 const recordHint = (task: RunnerTask): string => {
+  if (task.sections.some((section) => !isScalarAnswerValid(section.kind, section.value)))
+    return "Correct invalid answers before continuing.";
   const missing = missingRequiredCount(task);
   const verb = task.isBeingEdited ? "to save" : "first";
   if (!task.isBeingEdited && task.endDate !== null)

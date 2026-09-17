@@ -47,6 +47,12 @@ Inspect returned state and read until the expected data or error appears. After
 a timeout, inspect state before retrying a write; cancellation does not undo a
 dispatched write.
 
+Template answer kinds include `number` (decimal), `counter` (non-negative safe
+integer), and `rating` (integer 1–5). Values are strings; an empty string means
+unanswered, including for `boolean`. Explicit Yes/No values are `true` and
+`false`. All answer types can be required. Put units and rating scale meanings
+in question names. Invalid numeric values prevent recording or saving an edit.
+
 Destructive actions require the app's request/confirm sequence and a separate
 human browser confirmation. Do not automate that confirmation.
 

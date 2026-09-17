@@ -72,6 +72,7 @@ const SessionEvents = Machine.eventsFromSchemas(
     DataSynced: { data: Schema.Union([RunnerDataSchema, Schema.Null]) },
     /** A field value changed (radio/checkbox/text/textarea/boolean). */
     FieldChanged: { taskFieldId: Schema.String, value: Schema.String },
+    CounterAdjusted: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
     /** User tapped a section (focus management). */
     SectionFocused: { fieldId: Schema.Union([Schema.Null, Schema.String]) },
     /** User tapped the Record button. */
@@ -105,6 +106,7 @@ export type SessionEvent = Machine.EventOf<typeof SessionEvents>;
 const SessionEmissions = Machine.emittedEventsFromSchemas(
   Schema.TaggedUnion({
     CommitFieldValue: { taskFieldId: Schema.String, value: Schema.String },
+    CommitCounterAdjustment: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
     CommitRecord: { sessionId: Schema.String, taskId: Schema.String },
     CommitSelectTask: { sessionId: Schema.String, taskId: Schema.String },
     CommitCancelEdit: {
@@ -283,6 +285,27 @@ export const SessionMachine = Machine.make({
       states: {
         Collecting: {
           on: {
+            CounterAdjusted: {
+              branches: "updateLive",
+              resolve: ({ containingState: current, event, select }, enqueue) => {
+                const task = currentTask(current.data);
+                if (
+                  task &&
+                  (task.endDate === null || task.isBeingEdited) &&
+                  task.sections.some(
+                    (field) => field.id === event.taskFieldId && field.kind === "counter",
+                  )
+                ) {
+                  enqueue.emit(
+                    SessionEmissions.CommitCounterAdjustment({
+                      taskFieldId: event.taskFieldId,
+                      delta: event.delta,
+                    }),
+                  );
+                }
+                return select.live.decoded(current);
+              },
+            },
             // Field edit: commit the value, radio auto-advances the focus.
             FieldChanged: {
               branches: "updateLive",

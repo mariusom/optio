@@ -3,8 +3,17 @@ import { Schema } from "effect";
 
 // ── Domain schemas ───────────────────────────────────────────────────────
 
-/** The five optio field types (raw strings mirror the domain enum). */
-export const FieldKind = Schema.Literals(["radio", "checkbox", "textInput", "textArea", "boolean"]);
+/** Supported template answer types. */
+export const FieldKind = Schema.Literals([
+  "radio",
+  "checkbox",
+  "textInput",
+  "textArea",
+  "boolean",
+  "number",
+  "counter",
+  "rating",
+]);
 export type FieldKind = typeof FieldKind.Type;
 
 export const FieldDef = Schema.Struct({

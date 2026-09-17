@@ -1,5 +1,5 @@
 import type { FieldDef, FieldKind } from "../../../livestore/schema";
-import { hasOptions, supportsRequired } from "../../fields";
+import { hasOptions, isScalarAnswerValid } from "../../fields";
 
 // ── Types mirroring Model.editor ──────────────────────────────────────────
 
@@ -41,7 +41,6 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
   if (nextKind === "textInput") {
     next = { ...next, defaultValue: next.defaultValue.replace(/[\r\n]/g, "") };
   }
-  if (!supportsRequired(nextKind)) next = { ...next, isRequired: false };
   if (!hasOptions(nextKind)) {
     next = { ...next, options: [], exclusiveOptions: [], newOptionText: "" };
   }
@@ -50,7 +49,7 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
   }
   if (nextKind === "boolean") {
     const current = next.defaultValue;
-    next = { ...next, defaultValue: current === "true" ? "true" : "false" };
+    next = { ...next, defaultValue: isScalarAnswerValid(nextKind, current) ? current : "" };
   } else if (
     draft.kind === "boolean" &&
     (next.defaultValue === "true" || next.defaultValue === "false")
@@ -65,6 +64,7 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
     };
   }
   if (nextKind !== "checkbox") next = { ...next, exclusiveOptions: [] };
+  if (!isScalarAnswerValid(nextKind, next.defaultValue)) next = { ...next, defaultValue: "" };
   return next;
 };
 
@@ -75,6 +75,7 @@ export const isTemplateValid = (editor: { readonly name: string }): boolean =>
 
 export const isDraftValid = (draft: FieldDraft): boolean => {
   if (draft.name.trim().length === 0) return false;
+  if (!isScalarAnswerValid(draft.kind, draft.defaultValue)) return false;
   if (hasOptions(draft.kind) && draft.options.length < 2) return false;
   if (draft.kind === "checkbox" && draft.options.some((option) => option.includes(","))) {
     return false;
@@ -134,7 +135,6 @@ export const deleteField = (fields: ReadonlyArray<FieldDef>, id: string): Readon
 
 export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
   const kind: FieldKind = draft.kind;
-  const isRequired = supportsRequired(kind) ? draft.isRequired : false;
   const hasOpts = hasOptions(kind);
   const options = hasOpts ? [...draft.options] : [];
   const exclusiveOptions =
@@ -143,7 +143,7 @@ export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
       : [];
   let defaultValue = draft.defaultValue;
   if (kind === "boolean") {
-    defaultValue = defaultValue === "true" ? "true" : "false";
+    defaultValue = isScalarAnswerValid(kind, defaultValue) ? defaultValue : "";
   }
   if (hasOpts && defaultValue !== "") {
     const defaults = kind === "checkbox" ? defaultValue.split(",") : [defaultValue];
@@ -153,7 +153,7 @@ export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
     id: draft.id,
     name: draft.name.trim(),
     kind,
-    isRequired,
+    isRequired: draft.isRequired,
     defaultValue,
     sortOrder: draft.sortOrder,
     options,

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatBooleanDisplay,
   isBooleanTrue,
+  isScalarAnswerValid,
   parseJsonArray,
   toggleCheckboxOption,
 } from "./fields";
@@ -99,10 +100,40 @@ describe("boolean helpers", () => {
     expect(isBooleanTrue("anything else")).toBe(false);
   });
 
-  it("formatBooleanDisplay returns Yes for true and No for false or empty", () => {
+  it("formatBooleanDisplay distinguishes unanswered from No", () => {
     expect(formatBooleanDisplay("true")).toBe("Yes");
     expect(formatBooleanDisplay("True")).toBe("Yes");
     expect(formatBooleanDisplay("false")).toBe("No");
-    expect(formatBooleanDisplay("")).toBe("No");
+    expect(formatBooleanDisplay("")).toBe("Unanswered");
+  });
+});
+
+describe("scalar answers", () => {
+  it.each([
+    ["number", "-12.75", true],
+    ["number", ".5", true],
+    ["number", "0", true],
+    ["number", "12kg", false],
+    ["number", "Infinity", false],
+    ["number", " ", false],
+    ["number", "-", false],
+    ["number", "1,5", false],
+    ["counter", "0", true],
+    ["counter", "17", true],
+    ["counter", "-1", false],
+    ["counter", "1.5", false],
+    ["counter", "9007199254740992", false],
+    ["rating", "1", true],
+    ["rating", "5", true],
+    ["rating", "0", false],
+    ["rating", "6", false],
+    ["rating", "2.5", false],
+    ["boolean", "false", true],
+    ["boolean", "maybe", false],
+  ])("validates %s value %j", (kind, value, valid) => {
+    expect(isScalarAnswerValid(kind as string, value as string)).toBe(valid);
+  });
+  it.each(["number", "counter", "rating", "boolean"])("allows unanswered %s", (kind) => {
+    expect(isScalarAnswerValid(kind, "")).toBe(true);
   });
 });

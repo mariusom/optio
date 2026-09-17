@@ -30,6 +30,7 @@ import {
   SaveEdit,
   SelectTask,
   UpdateFieldValue,
+  AdjustCounter,
 } from "./we/features/session/runnerCommands";
 import { sessionView } from "./we/features/session/sessionView";
 import { RunnerStateSchema } from "./we/features/session/runner";
@@ -67,7 +68,6 @@ import { templatesPage } from "./we/features/templates/view";
 import { DiscardLiveSession, StartSession } from "./we/features/session/startCommands";
 import { effectiveTemplateId, resolveSelectedTemplate } from "./we/features/session/startHelpers";
 import { startView } from "./we/features/session/startView";
-import { supportsRequired } from "./we/fields";
 import {
   historyRouter,
   isFullScreenRoute,
@@ -336,6 +336,8 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
   switch (emission._tag) {
     case "CommitFieldValue":
       return [UpdateFieldValue({ taskFieldId: emission.taskFieldId, value: emission.value })];
+    case "CommitCounterAdjustment":
+      return [AdjustCounter({ taskFieldId: emission.taskFieldId, delta: emission.delta })];
     case "CommitRecord":
       return [RecordTask({ sessionId: emission.sessionId, currentTaskId: emission.taskId })];
     case "CommitSelectTask":
@@ -796,7 +798,6 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     },
     ToggledFieldRequired: () => {
       if (model.editor === null || model.editor.draft === null) return { model };
-      if (!supportsRequired(model.editor.draft.kind)) return { model };
       return {
         model: {
           ...model,
@@ -1114,6 +1115,8 @@ const updateInternal = (model: Model, message: Message): Update.Return<Model, Me
     },
     ChangedFieldValue: ({ taskFieldId, value }) =>
       applyPlan(model, { _tag: "FieldChanged", taskFieldId, value } as SessionEvent),
+    AdjustedCounter: ({ taskFieldId, delta }) =>
+      applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta } as SessionEvent),
     ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
     TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
     ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),

@@ -15,6 +15,7 @@ import {
   SaveEdit,
   SelectTask,
   UpdateFieldValue,
+  AdjustCounter,
 } from "./features/session/runnerCommands";
 import {
   DeleteHistorySession,
@@ -212,14 +213,53 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
   );
 });
 
+describe("counter writes", () => {
+  it.effect("reads the latest stored value for every rapid tap", () =>
+    Effect.gen(function* () {
+      let value = "7";
+      query.mockImplementation(() => [
+        { ...task, id: "field", taskId: "task", kind: "counter", value },
+      ]);
+      commit.mockImplementation((event) => {
+        value = event.args.value;
+      });
+      yield* Effect.all(
+        Array.from({ length: 12 }, () => AdjustCounter({ taskFieldId: "field", delta: 1 }).effect),
+        { concurrency: "unbounded" },
+      );
+      expect(value).toBe("19");
+      yield* AdjustCounter({ taskFieldId: "field", delta: -1 }).effect;
+      expect(value).toBe("18");
+    }),
+  );
+  it.effect.each(["0", "-1", "2.5"])("does not decrement invalid or zero value %s", (value) =>
+    Effect.gen(function* () {
+      query.mockReturnValue([{ taskId: "task", kind: "counter", value, ...task }]);
+      yield* AdjustCounter({ taskFieldId: "field", delta: -1 }).effect;
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
+});
+
 describe("SaveEdit required field validation", () => {
+  it.effect.each([
+    ["number", "bad"],
+    ["counter", "-1"],
+    ["rating", "6"],
+  ])("rejects invalid optional %s", ([kind, value]) =>
+    Effect.gen(function* () {
+      query.mockReturnValueOnce([{ kind, value, isRequired: 0 }]);
+      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({ _tag: "FailedRunnerOp" });
+      expect(commit).not.toHaveBeenCalled();
+    }),
+  );
   it.effect("does not finish the edit when a persisted required field is empty", () =>
     Effect.gen(function* () {
       query.mockReturnValueOnce([{ isRequired: 1, value: "" }]);
 
       expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({
         _tag: "FailedRunnerOp",
-        error: "Answer the required questions first.",
+        error: "Complete required questions and correct invalid answers first.",
       });
       expect(commit).not.toHaveBeenCalled();
     }),

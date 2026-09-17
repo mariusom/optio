@@ -357,7 +357,8 @@ describe("groupByDay", () => {
 describe("formatAnswer", () => {
   it("says Yes and No for toggles", () => {
     expect(formatAnswer("boolean", "true")).toBe("Yes");
-    expect(formatAnswer("boolean", "")).toBe("No");
+    expect(formatAnswer("boolean", "false")).toBe("No");
+    expect(formatAnswer("boolean", "")).toBe("—");
   });
   it("separates multiple choices with commas", () => {
     expect(formatAnswer("checkbox", "A,B")).toBe("A, B");

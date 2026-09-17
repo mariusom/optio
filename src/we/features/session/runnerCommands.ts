@@ -6,6 +6,7 @@ import { getStore } from "../../../livestore/client";
 import { events, tables, type FieldDef } from "../../../livestore/schema";
 import { safeArray } from "../../fieldRows";
 import { friendlyFailure } from "../../errors";
+import { isScalarAnswerValid } from "../../fields";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,33 @@ export const UpdateFieldValue = Command.define("UpdateFieldValue", {
     Effect.gen(function* () {
       const store = yield* Effect.promise(getStore);
       store.commit(events.taskFieldValueChanged({ id: taskFieldId, value, now: new Date() }));
+      return Message.UpdatedFieldValue();
+    }).pipe(
+      Effect.catchCause((cause) =>
+        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
+      ),
+    ),
+});
+
+/** Read and commit synchronously after opening the store: rapid taps must not
+ * derive their next value from a stale rendered snapshot. */
+export const AdjustCounter = Command.define("AdjustCounter", {
+  args: { taskFieldId: S.String, delta: S.Literals([-1, 1]) },
+  messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
+  execute: ({ taskFieldId, delta }) =>
+    Effect.gen(function* () {
+      const store = yield* Effect.promise(getStore);
+      const field = store.query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0];
+      if (!field || field.kind !== "counter" || !isScalarAnswerValid("counter", field.value))
+        return Message.UpdatedFieldValue();
+      const task = store.query(tables.sessionTasks.select().where({ id: field.taskId }))[0];
+      if (!task || (task.endDate !== null && !task.isBeingEdited))
+        return Message.UpdatedFieldValue();
+      const value = Number(field.value) + delta;
+      if (value < 0 || !Number.isSafeInteger(value)) return Message.UpdatedFieldValue();
+      store.commit(
+        events.taskFieldValueChanged({ id: taskFieldId, value: String(value), now: new Date() }),
+      );
       return Message.UpdatedFieldValue();
     }).pipe(
       Effect.catchCause((cause) =>
@@ -77,12 +105,14 @@ export const RecordTask = Command.define("RecordTask", {
         startDate: Date | number | null;
       }>;
 
-      // Check canRecord: all required sections must be non-empty
+      // Recheck validity as well as requiredness against persisted values.
       const notDone = fieldRows.some(
-        (r) => r.isRequired === 1 && (r.value === "" || r.value === null),
+        (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
       );
       if (notDone) {
-        return Message.FailedRunnerOp({ error: "Answer the required questions first." });
+        return Message.FailedRunnerOp({
+          error: "Complete required questions and correct invalid answers first.",
+        });
       }
 
       // Compute next orderIndex = max +1
@@ -285,12 +315,14 @@ export const SaveEdit = Command.define("SaveEdit", {
       const store = yield* Effect.promise(getStore);
       const fieldRows = store.query(
         tables.sessionTaskFields.select().where({ taskId }),
-      ) as ReadonlyArray<{ isRequired: number; value: string }>;
+      ) as ReadonlyArray<{ kind: string; isRequired: number; value: string }>;
       const notDone = fieldRows.some(
-        (r) => r.isRequired === 1 && (r.value === "" || r.value === null),
+        (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
       );
       if (notDone) {
-        return Message.FailedRunnerOp({ error: "Answer the required questions first." });
+        return Message.FailedRunnerOp({
+          error: "Complete required questions and correct invalid answers first.",
+        });
       }
 
       store.commit(events.taskEditFinished({ id: taskId }));

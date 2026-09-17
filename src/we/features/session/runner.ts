@@ -1,4 +1,5 @@
 import { Schema } from "effect";
+import { isScalarAnswerValid } from "../../fields";
 
 // Shared runner contracts and pure task/section/session semantics.
 const RunnerSectionSchema = Schema.Struct({
@@ -50,7 +51,7 @@ export type RunnerState = typeof RunnerStateSchema.Type;
 // ── Section helpers ───────────────────────────────────────────────────────
 
 export const isSectionDone = (section: RunnerSection): boolean =>
-  section.isRequired ? section.value !== "" : true;
+  isScalarAnswerValid(section.kind, section.value) && (!section.isRequired || section.value !== "");
 
 export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
 

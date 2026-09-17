@@ -65,7 +65,7 @@ const model = () => ({
 beforeEach(() => vi.resetAllMocks());
 
 describe("history detail regressions", () => {
-  it("exports yes/no answers as true/false, including untouched No answers", async () => {
+  it("exports yes/no answers as true/false and keeps unanswered empty", async () => {
     const query = vi
       .fn()
       .mockReturnValueOnce([{ id: "s1", sessionName: "Study", templateName: "Template" }])
@@ -87,7 +87,7 @@ describe("history detail regressions", () => {
         _tag: "CsvExported",
       });
       expect(csv.mock.results[0]?.value).toBe(
-        "id,A,B,C,D,E,F,startTime,endTime\n1,false,false,true,true,,No,,",
+        "id,A,B,C,D,E,F,startTime,endTime\n1,,false,true,true,,No,,",
       );
     } finally {
       csv.mockRestore();

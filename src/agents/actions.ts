@@ -4,6 +4,7 @@ import { Port } from "foldkit";
 import { Message } from "../messages";
 import { RouteSchema } from "../we/routes";
 import { FieldKind } from "../livestore/schema";
+import { isScalarAnswerValid } from "../we/fields";
 import type { Model } from "../main";
 import { AgentState } from "./state";
 
@@ -57,6 +58,7 @@ export const AgentAction = Schema.Union([
   Message.ConfirmedDiscardSession,
   Message.CanceledDiscardSession,
   Message.ChangedFieldValue,
+  Message.AdjustedCounter,
   Message.ClickedRecord,
   Message.ClickedEndSession,
   Message.ConfirmedEndSession,
@@ -121,6 +123,13 @@ export const actionError = (model: Model, action: AgentAction): string | null =>
         : "Archived session not found.";
     case "ConfirmedDiscardSession":
       return model.pendingDiscardSession ? null : "Request session discard first.";
+    case "AdjustedCounter": {
+      const task = model.runner?.tasks.find((task) => task.id === model.runner?.currentTaskId);
+      const field = task?.sections.find((field) => field.id === action.taskFieldId);
+      return field?.kind === "counter" && (task?.endDate === null || task?.isBeingEdited)
+        ? null
+        : "Select an editable counter first.";
+    }
     case "ChangedFieldValue": {
       const task = model.runner?.tasks.find((task) => task.id === model.runner?.currentTaskId);
       const field = task?.sections.find((field) => field.id === action.taskFieldId);
@@ -131,8 +140,8 @@ export const actionError = (model: Model, action: AgentAction): string | null =>
         !Schema.is(Schema.Literals(["", ...field.options]))(action.value)
       )
         return "Choose a listed radio option.";
-      if (field.kind === "boolean" && !Schema.is(Schema.Literals(["true", "false"]))(action.value))
-        return "Toggle values must be true or false.";
+      if (!isScalarAnswerValid(field.kind, action.value))
+        return "Use a valid answer: a number, a non-negative whole counter, a rating from 1 to 5, or true/false for Yes/No. Empty means unanswered.";
       if (field.kind === "checkbox" && action.value !== "") {
         const selected = action.value.split(",");
         if (
