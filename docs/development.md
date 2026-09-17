@@ -7,8 +7,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The dev server uses port 60001 and the `/optio/` path. In an Amp orb, run it as
-a supervised service with a portal; see the [orb documentation](https://ampcode.com/docs/orbs).
+The dev server uses port 60001 and the `/optio/` path.
 
 Before submitting code changes:
 
@@ -62,8 +61,7 @@ Audit a production build, not the dev server. With `pnpm build` complete and
 pnpm dlx lighthouse@13.4.1 http://localhost:60002/optio/ --output=html --output-path=/tmp/optio-lighthouse.html
 ```
 
-Set `CHROME_PATH` if Chrome is not discovered automatically. In an orb, use a
-supervised preview service and add `--chrome-flags='--headless --no-sandbox'`.
+Set `CHROME_PATH` if Chrome is not discovered automatically.
 Compare the same URL, browser and mobile throttling settings across repeated
 cold runs; scores vary with host load. Startup changes must also preserve real
 OPFS data across reloads and work offline after service-worker installation.
@@ -126,9 +124,7 @@ Existing agent export actions remain raw unless `spreadsheetSafe: true` is set.
 ## Project history
 
 Optio began as a web implementation of an earlier Swift time-study app and was
-subsequently redesigned. The public Git history retains that lineage. New
-commit messages should describe the outcome and important tradeoffs, not
-private spec section numbers or tool transcripts.
+subsequently redesigned. The public Git history retains that lineage.
 
 ## Public metadata and agent discovery
 
@@ -152,22 +148,12 @@ using `rel="ai-catalog"`. The catalog describes documentation, not a public MCP
 server. Update the guide when the agent contract changes. Static Markdown is an
 explicit alternative resource, not HTTP content negotiation.
 
-The 2026-09-10 isitagentready.com baseline for the live app was 0 (default scan).
-Most checks use `https://mariusom.github.io/`, not the `/optio/` project path.
-This repository cannot publish origin-root `robots.txt` or `.well-known` files,
-control `github.io` DNS, or set production Link/Vary headers. Putting those files
-under `/optio/` would not satisfy origin-root discovery. The linked catalog can
-be discovered from the page without root access, but a new score must be measured
-after deployment; local validation is not a scanner score.
-
-For further applicable score gains, an origin-root site or custom-domain hosting
-decision is required. Publish root `robots.txt` with an explicit owner-approved
-AI crawler/content-use policy and the sitemap URL; configure real Link headers
-and `Accept: text/markdown` negotiation with `Vary: Accept` on a host supporting
-them. Rescan the same URL with the same checks. Do not add fake OAuth, commerce,
-MCP server cards, or disable WebMCP consent to satisfy the scanner. Its page-load
-`navigator.modelContext` probe differs from Optio's opt-in `document.modelContext`
-integration. A high protocol-discovery score is not a security or usability audit.
+GitHub Pages project sites cannot publish origin-root `robots.txt` or
+`.well-known` files from this repository, or set arbitrary response headers.
+Files under `/optio/` do not replace origin-root resources. Full control of
+crawler policies and security headers requires control of the origin and a
+host that supports those settings. A custom domain alone does not add header
+configuration to GitHub Pages.
 
 For tool usage, consult [Vite+](https://vite.plus),
 [pnpm](https://pnpm.io), and [Vitest browser testing](https://vitest.dev/guide/browser/).
@@ -210,11 +196,9 @@ utilities; Tailwind's built-in spin/pulse/bounce utilities do not replace them.
 
 Dependabot proposes updates Mondays at 09:00 Europe/London; review them weekly,
 with critical security fixes handled immediately. Exact pins and overrides
-still need deliberate updates. The inspected Dependabot run fetched pnpm
-12.4.0 but subsequently reported 11.17.0. It enumerated application dependencies,
-but a successful lockfile-changing PR is still needed to establish update
-compatibility with the two-document lockfile. A green bot job alone is
-insufficient evidence.
+still need deliberate updates. Verify compatibility with pnpm's two-document
+lockfile using a successful lockfile-changing PR and a frozen install. A green
+bot job alone does not prove that dependency updates work.
 
 The security workflow adds PR/push CodeQL checks and Monday 08:00 UTC dependency
 audits (including development dependencies). It never deploys. Check the first
@@ -229,8 +213,7 @@ up-to-date branches and resolved conversations, and blocking force pushes and
 deletion. Use no bypass actors by default. Zero required approvals supports a
 solo maintainer; require one independent approval when another reviewer is
 available. Test a contributor PR before adding further required check names.
-The preparation session could not apply these settings: its integration token
-received HTTP 403. They must not be treated as enabled by these files.
+These are GitHub settings; committing workflow files does not enable them.
 
 Deployment remains automatic after validated `main` pushes. A weekly maintenance
 schedule is not a weekly publication schedule. The manual **Release assurance**
