@@ -2,11 +2,13 @@
   "schemaVersion": 2,
   "scope": [
     "Installed production dependency closure reported by pnpm, including browser, worker and WASM packages.",
-    "Installed PWA/Workbox and Rollup packages that can contribute generated code to the distribution; platform-specific Rollup native binaries are omitted.",
+    "Conservative superset: upstream manifests can declare build- or test-only packages as production dependencies, so some inventoried packages are absent from the distribution.",
+    "Installed PWA/Workbox and Rollup packages that can contribute generated code to the distribution; platform-specific Rollup native binaries are omitted, and build-only compilers that emit no third-party source (for example TypeScript and the Tailwind CSS chain) are not added as contributors, though they remain included when the production closure already contains them.",
+    "License classes seen only in dev-only packages are recorded in the collector and rejected if they reach this scope.",
     "This is a conservative package inventory, not a byte-complete bill of materials or a claim of legal clearance.",
     "Every package has hashed installed license/NOTICE text or an explicitly version-scoped, reviewed fallback.",
     "License text hashes cover text with CRLF normalized to LF and trailing whitespace removed; wording is preserved.",
-    "Copied/adapted source provenance is recorded in THIRD_PARTY_NOTICES.txt."
+    "Copied/adapted source provenance and patched dependencies are recorded in THIRD_PARTY_NOTICES.txt."
   ],
   "packages": [
     {

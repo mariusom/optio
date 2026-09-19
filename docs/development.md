@@ -247,14 +247,21 @@ the collector and rejects unknown licenses, missing texts and artifact drift;
 and the production E2E journey checks that they remain available offline.
 
 The inventory includes installed production packages, even those absent from
-the browser bundle. Its MPL-2.0 entry is Lightning CSS, a build tool; Optio's own
-code remains MIT-licensed. Review new bundle-generating tools and embedded
-assets manually. The check cannot detect copied source, so update provenance
-when refreshing registry components or adding adapted code and assets.
-Missing package license files require a version-scoped, reviewed fallback in
-`licenses/reviewed-fallbacks` with provenance in the collector. Do not extend a
-fallback to a new version without checking upstream. Do not edit generated
-notices by hand. Keep the LiveStore patch's modification comments.
+the browser bundle, and it is a conservative superset: upstream manifests can
+declare build- or test-only packages as production dependencies. Its MPL-2.0
+entry is Lightning CSS, a build tool; Optio's own code remains MIT-licensed.
+License classes that appear only in dev-only packages are listed in the
+collector and rejected if they reach the inventory, so review such a failure
+instead of widening `knownLicenses`. Review new bundle-generating tools and
+embedded assets manually. The check cannot detect copied source, so update
+provenance when refreshing registry components or adding adapted code and
+assets. `licenses/copied-source-and-runtime-notices.txt` is included in full in
+the generated notices: keep it free of version pins and generated data, and
+record every patched dependency there. Missing package license files require a
+version-scoped, reviewed fallback in `licenses/reviewed-fallbacks` with
+provenance in the collector. Do not extend a fallback to a new version without
+checking upstream. Do not edit generated notices by hand. Keep the LiveStore
+patch's modification comments.
 
 `cn` is the Shadcn class-merging package (`shadcn-ui/cn`). `tw-animate-css`
 provides the imported components' composable enter/exit, fade, slide and zoom

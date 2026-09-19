@@ -27,9 +27,10 @@ SOFTWARE.
 Optio third-party notices
 =========================
 
-This file preserves notices for third-party source copied or adapted into
-Optio. The generated THIRD_PARTY_NOTICES.txt appends installed package license
-and NOTICE files; dependency-inventory.json records their hashes and scope.
+This file records third-party source copied or adapted into Optio, and patched
+dependencies. It is included in full in the generated THIRD_PARTY_NOTICES.txt,
+which also appends installed package license and NOTICE files;
+dependency-inventory.json records their hashes and scope.
 
 
 Foldcn registry components and generated style data
@@ -104,6 +105,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+Patched dependencies
+--------------------
+
+@livestore/adapter-web (Apache-2.0) is installed with
+patches/@livestore__adapter-web@0.5.0-dev.0.patch, which adds
+`codecFor: Schema.toCodecJson` to the worker RPC protocol. The patch marks the
+changed lines with a "Modified by Optio" notice in the package source and dist
+files, and that notice survives in the distributed worker bundle. See
+docs/development.md for why the patch exists and when it can be removed.
+
+
+LiveStore runtime packages
+--------------------------
+
+LiveStore's Apache-2.0 runtime packages and the MIT-licensed
+@livestore/wa-sqlite have their full installed license texts included below,
+with hashes recorded in dependency-inventory.json.
+
+Source: https://github.com/livestorejs/livestore
+Copyright 2025 Overengineering Studio
 
 
 @cloudflare/workers-types@4.20251118.0
