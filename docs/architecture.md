@@ -63,6 +63,13 @@ with SQL `COALESCE`; defaults do not start its timer, and edit-cancel rollback
 restores values without changing that timestamp. Durations derive from these
 timestamps. Preserve the same rules for UI and agent actions.
 
+Wall-clock time reaches the UI through the Model. The runtime boot and the
+ticker subscription read Effect's Clock; `Tick` stamps `model.now` and
+`runner.now`, and the session planner receives that time as part of its input.
+`model.now` is the latest sample, refreshed while a screen with a live timer is
+active, so live timing renders from the Model instead of the clock. History
+day-grouping is the deliberate exception: it labels days from the real clock.
+
 Completed-task edit rollback belongs to SQLite, not the UI model.
 `TaskEditStarted` stores the original field values in `sessionTasks.editBackup`
 in the same transaction as its edit flag. Reselecting that task retains the

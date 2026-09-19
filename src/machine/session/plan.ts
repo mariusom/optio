@@ -85,9 +85,18 @@ export type SessionPlan = {
   readonly emissions: ReadonlyArray<SessionEmission>;
 };
 
+export type SessionPlanInput = Readonly<{
+  runner: RunnerState | null;
+  phase: SessionPhase;
+  /**
+   * Current Model time in ms. A plan that creates a runner from Idle stamps it
+   * here, so the planner never reads the clock itself.
+   */
+  now: number;
+}>;
+
 export const planSession = (
-  runner: RunnerState | null,
-  phase: SessionPhase,
+  { runner, phase, now }: SessionPlanInput,
   event: SessionEvent,
 ): SessionPlan => {
   try {
@@ -100,10 +109,7 @@ export const planSession = (
         return yield* Machine.plan(SessionMachine, decoded as never, event as never);
       }),
     );
-    const { runner: nextRunner, phase: nextPhase } = snapshotToRunner(
-      plan.next as never,
-      runner?.now ?? Date.now(),
-    );
+    const { runner: nextRunner, phase: nextPhase } = snapshotToRunner(plan.next as never, now);
     return {
       runner: nextRunner,
       phase: nextPhase,

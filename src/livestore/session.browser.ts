@@ -75,19 +75,25 @@ it("reconstructs an edited task from persisted events and Cancel restores origin
         })),
     }));
     // A fresh model has no in-memory rollback snapshot, just the recovered store rows.
-    const recovered = planSession(null, "collecting", {
-      _tag: "DataSynced",
-      data: {
-        sessionId: "s",
-        templateName: "Study",
-        sessionName: "Round",
-        startedAt: 500,
-        tasks,
-        currentTaskId: "done",
-        completedCount: 1,
+    const recovered = planSession(
+      { runner: null, phase: "collecting", now: 500 },
+      {
+        _tag: "DataSynced",
+        data: {
+          sessionId: "s",
+          templateName: "Study",
+          sessionName: "Round",
+          startedAt: 500,
+          tasks,
+          currentTaskId: "done",
+          completedCount: 1,
+        },
       },
-    });
-    const cancelled = planSession(recovered.runner, recovered.phase, { _tag: "EditCancelled" });
+    );
+    const cancelled = planSession(
+      { runner: recovered.runner, phase: recovered.phase, now: 500 },
+      { _tag: "EditCancelled" },
+    );
     expect(cancelled.emissions).toHaveLength(1);
     const emission = cancelled.emissions[0]!;
     expect(emission).toEqual({ _tag: "CommitCancelEdit", taskId: "done" });

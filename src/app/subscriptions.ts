@@ -1,4 +1,4 @@
-import { Duration, Effect, Stream, Schema as S } from "effect";
+import { Clock, Duration, Effect, Stream, Schema as S } from "effect";
 import { Port, Subscription } from "foldkit";
 import { agentPorts } from "../agents/actions";
 import { Message } from "../messages";
@@ -13,8 +13,11 @@ import {
   scrollToSection,
 } from "./domStreams";
 
+// Reads the time through Effect's Clock, so a test runtime can supply it, and
+// the Model carries the value; views never read the clock themselves.
 const tickStream: Stream.Stream<Message> = Stream.tick(Duration.seconds(1)).pipe(
-  Stream.map(() => Message.Tick({ now: Date.now() })),
+  Stream.mapEffect(() => Clock.currentTimeMillis),
+  Stream.map((now) => Message.Tick({ now })),
 );
 
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
@@ -101,7 +104,11 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     { active: S.Boolean },
     {
       modelToDependencies: (model) => ({
-        active: model.route._tag === "SessionRunner" && model.runner !== null,
+        // The runner screen shows a live timer; the Start tab shows elapsed
+        // time for a session that is still open.
+        active:
+          (model.route._tag === "SessionRunner" && model.runner !== null) ||
+          (model.route._tag === "StartTab" && model.activeSession !== null),
       }),
       dependenciesToStream: ({ active }) =>
         Stream.when(

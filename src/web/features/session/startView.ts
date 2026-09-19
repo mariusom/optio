@@ -33,10 +33,12 @@ const resumeView = (
     active: ActiveSession;
     templates: ReadonlyArray<TemplateSummary>;
     pendingDiscard: boolean;
+    /** Ticked Model time, not the clock: views render time from the Model. */
+    now: number;
   }>,
   h: HtmlBuilder<Message>,
 ) => {
-  const { active, templates, pendingDiscard } = options;
+  const { active, templates, pendingDiscard, now } = options;
   const missing = isTemplateMissing(templates, active);
   const name = displaySessionName(active.sessionName, active.templateName);
   const taskCount = `${active.completedCount} task${active.completedCount === 1 ? "" : "s"}`;
@@ -78,7 +80,7 @@ const resumeView = (
             h,
           ),
           row({ title: "Started", value: formatTimeOnly(active.startedAt) }, h),
-          row({ title: "Elapsed", value: formatDurationHm(Date.now() - active.startedAt) }, h),
+          row({ title: "Elapsed", value: formatDurationHm(now - active.startedAt) }, h),
         ],
         h,
       ),
@@ -282,6 +284,7 @@ type StartModel = {
   readonly placeholderName: string;
   readonly activeSession: ActiveSession | null;
   readonly pendingDiscardSession: boolean;
+  readonly now: number;
   readonly lastError?: string | null;
 };
 
@@ -296,6 +299,7 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
               active: model.activeSession,
               templates: model.templates,
               pendingDiscard: model.pendingDiscardSession,
+              now: model.now,
             },
             h,
           )

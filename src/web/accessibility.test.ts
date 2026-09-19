@@ -116,6 +116,7 @@ describe("audited view accessibility", () => {
           sessionNameInput: "",
           placeholderName: "S",
           pendingDiscardSession: true,
+          now: 0,
           activeSession: {
             id: "s",
             templateId: null,
