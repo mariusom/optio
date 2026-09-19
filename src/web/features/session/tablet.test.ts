@@ -44,6 +44,7 @@ const makeRunner = (
 const makeModel = (runner: Model["runner"]): Model => ({
   agentConfirmationVersion: 0,
   route: SessionRunner({ sessionId: "s1" }),
+  now: Date.now(),
   theme: "auto",
   themeSaveFailed: false,
   style: "nova",

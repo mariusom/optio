@@ -4,7 +4,7 @@ import { vi } from "vitest";
 import { Machine } from "@typeonce/effect-machine";
 import { Effect } from "effect";
 
-import { planSession } from "./plan";
+import { planSession, type RunnerState, type SessionPlan } from "./plan";
 import {
   nextFocusForField,
   SessionMachine,
@@ -64,7 +64,7 @@ const data = (overrides: Partial<RunnerData> = {}): RunnerData => ({
   ...overrides,
 });
 
-const liveRunner = (overrides: Partial<Parameters<typeof planSession>[0]> = {}) => ({
+const liveRunner = (overrides: Partial<RunnerState> = {}) => ({
   ...data(),
   focusedSectionId: null,
   showTaskList: false,
@@ -79,8 +79,15 @@ const liveRunner = (overrides: Partial<Parameters<typeof planSession>[0]> = {}) 
 
 const plan = (
   runner: ReturnType<typeof liveRunner> | null,
-  event: Parameters<typeof planSession>[2],
-) => planSession(runner, "collecting", event);
+  event: Parameters<typeof planSession>[1],
+) => planSession({ runner, phase: "collecting", now: runner?.now ?? 0 }, event);
+
+/** Plans from a previous result, carrying its runner and ticked time forward. */
+const planFrom = (previous: SessionPlan, event: Parameters<typeof planSession>[1]) =>
+  planSession(
+    { runner: previous.runner, phase: previous.phase, now: previous.runner?.now ?? 0 },
+    event,
+  );
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -124,7 +131,9 @@ describe("sessionMachine topology", () => {
     const runner = liveRunner({ completedCount: "invalid" as never });
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
-      expect(planSession(runner, "confirming", { _tag: "EndConfirmed" })).toEqual({
+      expect(
+        planSession({ runner, phase: "confirming", now: runner.now }, { _tag: "EndConfirmed" }),
+      ).toEqual({
         runner,
         phase: "confirming",
         emissions: [],
@@ -421,7 +430,7 @@ describe("sessionMachine end flow", () => {
     const confirming = plan(liveRunner({ focusedSectionId: "f-category" }), {
       _tag: "EndRequested",
     });
-    const refreshed = planSession(confirming.runner, "confirming", {
+    const refreshed = planFrom(confirming, {
       _tag: "DataSynced",
       data: data({ sessionName: "Renamed" }),
     });
@@ -430,7 +439,7 @@ describe("sessionMachine end flow", () => {
     expect(refreshed.runner!.focusedSectionId).toBe("f-category");
     expect(refreshed.runner!.showEndConfirm).toBe(true);
 
-    const replaced = planSession(refreshed.runner, "confirming", {
+    const replaced = planFrom(refreshed, {
       _tag: "DataSynced",
       data: data({ sessionId: "sess-2" }),
     });
@@ -443,10 +452,10 @@ describe("sessionMachine end flow", () => {
 
   it("parent updates preserve confirmation and collecting-only commands stay blocked", () => {
     const confirming = plan(liveRunner(), { _tag: "EndRequested" });
-    const toggled = planSession(confirming.runner, "confirming", { _tag: "TaskListToggled" });
+    const toggled = planFrom(confirming, { _tag: "TaskListToggled" });
     expect(toggled.phase).toBe("confirming");
     expect(toggled.runner!.showTaskList).toBe(true);
-    const blocked = planSession(toggled.runner, "confirming", {
+    const blocked = planFrom(toggled, {
       _tag: "FieldChanged",
       taskFieldId: "f-category",
       value: "B",
@@ -464,7 +473,7 @@ describe("sessionMachine end flow", () => {
 
   it("EndCancelled returns to collecting", () => {
     const confirming = plan(liveRunner(), { _tag: "EndRequested" });
-    const { runner, phase } = planSession(confirming.runner, "confirming", {
+    const { runner, phase } = planFrom(confirming, {
       _tag: "EndCancelled",
     });
     expect(phase).toBe("collecting");
@@ -473,11 +482,11 @@ describe("sessionMachine end flow", () => {
 
   it("EndConfirmed emits CommitEndSession then EndAcked goes Idle", () => {
     const confirming = plan(liveRunner(), { _tag: "EndRequested" });
-    const confirmed = planSession(confirming.runner, "confirming", { _tag: "EndConfirmed" });
+    const confirmed = planFrom(confirming, { _tag: "EndConfirmed" });
     expect(confirmed.emissions).toEqual([{ _tag: "CommitEndSession", sessionId: "sess-1" }]);
     expect(confirmed.phase).toBe("collecting");
     expect(confirmed.runner!.showEndConfirm).toBe(false);
-    const acked = planSession(confirmed.runner, confirmed.phase, { _tag: "EndAcked" });
+    const acked = planFrom(confirmed, { _tag: "EndAcked" });
     expect(acked.runner).toBeNull();
   });
 });

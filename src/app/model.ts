@@ -9,6 +9,12 @@ import { generateSessionName } from "../web/random-name";
 export const Model = S.Struct({
   agentConfirmationVersion: S.Number,
   route: RouteSchema,
+  /**
+   * Latest wall-clock time (ms), filled by the runtime boot and the ticker
+   * subscription from Effect's Clock. Views and update read time from here,
+   * never the clock, so rendering stays a function of the Model.
+   */
+  now: S.Number,
   theme: Theme,
   themeSaveFailed: S.Boolean,
   style: FoldcnStyle,
@@ -146,6 +152,9 @@ export type Model = typeof Model.Type;
 const initialModel = (route: Route): Model => ({
   agentConfirmationVersion: 0,
   route,
+  // Placeholder: the runtime boot fills this from Effect's Clock before the
+  // first render, and the ticker keeps it fresh after.
+  now: 0,
   theme: "auto",
   themeSaveFailed: false,
   style: "nova",

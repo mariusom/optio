@@ -125,8 +125,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     return planned;
   },
   Tick: ({ now }) => {
-    if (model.runner === null) return { model };
-    return { model: { ...model, runner: { ...model.runner, now } } };
+    const runner = model.runner === null ? null : { ...model.runner, now };
+    return { model: { ...model, now, runner } };
   },
   ChangedFieldValue: ({ taskFieldId, value }) =>
     applyPlan(model, { _tag: "FieldChanged", taskFieldId, value } as SessionEvent),

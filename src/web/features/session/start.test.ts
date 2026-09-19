@@ -32,6 +32,7 @@ describe("Foldcn session launcher", () => {
     placeholderName: "Morning shift",
     activeSession: null,
     pendingDiscardSession: false,
+    now: 1_700_000_000_000,
   };
   const config = {
     view: startView,
@@ -74,6 +75,25 @@ describe("Foldcn session launcher", () => {
       config,
       Scene.given({ ...model, selectedTemplateId: null }),
       Scene.expect(Scene.role("button", { name: "Start Session" })).toBeDisabled(),
+    );
+  });
+
+  it("shows elapsed time from the Model's ticked now, not the wall clock", () => {
+    Scene.scene(
+      config,
+      Scene.given({
+        ...model,
+        activeSession: {
+          id: "session-1",
+          templateId: "a",
+          templateName: "Assembly",
+          sessionName: "Study",
+          startedAt: 1_000,
+          completedCount: 2,
+        },
+        now: 1_000 + 90 * 60_000,
+      }),
+      Scene.expect(Scene.text("1h 30m")).toExist(),
     );
   });
 });

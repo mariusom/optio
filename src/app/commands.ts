@@ -125,7 +125,10 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
 
 /** Plan a Session-machine event; merge the result into model + commands. */
 const applyPlan = (model: Model, event: SessionEvent) => {
-  const plan = planSession(model.runner, model.runnerPhase, event);
+  const plan = planSession(
+    { runner: model.runner, phase: model.runnerPhase, now: model.now },
+    event,
+  );
   const changed =
     plan.runner !== model.runner || plan.phase !== model.runnerPhase || plan.emissions.length > 0;
   return changed

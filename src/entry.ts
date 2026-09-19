@@ -1,6 +1,6 @@
 // fallow-ignore-file unused-file — app entry (referenced by index.html, not by other modules)
 import { Runtime } from "foldkit";
-import { Effect, Fiber } from "effect";
+import { Clock, Effect, Fiber } from "effect";
 import * as BrowserRuntime from "@effect/platform-browser/BrowserRuntime";
 import { registerSW } from "virtual:pwa-register";
 
@@ -71,11 +71,13 @@ const main = Effect.gen(function* () {
     iconLibrary: initializeIconLibrary,
     accent: initializeAccent,
   });
+  // The Model's first ticked time comes from Effect's Clock, never Date.now().
+  const now = yield* Clock.currentTimeMillis;
   const application = Runtime.makeApplication({
     ...applicationConfig,
     init: (url) => {
       const initial = applicationConfig.init(url);
-      return { ...initial, model: { ...initial.model, ...preferences } };
+      return { ...initial, model: { ...initial.model, ...preferences, now } };
     },
     container: document.getElementById("root")!,
   });
