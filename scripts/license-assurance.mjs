@@ -18,6 +18,15 @@ const knownLicenses = new Set([
   "BSD-3-Clause",
   "MPL-2.0",
 ]);
+// License classes that appear only in dev-only packages, which the collector
+// does not inventory. Naming them here keeps the fail-closed check but reports
+// why the class is out of scope when a package using it reaches the production
+// closure or a generated-code contributor path.
+const devOnlyLicenses = new Map([
+  ["BlueOak-1.0.0", "build tooling reached through workbox-build"],
+  ["CC-BY-4.0", "caniuse-lite browser-support data read by browserslist at build time"],
+  ["(MIT OR CC0-1.0)", "type-fest types reached through tempy and workbox-build"],
+]);
 const redisFallback = {
   file: "redis-6.2.1-LICENSE",
   source:
@@ -30,14 +39,6 @@ const reviewedFallbacks = new Map([
       file: "cloudflare-workers-types-4.20251118.0-LICENSE",
       source:
         "https://github.com/cloudflare/workerd/blob/17143186b375231689b60a23e53933315fd9e24e/LICENSE",
-    },
-  ],
-  [
-    "@hugeicons/core-free-icons@4.3.2",
-    {
-      file: "hugeicons-4.3.2-LICENSE.md",
-      source:
-        "https://github.com/hugeicons/hugeicons/blob/3e93f5d38c3ffb38319b1b13b128ad4bd45291c1/LICENSE.md",
     },
   ],
   ["redis@6.2.1", redisFallback],
@@ -138,8 +139,11 @@ export function normalizeReport(report, role, options = {}) {
       for (const version of entry.versions) {
         const license = entry.license;
         if (!license || !knownLicenses.has(license)) {
+          const devOnly = license ? devOnlyLicenses.get(license) : undefined;
           throw new Error(
-            `Unknown or unapproved license: ${entry.name}@${version} (${license ?? group})`,
+            devOnly
+              ? `License ${license} is treated as dev-only (${devOnly}) but ${entry.name}@${version} is in the ${role}. Review it and extend knownLicenses if it is distributed.`
+              : `Unknown or unapproved license: ${entry.name}@${version} (${license ?? group})`,
           );
         }
         const texts = collectLicenseTexts(entry, version, options).map(({ provenance, text }) => ({
@@ -196,11 +200,13 @@ export function buildInventory(prodReport, allReport, options = {}) {
     schemaVersion: 2,
     scope: [
       "Installed production dependency closure reported by pnpm, including browser, worker and WASM packages.",
-      "Installed PWA/Workbox and Rollup packages that can contribute generated code to the distribution; platform-specific Rollup native binaries are omitted.",
+      "Conservative superset: upstream manifests can declare build- or test-only packages as production dependencies, so some inventoried packages are absent from the distribution.",
+      "Installed PWA/Workbox and Rollup packages that can contribute generated code to the distribution; platform-specific Rollup native binaries are omitted, and build-only compilers that emit no third-party source (for example TypeScript and the Tailwind CSS chain) are not added as contributors, though they remain included when the production closure already contains them.",
+      "License classes seen only in dev-only packages are recorded in the collector and rejected if they reach this scope.",
       "This is a conservative package inventory, not a byte-complete bill of materials or a claim of legal clearance.",
       "Every package has hashed installed license/NOTICE text or an explicitly version-scoped, reviewed fallback.",
       "License text hashes cover text with CRLF normalized to LF and trailing whitespace removed; wording is preserved.",
-      "Copied/adapted source provenance is recorded in THIRD_PARTY_NOTICES.txt.",
+      "Copied/adapted source provenance and patched dependencies are recorded in THIRD_PARTY_NOTICES.txt.",
     ],
     packages,
   };
@@ -208,9 +214,9 @@ export function buildInventory(prodReport, allReport, options = {}) {
 
 export function renderArtifacts(prodReport, allReport, options = {}) {
   const built = buildInventory(prodReport, allReport, options);
-  const copiedSourceProvenance = readFileSync(provenancePath, "utf8")
-    .split("\nBundled MIT-licensed runtime libraries\n", 1)[0]
-    .trimEnd();
+  const copiedSourceProvenance = (
+    options.provenanceText ?? readFileSync(provenancePath, "utf8")
+  ).trimEnd();
   const notices = [
     `Optio\n=====\n\n${readFileSync(resolve(root, "LICENSE"), "utf8").trimEnd()}`,
     copiedSourceProvenance,

@@ -113,3 +113,41 @@ test("omits platform-specific Rollup native packages from deterministic contribu
     ["rollup", "runtime"],
   );
 });
+
+test("shipped notices carry copied-source provenance and the patch disclosure", () => {
+  const options = fixtureOptions({ "/fixture/alpha": { LICENSE: "alpha license" } });
+  const report = { MIT: [pkg("alpha")] };
+  const rendered = renderArtifacts(report, report, options);
+  assert.match(rendered.notices, /Foldcn registry components/);
+  assert.match(rendered.notices, /Copyright \(c\) 2026 elianiva/);
+  assert.match(rendered.notices, /Copyright \(c\) 2023 shadcn/);
+  assert.match(rendered.notices, /patches\/@livestore__adapter-web@0\.5\.0-dev\.0\.patch/);
+  assert.match(rendered.notices, /Modified by Optio/);
+  // The whole provenance file ships; nothing may be truncated by a heading match.
+  assert.match(rendered.notices, /LiveStore runtime packages/);
+  assert.doesNotMatch(rendered.notices, /Bundled MIT-licensed runtime libraries/);
+});
+
+test("rejects a dev-only license class that reaches the production closure", () => {
+  const options = fixtureOptions({ "/fixture/caniuse-lite": { LICENSE: "data terms" } });
+  const entry = { ...pkg("caniuse-lite", "1.0.30001810"), license: "CC-BY-4.0" };
+  assert.throws(() => buildInventory({ "CC-BY-4.0": [entry] }, {}, options), /treated as dev-only/);
+
+  const contributor = { ...pkg("workbox-core", "7.4.1"), license: "CC-BY-4.0" };
+  assert.throws(
+    () => buildInventory({}, { "CC-BY-4.0": [contributor] }, options),
+    /treated as dev-only/,
+  );
+});
+
+test("ships the whole provenance file, including any former section delimiter", () => {
+  const options = {
+    ...fixtureOptions({ "/fixture/alpha": { LICENSE: "alpha license" } }),
+    provenanceText:
+      "kept preamble\n\nBundled MIT-licensed runtime libraries\n--------------------------------------\n\nunique tail\n",
+  };
+  const report = { MIT: [pkg("alpha")] };
+  const rendered = renderArtifacts(report, report, options);
+  assert.match(rendered.notices, /kept preamble/);
+  assert.match(rendered.notices, /unique tail/);
+});
