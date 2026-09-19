@@ -135,10 +135,11 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
-  FoldKit 0.159.0 and its Vite plugin 0.21.0 are the newest releases compatible
-  with effect-machine 0.37.0's Effect rc.112 requirement. FoldKit 0.160.0 needs
-  rc.115; newer `@effect/vitest` releases need Vitest 5, while Vite+ 0.3.2
-  still bundles Vitest 4.1.11. Upgrade these groups together when peers align.
+  FoldKit 0.162.0 and its Vite plugin 0.23.0 need Effect rc.115, while
+  effect-machine 0.38.0 needs rc.116, so no stable release pair satisfies both;
+  only FoldKit canaries match rc.116. Newer `@effect/vitest` releases need
+  Vitest 5, while Vite+ 0.3.3 still bundles Vitest 4.1.11. Upgrade these groups
+  together when peers align.
 - The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
   protocol expected by this Effect release. Remove it only when an upstream
   adapter includes the codec and the production storage journey passes.
