@@ -600,7 +600,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@hugeicons/core-free-icons@4.3.3
+@hugeicons/core-free-icons@4.3.4
 --------------------------------
 Declared license: MIT
 Role: production dependency graph
@@ -5029,7 +5029,7 @@ This Source Code Form is "Incompatible With Secondary Licenses", as
 defined by the Mozilla Public License, v. 2.0.
 
 
-lucide@1.46.0
+lucide@1.47.0
 -------------
 Declared license: ISC
 Role: production dependency graph

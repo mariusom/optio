@@ -154,7 +154,7 @@
     },
     {
       "name": "@hugeicons/core-free-icons",
-      "version": "4.3.3",
+      "version": "4.3.4",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://hugeicons.com",
@@ -825,7 +825,7 @@
     },
     {
       "name": "lucide",
-      "version": "1.46.0",
+      "version": "1.47.0",
       "license": "ISC",
       "role": "production dependency graph",
       "homepage": "https://lucide.dev",
