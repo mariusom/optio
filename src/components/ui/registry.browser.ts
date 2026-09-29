@@ -7,9 +7,9 @@ import * as RadioGroup from "./radio-group";
 import { notice } from "../app/feedback";
 import { input } from "./input";
 import { checkbox } from "./checkbox";
-import { fieldset } from "./fieldset";
+import { fieldset, label, fieldLabel } from "./fieldset";
 import { spinner } from "./spinner";
-import { setCurrentStyle } from "@/web/style";
+import { foldcnStyles, setCurrentStyle } from "@/web/style";
 import "../../index.css";
 
 const Model = Schema.Struct({ radio: RadioGroup.Model, selected: Schema.String });
@@ -48,6 +48,46 @@ afterEach(async () => {
   container?.remove();
   document.documentElement.classList.remove("dark");
   await setCurrentStyle("nova");
+});
+
+it.each(foldcnStyles)("%s fieldset labels reflect native disabled state", async (style) => {
+  await page.viewport(390, 844);
+  await setCurrentStyle(style);
+  mount((_, h) =>
+    h.div(
+      [h.Class("space-y-6")],
+      [false, true].map((isDisabled) =>
+        fieldset(
+          {
+            id: `fields-${isDisabled}`,
+            legend: isDisabled ? "Disabled fields" : "Enabled fields",
+            isDisabled,
+            children: [
+              label({}, ["Observer", h.input([h.Type("text")])], h),
+              fieldLabel({}, ["Notes", h.input([h.Type("text")])], h),
+            ],
+          },
+          h,
+        ),
+      ),
+    ),
+  );
+  for (const isDisabled of [false, true]) {
+    const fields = page.getByRole("group", {
+      name: isDisabled ? "Disabled fields" : "Enabled fields",
+    });
+    await expect.element(fields).toBeVisible();
+    for (const name of ["Observer", "Notes"]) {
+      const control = fields.getByRole("textbox", { name });
+      if (isDisabled) await expect.element(control).toBeDisabled();
+      else await expect.element(control).toBeEnabled();
+      const styles = getComputedStyle(control.element().closest("label")!);
+      expect(styles.opacity).toBe(isDisabled ? "0.5" : "1");
+      expect(styles.pointerEvents).toBe(isDisabled ? "none" : "auto");
+      if (isDisabled) expect(styles.cursor).toBe("not-allowed");
+      else expect(styles.cursor).not.toBe("not-allowed");
+    }
+  }
 });
 
 it.each(["default", "field", "choice-card"] as const)(

@@ -6,7 +6,7 @@ import { separatorClass } from "./separator";
 type Child = Html | string;
 
 export const fieldsetClass =
-  "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col";
+  "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set";
 
 export const fieldsetLegendClass =
   "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base";

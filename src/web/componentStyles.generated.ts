@@ -64,8 +64,8 @@ export const foldcnComponentStyles: Readonly<Record<string, Readonly<Record<stri
       "text-lg font-medium tracking-tight font-heading",
     "gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance":
       "gap-4 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance",
-    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col":
-      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col",
+    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set":
+      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set",
     "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base":
       "mb-3 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
     "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col":
@@ -166,8 +166,8 @@ export const foldcnComponentStyles: Readonly<Record<string, Readonly<Record<stri
       "text-lg font-medium tracking-tight font-heading",
     "gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance":
       "gap-4 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance",
-    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col":
-      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col",
+    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set":
+      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set",
     "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base":
       "mb-3 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
     "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col":
@@ -545,8 +545,8 @@ export const foldcnComponentStyles: Readonly<Record<string, Readonly<Record<stri
       "text-lg font-medium tracking-tight font-heading",
     "gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance":
       "gap-4 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance",
-    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col":
-      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col",
+    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set":
+      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set",
     "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base":
       "mb-3 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
     "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col":
@@ -691,8 +691,8 @@ export const foldcnComponentStyles: Readonly<Record<string, Readonly<Record<stri
       "text-sm/relaxed mt-0.5 text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
     "gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance":
       "gap-4 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance",
-    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col":
-      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col",
+    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set":
+      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set",
     "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base":
       "mb-3 font-semibold uppercase data-[variant=label]:text-xs data-[variant=legend]:text-xs",
     "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col":
@@ -830,8 +830,8 @@ export const foldcnComponentStyles: Readonly<Record<string, Readonly<Record<stri
       "text-lg font-medium tracking-tight font-heading",
     "gap-2.5 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance":
       "gap-4 text-sm flex w-full max-w-sm min-w-0 flex-col items-center text-balance",
-    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col":
-      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col",
+    "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set":
+      "gap-6 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set",
     "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base":
       "mb-3 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
     "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col":
