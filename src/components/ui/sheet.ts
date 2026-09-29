@@ -143,6 +143,8 @@ export type SheetContent<M> = Readonly<{
 }>;
 
 export type StyledViewInputs<M> = Readonly<{
+  /** Set when content renders the description element. */
+  hasDescription?: boolean;
   side?: SheetSide;
   content: (render: SheetContent<M>, h: HtmlBuilder<M>) => ReadonlyArray<Child>;
   className?: string;
@@ -159,6 +161,7 @@ export const styledViewInputs = <M>(
 ): FoldkitDialog.ViewInputs => {
   const side = viewInputs.side ?? "right";
   return {
+    hasDescription: viewInputs.hasDescription,
     toView: ({
       dialog,
       backdrop,

@@ -3,6 +3,15 @@ import type { Option } from "effect/Option";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { cn } from "@/lib/utils";
+import {
+  fieldBaseClass,
+  fieldContentClass,
+  fieldDescriptionClass,
+  fieldLabelClass,
+  fieldOrientationClasses,
+  fieldTitleClass,
+  labelClass,
+} from "./fieldset";
 
 /**
  * Two rendering paths in `styledViewInputs`:
@@ -93,8 +102,10 @@ export type StyledViewInputs<M, Value extends string = string> = Readonly<{
    *  circle control with the indicator dot. */
   optionLabel?: (value: Value) => string;
   optionDescription?: (value: Value) => string;
+  optionLayout?: "default" | "field" | "choice-card";
   orientation?: "Horizontal" | "Vertical";
   isOptionDisabled?: (value: Value, index: number) => boolean;
+  isInvalid?: boolean;
   isDisabled?: boolean;
   isReadOnly?: boolean;
   name?: string;
@@ -102,54 +113,146 @@ export type StyledViewInputs<M, Value extends string = string> = Readonly<{
   optionClass?: string;
 }>;
 
-const defaultOptionRow = <M, Value extends string>(
-  content: Readonly<{
-    info: FoldkitRadioGroup.OptionInfo<Value>;
-    labelText: string;
-    descriptionText?: string;
-    optionClass?: string;
-  }>,
+type OptionContent<Value extends string> = Readonly<{
+  info: FoldkitRadioGroup.OptionInfo<Value>;
+  labelText: string;
+  descriptionText?: string;
+  optionClass?: string;
+  isInvalid?: boolean;
+  layout: "default" | "field" | "choice-card";
+}>;
+
+const optionControl = <M, Value extends string>(
+  content: OptionContent<Value>,
+  h: HtmlBuilder<M>,
+): Html =>
+  h.button(
+    [
+      ...content.info.option,
+      ...(content.info.isDisabled ? [h.Disabled(true), h.Tabindex(-1)] : []),
+      ...(content.isInvalid ? [h.Attribute("aria-invalid", "true")] : []),
+      h.DataAttribute("slot", "radio-group-item"),
+      h.Class(cn(radioItemClass)),
+    ],
+    content.info.isSelected
+      ? [
+          h.span(
+            [h.DataAttribute("slot", "radio-group-indicator"), h.Class(cn(radioIndicatorClass))],
+            [h.span([h.Class(cn(radioDotClass))])],
+          ),
+        ]
+      : [],
+  );
+
+const optionText = <M, Value extends string>(
+  content: OptionContent<Value>,
   h: HtmlBuilder<M>,
 ): Html => {
-  const { info, labelText, descriptionText, optionClass } = content;
-  return h.label(
-    [h.Class(cn("flex w-full items-center gap-2", optionClass))],
+  const { info, labelText, descriptionText, layout } = content;
+  const isField = layout !== "default";
+  const label = h.span(
     [
-      h.button(
-        [...info.option, h.DataAttribute("slot", "radio-group-item"), h.Class(cn(radioItemClass))],
-        info.isSelected
-          ? [
-              h.span(
-                [
-                  h.DataAttribute("slot", "radio-group-indicator"),
-                  h.Class(cn(radioIndicatorClass)),
-                ],
-                [h.span([h.Class(cn(radioDotClass))])],
-              ),
-            ]
-          : [],
+      ...info.label,
+      h.DataAttribute("slot", isField ? "field-label" : "radio-group-item-label"),
+      h.Class(
+        cn(
+          layout === "choice-card"
+            ? fieldTitleClass
+            : isField
+              ? cn(
+                  labelClass,
+                  fieldLabelClass,
+                  descriptionText === undefined ? "font-normal" : undefined,
+                )
+              : radioItemLabelClass,
+        ),
       ),
-      h.span(
-        [
-          ...info.label,
-          h.DataAttribute("slot", "radio-group-item-label"),
-          h.Class(cn(radioItemLabelClass)),
-        ],
-        [labelText],
+    ],
+    [labelText],
+  );
+  if (descriptionText === undefined && layout !== "choice-card") return label;
+  return h.span(
+    [
+      h.DataAttribute("slot", isField ? "field-content" : "radio-group-item-content"),
+      h.Class(
+        cn(
+          isField
+            ? fieldContentClass
+            : "flex min-w-0 flex-1 flex-col gap-0.5 peer-aria-disabled:opacity-50",
+        ),
       ),
+    ],
+    [
+      label,
       ...(descriptionText === undefined
         ? []
         : [
             h.span(
               [
                 ...info.description,
-                h.DataAttribute("slot", "radio-group-item-description"),
-                h.Class(cn(radioItemDescriptionClass)),
+                h.DataAttribute(
+                  "slot",
+                  isField ? "field-description" : "radio-group-item-description",
+                ),
+                h.Class(
+                  cn(
+                    isField ? fieldDescriptionClass : radioItemDescriptionClass,
+                    isField ? "rtl:text-right" : undefined,
+                  ),
+                ),
               ],
               [descriptionText],
             ),
           ]),
     ],
+  );
+};
+
+const defaultOptionRow = <M, Value extends string>(
+  content: OptionContent<Value>,
+  h: HtmlBuilder<M>,
+): Html => {
+  const { info, descriptionText, optionClass, isInvalid, layout } = content;
+  const control = optionControl(content, h);
+  const text = optionText(content, h);
+  const fieldAttributes = [
+    h.DataAttribute("slot", "field"),
+    h.DataAttribute("orientation", "horizontal"),
+    ...(info.isDisabled ? [h.DataAttribute("disabled", "true")] : []),
+    ...(isInvalid ? [h.DataAttribute("invalid", "true")] : []),
+  ];
+  if (layout === "choice-card")
+    return h.label(
+      [
+        h.DataAttribute("slot", "field-label"),
+        h.Class(cn(labelClass, fieldLabelClass, optionClass)),
+      ],
+      [
+        h.div(
+          [
+            ...fieldAttributes,
+            h.Role("group"),
+            h.Class(cn(fieldBaseClass, fieldOrientationClasses.horizontal)),
+          ],
+          [text, control],
+        ),
+      ],
+    );
+  return h.label(
+    [
+      ...(layout === "field" ? fieldAttributes : []),
+      h.Class(
+        cn(
+          layout === "field"
+            ? cn(fieldBaseClass, fieldOrientationClasses.horizontal)
+            : descriptionText === undefined
+              ? "flex w-full items-center gap-2"
+              : "flex w-full items-start gap-2 [&>[role=radio]]:mt-0.5",
+          optionClass,
+        ),
+      ),
+    ],
+    [control, text],
   );
 };
 
@@ -165,6 +268,8 @@ export const styledViewInputs = <M, Value extends string = string>(
     ariaLabel: viewInputs.ariaLabel,
     orientation: viewInputs.orientation,
     isOptionDisabled: viewInputs.isOptionDisabled,
+    hasOptionDescription: (value) =>
+      viewInputs.option === undefined && viewInputs.optionDescription?.(value) !== undefined,
     isDisabled: viewInputs.isDisabled,
     isReadOnly: viewInputs.isReadOnly,
     name: viewInputs.name,
@@ -188,6 +293,8 @@ export const styledViewInputs = <M, Value extends string = string>(
               return h.div(
                 [
                   ...option.option,
+                  ...(option.isDisabled ? [h.Tabindex(-1)] : []),
+                  ...(viewInputs.isInvalid ? [h.Attribute("aria-invalid", "true")] : []),
                   h.DataAttribute("slot", "radio-group-item"),
                   h.Class(cn(radioOptionClass, viewInputs.optionClass)),
                 ],
@@ -200,6 +307,8 @@ export const styledViewInputs = <M, Value extends string = string>(
                 labelText: viewInputs.optionLabel?.(option.value) ?? String(option.value),
                 descriptionText: viewInputs.optionDescription?.(option.value),
                 optionClass: viewInputs.optionClass,
+                isInvalid: viewInputs.isInvalid,
+                layout: viewInputs.optionLayout ?? "default",
               },
               h,
             );

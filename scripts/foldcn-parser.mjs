@@ -110,7 +110,7 @@ export const declarationStrings = (source, file) => {
   for (let index = 0; index < input.length; index++) {
     if (input[index].value !== "const" || input[index + 1]?.type !== "identifier") continue;
     const name = input[index + 1].value;
-    if (!/(?:Class|Variants|Sizes|Base)$/.test(name)) continue;
+    if (!/(?:Class|Classes|Variants|Sizes|Base)$/.test(name)) continue;
     const [initializer, initializerIndex] = findInitializer(input, index, { name, file });
     index = initializerIndex;
     if (initializer[0]?.type !== "string" && initializer[0]?.value !== "{") continue;

@@ -154,6 +154,8 @@ export type DialogContent<M> = Readonly<{
 }>;
 
 export type StyledViewInputs<M> = Readonly<{
+  /** Set when content renders the description element. */
+  hasDescription?: boolean;
   /** Panel content. Receives the close-button, title and description
    *  attribute bundles to spread onto your own elements, or pass to
    *  Dialog.title / Dialog.description / Dialog.closeButton helpers via
@@ -171,6 +173,7 @@ export const styledViewInputs = <M>(
   viewInputs: StyledViewInputs<M>,
   h: HtmlBuilder<M>,
 ): FoldkitDialog.ViewInputs => ({
+  hasDescription: viewInputs.hasDescription,
   toView: ({
     dialog,
     backdrop,

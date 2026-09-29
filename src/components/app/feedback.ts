@@ -2,6 +2,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode } from "lucide";
 
 import { Empty } from "@/components/ui/empty";
+import { Alert } from "@/components/ui/alert";
 import { button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CircleAlert, Info, TriangleAlert, X, icon } from "./icons";
@@ -59,37 +60,42 @@ export const notice = <M>(
   h: HtmlBuilder<M>,
 ): Html => {
   const tone = noticeTones[config.tone ?? "info"];
-  return h.div(
-    [
-      h.Class(
-        cn(
-          "flex items-start gap-3 rounded-lg border p-4 text-sm leading-snug",
-          tone.classes,
-          config.className,
-        ),
+  return Alert(
+    {
+      className: cn(
+        "p-4 leading-snug has-data-[slot=alert-action]:min-h-16",
+        tone.classes,
+        config.className,
       ),
-      h.Role(config.role ?? (config.tone === "error" ? "alert" : "status")),
-    ],
+      role: config.role ?? (config.tone === "error" ? "alert" : "status"),
+    },
     [
       icon(h, tone.icon, "mt-0.5 size-4 shrink-0"),
-      h.p([h.Class("min-w-0 flex-1")], [config.text]),
+      Alert.description({ className: "min-w-0 text-current" }, [config.text], h),
       ...(config.onDismiss === undefined
         ? []
         : [
-            button(
-              {
-                type: "button",
-                variant: "ghost",
-                size: "icon",
-                className: "shrink-0",
-                onClick: config.onDismiss,
-                attributes: [h.AriaLabel(config.dismissLabel ?? "Dismiss")],
-              },
-              icon(h, X, ""),
+            Alert.action(
+              {},
+              [
+                button(
+                  {
+                    type: "button",
+                    variant: "ghost",
+                    size: "icon",
+                    className: "shrink-0",
+                    onClick: config.onDismiss,
+                    attributes: [h.AriaLabel(config.dismissLabel ?? "Dismiss")],
+                  },
+                  icon(h, X, ""),
+                  h,
+                ),
+              ],
               h,
             ),
           ]),
     ],
+    h,
   );
 };
 
