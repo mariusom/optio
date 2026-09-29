@@ -156,7 +156,7 @@
     },
     {
       "name": "@hugeicons/core-free-icons",
-      "version": "4.3.4",
+      "version": "4.3.5",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://hugeicons.com",
@@ -338,7 +338,7 @@
     },
     {
       "name": "@oxc-project/types",
-      "version": "0.149.0",
+      "version": "0.151.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://oxc.rs",
@@ -511,7 +511,7 @@
     },
     {
       "name": "@types/node",
-      "version": "22.20.3",
+      "version": "26.6.3",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node",
@@ -667,7 +667,7 @@
     },
     {
       "name": "cn",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/shadcn-ui/cn#readme",
@@ -771,7 +771,7 @@
     },
     {
       "name": "fast-check",
-      "version": "4.10.1",
+      "version": "4.10.2",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://fast-check.dev/",
@@ -827,7 +827,7 @@
     },
     {
       "name": "lucide",
-      "version": "1.47.0",
+      "version": "1.48.0",
       "license": "ISC",
       "role": "production dependency graph",
       "homepage": "https://lucide.dev",
@@ -1035,7 +1035,7 @@
     },
     {
       "name": "rolldown",
-      "version": "1.2.8",
+      "version": "1.2.11",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://rolldown.rs/",
@@ -1052,7 +1052,7 @@
     },
     {
       "name": "rollup",
-      "version": "4.63.3",
+      "version": "4.63.5",
       "license": "MIT",
       "role": "build-time distribution contributor",
       "homepage": "https://rollupjs.org/",
@@ -1182,7 +1182,7 @@
     },
     {
       "name": "undici",
-      "version": "8.10.2",
+      "version": "8.11.2",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://undici.nodejs.org",
@@ -1195,7 +1195,7 @@
     },
     {
       "name": "undici-types",
-      "version": "6.21.0",
+      "version": "8.9.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://undici.nodejs.org",
@@ -1208,7 +1208,7 @@
     },
     {
       "name": "vite",
-      "version": "8.3.0",
+      "version": "8.3.1",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://vite.dev",
@@ -1468,7 +1468,7 @@
     },
     {
       "name": "ws",
-      "version": "8.21.3",
+      "version": "8.22.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/websockets/ws",

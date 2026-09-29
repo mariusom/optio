@@ -623,7 +623,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-@hugeicons/core-free-icons@4.3.4
+@hugeicons/core-free-icons@4.3.5
 --------------------------------
 Declared license: MIT
 Role: production dependency graph
@@ -3035,7 +3035,7 @@ SHA-256: 43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1
    limitations under the License.
 
 
-@oxc-project/types@0.149.0
+@oxc-project/types@0.151.0
 --------------------------
 Declared license: MIT
 Role: production dependency graph
@@ -3627,8 +3627,8 @@ SHA-256: d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb
     SOFTWARE
 
 
-@types/node@22.20.3
--------------------
+@types/node@26.6.3
+------------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -3991,7 +3991,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-cn@0.3.0
+cn@0.4.0
 --------
 Declared license: MIT
 Role: production dependency graph
@@ -4556,7 +4556,7 @@ SHA-256: 3b2aba4633ff0d5541d1561d17339976ccaa75c98eec7ea0552117d481f67495
    END OF TERMS AND CONDITIONS
 
 
-fast-check@4.10.1
+fast-check@4.10.2
 -----------------
 Declared license: MIT
 Role: production dependency graph
@@ -5052,7 +5052,7 @@ This Source Code Form is "Incompatible With Secondary Licenses", as
 defined by the Mozilla Public License, v. 2.0.
 
 
-lucide@1.47.0
+lucide@1.48.0
 -------------
 Declared license: ISC
 Role: production dependency graph
@@ -5600,8 +5600,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-rolldown@1.2.8
---------------
+rolldown@1.2.11
+---------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -5672,7 +5672,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-rollup@4.63.3
+rollup@4.63.5
 -------------
 Declared license: MIT
 Role: build-time distribution contributor
@@ -6639,7 +6639,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-undici@8.10.2
+undici@8.11.2
 -------------
 Declared license: MIT
 Role: production dependency graph
@@ -6670,8 +6670,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-undici-types@6.21.0
--------------------
+undici-types@8.9.0
+------------------
 Declared license: MIT
 Role: production dependency graph
 
@@ -6701,7 +6701,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-vite@8.3.0
+vite@8.3.1
 ----------
 Declared license: MIT
 Role: production dependency graph
@@ -10380,7 +10380,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-ws@8.21.3
+ws@8.22.0
 ---------
 Declared license: MIT
 Role: production dependency graph

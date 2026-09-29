@@ -135,18 +135,22 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
-  FoldKit 0.162.0 and its Vite plugin 0.23.0 need Effect rc.115, while
-  effect-machine 0.38.0 needs rc.116, so no stable release pair satisfies both;
-  only FoldKit canaries match rc.116. Newer `@effect/vitest` releases need
-  Vitest 5, while Vite+ 0.3.3 still bundles Vitest 4.1.11. Upgrade these groups
-  together when peers align.
+  As of 2026-09-29, FoldKit 0.163.0 and its Vite plugin 0.24.0 need Effect
+  rc.116; effect-machine 0.38.0 matches, but 0.39.0 needs rc.117. Testing the
+  rc.116 group failed because LiveStore 0.5.0-dev.0 still imports the removed
+  `effect/testing/FastCheck` and `Msgpack` export from `effect/unstable/encoding`.
+  Keep the working rc.112 group until LiveStore supports the newer APIs.
+  Its matching `@effect/vitest` requires Vitest 4, so retain Vite+ 0.3.3 and
+  Vitest 4.1.11 together. Vite+ 1.0.0 bundles Vitest 5.0.1; a future upgrade
+  also needs its documented `vite` alias to `@voidzero-dev/vite-plus-core`
+  and exact `vitest` override to avoid duplicate test-runner state.
 - The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
   protocol expected by this Effect release. Remove it only when an upstream
   adapter includes the codec and the production storage journey passes.
 - The scoped Nano ID override removes known advisories in LiveStore's pinned
   version. Reassess it when updating LiveStore. Keep the 24-hour release-age
   guard; do not bypass it for routine dependency updates.
-- pnpm 12.4.2 is pinned. Use the pinned version for its two-document lockfile.
+- pnpm 12.6.0 is pinned. Use the pinned version for its two-document lockfile.
   Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.
 - Dependabot proposes grouped lockfile and GitHub Actions updates. Exact
