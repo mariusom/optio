@@ -204,6 +204,8 @@ export type AlertDialogContent<M> = Readonly<{
 }>;
 
 export type StyledViewInputs<M> = Readonly<{
+  /** Set when content renders the description element. */
+  hasDescription?: boolean;
   content: (render: AlertDialogContent<M>, h: HtmlBuilder<M>) => ReadonlyArray<Child>;
   className?: string;
   backdropClass?: string;
@@ -219,6 +221,7 @@ export const styledViewInputs = <M>(
   viewInputs: StyledViewInputs<M>,
   h: HtmlBuilder<M>,
 ): FoldkitDialog.ViewInputs => ({
+  hasDescription: viewInputs.hasDescription,
   toView: ({
     dialog,
     backdrop,

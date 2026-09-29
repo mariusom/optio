@@ -14,6 +14,7 @@ import { addComponent, createRegistry } from "./foldcn-registry.mjs";
 
 const styles = ["nova", "vega", "maia", "lyra", "mira", "luma", "sera", "rhea"];
 const components = [
+  "alert",
   "alert-dialog",
   "badge",
   "button",
@@ -21,6 +22,7 @@ const components = [
   "checkbox",
   "dialog",
   "empty",
+  "fieldset",
   "input",
   "item",
   "label",
@@ -30,6 +32,7 @@ const components = [
   "separator",
   "sheet",
   "skeleton",
+  "spinner",
   "switch",
   "textarea",
 ];
@@ -59,6 +62,8 @@ for (const component of components) {
   );
   const localFile = `src/components/ui/${component}.ts`;
   const local = declarationStrings(await readFile(localFile, "utf8"), localFile);
+  // Optio owns the compact label/control grid; it has no registry counterpart.
+  if (component === "input") local.delete("inlineFieldClass");
   addComponent(registry, local, { styles, component, localFile, duplicateOwners, sources });
 }
 

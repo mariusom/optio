@@ -17,6 +17,7 @@ import {
   statusPill,
 } from "@/components/app";
 import { button } from "@/components/ui/button";
+import { spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
@@ -350,7 +351,12 @@ export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
 export const runnerLoadingView = (h: HtmlBuilder<Message>) =>
   h.div(
     [h.Class("flex h-full items-center justify-center p-8")],
-    [h.p([h.Class("text-sm text-muted-foreground"), h.Role("status")], ["Loading session…"])],
+    [
+      h.p(
+        [h.Class("flex items-center gap-2 text-sm text-muted-foreground"), h.Role("status")],
+        [spinner({}, h), "Loading session…"],
+      ),
+    ],
   );
 
 export const runnerEmptyTaskView = (h: HtmlBuilder<Message>) =>

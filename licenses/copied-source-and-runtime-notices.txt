@@ -13,15 +13,15 @@ Foldcn registry components and generated style data
 Portions of src/components/ui and the style data in
 src/web/componentStyles.generated.ts are copied or adapted from Foldcn registry
 modules. Optio's copies have been translated to FoldKit builders and locally
-modified. The generated table contains class strings retrieved from 18 Foldcn
+modified. The generated table contains class strings retrieved from 21 Foldcn
 registry modules in the Nova, Vega, Maia, Lyra, Mira, Luma, Sera, and Rhea
-styles on 2026-09-09.
+styles on 2026-09-29.
 
 Source: https://github.com/elianiva/foldcn
 Registry: https://foldcn.elianiva.com/r/
 Revision: the registry URLs were not pinned when the source and style data were
-retrieved. The contemporaneous Foldcn repository revision on 2026-09-09 was
-f6e30394d038590fd3911d608ea3e46a57de20b0. This identifies the best verifiable
+retrieved. The contemporaneous Foldcn repository revision on 2026-09-29 was
+a6a82bd820578ef064257c39ea81ec77ea45a0dc. This identifies the best verifiable
 upstream snapshot, not a claim that the registry server guaranteed that commit.
 
 MIT License
