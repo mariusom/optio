@@ -4,7 +4,7 @@ import {
   Download,
   Ellipsis,
   History,
-  confirmSheet,
+  Trash2,
   emptyState,
   groupedList,
   icon,
@@ -12,9 +12,8 @@ import {
   page,
   row,
   rowAction,
-  sheet,
-  sheetAction,
 } from "@/components/app";
+import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationHm, formatTimeOnly } from "../../format";
@@ -35,7 +34,7 @@ type HistoryModel = {
   readonly history: ReadonlyArray<HistorySession>;
   readonly pendingHistoryDelete: { readonly id: string; readonly displayName: string } | null;
   readonly historyActionsFor: string | null;
-  readonly csvError: string | null;
+  readonly historyError: string | null;
 };
 
 // ── One session ───────────────────────────────────────────────────────────
@@ -52,7 +51,8 @@ const summaryFor = (session: HistorySession): string =>
  * inside one list cell — a button can't be nested inside the row's button.
  */
 const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
-  h.div(
+  h.keyed("div")(
+    session.id,
     [h.Class("flex items-stretch")],
     [
       row(
@@ -88,16 +88,7 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
       title: session.displayName,
       description: summaryFor(session),
       onDismiss: Message.ClosedHistoryActions(),
-      dismissLabel: "Close actions",
       footer: {
-        destructive: {
-          label: "Delete",
-          onClick: Message.RequestedHistoryDelete({
-            id: session.id,
-            displayName: session.displayName,
-          }),
-          ariaLabel: `Delete ${session.displayName}`,
-        },
         cancel: {
           label: "Cancel",
           onClick: Message.ClosedHistoryActions(),
@@ -107,18 +98,31 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
     },
     [
       h.div(
-        [h.Class("flex flex-col")],
+        [h.Class("flex flex-col gap-1")],
         [
           sheetAction(
             {
               label: "Export CSV",
-              leading: icon(h, Download, "size-5 text-muted-foreground"),
+              leading: icon(h, Download, "size-5"),
               isDisabled: session.taskCount === 0,
               onClick: Message.ClickedExportHistoryCsv({
                 sessionId: session.id,
                 spreadsheetSafe: true,
               }),
               ariaLabel: `Export ${session.displayName}`,
+            },
+            h,
+          ),
+          sheetAction(
+            {
+              label: "Delete",
+              leading: icon(h, Trash2, "size-5"),
+              destructive: true,
+              onClick: Message.RequestedHistoryDelete({
+                id: session.id,
+                displayName: session.displayName,
+              }),
+              ariaLabel: `Delete ${session.displayName}`,
             },
             h,
           ),
@@ -160,14 +164,14 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
   return page(
     {},
     [
-      ...(model.csvError === null
+      ...(model.historyError === null
         ? []
         : [
             notice(
               {
                 tone: "error",
-                text: model.csvError,
-                onDismiss: Message.DismissedCsvError(),
+                text: model.historyError,
+                onDismiss: Message.DismissedHistoryError(),
                 dismissLabel: "Dismiss error",
               },
               h,
@@ -194,7 +198,6 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
                 confirmLabel: "Delete",
                 confirmAriaLabel: "Confirm delete",
                 cancelAriaLabel: "Cancel delete",
-                dismissLabel: "Cancel deleting session",
                 destructive: true,
                 onConfirm: Message.ConfirmedHistoryDelete(),
                 onCancel: Message.CanceledHistoryDelete(),

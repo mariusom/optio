@@ -1,5 +1,7 @@
 // Two-word suggestions become the session name when the input is left blank.
 
+import { Effect, Random } from "effect";
+
 const ADJECTIVES: ReadonlyArray<string> = [
   // Nature & Elements
   "Amber",
@@ -217,12 +219,18 @@ const NOUNS: ReadonlyArray<string> = [
   "Topaz",
 ];
 
-const pick = <T>(items: ReadonlyArray<T>): T =>
-  items[Math.floor(Math.random() * items.length)] as T;
+const pick = (items: ReadonlyArray<string>) =>
+  Effect.map(
+    Random.nextIntBetween(0, items.length, { halfOpen: true }),
+    (index) => items[index] as string,
+  );
 
-/** "Amber Canyon"-style name; falls back to "Random Session" if lists empty. */
-export const generateSessionName = (): string => {
-  const adjective = ADJECTIVES.length > 0 ? pick(ADJECTIVES) : "Random";
-  const noun = NOUNS.length > 0 ? pick(NOUNS) : "Session";
+/**
+ * "Amber Canyon"-style name drawn from Effect's Random service, so update
+ * stays deterministic: commands generate names and report them as messages.
+ */
+export const randomSessionName: Effect.Effect<string> = Effect.gen(function* () {
+  const adjective = yield* pick(ADJECTIVES);
+  const noun = yield* pick(NOUNS);
   return `${adjective} ${noun}`;
-};
+});

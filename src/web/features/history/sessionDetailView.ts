@@ -3,7 +3,6 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import {
   Download,
   Pencil,
-  confirmSheet,
   groupedList,
   icon,
   navBar,
@@ -12,8 +11,9 @@ import {
   page,
   row,
 } from "@/components/app";
+import { confirmSheet } from "../../sheets";
 import { Message } from "../../../messages";
-import { formatDurationHm, formatDurationHms, formatTimeOnly } from "../../format";
+import { formatDurationHms, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
 import { editSessionNameSheet } from "./editSessionNameSheet";
 import { formatAnswer, formatDay, taskCountLabel } from "./helpers";
@@ -47,7 +47,8 @@ type SessionDetailModel = {
   readonly editHistoryNameInput: string;
   readonly selectedHistoryTaskId: string | null;
   readonly pendingHistoryDelete: { readonly id: string; readonly displayName: string } | null;
-  readonly csvError: string | null;
+  readonly historyError: string | null;
+  readonly detailLoadFailed: boolean;
 };
 
 /** First two answers, so the row says what the task was without opening it. */
@@ -68,6 +69,7 @@ const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
       : undefined;
   return row(
     {
+      key: task.id,
       title: `Task ${task.taskId}`,
       ...(subtitle === undefined ? {} : { subtitle }),
       ...(duration === undefined ? {} : { value: duration }),
@@ -88,23 +90,31 @@ const loadingDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Message>, b
       page(
         {},
         [
-          ...(model.csvError === null
+          ...(model.historyError === null
             ? []
             : [
                 notice(
                   {
                     tone: "error",
-                    text: model.csvError,
-                    onDismiss: Message.DismissedCsvError(),
+                    text: model.historyError,
+                    onDismiss: Message.DismissedHistoryError(),
                     dismissLabel: "Dismiss error",
                   },
                   h,
                 ),
               ]),
-          h.p(
-            [h.Class("pt-8 text-center text-sm text-muted-foreground")],
-            ["Opening this session…"],
-          ),
+          model.detailLoadFailed
+            ? notice(
+                {
+                  tone: "error",
+                  text: "This session couldn’t be opened. Go back to History and try again.",
+                },
+                h,
+              )
+            : h.p(
+                [h.Class("pt-8 text-center text-sm text-muted-foreground")],
+                ["Opening this session…"],
+              ),
         ],
         h,
       ),
@@ -118,8 +128,9 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
   if (detail === null) return loadingDetailPage(model, h, backHref);
 
   const displayName = detail.sessionName !== "" ? detail.sessionName : detail.templateName;
+  // Seconds, like the task rows below, so short sessions never read "0m".
   const duration =
-    detail.endedAt !== null ? formatDurationHm(detail.endedAt - detail.startedAt) : null;
+    detail.endedAt !== null ? formatDurationHms(detail.endedAt - detail.startedAt) : null;
   const sortedTasks = detail.tasks.toSorted((a, b) => a.taskId - b.taskId);
   const selectedTask =
     model.selectedHistoryTaskId !== null
@@ -162,23 +173,24 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
       page(
         { className: "pt-4" },
         [
-          ...(model.csvError === null
+          ...(model.historyError === null
             ? []
             : [
                 notice(
                   {
                     tone: "error",
-                    text: model.csvError,
-                    onDismiss: Message.DismissedCsvError(),
+                    text: model.historyError,
+                    onDismiss: Message.DismissedHistoryError(),
                     dismissLabel: "Dismiss error",
                   },
                   h,
                 ),
               ]),
           groupedList(
-            { header: "Summary", footer: formatDay(detail.startedAt) },
+            { header: "Summary" },
             [
               row({ title: "Template", value: detail.templateName }, h),
+              row({ title: "Date", value: formatDay(detail.startedAt) }, h),
               row({ title: "Started", value: formatTimeOnly(detail.startedAt) }, h),
               ...(detail.endedAt === null
                 ? []
@@ -191,7 +203,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
           groupedList(
             {
               header: "Tasks",
-              ...(sortedTasks.length === 0 ? {} : { footer: "Tap a task to see every answer." }),
+              ...(sortedTasks.length === 0 ? {} : { footer: "Select a task to see every answer." }),
             },
             sortedTasks.length === 0
               ? [row({ title: "No tasks were recorded." }, h)]
@@ -240,7 +252,6 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                 confirmLabel: "Delete",
                 confirmAriaLabel: "Confirm delete",
                 cancelAriaLabel: "Cancel delete",
-                dismissLabel: "Cancel deleting session",
                 destructive: true,
                 onConfirm: Message.ConfirmedHistoryDelete(),
                 onCancel: Message.CanceledHistoryDelete(),

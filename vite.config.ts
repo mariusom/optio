@@ -1,7 +1,34 @@
 import tailwindcss from "@tailwindcss/vite";
 import { foldkit } from "@foldkit/vite-plugin";
+import { playwright } from "vite-plus/test/browser-playwright";
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig, type Plugin } from "vite-plus";
+import { defineConfig, type Plugin, type UserConfig } from "vite-plus";
+
+// One test run schedules both projects concurrently; `--project` selects one.
+const test: UserConfig["test"] = {
+  projects: [
+    {
+      extends: true,
+      // Agent worktrees under .claude are full repository copies.
+      test: { name: "unit", exclude: ["**/node_modules/**", "**/.git/**", "**/.claude/**"] },
+    },
+    {
+      extends: true,
+      // Browser tests import these entries directly, outside dependency scanning.
+      optimizeDeps: { include: ["foldkit/brand", "@livestore/adapter-web/worker"] },
+      test: {
+        name: "browser",
+        include: ["src/**/*.browser.ts"],
+        browser: {
+          enabled: true,
+          headless: true,
+          provider: playwright(),
+          instances: [{ browser: "chromium" }],
+        },
+      },
+    },
+  ],
+};
 
 // Deployed to GitHub Pages project site: https://mariusom.github.io/optio/
 export default defineConfig(({ command, mode }) => {
@@ -114,6 +141,7 @@ export default defineConfig(({ command, mode }) => {
           "icon-180.png",
           "icon-192.png",
           "icon-512.png",
+          "icon-maskable-512.png",
           "dependency-inventory.json",
         ],
         manifest: {
@@ -121,13 +149,18 @@ export default defineConfig(({ command, mode }) => {
           short_name: "optio",
           description:
             "Create time studies, record tasks, and export CSV. Works offline after initial loading. No account needed.",
-          theme_color: "#f5f8f5",
-          background_color: "#f5f8f5",
+          theme_color: "#ffffff",
+          background_color: "#ffffff",
           display: "standalone",
           icons: [
             { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
             { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-            { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+            {
+              src: "icon-maskable-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
           ],
         },
         workbox: {
@@ -153,5 +186,6 @@ export default defineConfig(({ command, mode }) => {
         },
       },
     },
+    test,
   });
 });

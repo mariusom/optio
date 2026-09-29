@@ -32,6 +32,7 @@ const makeRunner = (
     showSidebar: true,
     lastError: null,
     now: Date.now(),
+    fieldWrites: { revision: 0, pending: [] },
     ...overrides,
   } as NonNullable<Model["runner"]>;
   // ensure showSidebar defaults to true if not overridden explicitly as false
@@ -70,58 +71,45 @@ const makeModel = (runner: Model["runner"]): Model => ({
   activeSession: null,
   pendingDiscardSession: false,
   runner,
-  runnerPhase: "collecting",
   history: [],
   selectedHistorySession: null,
+  detailLoadFailed: false,
   pendingHistoryDelete: null,
   showEditHistoryName: false,
   editHistoryNameInput: "",
   selectedHistoryTaskId: null,
   historyActionsFor: null,
   pendingNavigationUrl: null,
-  csvError: null,
+  historyError: null,
+  storage: "persisted",
+  memoryStorageAcknowledged: false,
   promptCopyStatus: "idle",
 });
 
 describe("runner dead links", () => {
-  it.effect("waits for the session query before declaring a runner missing", () =>
-    Effect.gen(function* () {
-      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-      vi.mocked(getStore).mockResolvedValue({
-        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-          callbacks.push(callback);
-          if (callbacks.length === 3) {
-            callbacks[1]!([]);
-            callbacks[2]!([]);
-            callbacks[0]!([{ id: "s1", templateName: "T", sessionName: "S", startedAt: 0 }]);
-          }
-          return () => {};
-        },
-      } as unknown as Awaited<ReturnType<typeof getStore>>);
-      const messages = yield* subscriptions.runner
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
-      expect(messages[0]).toMatchObject({ _tag: "GotRunnerData", data: { sessionId: "s1" } });
-    }),
-  );
-
+  // The runner reads one combined query, so a session never appears without its tasks.
   it.effect.each([
-    { label: "ended", endedAt: 1, expectedData: null },
-    { label: "live", endedAt: null, expectedData: { sessionId: "s1" } },
-    { label: "legacy live", endedAt: undefined, expectedData: { sessionId: "s1" } },
-  ])("treats $label session correctly", ({ endedAt, expectedData }) =>
+    { label: "missing", endedAt: undefined, expectedData: null },
+    { label: "ended", endedAt: new Date(1), expectedData: null },
+    { label: "live", endedAt: null, expectedData: { sessionId: "s1", tasks: [] } },
+  ])("treats a $label session correctly", ({ endedAt, expectedData }) =>
     Effect.gen(function* () {
-      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
       vi.mocked(getStore).mockResolvedValue({
-        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-          callbacks.push(callback);
-          if (callbacks.length === 3) {
-            callbacks[1]!([]);
-            callbacks[2]!([]);
-            callbacks[0]!([
-              { id: "s1", templateName: "T", sessionName: "S", startedAt: 0, endedAt },
-            ]);
-          }
+        subscribe: (_query: unknown, callback: (rows: unknown) => void) => {
+          callback({
+            session:
+              endedAt === undefined
+                ? null
+                : {
+                    id: "s1",
+                    templateName: "T",
+                    sessionName: "S",
+                    startedAt: new Date(0),
+                    endedAt,
+                  },
+            tasks: [],
+            fields: [],
+          });
           return () => {};
         },
       } as unknown as Awaited<ReturnType<typeof getStore>>);

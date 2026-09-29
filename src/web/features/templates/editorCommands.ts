@@ -1,10 +1,10 @@
-import { Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
-import { friendlyFailure } from "../../errors";
-import { getStore } from "../../../livestore/client";
-import { events, tables, FieldDef } from "../../../livestore/schema";
+import { reportFailure } from "../../errors";
+import { withStore } from "../../../livestore/access";
+import { FieldDef } from "../../../domain/fields";
 
 export const SaveTemplate = Command.define("SaveTemplate", {
   args: {
@@ -16,38 +16,30 @@ export const SaveTemplate = Command.define("SaveTemplate", {
   },
   messages: [Message.TemplateSaved, Message.FailedTemplateOp],
   execute: ({ id, name, isDefault, fields, isNew }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      const trimmedName = name.trim();
-      const now = new Date();
-      const dense: ReadonlyArray<FieldDef> = (fields as ReadonlyArray<FieldDef>).map(
-        (field, index) => ({
+    withStore(({ store, tables, events }) =>
+      Effect.gen(function* () {
+        const now = new Date(yield* Clock.currentTimeMillis);
+        const trimmedName = name.trim();
+        const dense = fields.map((field, index) => ({
           ...field,
           name: field.name.trim(),
           sortOrder: index,
-        }),
-      );
-      if (isNew) {
-        const first = store.query(tables.templates.select()).length === 0;
-        store.commit(
-          events.templateCreated({ id, name: trimmedName, isDefault: isDefault || first, now }),
-          events.fieldsReplaced({ templateId: id, fields: dense }),
-          ...(isDefault || first ? [events.templateDefaultSet({ id })] : []),
-        );
-      } else if (isDefault) {
-        store.commit(
-          events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
-          events.templateDefaultSet({ id }),
-        );
-      } else {
-        store.commit(
-          events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
-        );
-      }
-      return Message.TemplateSaved();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedTemplateOp({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+        }));
+        if (isNew) {
+          const first = store.query(tables.templates.select()).length === 0;
+          // Creation does not clear other defaults; TemplateDefaultSet does.
+          store.commit(
+            events.templateCreated({ id, name: trimmedName, isDefault: isDefault || first, now }),
+            events.fieldsReplaced({ templateId: id, fields: dense }),
+            ...(isDefault || first ? [events.templateDefaultSet({ id })] : []),
+          );
+        } else {
+          // TemplateUpdated clears other defaults when this one becomes default.
+          store.commit(
+            events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
+          );
+        }
+        return Message.TemplateSaved();
+      }),
+    ).pipe(reportFailure("save", (error) => Message.FailedTemplateOp({ error }))),
 });

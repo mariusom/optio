@@ -4,6 +4,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeEach, vi } from "vitest";
 
+import { ShowSheet } from "../../../components/app/sheet";
 import { getStore } from "../../../livestore/client";
 import { init, subscriptions, update } from "../../../main";
 import { Message } from "../../../messages";
@@ -14,11 +15,18 @@ import { taskDetailView } from "./taskDetailView";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
+/** Open sheets show through a Mount; acknowledge each one. */
+const settleSheets = <Model>(simulation: Scene.SceneSimulation<Model, Message>) =>
+  Scene.Mount.resolveAll(
+    ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
+  )(simulation);
+
 const render = (view: (h: HtmlBuilder<Message>) => Html): Html => {
   let rendered: Html = null;
   Scene.scene(
     { update: (model: null, _message: Message) => ({ model }), view: (_model: null, h) => view(h) },
     Scene.given(null),
+    settleSheets,
     (simulation: Scene.SceneSimulation<null, Message>) => {
       rendered = simulation.html;
       return simulation;
@@ -64,20 +72,53 @@ const model = () => ({
 
 beforeEach(() => vi.resetAllMocks());
 
+const archiveSession = (endedAt: Date | null) => ({
+  id: "s1",
+  sessionName: "Study",
+  templateName: "Template",
+  startedAt: new Date(0),
+  endedAt,
+});
+const subscribeWith = (result: unknown) =>
+  vi.mocked(getStore).mockResolvedValue({
+    subscribe: (_query: unknown, callback: (rows: unknown) => void) => {
+      callback(result);
+      return () => {};
+    },
+  } as unknown as Awaited<ReturnType<typeof getStore>>);
+const firstDetail = subscriptions.historyDetail
+  .dependenciesToStream({ sessionId: "s1" })
+  .pipe(Stream.take(1), Stream.runCollect);
+
+const archiveRecord = (taskId: number) => ({
+  id: `r${taskId}`,
+  taskId,
+  startedAt: null,
+  endedAt: new Date(100),
+});
+const archiveSection = (taskRecordId: string, sectionName: string) => ({
+  taskRecordId,
+  sectionName,
+  value: "",
+  sectionType: "textInput",
+  isRequired: 0,
+  startedAt: null,
+});
+
 describe("history detail regressions", () => {
   it("exports yes/no answers as true/false and keeps unanswered empty", async () => {
-    const query = vi
-      .fn()
-      .mockReturnValueOnce([{ id: "s1", sessionName: "Study", templateName: "Template" }])
-      .mockReturnValueOnce([{ id: "t1", taskId: 1, startedAt: null, endedAt: null }])
-      .mockReturnValueOnce([
+    const query = vi.fn().mockReturnValueOnce({
+      session: { id: "s1", sessionName: "Study", templateName: "Template" },
+      records: [{ id: "t1", taskId: 1, startedAt: null, endedAt: null }],
+      sections: [
         { taskRecordId: "t1", sectionName: "A", sectionType: "boolean", value: "" },
         { taskRecordId: "t1", sectionName: "B", sectionType: "boolean", value: "false" },
         { taskRecordId: "t1", sectionName: "C", sectionType: "boolean", value: "true" },
         { taskRecordId: "t1", sectionName: "D", sectionType: "boolean", value: " TRUE " },
         { taskRecordId: "t1", sectionName: "E", sectionType: "textInput", value: "" },
         { taskRecordId: "t1", sectionName: "F", sectionType: "textInput", value: "No" },
-      ]);
+      ],
+    });
     vi.mocked(getStore).mockResolvedValue({ query } as unknown as Awaited<
       ReturnType<typeof getStore>
     >);
@@ -105,6 +146,7 @@ describe("history detail regressions", () => {
       Scene.scene(
         { view: sessionDetailPage, update },
         Scene.given(state),
+        settleSheets,
         Scene.expect(Scene.role("dialog", { name: "Session name" })).toExist(),
         Scene.expect(Scene.role("dialog", { name: "Task 1" })).toExist(),
         Scene.expect(Scene.role("textbox", { name: "Name" })).toHaveValue("Unsaved rename"),
@@ -216,28 +258,17 @@ describe("history detail regressions", () => {
   });
 
   it.effect.each([
-    ["live session with null endedAt", null, null],
-    ["live session with undefined endedAt", undefined, null],
-    ["ended session", 100, expect.objectContaining({ id: "s1", endedAt: 100 })],
+    ["missing session", undefined, null],
+    ["live session", null, null],
+    ["ended session", new Date(100), expect.objectContaining({ id: "s1", endedAt: 100 })],
   ])("enforces ended-only detail for %s", ([_case, endedAt, expectedDetail]) =>
     Effect.gen(function* () {
-      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-      vi.mocked(getStore).mockResolvedValue({
-        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-          callbacks.push(callback);
-          if (callbacks.length === 3) {
-            callbacks[1]!([]);
-            callbacks[2]!([]);
-            callbacks[0]!([{ ...detail, endedAt }]);
-          }
-          return () => {};
-        },
-      } as unknown as Awaited<ReturnType<typeof getStore>>);
-
-      const messages = yield* subscriptions.historyDetail
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
-
+      subscribeWith({
+        session: endedAt === undefined ? null : archiveSession(endedAt as Date | null),
+        records: [],
+        sections: [],
+      });
+      const messages = yield* firstDetail;
       expect(messages[0]).toMatchObject({
         _tag: "GotHistoryDetail",
         detail: expectedDetail,
@@ -245,26 +276,23 @@ describe("history detail regressions", () => {
     }),
   );
 
-  it.effect("constructs history in taskId order and waits for the session query", () =>
+  it.effect("groups ordered answers under their task records", () =>
     Effect.gen(function* () {
-      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
-      vi.mocked(getStore).mockResolvedValue({
-        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-          callbacks.push(callback);
-          if (callbacks.length === 3) {
-            callbacks[1]!(detail.tasks.map((t) => ({ ...t, sessionId: "s1" })));
-            callbacks[2]!([]);
-            callbacks[0]!([detail]);
-          }
-          return () => {};
-        },
-      } as unknown as Awaited<ReturnType<typeof getStore>>);
-      const messages = yield* subscriptions.historyDetail
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      subscribeWith({
+        session: archiveSession(new Date(100)),
+        records: [archiveRecord(1), archiveRecord(2)],
+        sections: [archiveSection("r1", "A"), archiveSection("r1", "B"), archiveSection("r2", "A")],
+      });
+      const messages = yield* firstDetail;
       expect(messages[0]).toMatchObject({
         _tag: "GotHistoryDetail",
-        detail: { tasks: [{ taskId: 1 }, { taskId: 2 }, { taskId: 3 }] },
+        detail: {
+          taskCount: 2,
+          tasks: [
+            { taskId: 1, sections: [{ sectionName: "A" }, { sectionName: "B" }] },
+            { taskId: 2, sections: [{ sectionName: "A" }] },
+          ],
+        },
       });
     }),
   );

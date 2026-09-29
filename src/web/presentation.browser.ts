@@ -26,7 +26,8 @@ import {
   initializeStyle,
   initializeTheme,
 } from "./browserTheme";
-import { confirmSheet, groupedList, navBar, navBarAction, row as appRow } from "../components/app";
+import { groupedList, navBar, navBarAction, row as appRow } from "../components/app";
+import { confirmSheet } from "./sheets";
 import { button as uiButton } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Item } from "../components/ui/item";
@@ -130,9 +131,15 @@ const mount = async (
   container.style.minHeight = `${height}px`;
   document.body.append(container);
   const model = init(Option.getOrThrow(fromString("https://example.com/#/start"))).model;
+  const target = container;
   handle = Runtime.embed(
-    Runtime.makeElement({ Model, container, init: () => ({ model }), view, update }),
+    Runtime.makeElement({ Model, container, init: () => ({ model }), view, update, slow: false }),
   );
+  // The runtime commits its first render asynchronously (replacing or filling
+  // the container); tests that read the DOM directly must wait for it.
+  await vi.waitFor(() => {
+    if (target.isConnected && !target.hasChildNodes()) throw new Error("Not rendered yet");
+  });
 };
 
 afterEach(async () => {
@@ -822,10 +829,12 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each([16, 20])("scales base controls with a %ipx root font", async (rootSize) => {
+    // Set the root size before rendering: changing it afterwards would start
+    // the buttons' size transitions and make computed sizes time-dependent.
+    document.documentElement.style.fontSize = `${rootSize}px`;
     await mount((_model, h) =>
       h.div([], [uiButton({}, "Default control", h), uiButton({ size: "lg" }, "Large control", h)]),
     );
-    document.documentElement.style.fontSize = `${rootSize}px`;
     await expect.element(page.getByRole("button", { name: "Large control" })).toBeVisible();
     for (const [name, height, padding] of [
       ["Default control", 44, 16],
@@ -998,14 +1007,66 @@ describe("persistent presentation regressions", () => {
     await userEvent.click(trigger);
     const exportAction = page.getByRole("button", { name: "Export Morning observation" });
     await expect.element(exportAction).toBeVisible();
-    expect(document.querySelectorAll('[role="dialog"] button[aria-label^="Export "]')).toHaveLength(
-      1,
-    );
+    expect(document.querySelectorAll('dialog button[aria-label^="Export "]')).toHaveLength(1);
     await expect
       .element(page.getByRole("button", { name: "Delete Morning observation" }))
       .toBeVisible();
     (exportAction.element() as HTMLButtonElement).focus();
     await expect.element(exportAction).toHaveFocus();
+  });
+
+  it("traps focus in sheets, locks scrolling and hands focus back across a sheet swap", async () => {
+    await mount(
+      (model, h) =>
+        appView({ ...model, route: { _tag: "HistoryTab" }, history: [history] }, h).body,
+      900,
+    );
+    await page.viewport(390, 844);
+    const trigger = page.getByRole("button", { name: 'Actions for "Morning observation"' });
+    (trigger.element() as HTMLButtonElement).focus();
+    await userEvent.click(trigger);
+    const actions = page.getByRole("dialog", { name: "Morning observation" });
+    await expect.element(actions).toBeVisible();
+    const actionsElement = actions.element();
+    await expect.poll(() => actionsElement.contains(document.activeElement)).toBe(true);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("hidden");
+    for (const shift of [false, true]) {
+      for (let step = 0; step < 4; step++) {
+        await userEvent.keyboard(shift ? "{Shift>}{Tab}{/Shift}" : "{Tab}");
+        expect(actionsElement.contains(document.activeElement)).toBe(true);
+      }
+    }
+
+    // Actions → confirmation swaps sheets in one render; focus follows the
+    // new sheet and finally returns to the row button that opened the first.
+    await page.getByRole("button", { name: "Delete Morning observation" }).click();
+    const confirmation = page.getByRole("dialog", { name: "Delete this session?" });
+    await expect.element(confirmation).toBeVisible();
+    await expect.element(actions).not.toBeInTheDocument();
+    await expect.poll(() => confirmation.element().contains(document.activeElement)).toBe(true);
+    await userEvent.keyboard("{Escape}");
+    await expect.element(confirmation).not.toBeInTheDocument();
+    await expect.element(trigger).toHaveFocus();
+    await expect.poll(() => document.documentElement.style.overflow).toBe("");
+    expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("auto");
+  });
+
+  it("releases a sheet as soon as its page stops rendering it", async () => {
+    await mount(
+      (model, h) =>
+        appView({ ...model, route: { _tag: "TemplatesTab" }, templates: [template] }, h).body,
+      900,
+    );
+    const trigger = page.getByRole("button", { name: 'Actions for "Observation"' });
+    await userEvent.click(trigger);
+    await expect.element(page.getByRole("dialog", { name: "Observation" })).toBeVisible();
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    // Choosing an action clears the page state; unmounting the sheet is its close.
+    await page.getByRole("button", { name: "Duplicate" }).click();
+    expect(document.querySelector("dialog")).toBeNull();
+    await expect.poll(() => document.documentElement.style.overflow).toBe("");
+    await expect.element(trigger).toHaveFocus();
   });
 
   it("opens the template action sheet from a named, keyboard-reachable button", async () => {

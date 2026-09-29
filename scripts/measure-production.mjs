@@ -140,7 +140,7 @@ const captureNetwork = ({ context, cdp }) => {
 const readReadySnapshot = async (page) => {
   await page.getByRole("button", { name: "Start Session", exact: true }).waitFor();
   await page
-    .getByRole("option", { name: "Assembly line (default)", exact: true })
+    .getByRole("option", { name: "Assembly line", exact: true })
     .waitFor({ state: "attached" });
   await page.waitForFunction(() => typeof window.optioPerformance?.uiReadyMs === "number");
   const snapshot = await page.evaluate(() => ({ ...window.optioPerformance }));
@@ -293,7 +293,7 @@ const runStartup = async (browser, latencyMs) => {
 const startInteractionSession = async (page) => {
   await page.goto(base);
   await page
-    .getByRole("option", { name: "Assembly line (default)", exact: true })
+    .getByRole("option", { name: "Assembly line", exact: true })
     .waitFor({ state: "attached" });
   await page.getByRole("textbox", { name: "Session name", exact: true }).fill("Performance run");
   const started = performance.now();

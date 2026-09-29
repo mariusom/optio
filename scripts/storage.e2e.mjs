@@ -55,7 +55,7 @@ test(
       await launch();
       await page.goto(base);
       await page
-        .getByRole("option", { name: "Assembly line (default)", exact: true })
+        .getByRole("option", { name: "Assembly line", exact: true })
         .waitFor({ state: "attached" });
       await page
         .getByRole("textbox", { name: "Session name", exact: true })
@@ -118,6 +118,8 @@ test(
         .getByRole("dialog")
         .getByRole("button", { name: "End session", exact: true })
         .click();
+      // Ending returns to Start; navigating earlier would be overridden.
+      await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
       await page
         .getByRole("button", { name: "Open session Assembly observation", exact: true })
@@ -273,6 +275,9 @@ test(
         await page.evaluate(() => globalThis["__debugLiveStore"]["optio-v3"].storageMode),
         "persisted",
       );
+      // Persisted storage shows no private-browsing or unavailable-storage notice.
+      assert.equal(await page.getByText("isn’t saving studies").count(), 0);
+      assert.equal(await page.getByRole("button", { name: "Try again" }).count(), 0);
       await page.reload();
       await input("Parcel weight (kg)").waitFor();
       assert.equal(await input("Parcel weight (kg)").inputValue(), "2.75", "reloaded weight");
@@ -366,6 +371,8 @@ test(
         .getByRole("dialog")
         .getByRole("button", { name: "End session", exact: true })
         .click();
+      // Ending returns to Start; navigating earlier would be overridden.
+      await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
       await page
         .getByRole("button", { name: "Open session Quantitative check", exact: true })
@@ -389,3 +396,32 @@ test(
     }
   },
 );
+
+test("warns when the browser keeps studies only in memory", { timeout: 60_000 }, async () => {
+  const server = await preview({ preview: { host: "127.0.0.1", port: 0, open: false } });
+  const base = `http://127.0.0.1:${server.httpServer.address().port}/optio/`;
+  const browser = await chromium.launch();
+  try {
+    const context = await browser.newContext({ serviceWorkers: "block" });
+    // Some private windows refuse OPFS; LiveStore then keeps data in memory.
+    await context.addInitScript(() => {
+      navigator.storage.getDirectory = () =>
+        Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
+    await page.goto(base);
+    await page.getByText("This browser isn’t saving studies", { exact: false }).waitFor();
+    assert.equal(
+      await page.evaluate(() => globalThis["__debugLiveStore"]?.["optio-v3"]?.storageMode),
+      "in-memory",
+    );
+    // Where sessions start, the warning stays in view and cannot be dismissed.
+    assert.equal(await page.getByRole("button", { name: "Dismiss storage warning" }).count(), 0);
+  } finally {
+    await browser.close();
+    await new Promise((resolve, reject) =>
+      server.httpServer.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+});

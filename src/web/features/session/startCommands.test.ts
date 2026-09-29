@@ -216,7 +216,10 @@ describe("StartSession active-session guard", () => {
 
   it.effect("does not let ended sessions block a new start", () =>
     Effect.gen(function* () {
-      const query = vi.fn(() => [{ id: "ended", endedAt: new Date() }]);
+      // Only live sessions are read; an ended one never reaches the guard.
+      const query = vi.fn((input: unknown) =>
+        String(input).includes("IS NULL") ? [] : [{ id: "ended", endedAt: new Date() }],
+      );
       const commit = vi.fn();
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 

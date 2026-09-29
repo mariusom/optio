@@ -1,32 +1,7 @@
 import { Events, State, makeSchema } from "@livestore/livestore";
 import { Schema } from "effect";
 
-// ── Domain schemas ───────────────────────────────────────────────────────
-
-/** Supported template answer types. */
-export const FieldKind = Schema.Literals([
-  "radio",
-  "checkbox",
-  "textInput",
-  "textArea",
-  "boolean",
-  "number",
-  "counter",
-  "rating",
-]);
-export type FieldKind = typeof FieldKind.Type;
-
-export const FieldDef = Schema.Struct({
-  id: Schema.String,
-  name: Schema.String,
-  kind: FieldKind,
-  isRequired: Schema.Boolean,
-  defaultValue: Schema.String,
-  sortOrder: Schema.Number,
-  options: Schema.Array(Schema.String),
-  exclusiveOptions: Schema.Array(Schema.String),
-});
-export type FieldDef = typeof FieldDef.Type;
+import { FieldDef } from "../domain/fields";
 
 // ── Tables ────────────────────────────────────────────────────────────────
 
@@ -125,6 +100,8 @@ export const tables = {
       sectionType: State.SQLite.text({ default: "" }),
       isRequired: State.SQLite.integer({ default: 0 }),
       startedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
+      /** Question order within the task; readers sort by it. */
+      position: State.SQLite.integer({ default: 0 }),
     },
     indexes: [{ name: "idx_taskSectionRecords_record", columns: ["taskRecordId"] }],
   }),
@@ -313,6 +290,24 @@ const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>
     }),
   );
 
+type MaterializerQuery = (input: {
+  query: string;
+  bindValues: Record<string, string>;
+}) => ReadonlyArray<unknown>;
+
+/** Live (not ended) sessions, optionally only the given one. */
+const liveSessionCount = (query: MaterializerQuery, id?: string): number => {
+  const rows = query(
+    id === undefined
+      ? { query: "select count(*) as count from sessions where endedAt is null", bindValues: {} }
+      : {
+          query: "select count(*) as count from sessions where id = $id and endedAt is null",
+          bindValues: { id },
+        },
+  ) as ReadonlyArray<{ readonly count: number }>;
+  return rows[0]?.count ?? 0;
+};
+
 const materializers = State.SQLite.materializers(events, {
   "v3.TemplateCreated": ({ id, name, isDefault, now }) =>
     tables.templates.insert({
@@ -342,27 +337,44 @@ const materializers = State.SQLite.materializers(events, {
     tables.templates.update({ isDefault: 0 }).where({ id: { op: "!=", value: id } }),
     tables.templates.update({ isDefault: 1 }).where({ id }),
   ],
-  "v3.TemplatesSeeded": ({ templates, now }) =>
-    templates.flatMap((t) => [
-      tables.templates.insert({
-        id: t.id,
-        name: t.name,
-        isDefault: t.isDefault ? 1 : 0,
-        createdAt: now,
-        updatedAt: now,
-      }),
-      ...insertTemplateFields(t.id, t.fields),
-    ]),
+  // Seeding can race across tabs that each saw an empty store. Samples whose
+  // name already exists are skipped, and a default is only claimed when none
+  // exists, so replaying both events yields one set with one default.
+  "v3.TemplatesSeeded": ({ templates, now }, { query }) => {
+    const existing = query(tables.templates.select());
+    const taken = new Set(existing.map((row) => row.name));
+    let hasDefault = existing.some((row) => row.isDefault === 1);
+    return templates.flatMap((t) => {
+      if (taken.has(t.name)) return [];
+      taken.add(t.name);
+      const isDefault = t.isDefault && !hasDefault;
+      if (isDefault) hasDefault = true;
+      return [
+        tables.templates.insert({
+          id: t.id,
+          name: t.name,
+          isDefault: isDefault ? 1 : 0,
+          createdAt: now,
+          updatedAt: now,
+        }),
+        ...insertTemplateFields(t.id, t.fields),
+      ];
+    });
+  },
 
-  "v3.SessionStarted": ({ id, templateId, templateName, sessionName, now }) =>
-    tables.sessions.insert({
-      id,
-      templateId,
-      templateName,
-      sessionName,
-      startedAt: now,
-      endedAt: null,
-    }),
+  // Only one live session may exist; a concurrent start from another tab is
+  // dropped (and its first task with it, see TaskSpawned).
+  "v3.SessionStarted": ({ id, templateId, templateName, sessionName, now }, { query }) =>
+    liveSessionCount(query) > 0
+      ? []
+      : tables.sessions.insert({
+          id,
+          templateId,
+          templateName,
+          sessionName,
+          startedAt: now,
+          endedAt: null,
+        }),
   "v2.SessionRenamed": ({ id, sessionName }) =>
     tables.sessions.update({ sessionName }).where({ id }),
   "v2.SessionEnded": ({ id, endedAt, records }, { query }) => {
@@ -394,6 +406,7 @@ const materializers = State.SQLite.materializers(events, {
               sectionType: section.sectionType,
               isRequired: section.isRequired ? 1 : 0,
               startedAt: section.startedAt === null ? null : new Date(section.startedAt),
+              position: index,
             }),
           ),
         ];
@@ -426,19 +439,25 @@ const materializers = State.SQLite.materializers(events, {
     tables.sessions.delete().where({ id }),
   ],
 
-  "v2.TaskSpawned": ({ sessionId, id, orderIndex, fields }) => [
-    tables.sessionTasks.insert({
-      id,
-      sessionId,
-      orderIndex,
-      taskType: "single",
-      endDate: null,
-      isBeingEdited: 0,
-    }),
-    ...insertSessionTaskFields(id, fields),
-  ],
+  // A task only joins a session that is still live: a late record from another
+  // tab after the session ended (or a dropped concurrent start) leaves no orphans.
+  "v2.TaskSpawned": ({ sessionId, id, orderIndex, fields }, { query }) =>
+    liveSessionCount(query, sessionId) === 0
+      ? []
+      : [
+          tables.sessionTasks.insert({
+            id,
+            sessionId,
+            orderIndex,
+            taskType: "single",
+            endDate: null,
+            isBeingEdited: 0,
+          }),
+          ...insertSessionTaskFields(id, fields),
+        ],
+  // First finish wins: a duplicate record from another tab keeps the original end time.
   "v2.TaskFinished": ({ id, endedAt }) =>
-    tables.sessionTasks.update({ endDate: new Date(endedAt) }).where({ id }),
+    tables.sessionTasks.update({ endDate: new Date(endedAt) }).where({ id, endDate: null }),
   "v3.TaskEditStarted": ({ sessionId, id }, { query }) => {
     const task = query(tables.sessionTasks.select().where({ id, sessionId }))[0];
     if (task === undefined || task.endDate === null) return [];

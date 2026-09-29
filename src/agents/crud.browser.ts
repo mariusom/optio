@@ -30,7 +30,19 @@ it("operates template/field CRUD and the full record → edit → archive → de
   const container = document.createElement("div");
   container.id = `agent-test-${crypto.randomUUID()}`;
   document.body.append(container);
-  const handle = Runtime.embed(Runtime.makeApplication({ ...applicationConfig, container }));
+  const handle = Runtime.embed(
+    Runtime.makeApplication({ ...applicationConfig, container, slow: false }),
+    {
+      flags: Effect.succeed({
+        theme: "auto",
+        style: "nova",
+        font: "sans",
+        iconLibrary: "hugeicons",
+        accent: "default",
+        now: Date.now(),
+      } as const),
+    },
+  );
   const confirm = vi.fn(() => true);
   const connection = connectAgentApplication(handle.ports, confirm);
   const tools = new Map<string, Parameters<ModelContext["registerTool"]>[0]>();
@@ -146,7 +158,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
       if (restoreA) await act({ _tag: "RequestedDeleteTemplate", id: templateId, name: "Ignored" });
       release!();
       await rejected;
-      expect(raceConfirm).toHaveBeenCalledWith(expect.stringContaining(`(ID: ${templateId})`));
+      expect(raceConfirm).toHaveBeenCalledWith(expect.stringContaining(`\nID: ${templateId}\n`));
       expect((await read()).templates.map((t) => t.id)).toEqual(
         expect.arrayContaining([templateId, otherTemplate.id]),
       );
@@ -248,11 +260,9 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await act({ _tag: "RequestedHistoryDelete", id: sessionId, displayName: "Misleading label" });
     expect((await read()).pendingHistoryDelete?.displayName).toBe(archiveDisplayName);
     await expect
-      .poll(() => document.querySelector('[role="dialog"]')?.textContent)
+      .poll(() => document.querySelector("dialog[open]")?.textContent)
       .toContain(archiveDisplayName);
-    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain(
-      "Misleading label",
-    );
+    expect(document.querySelector("dialog[open]")?.textContent).not.toContain("Misleading label");
     confirm.mockReturnValueOnce(false);
     await expect(
       invoke("optio_action", { action: { _tag: "ConfirmedHistoryDelete" } }),
@@ -261,7 +271,10 @@ it("operates template/field CRUD and the full record → edit → archive → de
       error: { message: "User declined the action." },
     });
     expect(confirm).toHaveBeenLastCalledWith(
-      expect.stringContaining(`${archiveDisplayName} (ID: ${sessionId})`),
+      expect.stringContaining(`Name: ${JSON.stringify(archiveDisplayName)}\nID: ${sessionId}`),
+    );
+    expect(confirm).toHaveBeenLastCalledWith(
+      expect.stringMatching(/^Allow the assistant to permanently delete the recorded session\?/),
     );
     expect((await read()).history.some((s) => s.id === sessionId)).toBe(true);
     // History keeps its pending ID until the asynchronous delete completes.
@@ -285,14 +298,12 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await act({ _tag: "RequestedDeleteTemplate", id: templateId, name: "Misleading label" });
     expect((await read()).pendingDelete?.name).toBe(`${name} edited`);
     await expect
-      .poll(() => document.querySelector('[role="dialog"]')?.textContent)
+      .poll(() => document.querySelector("dialog[open]")?.textContent)
       .toContain(`${name} edited`);
-    expect(document.querySelector('[role="dialog"]')?.textContent).not.toContain(
-      "Misleading label",
-    );
+    expect(document.querySelector("dialog[open]")?.textContent).not.toContain("Misleading label");
     await act({ _tag: "ConfirmedDeleteTemplate" });
     expect(confirm).toHaveBeenLastCalledWith(
-      expect.stringContaining(`${name} edited (ID: ${templateId})`),
+      expect.stringContaining(`Name: ${JSON.stringify(`${name} edited`)}\nID: ${templateId}`),
     );
     await wait((s) => !s.templates.some((t) => t.id === templateId));
     expect(confirm).toHaveBeenCalledTimes(4);

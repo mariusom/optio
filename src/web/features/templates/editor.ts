@@ -1,4 +1,4 @@
-import type { FieldDef, FieldKind } from "../../../livestore/schema";
+import type { FieldDef, FieldKind } from "../../../domain/fields";
 import { hasOptions, isScalarAnswerValid } from "../../fields";
 
 // ── Types mirroring Model.editor ──────────────────────────────────────────

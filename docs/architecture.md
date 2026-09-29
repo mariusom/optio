@@ -7,8 +7,10 @@ subscriptions bring store changes back into the model.
 
 ## Where behavior lives
 
-- [entry.ts](../src/entry.ts) starts the browser runtime, preferences, sheet focus,
-  service-worker update prompt and optional agent registration.
+- [entry.ts](../src/entry.ts) starts the browser runtime, the
+  service-worker update prompt and optional agent registration. Saved
+  preferences and the boot time reach `init` as schema-checked FoldKit Flags
+  (`Flags` and `initWithFlags` in [main.ts](../src/main.ts)).
 - [application.ts](../src/application.ts) wires the runtime;
   [main.ts](../src/main.ts) initializes and exports the application modules.
 - [app/model.ts](../src/app/model.ts) defines the root model and initial state.
@@ -17,10 +19,18 @@ subscriptions bring store changes back into the model.
   These handlers coordinate root state; feature commands perform storage writes.
 - [app/subscriptions.ts](../src/app/subscriptions.ts) selects reactive streams;
   feature-named `*Streams.ts` files translate store rows into messages.
-  `managedStream.ts` owns subscription cleanup and `domStreams.ts` owns focus
-  and scroll effects. Keep subscriptions wired: without them the app renders
-  but stops receiving data.
+  `managedStream.ts` owns store subscriptions, their cleanup and recovery
+  after a failed open (the stream reports the store unavailable, then
+  resubscribes once it opens), and ends a stream whose subscription failed;
+  subscriptions log such failures, and detail pages show them instead of
+  loading forever. `domStreams.ts` owns focus and scroll effects, waiting for
+  FoldKit's `Render.afterCommit`/`afterPaint`. Keep subscriptions wired:
+  without them the app renders but stops receiving data. The live-timer ticker
+  pauses while the tab is hidden.
 - [app/view.ts](../src/app/view.ts) composes navigation and feature pages.
+  A sheet is open exactly while its page renders it: page-model state (such as
+  `pendingHistoryDelete`) is the only open/closed state, so agent actions and
+  route changes open and close sheets with no extra bookkeeping.
   [web/features](../src/web/features) contains templates, session recording,
   history and settings: views, commands, pure feature helpers and their tests.
   Large views delegate to named sections such as `questionControls.ts` and
@@ -29,10 +39,16 @@ subscriptions bring store changes back into the model.
   presentation helpers. [messages.ts](../src/messages.ts) defines app messages.
   [session/runner.ts](../src/web/features/session/runner.ts) owns shared runner
   schemas, types, completion rules and focus traversal.
-- [machine/session](../src/machine/session) plans session transitions and commands.
-  Updates to owner data must preserve the collecting or end-confirmation phase.
+- [machine/session](../src/machine/session) plans session transitions and commands
+  with a pure reducer; `runner.showEndConfirm` is the only record of the
+  end-confirmation phase. Updates to owner data must preserve that phase.
 - [livestore/schema.ts](../src/livestore/schema.ts) defines data, events and
-  materializers; [livestore/client.ts](../src/livestore/client.ts) opens the store.
+  materializers; [livestore/queries.ts](../src/livestore/queries.ts) defines the
+  reactive reads; [livestore/client.ts](../src/livestore/client.ts) opens the store.
+  Commands and streams reach all three through `withStore`/`openStoreAccess` in
+  [livestore/access.ts](../src/livestore/access.ts), which loads them lazily so
+  LiveStore stays out of the startup bundle. Import only types from `schema.ts`
+  and `queries.ts` elsewhere, apart from the lazily loaded agent tools.
 - [agents](../src/agents) exposes app operations through the same update loop;
   read [agent access](agent-access.md) before changing that boundary.
 
@@ -50,10 +66,21 @@ migrated or deleted. Export any wanted pre-release recordings before updating.
 The reset removes events that omitted creation timestamps; those timestamps
 cannot be recovered accurately from their event payloads alone.
 Reuse the memoized `getStore()` promise: opening competing instances for the same
-ID can leave them waiting on the store lock.
+ID can leave them waiting on the store lock. A failed open is not memoized, so the
+store-unavailable notice's retry (or any later command) opens it again and
+waiting subscriptions resume. There is deliberately no open timeout: an abandoned
+open would keep the lock. Without OPFS (some private windows) LiveStore keeps data
+in memory; the app then warns wherever sessions are started or recorded.
 
-Materializers must be deterministic: capture wall-clock times and random IDs in
-commands and include them in events. Archive IDs derive from session ID, task
+Give each stream one query (`computed` over narrow `queryDb` reads, or SQL
+joins and counts) so a commit that touches several tables emits one consistent
+result. Read only the rows a screen shows; never subscribe to a whole table.
+
+Materializers must be deterministic: capture wall-clock times (Effect's Clock)
+and random IDs in commands and include them in events. Tabs commit concurrently,
+so materializers also guard their own invariants: one live session, tasks only in
+a live session, first finish time wins, one default template and no duplicate
+samples. Archived answers keep their question `position`. Archive IDs derive from session ID, task
 number and section position (not section name). LiveStore
 [rematerializes state on schema changes](https://dev.docs.livestore.dev/building-with-livestore/state/sqlite-schema)
 and recommends [side-effect-free materializers](https://dev.docs.livestore.dev/building-with-livestore/state/materializers).
@@ -62,6 +89,20 @@ The live session row is the resume state. A field's first write stamps `startDat
 with SQL `COALESCE`; defaults do not start its timer, and edit-cancel rollback
 restores values without changing that timestamp. Durations derive from these
 timestamps. Preserve the same rules for UI and agent actions.
+
+Typed answers are not written per keystroke. The session reducer shows each
+keystroke at once and keeps unwritten values in `runner.fieldWrites`; the
+`fieldWriteFlush` subscription writes them in one `UpdateFieldValues` batch after
+500 ms without typing, and at once when a reload or navigation starts
+(`beforeunload`), the page is hidden, or the runner is left. A blur, and every event that reads or replaces persisted answers (record,
+task selection, edit save or cancel, counter taps, ending), writes them first.
+A field's first answer and discrete choices are written immediately, so
+`startDate` is the first keystroke's time, never the flush time. Runner write
+commands take one lock in dispatch order, so a batch commits before the command
+that follows it. Written values stay in the overlay until the store echoes
+them, so an emission from an earlier write cannot revert a field. A crash or a
+killed tab that skips those events can lose at most the last 500 ms of typing;
+assistant answers are written without that delay.
 
 Wall-clock time reaches the UI through the Model. The runtime boot and the
 ticker subscription read Effect's Clock; `Tick` stamps `model.now` and

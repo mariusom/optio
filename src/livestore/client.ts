@@ -9,11 +9,22 @@ import type { openStore } from "./openStore.ts";
  * caller shares one store instance. Calling it repeatedly would create
  * competing store attempts on the same storeId — every call after the
  * first hangs awaiting the lock and the app deadlocks into empty states.
+ *
+ * A failed open is not memoized: the next caller (a retry) opens afresh.
+ * There is deliberately no timeout; abandoning a slow open would leave it
+ * holding the lock while a retry competes with it.
  */
 export type AppStore = Awaited<ReturnType<typeof openStore>>;
 
 let storePromise: Promise<AppStore> | null = null;
 
 // SQLite/Wasm must not block evaluation of the initial render's module graph.
-export const getStore = () =>
-  (storePromise ??= import("./openStore.ts").then(({ openStore }) => openStore()));
+export const getStore = (): Promise<AppStore> => {
+  if (storePromise !== null) return storePromise;
+  const opening = import("./openStore.ts").then(({ openStore }) => openStore());
+  storePromise = opening;
+  opening.catch(() => {
+    if (storePromise === opening) storePromise = null;
+  });
+  return opening;
+};

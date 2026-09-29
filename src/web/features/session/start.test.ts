@@ -3,7 +3,8 @@ import * as Scene from "foldkit/scene";
 
 import { Message } from "../../../messages";
 import { startView } from "./startView";
-import { generateSessionName } from "../../random-name";
+import { Effect } from "effect";
+import { randomSessionName } from "../../random-name";
 import type { TemplateSummary } from "../../types";
 import {
   canStart,
@@ -98,14 +99,14 @@ describe("Foldcn session launcher", () => {
   });
 });
 
-describe("generateSessionName", () => {
+describe("randomSessionName", () => {
   it("draws adjective and noun independently, including both ends of each list", () => {
     const random = vi.spyOn(Math, "random");
     try {
       random.mockReturnValueOnce(0).mockReturnValueOnce(0.999999);
-      expect(generateSessionName()).toBe("Amber Topaz");
+      expect(Effect.runSync(randomSessionName)).toBe("Amber Topaz");
       random.mockReturnValueOnce(0.999999).mockReturnValueOnce(0);
-      expect(generateSessionName()).toBe("Winding Canyon");
+      expect(Effect.runSync(randomSessionName)).toBe("Winding Canyon");
     } finally {
       random.mockRestore();
     }

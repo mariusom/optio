@@ -1,35 +1,69 @@
-import { Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema as S, Semaphore } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
-import { getStore } from "../../../livestore/client";
-import { events, tables, type FieldDef } from "../../../livestore/schema";
-import { safeArray } from "../../fieldRows";
-import { friendlyFailure } from "../../errors";
+import { withStore, type StoreAccess } from "../../../livestore/access";
+import { fieldRowsToDefs } from "../../fieldRows";
+import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
+import { isAnswerComplete, isTaskEditable } from "./runner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const toEpoch = (v: number | Date | null | undefined): number | null => {
-  if (v === null || v === undefined) return null;
-  return v instanceof Date ? v.getTime() : Number(v);
+const now = Effect.map(Clock.currentTimeMillis, (millis) => new Date(millis));
+
+type AnswerRow = { readonly kind: string; readonly isRequired: number; readonly value: string };
+
+const isIncomplete = (row: AnswerRow) =>
+  !isAnswerComplete({ ...row, isRequired: row.isRequired === 1 });
+
+const failed = (error: string) => Message.FailedRunnerOp({ error });
+
+/**
+ * Runner writes run one at a time in dispatch order. Commands start in the
+ * order an update returns them, so batched answers commit before the record,
+ * edit or end command that reads them.
+ */
+const serialized = Semaphore.makeUnsafe(1).withPermits(1);
+
+/** Store-side counterpart of the planner's editable-section guard. */
+const isPersistedFieldEditable = (
+  { store, tables }: Pick<StoreAccess, "store" | "tables">,
+  taskFieldId: string,
+): boolean => {
+  const field = store.query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0];
+  if (field === undefined) return false;
+  const task = store.query(tables.sessionTasks.select().where({ id: field.taskId }))[0];
+  return (
+    task !== undefined &&
+    isTaskEditable({ endDate: task.endDate, isBeingEdited: task.isBeingEdited === 1 })
+  );
 };
 
-// ── UpdateFieldValue → taskFieldValueChanged (COALESCE startDate) ──────────
+// ── UpdateFieldValues → taskFieldValueChanged (COALESCE startDate) ─────────
 
-export const UpdateFieldValue = Command.define("UpdateFieldValue", {
-  args: { taskFieldId: S.String, value: S.String },
+/** Commits a batch of answers together; each keeps its first-write time. */
+export const UpdateFieldValues = Command.define("UpdateFieldValues", {
+  args: { writes: S.Array(S.Struct({ taskFieldId: S.String, value: S.String })) },
   messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
-  execute: ({ taskFieldId, value }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      store.commit(events.taskFieldValueChanged({ id: taskFieldId, value, now: new Date() }));
-      return Message.UpdatedFieldValue();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+  execute: ({ writes }) =>
+    withStore((access) =>
+      Effect.gen(function* () {
+        const committedAt = yield* now;
+        // Recheck persisted editability: a late input must not change a completed task.
+        const editable = writes.filter(({ taskFieldId }) =>
+          isPersistedFieldEditable(access, taskFieldId),
+        );
+        if (editable.length > 0) {
+          access.store.commit(
+            ...editable.map(({ taskFieldId, value }) =>
+              access.events.taskFieldValueChanged({ id: taskFieldId, value, now: committedAt }),
+            ),
+          );
+        }
+        return Message.UpdatedFieldValue();
+      }),
+    ).pipe(serialized, reportFailure("save", failed)),
 });
 
 /** Read and commit synchronously after opening the store: rapid taps must not
@@ -38,25 +72,22 @@ export const AdjustCounter = Command.define("AdjustCounter", {
   args: { taskFieldId: S.String, delta: S.Literals([-1, 1]) },
   messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
   execute: ({ taskFieldId, delta }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      const field = store.query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0];
-      if (!field || field.kind !== "counter" || !isScalarAnswerValid("counter", field.value))
+    withStore((access) =>
+      Effect.gen(function* () {
+        const { store, tables, events } = access;
+        const committedAt = yield* now;
+        const field = store.query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0];
+        if (!field || field.kind !== "counter" || !isScalarAnswerValid("counter", field.value))
+          return Message.UpdatedFieldValue();
+        if (!isPersistedFieldEditable(access, taskFieldId)) return Message.UpdatedFieldValue();
+        const value = Number(field.value) + delta;
+        if (value < 0 || !Number.isSafeInteger(value)) return Message.UpdatedFieldValue();
+        store.commit(
+          events.taskFieldValueChanged({ id: taskFieldId, value: String(value), now: committedAt }),
+        );
         return Message.UpdatedFieldValue();
-      const task = store.query(tables.sessionTasks.select().where({ id: field.taskId }))[0];
-      if (!task || (task.endDate !== null && !task.isBeingEdited))
-        return Message.UpdatedFieldValue();
-      const value = Number(field.value) + delta;
-      if (value < 0 || !Number.isSafeInteger(value)) return Message.UpdatedFieldValue();
-      store.commit(
-        events.taskFieldValueChanged({ id: taskFieldId, value: String(value), now: new Date() }),
-      );
-      return Message.UpdatedFieldValue();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+      }),
+    ).pipe(serialized, reportFailure("save", failed)),
 });
 
 // ── RecordTask → taskFinished + taskSpawned ─────────────────────────────────
@@ -65,90 +96,44 @@ export const RecordTask = Command.define("RecordTask", {
   args: { sessionId: S.String, currentTaskId: S.String },
   messages: [Message.TaskRecorded, Message.FailedRunnerOp],
   execute: ({ sessionId, currentTaskId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
+    withStore(({ store, tables, events }) =>
+      Effect.gen(function* () {
+        const endedAt = yield* now;
+        // Recheck persisted completion: the model may have changed since dispatch.
+        const taskRows = store.query(tables.sessionTasks.select().where({ sessionId }));
+        const currentRow = taskRows.find((r) => r.id === currentTaskId);
+        if (currentRow === undefined) return failed("That task isn’t available any more.");
+        // Guard: if task already finished, no-op
+        if (currentRow.endDate !== null) return Message.TaskRecorded();
 
-      // Recheck persisted completion: the model may have changed since dispatch.
-      const taskRows = store.query(
-        tables.sessionTasks.select().where({ sessionId }),
-      ) as ReadonlyArray<{
-        id: string;
-        orderIndex: number;
-        endDate: Date | number | null;
-        isBeingEdited: number;
-      }>;
-      const currentRow = taskRows.find((r) => r.id === currentTaskId);
-      if (currentRow === undefined) {
-        return Message.FailedRunnerOp({ error: "That task isn’t available any more." });
-      }
-      // Guard: if task already finished, no-op
-      if (currentRow.endDate !== null && currentRow.endDate !== undefined) {
+        const fieldRows = store.query(
+          tables.sessionTaskFields
+            .select()
+            .where({ taskId: currentTaskId })
+            .orderBy("sortOrder", "asc"),
+        );
+        // Recheck validity as well as requiredness against persisted values.
+        if (fieldRows.some(isIncomplete))
+          return failed("Complete required questions and correct invalid answers first.");
+
+        const nextOrder = taskRows.reduce((max, r) => Math.max(max, r.orderIndex), 0) + 1;
+        // The next task starts from the current task's questions and defaults.
+        const nextFields = fieldRowsToDefs(fieldRows).map((field) => ({
+          ...field,
+          id: crypto.randomUUID(),
+        }));
+        store.commit(
+          events.taskFinished({ id: currentTaskId, endedAt }),
+          events.taskSpawned({
+            sessionId,
+            id: crypto.randomUUID(),
+            orderIndex: nextOrder,
+            fields: nextFields,
+          }),
+        );
         return Message.TaskRecorded();
-      }
-
-      // Fetch fields of current task to check required completeness and to spawn next
-      const fieldRows = store.query(
-        tables.sessionTaskFields
-          .select()
-          .where({ taskId: currentTaskId })
-          .orderBy("sortOrder", "asc"),
-      ) as ReadonlyArray<{
-        id: string;
-        name: string;
-        kind: string;
-        isRequired: number;
-        defaultValue: string;
-        sortOrder: number;
-        optionsJson: string;
-        exclusiveOptionsJson: string;
-        value: string;
-        startDate: Date | number | null;
-      }>;
-
-      // Recheck validity as well as requiredness against persisted values.
-      const notDone = fieldRows.some(
-        (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
-      );
-      if (notDone) {
-        return Message.FailedRunnerOp({
-          error: "Complete required questions and correct invalid answers first.",
-        });
-      }
-
-      // Compute next orderIndex = max +1
-      const maxOrder = taskRows.reduce((m, r) => Math.max(m, Number(r.orderIndex)), 0);
-      const nextOrder = maxOrder + 1;
-
-      // Build FieldDefs for next task from current task's field definitions (template defaults)
-      const nextFields: FieldDef[] = fieldRows.map((r) => ({
-        id: crypto.randomUUID(),
-        name: r.name,
-        kind: r.kind as FieldDef["kind"],
-        isRequired: r.isRequired === 1,
-        defaultValue: r.defaultValue,
-        sortOrder: r.sortOrder,
-        options: [...safeArray(r.optionsJson)],
-        exclusiveOptions: [...safeArray(r.exclusiveOptionsJson)],
-      }));
-      // Sort by sortOrder to ensure correct order (already ordered, but ensure)
-      nextFields.sort((a, b) => a.sortOrder - b.sortOrder);
-
-      const nextTaskId = crypto.randomUUID();
-      store.commit(
-        events.taskFinished({ id: currentTaskId, endedAt: new Date() }),
-        events.taskSpawned({
-          sessionId,
-          id: nextTaskId,
-          orderIndex: nextOrder,
-          fields: nextFields,
-        }),
-      );
-      return Message.TaskRecorded();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("record", cause) })),
-      ),
-    ),
+      }),
+    ).pipe(serialized, reportFailure("record", failed)),
 });
 
 // ── EndSession → archive or delete then clear live graph, navigate ─────────
@@ -157,115 +142,64 @@ export const EndSession = Command.define("EndSession", {
   args: { sessionId: S.String },
   messages: [Message.SessionEnded, Message.FailedRunnerOp],
   execute: ({ sessionId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
-      if (!session || session.endedAt !== null) {
-        return Message.FailedRunnerOp({ error: "This session has already ended." });
-      }
+    withStore(({ store, tables, events }) =>
+      Effect.gen(function* () {
+        const endedAt = yield* now;
+        const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
+        if (!session || session.endedAt !== null) return failed("This session has already ended.");
 
-      const taskRows = store.query(
-        tables.sessionTasks.select().where({ sessionId }).orderBy("orderIndex", "asc"),
-      ) as ReadonlyArray<{
-        id: string;
-        orderIndex: number;
-        taskType: string;
-        endDate: Date | number | null;
-      }>;
+        const finished = store
+          .query(tables.sessionTasks.select().where({ sessionId }).orderBy("orderIndex", "asc"))
+          .filter((task) => task.endDate !== null);
 
-      const finished = taskRows.filter((r) => r.endDate !== null && r.endDate !== undefined);
+        if (finished.length === 0) {
+          // No tasks saved → delete live graph + session entirely
+          store.commit(
+            events.sessionLiveGraphCleared({ sessionId }),
+            events.sessionDeleted({ id: sessionId }),
+          );
+          return Message.SessionEnded();
+        }
 
-      if (finished.length === 0) {
-        // No tasks saved → delete live graph + session entirely
-        store.commit(
-          events.sessionLiveGraphCleared({ sessionId }),
-          events.sessionDeleted({ id: sessionId }),
-        );
-        return Message.SessionEnded();
-      }
-
-      // Build records for each finished task
-      type SectionRecord = {
-        sectionName: string;
-        value: string;
-        sectionType: string;
-        isRequired: boolean;
-        startedAt: Date | null;
-      };
-      type TaskRecord = {
-        taskIdNumber: number;
-        taskType: string;
-        startedAt: Date | null;
-        endedAt: Date | null;
-        sections: SectionRecord[];
-      };
-
-      const records: TaskRecord[] = [];
-
-      for (const task of finished) {
-        const fieldRows = store.query(
-          tables.sessionTaskFields.select().where({ taskId: task.id }).orderBy("sortOrder", "asc"),
-        ) as ReadonlyArray<{
-          name: string;
-          kind: string;
-          isRequired: number;
-          value: string;
-          startDate: Date | number | null;
-        }>;
-
-        if (
-          fieldRows.some(
-            (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
-          )
-        ) {
-          return Message.FailedRunnerOp({
-            error: `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
+        const records = [];
+        for (const task of finished) {
+          const fieldRows = store.query(
+            tables.sessionTaskFields
+              .select()
+              .where({ taskId: task.id })
+              .orderBy("sortOrder", "asc"),
+          );
+          if (fieldRows.some(isIncomplete)) {
+            return failed(
+              `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
+            );
+          }
+          // Task start = earliest first answer (null if untouched).
+          const starts = fieldRows.flatMap((r) => (r.startDate === null ? [] : [r.startDate]));
+          records.push({
+            taskIdNumber: task.orderIndex,
+            taskType: task.taskType,
+            startedAt:
+              starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null,
+            endedAt: task.endDate,
+            sections: fieldRows.map((r) => ({
+              sectionName: r.name,
+              value: r.value,
+              sectionType: r.kind,
+              isRequired: r.isRequired === 1,
+              startedAt: r.startDate,
+            })),
           });
         }
 
-        // task startedAt = min startDate among sections (null if untouched)
-        const starts = fieldRows
-          .map((r) => toEpoch(r.startDate as number | Date | null))
-          .filter((v): v is number => v !== null);
-        const taskStartedAt = starts.length > 0 ? new Date(Math.min(...starts)) : null;
-        const taskEndedAt =
-          task.endDate === null || task.endDate === undefined
-            ? null
-            : new Date(task.endDate as number | Date);
-
-        const sections: SectionRecord[] = fieldRows.map((r) => ({
-          sectionName: r.name,
-          value: r.value,
-          sectionType: r.kind,
-          isRequired: r.isRequired === 1,
-          startedAt:
-            r.startDate === null || r.startDate === undefined
-              ? null
-              : new Date(r.startDate as number | Date),
-        }));
-
-        records.push({
-          taskIdNumber: Number(task.orderIndex),
-          taskType: task.taskType ?? "single",
-          startedAt: taskStartedAt,
-          endedAt: taskEndedAt,
-          sections,
-        });
-      }
-
-      // Keep archive order consistent with the live task list.
-      records.sort((a, b) => a.taskIdNumber - b.taskIdNumber);
-
-      store.commit(
-        events.sessionEnded({ id: sessionId, endedAt: new Date(), records }),
-        events.sessionLiveGraphCleared({ sessionId }),
-      );
-      return Message.SessionEnded();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("end", cause) })),
-      ),
-    ),
+        // Archive order follows the live task list (queried by orderIndex).
+        store.commit(
+          events.sessionEnded({ id: sessionId, endedAt, records }),
+          events.sessionLiveGraphCleared({ sessionId }),
+        );
+        return Message.SessionEnded();
+      }),
+    ).pipe(serialized, reportFailure("end", failed)),
 });
 
 // ── SelectTask → taskEditStarted / taskEditFinished ─────────────────────────
@@ -274,86 +208,58 @@ export const SelectTask = Command.define("SelectTask", {
   args: { sessionId: S.String, taskId: S.String },
   messages: [Message.TaskEditStarted, Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ sessionId, taskId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      const taskRows = store.query(
-        tables.sessionTasks.select().where({ sessionId }),
-      ) as ReadonlyArray<{ id: string; endDate: Date | number | null; isBeingEdited: number }>;
-      const target = taskRows.find((r) => r.id === taskId);
-      if (target === undefined) return Message.TaskEditStarted({ taskId });
+    withStore(({ store, tables, events }) =>
+      Effect.sync(() => {
+        const taskRows = store.query(tables.sessionTasks.select().where({ sessionId }));
+        const target = taskRows.find((r) => r.id === taskId);
+        if (target === undefined) return Message.TaskEditStarted({ taskId });
 
-      const edited = taskRows.find((r) => r.isBeingEdited === 1);
-      if (edited && edited.id !== taskId) {
-        const fields = store.query(tables.sessionTaskFields.select().where({ taskId: edited.id }));
-        if (
-          fields.some(
-            (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
-          )
-        ) {
-          return Message.FailedRunnerOp({
-            error:
+        const edited = taskRows.find((r) => r.isBeingEdited === 1);
+        if (edited && edited.id !== taskId) {
+          const fields = store.query(
+            tables.sessionTaskFields.select().where({ taskId: edited.id }),
+          );
+          if (fields.some(isIncomplete)) {
+            return failed(
               "Complete required questions and correct invalid answers, or cancel the edit first.",
-          });
+            );
+          }
         }
-      }
 
-      const isFinished = target.endDate !== null && target.endDate !== undefined;
-      if (isFinished) {
-        store.commit(events.taskEditStarted({ sessionId, id: taskId }));
-        return Message.TaskEditStarted({ taskId });
-      } else {
-        // Selecting current (unfinished) → clear any editing
-        if (edited !== undefined) {
-          store.commit(events.taskEditFinished({ id: edited.id }));
+        if (target.endDate !== null) {
+          store.commit(events.taskEditStarted({ sessionId, id: taskId }));
+          return Message.TaskEditStarted({ taskId });
         }
-        // Return finished to trigger UI update
+        // Selecting current (unfinished) → clear any editing
+        if (edited !== undefined) store.commit(events.taskEditFinished({ id: edited.id }));
         return Message.TaskEditFinished();
-      }
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("load", cause) })),
-      ),
-    ),
+      }),
+    ).pipe(serialized, reportFailure("load", failed)),
 });
 
 export const CancelEdit = Command.define("CancelEdit", {
   args: { taskId: S.String },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ taskId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      store.commit(events.taskEditCancelled({ id: taskId }));
-      return Message.TaskEditFinished();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+    withStore(({ store, events }) =>
+      Effect.sync(() => {
+        store.commit(events.taskEditCancelled({ id: taskId }));
+        return Message.TaskEditFinished();
+      }),
+    ).pipe(serialized, reportFailure("save", failed)),
 });
 
 export const SaveEdit = Command.define("SaveEdit", {
   args: { taskId: S.String },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ taskId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      const fieldRows = store.query(
-        tables.sessionTaskFields.select().where({ taskId }),
-      ) as ReadonlyArray<{ kind: string; isRequired: number; value: string }>;
-      const notDone = fieldRows.some(
-        (r) => !isScalarAnswerValid(r.kind, r.value) || (r.isRequired === 1 && r.value === ""),
-      );
-      if (notDone) {
-        return Message.FailedRunnerOp({
-          error: "Complete required questions and correct invalid answers first.",
-        });
-      }
-
-      store.commit(events.taskEditFinished({ id: taskId }));
-      return Message.TaskEditFinished();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedRunnerOp({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+    withStore(({ store, tables, events }) =>
+      Effect.sync(() => {
+        const fieldRows = store.query(tables.sessionTaskFields.select().where({ taskId }));
+        if (fieldRows.some(isIncomplete))
+          return failed("Complete required questions and correct invalid answers first.");
+        store.commit(events.taskEditFinished({ id: taskId }));
+        return Message.TaskEditFinished();
+      }),
+    ).pipe(serialized, reportFailure("save", failed)),
 });

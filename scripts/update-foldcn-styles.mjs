@@ -13,25 +13,21 @@ import { declarationStrings } from "./foldcn-parser.mjs";
 import { addComponent, createRegistry } from "./foldcn-registry.mjs";
 
 const styles = ["nova", "vega", "maia", "lyra", "mira", "luma", "sera", "rhea"];
+// Only modules the app renders. Every class in the table ships in the CSS
+// bundle (Tailwind scans it), so unused registry items keep their local
+// classes under every preset. dialog, alert-dialog and sheet back app sheets.
 const components = [
   "alert",
   "alert-dialog",
   "badge",
   "button",
   "card",
-  "checkbox",
   "dialog",
   "empty",
-  "fieldset",
   "input",
   "item",
-  "label",
   "native-select",
-  "progress",
-  "radio-group",
-  "separator",
   "sheet",
-  "skeleton",
   "spinner",
   "switch",
   "textarea",

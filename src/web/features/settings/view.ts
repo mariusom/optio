@@ -1,7 +1,8 @@
 import type { HtmlBuilder } from "foldkit/html";
 import { Schema } from "effect";
 
-import { choiceRows, groupedList, notice, page, row, sheet } from "@/components/app";
+import { choiceRows, groupedList, notice, page, row } from "@/components/app";
+import { sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
 import { input } from "@/components/ui/input";
 import { Message } from "../../../messages";
@@ -73,7 +74,6 @@ const accentPicker = (accentDraft: string | null, h: HtmlBuilder<Message>) =>
             description:
               "Choose a colour or enter its hex code. Changes apply only when confirmed.",
             onDismiss: Message.CanceledAccentPicker(),
-            dismissLabel: "Cancel custom colour",
             footer: {
               cancel: { label: "Cancel", onClick: Message.CanceledAccentPicker() },
               confirm: {

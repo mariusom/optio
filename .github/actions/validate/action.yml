@@ -1,0 +1,43 @@
+name: Validate optio
+description: Lint, type-check, find unused code, test, audit, build and run the production E2E journey. Expects the setup action with Playwright.
+
+# Independent checks keep running after an earlier failure so one run reports
+# every problem, e.g. stale license artifacts on a Dependabot update no longer
+# hide lint and test results. The build rejects stale license artifacts too;
+# E2E needs a successful build.
+runs:
+  using: composite
+  steps:
+    - name: Lint and format
+      shell: bash
+      run: pnpm check
+    - name: Type-check
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm exec tsc --noEmit
+    - name: Unused code and dependencies
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm lint:dead
+    - name: Unit and browser tests
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm test
+    - name: License artifacts
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm licenses:check
+    # Build-time dependencies can alter the published application too.
+    - name: Dependency audit
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm audit --audit-level high
+    - id: build
+      name: Production build
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: pnpm build
+    - name: Production E2E
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      shell: bash
+      run: pnpm test:e2e

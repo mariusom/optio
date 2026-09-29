@@ -1,23 +1,25 @@
 import { Effect, Stream } from "effect";
+import { Render } from "foldkit";
 
-const afterRender = (action: () => void): Stream.Stream<never> =>
-  Stream.fromEffect(
-    Effect.sync(() => {
-      setTimeout(action, 0);
-    }),
-  ).pipe(Stream.drain);
+/** Runs a DOM effect once the render that caused it has committed. */
+const afterCommit = (action: () => void): Stream.Stream<never> =>
+  Stream.fromEffect(Effect.andThen(Render.afterCommit, Effect.sync(action))).pipe(Stream.drain);
 
-const visibleElement = (ids: ReadonlyArray<string>) => {
-  if (typeof document === "undefined") return undefined;
-  return ids
+/** Responsive copies share content under different IDs; target the rendered one. */
+const visibleElement = (ids: ReadonlyArray<string>) =>
+  ids
     .map((id) => document.getElementById(id))
     .find((element) => element !== null && element.getClientRects().length > 0);
-};
+
+/** Scripted smooth scrolling is not covered by the CSS reduced-motion rule. */
+const scrollBehavior = (): ScrollBehavior =>
+  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches
+    ? "auto"
+    : "smooth";
 
 export const focusEditorDraft = (draftId: string | null): Stream.Stream<never> => {
   if (draftId === null) return Stream.empty;
-  return afterRender(() => {
-    if (typeof document === "undefined") return;
+  return afterCommit(() => {
     document.getElementById("question-name")?.focus({ preventScroll: true });
     document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
   });
@@ -25,9 +27,9 @@ export const focusEditorDraft = (draftId: string | null): Stream.Stream<never> =
 
 export const scrollToSection = (sectionId: string | null): Stream.Stream<never> => {
   if (sectionId === null) return Stream.empty;
-  return afterRender(() => {
+  return afterCommit(() => {
     visibleElement([`mobile-${sectionId}`, `tablet-${sectionId}`])?.scrollIntoView({
-      behavior: "smooth",
+      behavior: scrollBehavior(),
       block: "center",
     });
   });
@@ -35,32 +37,33 @@ export const scrollToSection = (sectionId: string | null): Stream.Stream<never> 
 
 export const scrollToCurrentTask = (taskId: string | null): Stream.Stream<never> => {
   if (taskId === null) return Stream.empty;
-  return afterRender(() => {
+  return afterCommit(() => {
     visibleElement(["mobile-formTop", "tablet-formTop"])?.scrollIntoView({
-      behavior: "smooth",
+      behavior: scrollBehavior(),
       block: "start",
     });
   });
 };
 
+/**
+ * Moves screen-reader and keyboard focus to a help page's title once the page
+ * has painted. The heading becomes focusable without joining the tab order.
+ */
 export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream<never> => {
   if (page === null) return Stream.empty;
   return Stream.fromEffect(
-    Effect.callback<void>((resume) => {
-      let frame = requestAnimationFrame(() => {
-        frame = requestAnimationFrame(() => {
-          const content = document.querySelector(`[data-help-page="${page}"]`);
-          const main = content?.closest("main");
-          const heading = content?.querySelector("h1");
-          if (main && heading) {
-            main.scrollTop = 0;
-            heading.tabIndex = -1;
-            heading.focus({ preventScroll: true });
-          }
-          resume(Effect.void);
-        });
-      });
-      return Effect.sync(() => cancelAnimationFrame(frame));
-    }),
+    Effect.andThen(
+      Render.afterPaint,
+      Effect.sync(() => {
+        const content = document.querySelector(`[data-help-page="${page}"]`);
+        const main = content?.closest("main");
+        const heading = content?.querySelector("h1");
+        if (main && heading) {
+          main.scrollTop = 0;
+          if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+          heading.focus({ preventScroll: true });
+        }
+      }),
+    ),
   ).pipe(Stream.drain);
 };

@@ -11,6 +11,7 @@ import { templateEditorPage } from "../web/features/templates/editorView";
 import { templatesPage } from "../web/features/templates/view";
 import { historyPage } from "../web/features/history/historyView";
 import { sessionDetailPage } from "../web/features/history/sessionDetailView";
+import { storageNotice } from "../web/storageNotice";
 import { button } from "@/components/ui/button";
 import { Plus, icon, pageHeader, sidebar, tabBar } from "@/components/app";
 
@@ -37,6 +38,10 @@ const pageTitle = (route: Route): string => {
   }
 };
 
+/** Names the page in the tab, browser history and screen-reader announcements. */
+const documentTitle = (model: Model): string =>
+  `${model.showCreate ? "New template" : pageTitle(model.route)} · Optio`;
+
 const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
   if (model.showCreate) return templateEditorPage(model, h);
   switch (model.route._tag) {
@@ -52,9 +57,9 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>) => {
     case "HistoryTab":
       return historyPage(model, h);
     case "SessionRunner":
-      return sessionView(model as unknown as Parameters<typeof sessionView>[0], h);
+      return sessionView(model, h);
     case "TemplateEditor":
-      return templateEditorPage(model as Parameters<typeof templateEditorPage>[0], h);
+      return templateEditorPage(model, h);
     case "SessionDetail":
       return sessionDetailPage(model, h);
   }
@@ -99,10 +104,13 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>) => {
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const isRunner = model.route._tag === "SessionRunner";
-  const hasHistory = model.history.length > 0;
   const header = rootHeader(model, h);
+  // The runner places its own notice; starting a session counts as recording.
+  const storage = isRunner
+    ? null
+    : storageNotice(model, h, { recording: model.route._tag === "StartTab" });
   return {
-    title: "optio",
+    title: documentTitle(model),
     body: h.div(
       [
         h.Class(
@@ -110,20 +118,24 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         ),
       ],
       [
-        ...(isRunner ? [] : [sidebar(model.route, hasHistory, h)]),
+        ...(isRunner ? [] : [sidebar(model.route, h)]),
         h.main(
           [
             h.Class(
-              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 ${
+              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 has-[[data-slot=sheet]]:overflow-hidden ${
                 isRunner ? "" : "md:pl-[4.5rem] xl:pl-60"
               }`,
             ),
           ],
-          [...(header === null ? [] : [header]), pageFor(model, h)],
+          [
+            ...(header === null ? [] : [header]),
+            ...(storage === null
+              ? []
+              : [h.div([h.Class("mx-auto w-full max-w-3xl px-safe pb-4")], [storage])]),
+            pageFor(model, h),
+          ],
         ),
-        ...(isFullScreenRoute(model.route) || model.showCreate
-          ? []
-          : [tabBar(model.route, hasHistory, h)]),
+        ...(isFullScreenRoute(model.route) || model.showCreate ? [] : [tabBar(model.route, h)]),
       ],
     ),
   } satisfies Document;

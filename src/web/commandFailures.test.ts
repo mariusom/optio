@@ -12,7 +12,7 @@ import {
   RecordTask,
   SaveEdit,
   SelectTask,
-  UpdateFieldValue,
+  UpdateFieldValues,
   AdjustCounter,
 } from "./features/session/runnerCommands";
 import {
@@ -28,7 +28,7 @@ vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
 
 const query = vi.fn();
 const commit = vi.fn();
-const task = { id: "task", orderIndex: 1, endDate: null, isBeingEdited: 0 };
+const task = { id: "task", orderIndex: 1, taskType: "single", endDate: null, isBeingEdited: 0 };
 const finishedTask = { ...task, endDate: new Date(1000) };
 const liveSession = { id: "session", endedAt: null };
 const template = { id: "template", name: "Study", isDefault: 0, createdAt: new Date(0) };
@@ -41,9 +41,9 @@ beforeEach(() => {
 
 const cases = [
   {
-    name: "UpdateFieldValue",
-    command: () => UpdateFieldValue({ taskFieldId: "field", value: "x" }),
-    rows: [],
+    name: "UpdateFieldValues",
+    command: () => UpdateFieldValues({ writes: [{ taskFieldId: "field", value: "x" }] }),
+    rows: [[{ id: "field", taskId: "task" }], [task]],
     success: "UpdatedFieldValue",
     failure: "FailedRunnerOp",
     writes: true,
@@ -109,7 +109,7 @@ const cases = [
     command: () => RenameHistorySession({ id: "session", sessionName: "Edited" }),
     rows: [],
     success: "HistoryNameUpdated",
-    failure: "FailedCsvExport",
+    failure: "FailedHistoryOp",
     writes: true,
   },
   {
@@ -117,16 +117,19 @@ const cases = [
     command: () => DeleteHistorySession({ id: "session" }),
     rows: [],
     success: "HistoryDeleted",
-    failure: "FailedCsvExport",
+    failure: "FailedHistoryOp",
     writes: true,
   },
   {
     name: "ExportSessionCsv",
     command: () => ExportSessionCsv({ sessionId: "session" }),
+    // One combined read of the session, its records and their answers.
     rows: [
-      [{ id: "session", sessionName: "Study" }],
-      [{ id: "record", taskId: 1, startedAt: null, endedAt: null }],
-      [],
+      {
+        session: { id: "session", sessionName: "Study", templateName: "" },
+        records: [{ id: "record", taskId: 1, startedAt: null, endedAt: null }],
+        sections: [],
+      },
     ],
     success: "CsvExported",
     failure: "FailedCsvExport",
@@ -210,6 +213,43 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
         expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
         if (stage === "open") expect(query).not.toHaveBeenCalled();
       }),
+  );
+});
+
+describe("field writes", () => {
+  it.effect.each([
+    ["completed", finishedTask, 0],
+    ["completed in edit mode", { ...finishedTask, isBeingEdited: 1 }, 1],
+  ] as const)("late input on a %s task", ([, row, commits]) =>
+    Effect.gen(function* () {
+      query.mockReturnValueOnce([{ id: "field", taskId: "task" }]).mockReturnValueOnce([row]);
+      expect(
+        yield* UpdateFieldValues({ writes: [{ taskFieldId: "field", value: "late" }] }).effect,
+      ).toMatchObject({ _tag: "UpdatedFieldValue" });
+      expect(commit).toHaveBeenCalledTimes(commits);
+    }),
+  );
+});
+
+describe("batched field writes", () => {
+  it.effect("commits a batch in one transaction and skips answers that became read-only", () =>
+    Effect.gen(function* () {
+      query
+        .mockReturnValueOnce([{ id: "open", taskId: "task" }])
+        .mockReturnValueOnce([task])
+        .mockReturnValueOnce([{ id: "closed", taskId: "done" }])
+        .mockReturnValueOnce([{ ...finishedTask, id: "done" }]);
+      const result = yield* UpdateFieldValues({
+        writes: [
+          { taskFieldId: "open", value: "Observed" },
+          { taskFieldId: "closed", value: "Late" },
+        ],
+      }).effect;
+      expect(result).toMatchObject({ _tag: "UpdatedFieldValue" });
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect(commit.mock.calls[0]).toHaveLength(1);
+      expect(commit.mock.calls[0]![0]).toMatchObject({ args: { id: "open", value: "Observed" } });
+    }),
   );
 });
 

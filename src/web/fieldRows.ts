@@ -6,7 +6,9 @@
  * `safeArray` parse and `fieldRowsToDefs` mapping (3–4 copies each).
  */
 
-import type { FieldDef } from "../livestore/schema";
+import { Schema } from "effect";
+
+import { FieldKind, type FieldDef } from "../domain/fields";
 
 export const safeArray = (json: string): ReadonlyArray<string> => {
   try {
@@ -16,6 +18,14 @@ export const safeArray = (json: string): ReadonlyArray<string> => {
     return [];
   }
 };
+
+const isFieldKind = Schema.is(FieldKind);
+
+/**
+ * Stored kinds come from validated events; an unknown kind (from a future
+ * version's data) falls back to the column default, a short text answer.
+ */
+export const toFieldKind = (kind: string): FieldKind => (isFieldKind(kind) ? kind : "textInput");
 
 /** A template-field row as returned by LiveStore (options in JSON columns). */
 export type FieldRow = {
@@ -33,7 +43,7 @@ export const fieldRowsToDefs = (rows: ReadonlyArray<FieldRow>): ReadonlyArray<Fi
   rows.map((row) => ({
     id: row.id,
     name: row.name,
-    kind: row.kind as FieldDef["kind"],
+    kind: toFieldKind(row.kind),
     isRequired: row.isRequired === 1,
     defaultValue: row.defaultValue,
     sortOrder: row.sortOrder,

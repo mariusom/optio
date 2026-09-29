@@ -196,9 +196,6 @@ importers:
       '@livestore/wa-sqlite':
         specifier: 0.5.0-dev.0
         version: 0.5.0-dev.0
-      '@typeonce/effect-machine':
-        specifier: 0.37.0
-        version: 0.37.0(effect@4.0.0-rc.112)
       cn:
         specifier: ^0.4.0
         version: 0.4.0
@@ -218,6 +215,9 @@ importers:
       '@effect/vitest':
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11)
+      '@foldkit/devtools':
+        specifier: ^0.159.0
+        version: 0.159.0(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@foldkit/ui@0.159.0(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112)))(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112))
       '@foldkit/vite-plugin':
         specifier: ^0.21.0
         version: 0.21.0(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112))(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2))
@@ -876,6 +876,15 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@foldkit/devtools@0.159.0':
+    resolution: {integrity: sha512-2F74brPwDaILbyIBGAnCeeSfMnZ+T5kLWcl77UfMUl8B1jcL6BsEB8drEIeDz4U92z2CFo3iyZzVQ5uG2S+1MQ==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@effect/platform-browser': 4.0.0-rc.112
+      '@foldkit/ui': ^0
+      effect: 4.0.0-rc.112
+      foldkit: '>=0.153.0'
 
   '@foldkit/ui@0.159.0':
     resolution: {integrity: sha512-7aTsk3nTK1NeENhpUCdJiPyIKU9sihA5QB8oRPOcJXt/ipPdBnHkENr6lnfW9PIfx1Qs565ijeAEGAzsSnGrRQ==}
@@ -1800,12 +1809,6 @@ packages:
     resolution: {integrity: sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==}
     engines: {node: '>=12'}
 
-  '@typeonce/effect-machine@0.37.0':
-    resolution: {integrity: sha512-fBA1lJudOTQqjar4hbu6lrPcLOTdhoa43eJegzTSCzuVLCdrnfOIViyRMybORsX/LPHg85f4Oc+a3dYkrEBLJQ==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      effect: 4.0.0-rc.112
-
   '@types/aria-query@5.0.4':
     resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
 
@@ -2345,6 +2348,10 @@ packages:
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
+
+  clsx@2.1.1:
+    resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
+    engines: {node: '>=6'}
 
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
@@ -4388,6 +4395,14 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@foldkit/devtools@0.159.0(@effect/platform-browser@4.0.0-rc.112(effect@4.0.0-rc.112))(@foldkit/ui@0.159.0(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112)))(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112))':
+    dependencies:
+      '@effect/platform-browser': 4.0.0-rc.112(effect@4.0.0-rc.112)
+      '@foldkit/ui': 0.159.0(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112))
+      clsx: 2.1.1
+      effect: 4.0.0-rc.112
+      foldkit: 0.159.0(effect@4.0.0-rc.112)
+
   '@foldkit/ui@0.159.0(effect@4.0.0-rc.112)(foldkit@0.159.0(effect@4.0.0-rc.112))':
     dependencies:
       '@floating-ui/dom': 1.8.0
@@ -5002,10 +5017,6 @@ snapshots:
       magic-string: 0.30.21
       string.prototype.matchall: 4.1.0
 
-  '@typeonce/effect-machine@0.37.0(effect@4.0.0-rc.112)':
-    dependencies:
-      effect: 4.0.0-rc.112
-
   '@types/aria-query@5.0.4': {}
 
   '@types/chai@5.2.3':
@@ -5107,18 +5118,6 @@ snapshots:
       '@testing-library/dom': 10.4.2
       '@testing-library/user-event': 14.6.7(@testing-library/dom@10.4.2)
       '@vitest/browser': 4.1.11(@voidzero-dev/vite-plus-core@0.3.3(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2)(typescript@7.0.2))(vitest@4.1.11)
-      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/browser-playwright@4.1.11)(@vitest/browser-preview@4.1.11)(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2))
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
-
-  '@vitest/browser-preview@4.1.11(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2))(vitest@4.1.11)':
-    dependencies:
-      '@testing-library/dom': 10.4.2
-      '@testing-library/user-event': 14.6.7(@testing-library/dom@10.4.2)
-      '@vitest/browser': 4.1.11(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2))(vitest@4.1.11)
       vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.6.3)(@vitest/browser-playwright@4.1.11)(@vitest/browser-preview@4.1.11)(vite@8.3.1(@types/node@26.6.3)(jiti@2.7.0)(terser@5.51.2))
     transitivePeerDependencies:
       - bufferutil
@@ -5442,6 +5441,8 @@ snapshots:
   caniuse-lite@1.0.30001812: {}
 
   chai@6.2.2: {}
+
+  clsx@2.1.1: {}
 
   cluster-key-slot@1.1.2: {}
 

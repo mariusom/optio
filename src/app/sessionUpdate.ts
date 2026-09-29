@@ -1,9 +1,7 @@
 import { DiscardLiveSession, StartSession } from "../web/features/session/startCommands";
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
-import { generateSessionName } from "../web/random-name";
 import { sessionRunnerRouter } from "../web/routes";
-import type { SessionEvent } from "../machine/session/sessionMachine";
-import { NavigateInternal, applyPlan } from "./commands";
+import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
 import type { Update } from "foldkit";
 import { Message } from "../messages";
 import type { Model } from "./model";
@@ -15,6 +13,7 @@ type SessionHandlers = Pick<
   AllHandlers,
   | "GotActiveSession"
   | "ChangedSessionNameInput"
+  | "GotPlaceholderName"
   | "SelectedTemplate"
   | "ClickedStartSession"
   | "SessionStarted"
@@ -27,6 +26,8 @@ type SessionHandlers = Pick<
   | "GotRunnerData"
   | "Tick"
   | "ChangedFieldValue"
+  | "SettledFieldInput"
+  | "BlurredField"
   | "AdjustedCounter"
   | "ClickedRecord"
   | "TaskRecorded"
@@ -49,6 +50,7 @@ type SessionHandlers = Pick<
 export const sessionHandlers = (model: Model): SessionHandlers => ({
   GotActiveSession: ({ activeSession }) => ({ model: { ...model, activeSession } }),
   ChangedSessionNameInput: ({ text }) => ({ model: { ...model, sessionNameInput: text } }),
+  GotPlaceholderName: ({ name }) => ({ model: { ...model, placeholderName: name } }),
   SelectedTemplate: ({ id }) => ({ model: { ...model, selectedTemplateId: id } }),
   ClickedStartSession: () => {
     const selected = resolveSelectedTemplate(model.templates, model.selectedTemplateId);
@@ -74,10 +76,12 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     model: {
       ...model,
       sessionNameInput: "",
-      placeholderName: generateSessionName(),
       lastError: null,
     },
-    commands: [NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` })],
+    commands: [
+      GeneratePlaceholderName({}),
+      NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
+    ],
   }),
   ClickedResumeSession: () => {
     if (model.activeSession === null) return { model };
@@ -104,16 +108,16 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       ...model,
       activeSession: null,
       pendingDiscardSession: false,
-      placeholderName: generateSessionName(),
       lastError: null,
     },
+    commands: [GeneratePlaceholderName({})],
   }),
   FailedSessionOp: ({ error }) => ({
     model: { ...model, lastError: error, pendingDiscardSession: false },
   }),
 
   GotRunnerData: ({ data }) => {
-    const planned = applyPlan(model, { _tag: "DataSynced", data } as SessionEvent);
+    const planned = applyPlan(model, { _tag: "DataSynced", data });
     // Dead link / store reset mid-session: the runner route has no live
     // session — bounce to Start instead of an infinite "Loading session…".
     if (data === null && model.route._tag === "SessionRunner" && planned.model.runner === null) {
@@ -129,9 +133,11 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     return { model: { ...model, now, runner } };
   },
   ChangedFieldValue: ({ taskFieldId, value }) =>
-    applyPlan(model, { _tag: "FieldChanged", taskFieldId, value } as SessionEvent),
+    applyPlan(model, { _tag: "FieldChanged", taskFieldId, value }),
+  SettledFieldInput: () => applyPlan(model, { _tag: "FlushRequested" }),
+  BlurredField: () => applyPlan(model, { _tag: "FlushRequested" }),
   AdjustedCounter: ({ taskFieldId, delta }) =>
-    applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta } as SessionEvent),
+    applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta }),
   ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
   TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
@@ -140,8 +146,12 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   SessionEnded: () => {
     const planned = applyPlan(model, { _tag: "EndAcked" });
     return {
-      model: { ...planned.model, placeholderName: generateSessionName() },
-      commands: [...(planned.commands ?? []), NavigateInternal({ url: "#/start" })],
+      model: planned.model,
+      commands: [
+        ...(planned.commands ?? []),
+        GeneratePlaceholderName({}),
+        NavigateInternal({ url: "#/start" }),
+      ],
     };
   },
   ClickedSelectTask: ({ taskId }) => applyPlan(model, { _tag: "TaskSelected", taskId }),

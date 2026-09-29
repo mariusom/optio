@@ -1,7 +1,8 @@
-// fallow-ignore-file unused-file — tooling, run manually (bun scripts/gen-icons.ts)
-// Generates PWA PNG icons (dark rounded square + light-blue θ-ish ring) without
-// any image libraries: raw RGBA raster + zlib deflate + PNG chunk assembly.
-// Run: bun scripts/gen-icons.ts
+// Generates the PWA PNG icons from the public/icon.svg design (a light "o" on
+// the default primary colour) without image libraries: raw RGBA raster + zlib
+// deflate + PNG chunk assembly. The "o" is drawn as an elliptical ring so the
+// output does not depend on installed fonts.
+// Run: node scripts/gen-icons.ts
 import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
 
@@ -59,54 +60,49 @@ const encodePng = (
   ]);
 };
 
-// Scene: dark slate (#0f172a) rounded square, light-blue (#38bdf8) ring + bar (θ).
-const S = [15 / 255, 23 / 255, 42 / 255]; // #0f172a
-const C = [56 / 255, 189 / 255, 248 / 255]; // #38bdf8
+// Colours from public/icon.svg (default --primary / --primary-foreground).
+const background = [0x17, 0x17, 0x17];
+const foreground = [0xfa, 0xfa, 0xfa];
 
-const roundedSquareMask = (px: number, py: number, dimensions: [number, number]) => {
-  const [size, radius] = dimensions;
-  const insideCenter =
-    (px >= radius && px <= size - radius) || (py >= radius && py <= size - radius);
-  if (insideCenter) return 1;
-  const cornerX = px < radius ? radius : size - radius;
-  const cornerY = py < radius ? radius : size - radius;
-  return Math.min(1, Math.max(0, radius - Math.hypot(px - cornerX, py - cornerY) + 1));
+// Glyph proportions of the semibold "o" in icon.svg's 100-unit viewBox.
+const glyph = { rx: 15.5, ry: 16.5, strokeX: 7, strokeY: 5.75 };
+
+const clamp = (value: number) => Math.min(1, Math.max(0, value));
+
+// Inside the outer ellipse and outside the inner one, anti-aliased over about
+// one pixel using approximate distances in viewBox units.
+const ringCoverage = (x: number, y: number, pixelUnits: number) => {
+  const radius = Math.min(glyph.rx, glyph.ry);
+  const outer = (Math.hypot(x / glyph.rx, y / glyph.ry) - 1) * radius;
+  const innerRadius = radius - glyph.strokeY;
+  const inner =
+    (Math.hypot(x / (glyph.rx - glyph.strokeX), y / (glyph.ry - glyph.strokeY)) - 1) * innerRadius;
+  return clamp(0.5 - outer / pixelUnits) * clamp(0.5 + inner / pixelUnits);
 };
 
-const channel = (background: number, foreground: number, glyph: number) =>
-  Math.round((background * (1 - glyph) + foreground * glyph) * 255);
-
-const makePixel = (size: number) => {
-  const radius = size * 0.22;
-  const ringR = size * 0.32;
-  const ringW = size * 0.075;
-  const barH = size * 0.09;
-  const cx = size / 2;
-  const cy = size / 2;
-
+/** Full-bleed square: platforms apply their own corner mask. `scale` shrinks
+ *  the glyph for maskable icons, whose safe zone is the central 80% circle. */
+const makePixel = (size: number, scale: number) => {
+  const units = 100 / size / scale;
   return (x: number, y: number): [number, number, number, number] => {
-    const px = x + 0.5,
-      py = y + 0.5;
-    // Rounded-rect mask
-    const mask = roundedSquareMask(px, py, [size, radius]);
-    const a = mask * 255;
-
-    // Ring: circle band + horizontal bar (θ-like)
-    const dist = Math.hypot(px - cx, py - cy);
-    const ring = dist >= ringR - ringW && dist <= ringR + ringW ? 1 : 0;
-    const bar = py >= cy - barH / 2 && py <= cy + barH / 2 && Math.abs(px - cx) <= ringR ? 1 : 0;
-    const glyph = Math.max(ring, bar);
-
-    const r = channel(S[0], C[0], glyph);
-    const g = channel(S[1], C[1], glyph);
-    const b = channel(S[2], C[2], glyph);
-    return [r, g, b, Math.round(a)];
+    const ux = ((x + 0.5) / size) * 100 - 50;
+    const uy = ((y + 0.5) / size) * 100 - 50;
+    const coverage = ringCoverage(ux / scale, uy / scale, units);
+    const mix = (index: number) =>
+      Math.round(background[index]! * (1 - coverage) + foreground[index]! * coverage);
+    return [mix(0), mix(1), mix(2), 255];
   };
 };
 
 mkdirSync("public", { recursive: true });
-for (const size of [180, 192, 512]) {
-  const png = encodePng(size, makePixel(size));
-  writeFileSync(`public/icon-${size}.png`, png);
-  console.log(`public/icon-${size}.png (${png.length} bytes)`);
+const outputs: ReadonlyArray<readonly [string, number, number]> = [
+  ["icon-180.png", 180, 1],
+  ["icon-192.png", 192, 1],
+  ["icon-512.png", 512, 1],
+  ["icon-maskable-512.png", 512, 0.8],
+];
+for (const [name, size, scale] of outputs) {
+  const png = encodePng(size, makePixel(size, scale));
+  writeFileSync(`public/${name}`, png);
+  console.log(`public/${name} (${png.length} bytes)`);
 }

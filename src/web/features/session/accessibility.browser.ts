@@ -28,6 +28,7 @@ const runnerFixture = (value: string, override: Partial<RunnerState> = {}): Runn
   showSidebar: true,
   showEndConfirm: false,
   lastError: null,
+  fieldWrites: { revision: 0, pending: [] },
   tasks: [
     {
       id: "task",
@@ -123,11 +124,12 @@ const mount = async (
     Runtime.makeElement({
       Model,
       container,
+      // Dev-mode budgets flag timing noise here and flood the log with Models.
+      slow: false,
       init: () => ({
         model: {
           ...model,
           runner: runnerFixture(value, runnerOverride),
-          runnerPhase: "collecting" as const,
         },
       }),
       view: (current, h) =>
@@ -140,15 +142,12 @@ const mount = async (
         const result = update(current, message);
         if (message._tag !== "ChangedFieldValue") return result;
         changes.push({ taskFieldId: message.taskFieldId, value: message.value });
-        expect(result.commands).toEqual([
-          expect.objectContaining({
-            name: "UpdateFieldValue",
-            args: {
-              taskFieldId: message.taskFieldId,
-              value: message.value,
-            },
-          }),
-        ]);
+        // Typed answers wait for a pause; first answers and choices write at once.
+        const write = expect.objectContaining({
+          name: "UpdateFieldValues",
+          args: { writes: [{ taskFieldId: message.taskFieldId, value: message.value }] },
+        });
+        expect([[], [write]]).toContainEqual(result.commands ?? []);
         // Simulate the store snapshot that would follow the emitted write command.
         const runner = result.model.runner!;
         return update(
@@ -206,7 +205,9 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
         expect(rect.left).toBeGreaterThanOrEqual(bounds.left - 1);
         expect(rect.right).toBeLessThanOrEqual(bounds.right + 1);
       }
-      expect(bounds.right).toBeLessThan(input.getBoundingClientRect().left);
+      // Phones stack the label above the field, like every other question.
+      if (width < 768) expect(bounds.bottom).toBeLessThanOrEqual(input.getBoundingClientRect().top);
+      else expect(bounds.right).toBeLessThan(input.getBoundingClientRect().left);
       expect(input.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
       await userEvent.click(label);
       await expect.element(page.getByRole("textbox", { name, exact: true })).toHaveFocus();
@@ -342,10 +343,9 @@ describe.each([390, 1184])("choice grids at %ipx", (width) => {
     await expect.element(none).toBeChecked();
     await expect.element(tools.getByRole("checkbox", { name: "Torque driver" })).not.toBeChecked();
     await expect.element(tools.getByRole("checkbox", { name: "Scanner" })).not.toBeChecked();
-    expect(none.element().textContent).toBe("None");
-    expect(
-      none.element().querySelector('[title="Exclusive choice — clears other choices"] svg'),
-    ).not.toBeNull();
+    // The caption is visible on touch screens; the accessible name stays "None".
+    expect(none.element().textContent).toBe("NoneClears others");
+    expect(none.element().querySelector('[data-slot="exclusive-hint"] svg')).not.toBeNull();
     expect(none.element().getAttribute("aria-description")).toContain("clears all other choices");
     await tools.getByRole("checkbox", { name: "Scanner" }).click();
     await expect.element(none).not.toBeChecked();

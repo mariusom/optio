@@ -16,9 +16,10 @@ it.each([
   const materialize = schema.state.materializers.get(`v3.${name}`)!;
   const now = new Date("2026-03-04T09:12:34Z");
   vi.setSystemTime(new Date("2026-01-01T10:00:00Z"));
-  const before = sql(materialize({ ...payload, now }, {} as never));
+  const context = { query: () => [] } as never;
+  const before = sql(materialize({ ...payload, now }, context));
   vi.setSystemTime(new Date("2026-09-01T18:00:00Z"));
-  expect(sql(materialize({ ...payload, now }, {} as never))).toEqual(before);
+  expect(sql(materialize({ ...payload, now }, context))).toEqual(before);
   expect(JSON.stringify(before)).toContain("1772615554000");
   expect(JSON.stringify(before)).not.toContain(String(Date.now()));
 });

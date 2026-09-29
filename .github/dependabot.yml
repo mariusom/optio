@@ -7,6 +7,9 @@ updates:
       day: monday
       time: "09:00"
       timezone: Europe/London
+    # pnpm refuses versions younger than 24 hours (minimumReleaseAge).
+    cooldown:
+      default-days: 1
     # Exact Effect/LiveStore/Vitest pins and workspace overrides require a
     # coordinated manual migration. Bot updates stay within our manifest.
     versioning-strategy: lockfile-only
@@ -18,7 +21,6 @@ updates:
           - foldkit
           - "@foldkit/*"
           - "@livestore/*"
-          - "@typeonce/effect-machine"
           - vite-plus
           - vitest
           - "@vitest/*"
@@ -40,6 +42,8 @@ updates:
       day: monday
       time: "09:00"
       timezone: Europe/London
+    cooldown:
+      default-days: 1
     groups:
       actions:
         patterns: ["*"]

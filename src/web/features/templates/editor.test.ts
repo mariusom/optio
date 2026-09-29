@@ -3,7 +3,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vitest";
 
 import { getStore } from "../../../livestore/client";
-import type { FieldDef } from "../../../livestore/schema";
+import type { FieldDef } from "../../../domain/fields";
 import { init, subscriptions, update } from "../../../main";
 import { Message } from "../../../messages";
 import {
@@ -84,17 +84,12 @@ describe("template detail regressions", () => {
     ]);
   });
 
-  it.effect("does not treat the initial empty fields callback as a missing template", () =>
+  it.effect("reads a template with no questions as present, then unsubscribes", () =>
     Effect.gen(function* () {
-      const callbacks: Array<(rows: ReadonlyArray<unknown>) => void> = [];
       const unsubscribe = vi.fn();
       vi.mocked(getStore).mockResolvedValue({
-        subscribe: (_query: unknown, callback: (rows: ReadonlyArray<unknown>) => void) => {
-          callbacks.push(callback);
-          if (callbacks.length === 2) {
-            callbacks[1]!([]);
-            callbacks[0]!([{ id: "t1", name: "Template", isDefault: 0 }]);
-          }
+        subscribe: (_query: unknown, callback: (rows: unknown) => void) => {
+          callback({ template: { id: "t1", name: "Template", isDefault: 0 }, fields: [] });
           return unsubscribe;
         },
       } as unknown as Awaited<ReturnType<typeof getStore>>);
@@ -107,7 +102,7 @@ describe("template detail regressions", () => {
         _tag: "GotTemplateDetail",
         template: { id: "t1", fields: [] },
       });
-      expect(unsubscribe).toHaveBeenCalledTimes(2);
+      expect(unsubscribe).toHaveBeenCalledTimes(1);
     }),
   );
 });

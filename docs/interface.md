@@ -11,9 +11,17 @@ component APIs; review local customizations before refreshing a registry item.
 - Keep the phone-first layout: bottom tabs below 768px, a sidebar above that,
   and a labeled sidebar from 1280px. Live sessions hide phone tabs and add a
   task column on larger screens.
-- Use bottom sheets on phones and centered cards on larger screens. Preserve
-  focus entry, containment and restoration in [sheetFocus.ts](../src/web/sheetFocus.ts).
-  Destructive actions require confirmation.
+- Use bottom sheets on phones and centered cards on larger screens, built with
+  [sheet.ts](../src/components/app/sheet.ts) (app pages use the
+  [web/sheets.ts](../src/web/sheets.ts) wrappers). Each renders the
+  @foldkit/ui Dialog view on a native `<dialog>` and is open while rendered:
+  mounting shows it with FoldKit's focus entry (`[autofocus]`, else the first
+  control), Tab containment, topmost-only Escape and scroll lock (the delegated
+  `main` scroller stops too); unmounting releases them and returns focus to
+  whatever opened the first of consecutive sheets. Give each sheet a unique
+  `id`; render it once, outside responsive copies. Action sheets list every
+  action, destructive ones included, as `sheetAction` rows aligned with the
+  title, with Cancel in the footer. Destructive actions require confirmation.
 - Label fields, explain disabled primary actions, and use plain terms such as
   “question”, “choices” and “must be answered”. Show short errors; send technical
   details to the console.
@@ -21,7 +29,12 @@ component APIs; review local customizations before refreshing a registry item.
   dynamic-height shell in [index.css](../src/index.css). Preserve visible keyboard
   focus, reduced-motion support and hidden decorative icons.
 - Responsive copies need distinct field IDs and radio names. Focus and scroll
-  targets must resolve to the visible copy; test both sidebar states.
+  targets must resolve to the visible copy; test both sidebar states. Run DOM
+  effects after `Render.afterCommit` (or `afterPaint`), never timers; scripted
+  smooth scrolling must fall back to instant under reduced motion. Headings
+  focused programmatically hide their outline; they are not in the tab order.
+- Key rows in lists that insert or reorder items (`row({ key })` or
+  `h.keyed`), so focus stays with the same item.
 
 Component style presets are separate from appearance and preserve app-owned
 layout and touch sizing. Default/Nova keeps local defaults; other styles use
@@ -32,20 +45,23 @@ instead of editing the generated style table.
 
 Reviewed the 66-item registry against upstream
 [`a6a82bd`](https://github.com/elianiva/foldcn/commit/a6a82bd820578ef064257c39ea81ec77ea45a0dc).
-Registry URLs are live, not commit-pinned. All 21 local component modules have
-refreshed style mappings for the eight presets; local touch sizing and compact
-field layouts remain intentional overrides. “Unchanged” below means the
+Registry URLs are live, not commit-pinned. The 14 modules the app renders have
+style mappings for the eight presets; checkbox, fieldset, label, progress,
+radio-group, separator and skeleton keep their local classes under every preset
+until they gain a consumer (add them to the generator then), because every
+mapped class ships in the CSS bundle. Local touch sizing and compact field
+layouts remain intentional overrides. “Unchanged” below means the
 authored component had no upstream change since the September 9 snapshot.
 
 | Local component | Update and usage decision                                                                                                                                                                |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | alert           | Added; app notices use its description and action slots, preserving severity, status/alert roles and 44px dismissal.                                                                     |
-| alert-dialog    | Forward explicit description presence; retain app-owned confirmations and focus handling.                                                                                                |
+| alert-dialog    | Forward explicit description presence; app confirmations use the app sheet instead.                                                                                                      |
 | badge           | Unchanged; retain status badges.                                                                                                                                                         |
 | button          | Unchanged; retain shared actions and touch sizes.                                                                                                                                        |
 | card            | Unchanged; retain card styling used by app primitives.                                                                                                                                   |
 | checkbox        | Forward description presence; retain wrapper without replacing existing specialized controls.                                                                                            |
-| dialog          | Forward explicit description presence; retain app sheet lifecycle.                                                                                                                       |
+| dialog          | Forward explicit description presence; app sheets render its Dialog view (init/view) on a native dialog.                                                                                 |
 | empty           | Unchanged; retain app empty states.                                                                                                                                                      |
 | fieldset        | Added for the updated radio field/choice-card anatomy; includes grouped fields and error rendering.                                                                                      |
 | input           | Forward description presence; retain compact label/control layout and mobile sizing.                                                                                                     |
@@ -55,7 +71,7 @@ authored component had no upstream change since the September 9 snapshot.
 | progress        | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
-| sheet           | Forward explicit description presence; preserve responsive app sheets and their focus management.                                                                                        |
+| sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel.                                                                                   |
 | skeleton        | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | spinner         | Added to session loading; decorative icon with reduced-motion support and one parent live status.                                                                                        |
 | switch          | Forward description presence; retain settings toggles and local label layout.                                                                                                            |

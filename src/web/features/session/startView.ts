@@ -5,7 +5,6 @@ import {
   FileText,
   Play,
   X,
-  confirmSheet,
   groupedList,
   hint,
   icon,
@@ -15,6 +14,7 @@ import {
   statusPill,
   emptyState,
 } from "@/components/app";
+import { confirmSheet } from "../../sheets";
 import { button, buttonClass } from "@/components/ui/button";
 import { nativeSelect } from "@/components/ui/native-select";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
@@ -120,7 +120,6 @@ const resumeView = (
                 confirmLabel: "Discard",
                 confirmAriaLabel: "Confirm discard session",
                 cancelAriaLabel: "Cancel discard",
-                dismissLabel: "Cancel discarding session",
                 destructive: true,
                 onConfirm: Message.ConfirmedDiscardSession(),
                 onCancel: Message.CanceledDiscardSession(),
@@ -172,12 +171,8 @@ const templatePicker = (
         ...(selectedId === null
           ? [h.option([h.Value(""), h.Disabled(true)], ["Choose a template"])]
           : []),
-        ...sorted.map((template) =>
-          h.option(
-            [h.Value(template.id)],
-            [`${template.name}${template.isDefault ? " (default)" : ""}`],
-          ),
-        ),
+        // The default template is preselected; a suffix would truncate on phones.
+        ...sorted.map((template) => h.option([h.Value(template.id)], [template.name])),
       ],
     },
     h,

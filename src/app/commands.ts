@@ -18,11 +18,15 @@ import {
   RecordTask,
   SaveEdit,
   SelectTask,
-  UpdateFieldValue,
+  UpdateFieldValues,
 } from "../web/features/session/runnerCommands";
 import { templatePrompt } from "../web/features/settings/infoView";
-import { planSession, type SessionEmission } from "../machine/session/plan";
-import type { SessionEvent } from "../machine/session/sessionMachine";
+import { randomSessionName } from "../web/random-name";
+import {
+  planSession,
+  type SessionEmission,
+  type SessionEvent,
+} from "../machine/session/sessionMachine";
 import type { Model } from "./model";
 
 const NavigateInternal = Command.define("NavigateInternal", {
@@ -40,10 +44,12 @@ const SaveTheme = Command.define("SaveTheme", {
 
 const SaveStyle = Command.define("SaveStyle", {
   args: { style: FoldcnStyle },
-  messages: [Message.StyleSaveFinished, Message.Navigated],
+  messages: [Message.StyleSaveFinished, Message.SupersededStyleSave],
   execute: ({ style }) =>
     Effect.map(changeStyle(style), (result) =>
-      result === null ? Message.Navigated() : Message.StyleSaveFinished({ style, ...result }),
+      result === null
+        ? Message.SupersededStyleSave()
+        : Message.StyleSaveFinished({ style, ...result }),
     ),
 });
 
@@ -95,19 +101,27 @@ const ResetTemplatePromptCopy = Command.define("ResetTemplatePromptCopy", {
     Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
 });
 
-const ReplyToAgent = Command.define("ReplyToAgent", {
-  args: { reply: AgentPortReply },
-  messages: [Message.Navigated],
-  execute: ({ reply }) =>
-    Port.emit(agentPorts.outbound.agentReply, reply).pipe(Effect.as(Message.Navigated())),
+const GeneratePlaceholderName = Command.define("GeneratePlaceholderName", {
+  args: {},
+  messages: [Message.GotPlaceholderName],
+  execute: () => Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
 });
 
-// ── Runner state machine bridge (effect-machine → FoldKit) ───────────────
+const ReplyToAgent = Command.define("ReplyToAgent", {
+  args: { reply: AgentPortReply },
+  messages: [Message.CompletedReplyToAgent],
+  execute: ({ reply }) =>
+    Port.emit(agentPorts.outbound.agentReply, reply).pipe(
+      Effect.as(Message.CompletedReplyToAgent()),
+    ),
+});
+
+// ── Session planner bridge (pure reducer → FoldKit commands) ─────────────
 
 const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> => {
   switch (emission._tag) {
-    case "CommitFieldValue":
-      return [UpdateFieldValue({ taskFieldId: emission.taskFieldId, value: emission.value })];
+    case "CommitFieldValues":
+      return [UpdateFieldValues({ writes: emission.writes })];
     case "CommitCounterAdjustment":
       return [AdjustCounter({ taskFieldId: emission.taskFieldId, delta: emission.delta })];
     case "CommitRecord":
@@ -123,24 +137,20 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
   }
 };
 
-/** Plan a Session-machine event; merge the result into model + commands. */
-const applyPlan = (model: Model, event: SessionEvent) => {
-  const plan = planSession(
-    { runner: model.runner, phase: model.runnerPhase, now: model.now },
-    event,
-  );
-  const changed =
-    plan.runner !== model.runner || plan.phase !== model.runnerPhase || plan.emissions.length > 0;
-  return changed
-    ? {
-        model: { ...model, runner: plan.runner, runnerPhase: plan.phase },
-        commands: plan.emissions.flatMap(emissionToCommand),
-      }
-    : { model };
+/** Plan a session event; merge the result into model + commands. */
+const applyPlan = (model: Model, event: SessionEvent): Update.Return<Model, Message> => {
+  const plan = planSession({ runner: model.runner, now: model.now }, event);
+  // The planner returns the same runner reference for events that don't apply.
+  if (plan.runner === model.runner && plan.emissions.length === 0) return { model };
+  return {
+    model: { ...model, runner: plan.runner },
+    commands: plan.emissions.flatMap(emissionToCommand),
+  };
 };
 
 export {
   CopyTemplatePrompt,
+  GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
   ReplyToAgent,

@@ -11,7 +11,6 @@ export {
   ChevronRight,
   CircleAlert,
   Clock,
-  CodeXml,
   Copy,
   Download,
   Ellipsis,

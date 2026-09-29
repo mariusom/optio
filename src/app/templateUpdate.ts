@@ -6,9 +6,8 @@ import {
   SetDefaultTemplate,
 } from "../web/features/templates/commands";
 import { effectiveTemplateId } from "../web/features/session/startHelpers";
-import { generateSessionName } from "../web/random-name";
 import { templateEditorRouter } from "../web/routes";
-import { NavigateInternal } from "./commands";
+import { GeneratePlaceholderName, NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
 import { Message } from "../messages";
 import type { Model } from "./model";
@@ -49,17 +48,10 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
       nextSelected = prioritized;
     }
     // Ensure placeholder exists when on Start tab
-    let nextPlaceholder = model.placeholderName;
-    if (model.route._tag === "StartTab" && (nextPlaceholder === "" || nextPlaceholder === null)) {
-      nextPlaceholder = generateSessionName();
-    }
+    const needsPlaceholder = model.route._tag === "StartTab" && model.placeholderName === "";
     return {
-      model: {
-        ...model,
-        templates,
-        selectedTemplateId: nextSelected,
-        placeholderName: nextPlaceholder,
-      },
+      model: { ...model, templates, selectedTemplateId: nextSelected },
+      commands: needsPlaceholder ? [GeneratePlaceholderName({})] : [],
     };
   },
   ClickedNewTemplate: () => ({

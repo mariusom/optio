@@ -1,10 +1,11 @@
-import { Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
-import { friendlyFailure } from "../../errors";
-import { getStore, type AppStore } from "../../../livestore/client";
-import { events, tables, FieldDef } from "../../../livestore/schema";
+import { reportFailure } from "../../errors";
+import type { AppStore } from "../../../livestore/client";
+import { withStore, type StoreAccess } from "../../../livestore/access";
+import { FieldDef } from "../../../domain/fields";
 import { fieldRowsToDefs } from "../../fieldRows";
 
 type StartTemplate = {
@@ -13,7 +14,11 @@ type StartTemplate = {
   fields: ReadonlyArray<FieldDef>;
 };
 
-const resolveStartTemplate = (store: AppStore, template: StartTemplate): StartTemplate => {
+const resolveStartTemplate = (
+  store: AppStore,
+  tables: StoreAccess["tables"],
+  template: StartTemplate,
+): StartTemplate => {
   if (template.fields.length > 0) return template;
   const { templateId, templateName } = template;
   // An explicit ID is authoritative, including zero-field or missing templates.
@@ -41,6 +46,8 @@ const resolveStartTemplate = (store: AppStore, template: StartTemplate): StartTe
   };
 };
 
+const failed = (error: string) => Message.FailedSessionOp({ error });
+
 export const StartSession = Command.define("StartSession", {
   args: {
     id: S.String,
@@ -51,68 +58,48 @@ export const StartSession = Command.define("StartSession", {
   },
   messages: [Message.SessionStarted, Message.FailedSessionOp],
   execute: ({ id, templateId, templateName, sessionName, fields }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
+    withStore(({ store, tables, events }) =>
+      Effect.gen(function* () {
+        const now = new Date(yield* Clock.currentTimeMillis);
+        const activeSession = store.query(tables.sessions.select().where({ endedAt: null }))[0];
+        if (activeSession !== undefined) {
+          return Message.SessionStarted({ sessionId: activeSession.id });
+        }
 
-      const sessions = store.query(tables.sessions.select()) as ReadonlyArray<{
-        readonly id: string;
-        readonly endedAt: number | Date | null;
-      }>;
-      const activeSession = sessions.find(
-        (session) => session.endedAt === null || session.endedAt === undefined,
-      );
-      if (activeSession !== undefined) {
-        return Message.SessionStarted({ sessionId: activeSession.id });
-      }
-
-      const template = resolveStartTemplate(store, { templateId, templateName, fields });
-      const taskId = crypto.randomUUID();
-      store.commit(
-        events.sessionStarted({
-          id,
-          templateId: template.templateId,
-          templateName: template.templateName,
-          sessionName,
-          now: new Date(),
-        }),
-        events.taskSpawned({
-          sessionId: id,
-          id: taskId,
-          orderIndex: 1,
-          fields: [...template.fields],
-        }),
-      );
-      return Message.SessionStarted({ sessionId: id });
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedSessionOp({ error: friendlyFailure("start", cause) })),
-      ),
-    ),
+        const template = resolveStartTemplate(store, tables, { templateId, templateName, fields });
+        store.commit(
+          events.sessionStarted({
+            id,
+            templateId: template.templateId,
+            templateName: template.templateName,
+            sessionName,
+            now,
+          }),
+          events.taskSpawned({
+            sessionId: id,
+            id: crypto.randomUUID(),
+            orderIndex: 1,
+            fields: [...template.fields],
+          }),
+        );
+        return Message.SessionStarted({ sessionId: id });
+      }),
+    ).pipe(reportFailure("start", failed)),
 });
 
 export const DiscardLiveSession = Command.define("DiscardLiveSession", {
   args: { sessionId: S.String },
   messages: [Message.SessionDiscarded, Message.FailedSessionOp],
   execute: ({ sessionId }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-
-      const sessionRows = store.query(
-        tables.sessions.select().where({ id: sessionId }),
-      ) as ReadonlyArray<{ endedAt: Date | number | null }>;
-      const session = sessionRows[0];
-      if (session === undefined || (session.endedAt !== null && session.endedAt !== undefined)) {
+    withStore(({ store, tables, events }) =>
+      Effect.sync(() => {
+        const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
+        if (session === undefined || session.endedAt !== null) return Message.SessionDiscarded();
+        store.commit(
+          events.sessionLiveGraphCleared({ sessionId }),
+          events.sessionDeleted({ id: sessionId }),
+        );
         return Message.SessionDiscarded();
-      }
-
-      store.commit(
-        events.sessionLiveGraphCleared({ sessionId }),
-        events.sessionDeleted({ id: sessionId }),
-      );
-      return Message.SessionDiscarded();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedSessionOp({ error: friendlyFailure("delete", cause) })),
-      ),
-    ),
+      }),
+    ).pipe(reportFailure("delete", failed)),
 });

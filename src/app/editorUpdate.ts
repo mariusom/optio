@@ -1,4 +1,4 @@
-import type { FieldDef, FieldKind } from "../livestore/schema";
+import type { FieldDef, FieldKind } from "../domain/fields";
 import { SaveTemplate } from "../web/features/templates/editorCommands";
 import {
   addOptionToDraft,
@@ -364,7 +364,7 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
           name,
           isDefault,
           isNew: model.showCreate,
-          fields: [...fields] as unknown as ReadonlyArray<FieldDef>,
+          fields: [...fields],
         }),
       ],
     };

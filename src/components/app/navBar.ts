@@ -71,7 +71,11 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
             ],
             [
               h.h1(
-                [h.Class("min-w-0 max-w-full truncate text-base font-semibold tracking-tight")],
+                [
+                  h.Class(
+                    "min-w-0 max-w-full truncate text-base font-semibold tracking-tight focus-visible:outline-none",
+                  ),
+                ],
                 [config.title],
               ),
               ...(config.subtitle === undefined
@@ -188,7 +192,7 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
               h.h1(
                 [
                   h.Class(
-                    "truncate text-2xl font-semibold tracking-tight text-foreground md:text-3xl",
+                    "truncate text-2xl font-semibold tracking-tight text-foreground focus-visible:outline-none md:text-3xl",
                   ),
                 ],
                 [config.title],

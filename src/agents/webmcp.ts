@@ -21,7 +21,7 @@ export interface ModelContext {
   ): Promise<void>;
 }
 
-export class WebMcpError extends Schema.TaggedError<WebMcpError>()("WebMcpError", {
+class WebMcpError extends Schema.TaggedError<WebMcpError>()("WebMcpError", {
   message: Schema.String,
 }) {}
 
