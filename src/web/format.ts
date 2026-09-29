@@ -1,17 +1,6 @@
 // Display-time formatting. Epoch millis are stored timezone-agnostic;
 // Intl resolves the viewer's zone/locale at render time.
 
-const abbreviator = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** "Aug 26, 2026, 2:05 PM" — abbreviated date + short time. */
-export const formatTimestamp = (epochMs: number): string => abbreviator.format(new Date(epochMs));
-
 const timeOnly = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 
 const padTwoDigits = (value: number): string => String(value).padStart(2, "0");

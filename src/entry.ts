@@ -1,4 +1,3 @@
-// fallow-ignore-file unused-file — app entry (referenced by index.html, not by other modules)
 import { Runtime } from "foldkit";
 import { Clock, Effect, Fiber } from "effect";
 import * as BrowserRuntime from "@effect/platform-browser/BrowserRuntime";
@@ -13,11 +12,8 @@ import {
   initializeStyle,
   initializeTheme,
 } from "./web/browserTheme";
-import { installSheetFocus } from "./web/sheetFocus";
 import { getStore } from "./livestore/client";
 import type { ModelContext } from "./agents/webmcp";
-
-installSheetFocus();
 
 // ── PWA update toast ─────────────────────────────────────────────────────────
 // Never reload the page out from under the user. When a new
@@ -63,22 +59,20 @@ const updateSW = registerSW({
   },
 });
 
+// Startup Flags: saved preferences (applied to the document as they load) and
+// the Model's first time, from Effect's Clock, never Date.now().
+const flags = Effect.all({
+  theme: initializeTheme,
+  style: initializeStyle,
+  font: initializeFont,
+  iconLibrary: initializeIconLibrary,
+  accent: initializeAccent,
+  now: Clock.currentTimeMillis,
+});
+
 const main = Effect.gen(function* () {
-  const preferences = yield* Effect.all({
-    theme: initializeTheme,
-    style: initializeStyle,
-    font: initializeFont,
-    iconLibrary: initializeIconLibrary,
-    accent: initializeAccent,
-  });
-  // The Model's first ticked time comes from Effect's Clock, never Date.now().
-  const now = yield* Clock.currentTimeMillis;
   const application = Runtime.makeApplication({
     ...applicationConfig,
-    init: (url) => {
-      const initial = applicationConfig.init(url);
-      return { ...initial, model: { ...initial.model, ...preferences, now } };
-    },
     container: document.getElementById("root")!,
   });
 
@@ -91,7 +85,7 @@ const main = Effect.gen(function* () {
       "Let an assistant use Optio in this tab? It will be able to read, change and delete your studies, and may send them to its provider. Cancel to keep assistants off.",
     )
   ) {
-    const handle = Runtime.embed(application);
+    const handle = Runtime.embed(application, { flags });
     const registration = Effect.gen(function* () {
       const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =
         yield* Effect.all(
@@ -113,13 +107,14 @@ const main = Effect.gen(function* () {
         Effect.logWarning("Optio agent tools could not be registered. The app remains available."),
       ),
     );
-    const fiber = Effect.runFork(registration);
+    // Forked from the main program so the registration shares its runtime.
+    const fiber = yield* Effect.forkDetach(registration);
     import.meta.hot?.dispose(() => {
       Effect.runFork(Fiber.interrupt(fiber));
       handle.dispose();
     });
   } else {
-    Runtime.run(application);
+    Runtime.run(application, { flags });
   }
 });
 

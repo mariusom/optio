@@ -4,18 +4,18 @@ import {
   formatBooleanDisplay,
   isBooleanTrue,
   isScalarAnswerValid,
-  parseJsonArray,
   toggleCheckboxOption,
 } from "./fields";
+import { safeArray } from "./fieldRows";
 
 const OPTIONS = { options: ["A", "B", "C", "D"], exclusiveOptions: [] };
 
-describe("parseJsonArray (StringArrayCodec semantics)", () => {
+describe("safeArray (StringArrayCodec semantics)", () => {
   it("decodes valid arrays and degrades malformed values to []", () => {
-    expect(parseJsonArray('["A","B"]')).toEqual(["A", "B"]);
-    expect(parseJsonArray("[]")).toEqual([]);
-    expect(parseJsonArray("not json")).toEqual([]);
-    expect(parseJsonArray('{"a":1}')).toEqual([]);
+    expect(safeArray('["A","B"]')).toEqual(["A", "B"]);
+    expect(safeArray("[]")).toEqual([]);
+    expect(safeArray("not json")).toEqual([]);
+    expect(safeArray('{"a":1}')).toEqual([]);
   });
 });
 

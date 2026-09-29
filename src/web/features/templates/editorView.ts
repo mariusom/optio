@@ -4,7 +4,6 @@ import {
   ArrowDown,
   ArrowUp,
   Plus,
-  confirmSheet,
   controlRow,
   groupedList,
   hint,
@@ -17,17 +16,17 @@ import {
   rowAction,
   statusPill,
 } from "@/components/app";
+import { confirmSheet } from "../../sheets";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
-import type { FieldDef, FieldKind } from "../../../livestore/schema";
+import type { FieldDef } from "../../../domain/fields";
 import { hrefFor } from "../../routes";
 import { hasChanges, isTemplateValid } from "./editor";
 import { answerTypeName, type Editor, type EditorModel } from "./editorTypes";
 import { questionForm } from "./questionEditor";
 
-export { answerTypeName } from "./editorTypes";
 const backLink = { href: hrefFor({ _tag: "TemplatesTab" }), label: "Templates" };
 /** Leaving with unsaved changes asks first (ClickedCancelEditTemplate checks for changes). */
 const guardedBackLink = { ...backLink, onClick: Message.ClickedCancelEditTemplate() };
@@ -60,7 +59,7 @@ const questionRow = (
       row(
         {
           title: field.name === "" ? "Untitled question" : field.name,
-          subtitle: answerTypeName(field.kind as FieldKind),
+          subtitle: answerTypeName(field.kind),
           trailing: field.isRequired ? statusPill({ tone: "primary" }, ["Required"], h) : undefined,
           className: "min-w-0 flex-1",
           onClick: Message.ClickedEditField({ id: field.id }),
@@ -136,7 +135,7 @@ const defaultRow = (editor: Editor, h: HtmlBuilder<Message>) =>
     h,
   );
 
-const loadingView = (lastError: string | null, h: HtmlBuilder<Message>) =>
+const loadingView = (lastError: string | null, loadFailed: boolean, h: HtmlBuilder<Message>) =>
   h.div(
     [h.Class("template-editor flex min-h-full flex-col")],
     [
@@ -145,7 +144,15 @@ const loadingView = (lastError: string | null, h: HtmlBuilder<Message>) =>
         { className: "pt-6" },
         [
           ...(lastError === null ? [] : [notice({ tone: "error", text: lastError }, h)]),
-          hint("Opening the template…", h),
+          loadFailed
+            ? notice(
+                {
+                  tone: "error",
+                  text: "This template couldn’t be opened. Go back to Templates and try again.",
+                },
+                h,
+              )
+            : hint("Opening the template…", h),
         ],
         h,
       ),
@@ -264,7 +271,6 @@ const discardConfirmation = (editor: Editor, h: HtmlBuilder<Message>) =>
             cancelLabel: "Keep editing",
             confirmAriaLabel: "Confirm discard changes",
             cancelAriaLabel: "Continue editing",
-            dismissLabel: "Continue editing",
             destructive: true,
             onConfirm: Message.ConfirmedDiscard(),
             onCancel: Message.CanceledDiscard(),
@@ -275,11 +281,12 @@ const discardConfirmation = (editor: Editor, h: HtmlBuilder<Message>) =>
     : [];
 
 export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) => {
-  if (model.editor === null) return loadingView(model.lastError, h);
+  if (model.editor === null)
+    return loadingView(model.lastError, model.detailLoadFailed ?? false, h);
 
   const editor = model.editor;
   const isValid = isTemplateValid(editor);
-  const changed = hasChanges(editor as unknown as Parameters<typeof hasChanges>[0]);
+  const changed = hasChanges(editor);
   const canSave = isValid && changed && !editor.isSaving && editor.draft === null;
   const saveHint = !isValid ? "Give the template a name to save it." : null;
 

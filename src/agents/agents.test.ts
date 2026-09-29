@@ -3,6 +3,7 @@ import { Effect, Exit, Scope } from "effect";
 
 import type { AppStore } from "../livestore/client";
 import { makeToolHandlers } from "./tools";
+import { archivedSessions } from "../livestore/queries";
 import { registerWebMcp as registration, type ModelContext } from "./webmcp";
 
 type WebTool = Parameters<ModelContext["registerTool"]>[0];
@@ -42,20 +43,21 @@ const archived = {
   id: "archive",
   sessionName: "Study",
   templateName: "Work",
-  startedAt: new Date(1000),
-  endedAt: new Date(6000),
+  startedAt: 1000,
+  endedAt: 6000,
+  taskCount: 2,
 };
 
 const fixture = () => {
-  const query = vi.fn((builder: { toString(): string }) => {
-    const sql = builder.toString();
+  const query = vi.fn((input: unknown) => {
+    // The shared archived-session query counts tasks and excludes live sessions in SQL.
+    if (input === archivedSessions) return [archived];
+    const sql = String(input);
     if (sql.includes("'templates'"))
       return [
         { id: "b", name: "Zebra", isDefault: 0 },
         { id: "a", name: "Alpha", isDefault: 1 },
       ];
-    if (sql.includes("'taskRecords'")) return [{ sessionId: "archive" }, { sessionId: "archive" }];
-    if (sql.includes("'sessions'")) return [archived, { ...archived, id: "live", endedAt: null }];
     throw new Error(`Unexpected query: ${sql}`);
   });
   const open = vi.fn(async () => ({ query }) as unknown as Pick<AppStore, "query">);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Option } from "effect";
+import { Option, Schema as S } from "effect";
 import { fromString } from "foldkit/url";
 import { applicationConfig } from "./application.ts";
 
@@ -31,11 +31,13 @@ describe("application wiring", () => {
         "agentRequest",
         "currentTaskScroll",
         "editorDraftFocus",
+        "fieldWriteFlush",
         "focusedSectionScroll",
         "helpPageEntry",
         "history",
         "historyDetail",
         "runner",
+        "storage",
         "templateDetail",
         "templates",
         "ticker",
@@ -54,5 +56,30 @@ describe("application wiring", () => {
       _tag: "ClickedLink",
       request,
     });
+  });
+
+  it("starts from decoded Flags carrying saved preferences and the boot time", () => {
+    const flags = S.decodeUnknownSync(applicationConfig.Flags)({
+      theme: "dark",
+      style: "lyra",
+      font: "serif",
+      iconLibrary: "lucide",
+      accent: "rose",
+      now: 1_700_000_000_000,
+    });
+    const url = Option.getOrThrow(fromString("https://optio.test/#/history"));
+    const { model } = applicationConfig.init(flags, url);
+    expect(model).toMatchObject({
+      route: { _tag: "HistoryTab" },
+      theme: "dark",
+      style: "lyra",
+      font: "serif",
+      iconLibrary: "lucide",
+      accent: "rose",
+      now: 1_700_000_000_000,
+    });
+    expect(() =>
+      S.decodeUnknownSync(applicationConfig.Flags)({ ...flags, theme: "neon" }),
+    ).toThrow();
   });
 });

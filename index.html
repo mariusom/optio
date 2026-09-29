@@ -69,8 +69,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="optio" />
-    <meta name="theme-color" content="#f5f8f5" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0c1311" media="(prefers-color-scheme: dark)" />
+    <!-- Match --background in src/index.css; applyTheme keeps them in sync with the in-app theme. -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Apply the saved colour scheme before first paint (see src/web/theme.ts).
+      try {
+        var theme = localStorage.getItem("optio-theme");
+        if (
+          theme === "dark" ||
+          (theme !== "light" && matchMedia("(prefers-color-scheme: dark)").matches)
+        )
+          document.documentElement.classList.add("dark");
+      } catch (error) {}
+    </script>
     <title>Optio — offline time &amp; motion studies</title>
   </head>
   <body>
@@ -82,8 +94,8 @@
             min-height: 100vh;
             margin: 0;
             padding: clamp(2rem, 8vw, 5rem) 1.5rem;
-            color: #17201d;
-            background: #f5f8f5;
+            color: #0a0a0a;
+            background: #ffffff;
             font:
               16px/1.6 ui-sans-serif,
               system-ui,
@@ -123,8 +135,8 @@
           }
           @media (prefers-color-scheme: dark) {
             .static-fallback {
-              color: #e7eeea;
-              background: #0c1311;
+              color: #fafafa;
+              background: #0a0a0a;
             }
           }
         </style>

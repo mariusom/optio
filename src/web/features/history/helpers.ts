@@ -9,6 +9,19 @@ const padTwoDigits = (value: number): string => String(value).padStart(2, "0");
 export const displayNameFor = (sessionName: string, templateName: string): string =>
   sessionName !== "" ? sessionName : templateName;
 
+/** Groups archived answers by task record, keeping their (question) order. */
+export const groupSectionsByRecord = <Section extends { readonly taskRecordId: string }>(
+  sections: ReadonlyArray<Section>,
+): ReadonlyMap<string, ReadonlyArray<Section>> => {
+  const byRecord = new Map<string, Array<Section>>();
+  for (const section of sections) {
+    const group = byRecord.get(section.taskRecordId);
+    if (group === undefined) byRecord.set(section.taskRecordId, [section]);
+    else group.push(section);
+  }
+  return byRecord;
+};
+
 /** Keep exported names readable by replacing spaces with underscores. */
 export const filenameSafe = (name: string): string => name.replace(/ /g, "_");
 
@@ -130,13 +143,13 @@ export const dayGroupLabel = (epochMs: number, now: number = Date.now()): string
 };
 
 const fullDayFormatter = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
+  weekday: "short",
   year: "numeric",
-  month: "long",
+  month: "short",
   day: "numeric",
 });
 
-/** "Tuesday, September 8, 2026" — the day a session was recorded. */
+/** "Tue, Sep 8, 2026" — the day a session was recorded; fits a phone row value. */
 export const formatDay = (epochMs: number): string => fullDayFormatter.format(new Date(epochMs));
 
 /** Groups already date-sorted sessions into consecutive runs of the same day. */

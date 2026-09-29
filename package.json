@@ -9,8 +9,10 @@
     "build": "node scripts/license-assurance.mjs --check && vp build",
     "preview": "vp preview",
     "check": "vp check",
-    "test": "vp test run && pnpm test:browser",
-    "test:browser": "vp test run --config vitest.browser.config.ts",
+    "lint:dead": "fallow dead-code",
+    "test": "vp test run",
+    "test:unit": "vp test run --project unit",
+    "test:browser": "vp test run --project browser",
     "test:e2e": "node --test scripts/storage.e2e.mjs && node scripts/test-public-metadata.mjs",
     "licenses:generate": "node scripts/license-assurance.mjs",
     "licenses:check": "vp test run scripts/license-assurance.test.mjs && node scripts/license-assurance.mjs --check"
@@ -22,7 +24,6 @@
     "@livestore/adapter-web": "0.5.0-dev.0",
     "@livestore/livestore": "0.5.0-dev.0",
     "@livestore/wa-sqlite": "0.5.0-dev.0",
-    "@typeonce/effect-machine": "0.37.0",
     "cn": "^0.4.0",
     "effect": "4.0.0-rc.112",
     "foldkit": "^0.159.0",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@effect/vitest": "4.0.0-rc.112",
+    "@foldkit/devtools": "^0.159.0",
     "@foldkit/vite-plugin": "^0.21.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitest/browser-playwright": "4.1.11",

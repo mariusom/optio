@@ -9,6 +9,9 @@ import { Message } from "../../../messages";
 import { isScalarAnswerValid, toggleCheckboxOption } from "../../fields";
 import type { RunnerSection, RunnerTask } from "./runner";
 
+const selectedChoiceClass =
+  "border-primary bg-primary/8 text-primary dark:border-primary dark:bg-primary/15";
+
 const choiceGridClass =
   "grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,calc(12ch+3rem)),1fr))] gap-2 text-sm";
 
@@ -18,47 +21,60 @@ const choiceBody = (
 ) => {
   const { label, isExclusive, indicator } = options;
   return h.span(
-    [h.Class("relative flex min-h-14 w-full items-center gap-2 px-3 py-2 text-sm leading-snug")],
+    [h.Class("flex min-h-14 w-full items-center gap-2 px-3 py-2 text-sm leading-snug")],
     [
       indicator,
       h.span(
         [h.Class("min-w-0 flex-1 text-left")],
-        label
-          .split(/(\s+)/)
-          .map((word) =>
-            /^\s+$/.test(word)
-              ? word
-              : h.span([h.Class("inline-block max-w-full break-words")], [word]),
-          ),
-      ),
-      ...(isExclusive
-        ? [
-            h.span(
-              [
-                h.Class("absolute right-1 top-1 text-muted-foreground"),
-                h.Attribute("title", "Exclusive choice — clears other choices"),
-                h.AriaHidden(true),
-              ],
-              [icon(h, ListX, "size-3")],
+        [
+          ...label
+            .split(/(\s+)/)
+            .map((word) =>
+              /^\s+$/.test(word)
+                ? word
+                : h.span([h.Class("inline-block max-w-full break-words")], [word]),
             ),
-          ]
-        : []),
+          ...(isExclusive
+            ? [
+                // Visible on touch too; the button's aria-description carries the meaning.
+                h.span(
+                  [
+                    h.Class(
+                      "flex items-center gap-1 pt-0.5 text-xs font-normal text-muted-foreground",
+                    ),
+                    h.AriaHidden(true),
+                    h.DataAttribute("slot", "exclusive-hint"),
+                  ],
+                  [icon(h, ListX, "size-3 shrink-0"), "Clears others"],
+                ),
+              ]
+            : []),
+        ],
+      ),
     ],
   );
 };
 
-const checkMark = (isSelected: boolean, h: HtmlBuilder<Message>) =>
+/** `muted` marks a selected "no answer" choice without the answered accent. */
+const checkMark = (isSelected: boolean, h: HtmlBuilder<Message>, muted = false) =>
   h.span(
     [
       h.Class(
         cn(
           "grid size-4 shrink-0 place-items-center rounded-full border",
-          isSelected ? "border-primary" : "border-input",
+          isSelected && !muted ? "border-primary" : "border-muted-foreground",
         ),
       ),
       h.AriaHidden(true),
     ],
-    isSelected ? [h.span([h.Class("size-2 rounded-full bg-primary")], [])] : [],
+    isSelected
+      ? [
+          h.span(
+            [h.Class(cn("size-2 rounded-full", muted ? "bg-muted-foreground" : "bg-primary"))],
+            [],
+          ),
+        ]
+      : [],
   );
 
 const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
@@ -69,7 +85,7 @@ const checkBox = (isSelected: boolean, h: HtmlBuilder<Message>) =>
           "grid size-4 shrink-0 place-items-center rounded-sm border transition-colors",
           isSelected
             ? "border-primary bg-primary text-primary-foreground"
-            : "border-input text-transparent",
+            : "border-muted-foreground text-transparent",
         ),
       ),
       h.AriaHidden(true),
@@ -88,6 +104,8 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
     ],
     section.options.map((option) => {
       const isSelected = section.value === option;
+      // Yes/no keeps an explicit "no answer" choice; it must not read as an answer.
+      const isUnanswered = option === "";
       const label =
         section.kind === "boolean"
           ? option === "true"
@@ -103,7 +121,8 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
               variant: "outline",
               className: cn(
                 "h-auto min-w-0 cursor-pointer whitespace-normal p-0 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
-                isSelected && "border-primary bg-primary/8 text-primary",
+                isSelected && !isUnanswered && selectedChoiceClass,
+                isUnanswered && "border-dashed text-muted-foreground",
                 isSelected && section.kind === "rating" && "ring-2 ring-primary",
               ),
             }),
@@ -124,7 +143,10 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
                 [h.Class("flex min-h-14 items-center justify-center text-base font-semibold")],
                 [label],
               )
-            : choiceBody({ label, isExclusive: false, indicator: checkMark(isSelected, h) }, h),
+            : choiceBody(
+                { label, isExclusive: false, indicator: checkMark(isSelected, h, isUnanswered) },
+                h,
+              ),
         ],
       );
     }),
@@ -146,7 +168,7 @@ const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) =>
               variant: "outline",
               className: cn(
                 "h-auto min-w-0 whitespace-normal p-0",
-                isSelected && "border-primary bg-primary/8 text-primary",
+                isSelected && selectedChoiceClass,
               ),
             }),
           ),
@@ -179,6 +201,7 @@ const textAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Messag
         h.Autocapitalize("sentences"),
         h.EnterKeyHint("next"),
         h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
+        h.OnBlur(Message.BlurredField()),
       ]),
     ],
   );
@@ -197,6 +220,7 @@ const notesAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) =>
         h.Autocapitalize("sentences"),
         h.Attribute("rows", "3"),
         h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
+        h.OnBlur(Message.BlurredField()),
       ]),
     ],
   );
@@ -221,6 +245,7 @@ const numericAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) => {
             h.Attribute("aria-required", String(section.isRequired)),
             h.Attribute("aria-invalid", String(!valid)),
             h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
+            h.OnBlur(Message.BlurredField()),
           ]),
           ...(counter ? [counterButton({ section, delta: 1, valid }, h)] : []),
         ],
@@ -301,10 +326,17 @@ const ratingAnswer = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
 const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Message>) =>
   section.kind === "textInput"
     ? h.div(
-        [h.Id(`${scope}-${section.id}`), h.Class(cn(inlineFieldClass))],
+        // Stacked like the other questions on phones; compact label/field pair from md.
+        [
+          h.Id(`${scope}-${section.id}`),
+          h.Class(cn(inlineFieldClass, "max-md:grid-cols-1 max-md:gap-y-2")),
+        ],
         [
           h.label(
-            [h.For(`${scope}-answer-${section.id}`), h.Class(cn(inputLabelClass, "flex-wrap"))],
+            [
+              h.For(`${scope}-answer-${section.id}`),
+              h.Class(cn(inputLabelClass, "flex-wrap max-md:font-semibold")),
+            ],
             [
               h.span([h.Class("min-w-0 max-w-full break-words")], [section.name]),
               ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),

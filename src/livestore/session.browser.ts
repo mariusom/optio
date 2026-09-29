@@ -4,9 +4,10 @@ import { createStorePromise } from "@livestore/livestore";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 
 import { getStore } from "./client";
-import { events, schema, tables, type FieldDef } from "./schema";
+import type { FieldDef } from "../domain/fields";
+import { events, schema, tables } from "./schema";
 import { CancelEdit, SaveEdit, SelectTask } from "../web/features/session/runnerCommands";
-import { planSession } from "../machine/session/plan";
+import { planSession } from "../machine/session/sessionMachine";
 
 vi.mock("./client", () => ({ getStore: vi.fn() }));
 
@@ -76,7 +77,7 @@ it("reconstructs an edited task from persisted events and Cancel restores origin
     }));
     // A fresh model has no in-memory rollback snapshot, just the recovered store rows.
     const recovered = planSession(
-      { runner: null, phase: "collecting", now: 500 },
+      { runner: null, now: 500 },
       {
         _tag: "DataSynced",
         data: {
@@ -91,7 +92,7 @@ it("reconstructs an edited task from persisted events and Cancel restores origin
       },
     );
     const cancelled = planSession(
-      { runner: recovered.runner, phase: recovered.phase, now: 500 },
+      { runner: recovered.runner, now: 500 },
       { _tag: "EditCancelled" },
     );
     expect(cancelled.emissions).toHaveLength(1);
@@ -125,6 +126,14 @@ it.each(["save", "select open task"])(
     vi.mocked(getStore).mockResolvedValue(store);
     try {
       store.commit(
+        // Tasks only join a live session.
+        events.sessionStarted({
+          id: "s",
+          templateId: null,
+          templateName: "Study",
+          sessionName: "Round",
+          now: new Date(500),
+        }),
         events.taskSpawned({ sessionId: "s", id: "done", orderIndex: 1, fields }),
         events.taskFieldValueChanged({ id: "done:a", value: "Original", now: new Date(1000) }),
         events.taskFinished({ id: "done", endedAt: new Date(2000) }),

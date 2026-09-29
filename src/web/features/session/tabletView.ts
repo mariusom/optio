@@ -4,7 +4,6 @@ import { List, groupedList, icon, navBarAction, sectionHeader } from "@/componen
 import { Message } from "../../../messages";
 import { currentTask, type RunnerState } from "./runner";
 import {
-  endConfirmModal,
   runnerActionBar,
   runnerCanvas,
   runnerEmptyTaskView,
@@ -73,7 +72,6 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
           ),
         ],
       ),
-      ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
     ],
   );
 };

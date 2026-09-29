@@ -1,6 +1,7 @@
 # Development
 
-Use Node.js 24 and the pnpm version in [package.json](../package.json), as CI does.
+Use the Node.js major version in [.node-version](../.node-version) and the pnpm
+version in [package.json](../package.json), as CI does.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -16,6 +17,11 @@ be lost. Use `pnpm dev --mode test` for the slower unbundled pipeline when testi
 model-preserving reloads or plugin behavior. This uses the same pipeline as the
 tests; it does not substitute mock study data. See the measured alternatives and
 upstream discussions in [bundling research](dev-bundling-research.md).
+The dev server also shows the FoldKit DevTools panel (from `@foldkit/devtools`,
+a dev dependency, so production builds omit it). `Tick` is excluded from its
+history. Do not give DevTools the Message schema or an MCP port: that would let
+outside tools dispatch Messages without the consent described in
+[agent access](agent-access.md).
 A dev-only middleware works around Vite's non-root-base
 lazy-import bug ([#23216](https://github.com/vitejs/vite/issues/23216)); remove it
 when the upstream fix is available and the real dev-store check passes.
@@ -30,9 +36,10 @@ to check sample creation and persistence after reload. Both scripts accept
 Before submitting code changes:
 
 ```sh
-pnpm exec playwright install chromium
+pnpm exec playwright install --only-shell chromium
 pnpm check
 pnpm exec tsc --noEmit
+pnpm lint:dead
 pnpm licenses:check
 pnpm test
 pnpm build
@@ -40,8 +47,9 @@ pnpm test:e2e
 pnpm audit --audit-level high
 ```
 
-On a fresh Linux host, use `playwright install --with-deps chromium` to install
-system dependencies too. Other commands are in `package.json`.
+Tests only launch headless Chromium, so Playwright's headless shell is enough.
+On a fresh Linux host, add `--with-deps` to install system dependencies too.
+Other commands are in `package.json`.
 
 ## Lint limits and module size
 
@@ -63,21 +71,38 @@ allowed, and `openStore.ts` is exempt from `import/default` because Vite creates
 the default constructors for its worker query imports. No blanket source or
 registry-component exclusions are used.
 
+`pnpm lint:dead` runs [fallow](https://docs.fallow.tools) with
+[.fallowrc.json](../.fallowrc.json) and fails on unused files, exports and
+dependencies, and duplicate export names. The config lists the real entry points
+(the app entry, the LiveStore worker, tests and scripts). It exempts exports of
+the Foldcn registry copies in `src/components/ui`, and ignores the generated style table
+and the retained registry items without consumers (label, progress, skeleton;
+see [interface conventions](interface.md)). `src/livestore/modules.ts` and
+`queries.ts` are exempt because they are read through the lazily imported module
+namespace, which static analysis cannot follow. Packages loaded only by tools or
+at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `vite-plus`) are
+ignored as dependencies. Prefer deleting an unused export over adding an
+exemption.
+
 ## What tests establish
 
-`pnpm test` runs unit tests followed by Chromium component tests;
-`pnpm test:browser` runs only the latter. Session browser tests use the production
+`pnpm test` runs the `unit` and `browser` (Chromium component) Vitest projects
+from `vite.config.ts` concurrently; `pnpm test:unit` and `pnpm test:browser` run
+one of them. Session browser tests use the production
 view and update loop but mock the LiveStore client. Agent CRUD tests use SQLite
 with LiveStore's in-memory adapter and substitute browser registration and human
 confirmation. Neither proves OPFS persistence, reload recovery, or native agent
-compatibility.
+compatibility. Test runtimes pass `slow: false`: FoldKit's development timing
+warnings print whole Models and are dominated by test-machine load.
 
 `pnpm test:e2e` serves the production build on a temporary local port and uses
 a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
-ends the session and checks the downloaded CSV. No stored user data or
+ends the session and checks the downloaded CSV. It also refuses OPFS in a
+fresh context to check the in-memory storage warning. No stored user data or
 deployed service is used. Unit tests separately check deterministic event
-replay. Native WebMCP integration and real Safari/mobile-device behavior still
+replay; `src/livestore/*.browser.ts` check materializer guards and queries
+against a real in-memory store. Native WebMCP integration and real Safari/mobile-device behavior still
 need separate verification.
 
 For interface changes, inspect affected states on phone, tablet and desktop,
@@ -122,8 +147,16 @@ The 2026-09-17 production baseline was about 0.69 s to render and 2.15 s to usab
 controls at 250 ms latency, 0.19 s on a controlled reload, and 73 ms median to
 record a task. Eager store loading and store-module preloading worsened cold
 readiness to about 2.4 s; preloading Workbox did not reliably improve it. Those
-experiments were reverted. Re-measure rather than treating these orb measurements
-as mobile-device performance targets.
+experiments were reverted. On 2026-09-29, measured side by side on one host
+against the previous `main`: first render stayed about 0.68 s and usable
+controls about 2.1–2.2 s when the browser already had the compiled SQLite Wasm
+(the previous build measured 2.07–2.25 s the same way); a run that downloads
+the 619 kB Wasm takes about 2.7–3.0 s at 250 ms latency. Unthrottled cold
+readiness was about 1.2 s (previously 1.24–1.31 s), controlled reloads about
+0.2–0.29 s, and recording a task about 92 ms median (previously 78 ms).
+Startup JavaScript fell from 763 kB to 642 kB (about 232 to 198 kB gzip).
+Re-measure rather than treating these orb measurements as mobile-device
+performance targets.
 
 With the same preview running, `node scripts/test-startup.mjs` checks that default
 startup skips optional style presets, failed downloads leave the app usable,
@@ -133,11 +166,10 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- Keep Effect aligned with FoldKit and effect-machine's exact peer requirement.
+- Keep Effect aligned with FoldKit's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
   As of 2026-09-29, FoldKit 0.163.0 and its Vite plugin 0.24.0 need Effect
-  rc.116; effect-machine 0.38.0 matches, but 0.39.0 needs rc.117. Testing the
-  rc.116 group failed because LiveStore 0.5.0-dev.0 still imports the removed
+  rc.116. Testing the rc.116 group failed because LiveStore 0.5.0-dev.0 still imports the removed
   `effect/testing/FastCheck` and `Msgpack` export from `effect/unstable/encoding`.
   Keep the working rc.112 group until LiveStore supports the newer APIs.
   Its matching `@effect/vitest` requires Vitest 4, so retain Vite+ 0.3.3 and
@@ -153,25 +185,40 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 - pnpm 12.6.0 is pinned. Use the pinned version for its two-document lockfile.
   Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.
-- Dependabot proposes grouped lockfile and GitHub Actions updates. Exact
-  manifest pins and workspace overrides need deliberate coordinated updates.
+- Dependabot proposes grouped lockfile and GitHub Actions updates, waiting a
+  day after each release to match pnpm's release-age guard. Exact manifest pins
+  and workspace overrides need deliberate coordinated updates.
+- Dependabot cannot regenerate license artifacts, so its npm PRs fail the
+  `License artifacts` step when licenses or notices change. Check out the bot
+  branch, run `pnpm install --frozen-lockfile && pnpm licenses:generate`, review
+  the diff, and push the regenerated files to that branch.
   Audit includes development dependencies because they can affect shipped code.
 - Registry components are project-owned copies. Review upstream changes before
   replacing them; preserve the [interface conventions](interface.md).
 - Refresh component style presets with `node scripts/update-foldcn-styles.mjs`,
   then `pnpm exec vp fmt src/web/componentStyles.generated.ts`. The generator
   updates classes, not behavior or dependencies; it rejects ambiguous matches.
-- Regenerate PNG app icons with `bun scripts/gen-icons.ts`.
+- Regenerate PNG app icons with `node scripts/gen-icons.ts` (Node 24 runs the TypeScript
+  directly). They follow `public/icon.svg`; maskable icons keep the glyph in the safe zone.
 
 ## Deployment
 
 [Checks](../.github/workflows/checks.yml) runs the `validate` job on every pull
 request targeting `main`: dependency and license audits, lint, types, unit and
 browser tests, a production build, and E2E checks. It has read-only permissions
-and cannot deploy.
+and cannot deploy. Branch protection requires the `validate` job name.
+
+Workflows share two local composite actions. [Setup](../.github/actions/setup/action.yml)
+installs pnpm, Node.js from `.node-version` and locked dependencies, and
+optionally Playwright's headless Chromium shell, cached per Playwright version.
+[Validate](../.github/actions/validate/action.yml) holds the check list used by
+Checks and Release assurance. Its checks keep running after an earlier failure,
+so one run reports every problem; E2E runs only after a successful build, and
+the build itself rejects stale license artifacts. Every job has a timeout.
 
 [Deployment](../.github/workflows/deploy.yml) runs only on pushes to `main`,
-builds that exact commit and uploads its Pages artifact. A separate deployment
+lints, type-checks and builds that exact commit, and uploads its Pages
+artifact. Deployments queue rather than cancel one another. A separate deployment
 job has Pages/OIDC write permissions; the build job does not. There is no manual
 deployment trigger. The `/optio/` base path and service-worker settings live in
 [vite.config.ts](../vite.config.ts).
@@ -281,7 +328,9 @@ lockfile using a successful lockfile-changing PR and a frozen install. A green
 bot job alone does not prove that dependency updates work.
 
 The security workflow adds PR/push CodeQL checks and Monday 08:00 UTC dependency
-audits (including development dependencies). It never deploys. Check the first
+audits (including development dependencies). The audit reads the lockfile
+without installing packages. CodeQL skips PRs that change only Markdown or
+`docs/`, and a new PR push cancels its superseded analysis. It never deploys. Check the first
 GitHub runs after merging: local workflow linting cannot verify GitHub's security
 permissions. Avoid enabling CodeQL default setup alongside this advanced
 workflow. Review failed scheduled jobs and maintain security-alert notifications.

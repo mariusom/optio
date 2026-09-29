@@ -27,3 +27,19 @@ it("defers SQLite loading and shares one store across concurrent and later calle
   expect(await getStore()).toBe(store);
   expect(openStore).toHaveBeenCalledTimes(1);
 });
+
+it("does not keep a failed open, so a retry opens the store again", async () => {
+  vi.resetModules();
+  const store = { query: vi.fn(), commit: vi.fn() };
+  const openStore = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("Storage is locked"))
+    .mockResolvedValueOnce(store);
+  vi.doMock("./openStore.ts", () => ({ openStore }));
+
+  const { getStore } = await import("./client.ts");
+  await expect(getStore()).rejects.toThrow("Storage is locked");
+  expect(await getStore()).toBe(store);
+  expect(await getStore()).toBe(store);
+  expect(openStore).toHaveBeenCalledTimes(2);
+});

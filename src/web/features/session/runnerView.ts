@@ -5,7 +5,6 @@ import {
   List,
   Timer,
   actionGroup,
-  confirmSheet,
   emptyState,
   groupedList,
   hint,
@@ -13,9 +12,9 @@ import {
   navBarAction,
   notice,
   row,
-  sheet,
   statusPill,
 } from "@/components/app";
+import { confirmSheet, sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
 import { spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,7 @@ import {
 // ── Status line ─────────────────────────────────────────────────────────────
 
 /** Compact live status under the title: "Task 4 · 00:42". */
-export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   const task = currentTask(runner);
   const isEditing = task !== null && task.isBeingEdited;
   const taskStart = task === null ? null : taskStartDate(task);
@@ -148,7 +147,7 @@ export const runnerNavBar = (
     ],
   );
 
-export const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
   runnerNavBar(runner, [taskListAction(runner, h)], h);
 
 // ── Action bar ──────────────────────────────────────────────────────────────
@@ -247,7 +246,7 @@ const taskValue = (task: RunnerTask): string | undefined => {
 };
 
 /** One row per task; shared by the phone sheet and the tablet sidebar. */
-export const taskRow = (
+const taskRow = (
   task: RunnerTask,
   options: Readonly<{ isCurrent: boolean; showValue?: boolean }>,
   h: HtmlBuilder<Message>,
@@ -257,6 +256,7 @@ export const taskRow = (
     status === "recording" ? "in progress" : status === "editing" ? "editing" : "completed";
   return row(
     {
+      key: task.id,
       lazy: true,
       title: `Task ${task.orderIndex}`,
       subtitle: firstAnswer(task),
@@ -293,9 +293,8 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
     {
       id: "runner-tasks",
       title: "Tasks",
-      description: `${runner.completedCount} recorded. Tap a task to change its answers.`,
+      description: `${runner.completedCount} recorded. Select a task to change its answers.`,
       onDismiss: Message.ToggledTaskList(),
-      dismissLabel: "Close task list",
       size: "md",
       footer: {
         confirm: {
@@ -308,6 +307,18 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
     [groupedList({}, [...taskRows(runner, h)], h)],
     h,
   );
+
+/**
+ * Sheets over the live session. Rendered once, outside the responsive phone
+ * and tablet copies, so a hidden copy never holds the open dialog.
+ */
+export const runnerSheets = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
+  runner === null || currentTask(runner) === null
+    ? []
+    : [
+        ...(runner.showTaskList ? [taskListSheet(runner, h)] : []),
+        ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
+      ];
 
 // ── End session & errors ────────────────────────────────────────────────────
 
@@ -326,7 +337,6 @@ export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) =>
       confirmAriaLabel: "End session",
       cancelAriaLabel: "Keep recording",
       cancelLabel: "Keep recording",
-      dismissLabel: "Cancel ending session",
       onConfirm: Message.ConfirmedEndSession(),
       onCancel: Message.CanceledEndSession(),
     },
@@ -388,8 +398,6 @@ export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
       phoneNavBar(runner, h),
       runnerCanvas({ task, scope: "mobile" }, h),
       runnerActionBar(runner, task, h),
-      ...(runner.showTaskList ? [taskListSheet(runner, h)] : []),
-      ...(runner.showEndConfirm ? [endConfirmModal(runner, h)] : []),
     ],
   );
 };

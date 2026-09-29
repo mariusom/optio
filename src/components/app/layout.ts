@@ -55,7 +55,7 @@ export const sectionHeader = <M>(text: Child, h: HtmlBuilder<M>, className?: str
   h.h2([h.Class(cn("pb-2 text-sm font-medium text-foreground", className))], [text]);
 
 /** Explanatory text under a grouped list (iOS section footer). */
-export const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
+const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
   h.p([h.Class("pt-2 text-sm leading-relaxed text-muted-foreground")], [text]);
 
 /**
@@ -119,6 +119,8 @@ export type RowConfig<M> = Readonly<{
   lazy?: boolean;
   /** Stack the value under the title and let both wrap (long answers). */
   wrap?: boolean;
+  /** Stable identity for rows in lists that insert or reorder items. */
+  key?: string;
 }>;
 
 const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>): Array<Child> => [
@@ -171,11 +173,15 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
   );
   const body = rowContent(config, chevron, h);
   const extra = config.attributes ?? [];
+  // Keyed rows keep their DOM node (and keyboard focus) when rows are inserted above.
+  const { key } = config;
+  const element = (tag: "a" | "button" | "div") =>
+    key === undefined ? h[tag] : (...args: Parameters<typeof h.div>) => h.keyed(tag)(key, ...args);
   if (config.href !== undefined) {
-    return h.a([h.Class(classes), h.Href(config.href), ...extra], body);
+    return element("a")([h.Class(classes), h.Href(config.href), ...extra], body);
   }
   if (config.onClick !== undefined) {
-    return h.button(
+    return element("button")(
       [
         h.Type("button"),
         h.Class(classes),
@@ -186,7 +192,7 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
       body,
     );
   }
-  return h.div([h.Class(classes), ...extra], body);
+  return element("div")([h.Class(classes), ...extra], body);
 };
 
 /** Free-form row that hosts a form control (input, textarea, switch). */
@@ -243,21 +249,25 @@ export const choiceRows = <M>(
     choices.findIndex((choice) => choice.selected),
   );
   const at = (index: number) => choices[(index + choices.length) % choices.length];
+  // One inset list like every other grouped setting; rows keep radio semantics.
   return groupedList(
     {
       header: config.header,
       footer: config.footer,
-      surface: "plain",
-      className: "gap-2 divide-y-0",
       role: "radiogroup",
       listAttributes: [h.AriaLabel(config.label)],
     },
     choices.map((choice, index) =>
-      button(
+      row(
         {
-          variant: choice.selected ? "secondary" : "outline",
-          className: "h-auto min-h-11 w-full justify-between whitespace-normal py-3 text-left",
+          title: choice.label,
+          ...(choice.subtitle === undefined ? {} : { subtitle: choice.subtitle }),
           onClick: choice.onSelect,
+          chevron: false,
+          className: "py-3",
+          trailing: choice.selected
+            ? icon(h, Check, "size-5 shrink-0 text-primary")
+            : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)], []),
           attributes: [
             h.Role("radio"),
             h.AriaChecked(choice.selected),
@@ -280,20 +290,6 @@ export const choiceRows = <M>(
             }),
           ],
         },
-        [
-          h.span(
-            [h.Class("flex min-w-0 flex-1 flex-col gap-1")],
-            [
-              h.span([], [choice.label]),
-              ...(choice.subtitle === undefined
-                ? []
-                : [h.span([h.Class("text-xs text-muted-foreground")], [choice.subtitle])]),
-            ],
-          ),
-          choice.selected
-            ? icon(h, Check, "size-5 shrink-0 text-primary")
-            : h.span([h.Class("size-5 shrink-0"), h.AriaHidden(true)], []),
-        ],
         h,
       ),
     ),

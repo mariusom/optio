@@ -55,7 +55,7 @@ const nodeToAttributes = <M>(
 
 const defaultIconClass = "size-4 shrink-0";
 
-export type IconPosition = "inline-start" | "inline-end";
+type IconPosition = "inline-start" | "inline-end";
 type IconOptions = Readonly<{ className?: string; position?: IconPosition }>;
 
 export const icon = <M>(

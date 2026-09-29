@@ -7,9 +7,9 @@ import {
 } from "../agents/actions";
 import { hrefFor } from "../web/routes";
 import { HexColour } from "../web/theme";
-import { generateSessionName } from "../web/random-name";
 import { hasChanges } from "../web/features/templates/editor";
 import {
+  GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
   CopyTemplatePrompt,
@@ -30,6 +30,25 @@ type Result = Update.Return<Model, Message>;
 type AllHandlers = Parameters<typeof Message.match<Result>>[1];
 
 type AgentHandlers = Pick<AllHandlers, "AgentRequest">;
+
+const perform = (
+  model: Model,
+  operation: AgentAction,
+  dispatch: (model: Model, message: Message) => Result,
+): Result => {
+  if (operation._tag === "Navigate") {
+    return { model, commands: [NavigateInternal({ url: hrefFor(operation.route) })] };
+  }
+  const result = dispatch(model, operation);
+  if (operation._tag !== "ChangedFieldValue") return result;
+  // An assistant sets whole answers, so write them now instead of waiting for
+  // the typing pause.
+  const flushed = dispatch(result.model, Message.SettledFieldInput());
+  return {
+    model: flushed.model,
+    commands: [...(result.commands ?? []), ...(flushed.commands ?? [])],
+  };
+};
 export const agentHandlers = (
   model: Model,
   dispatch: (model: Model, message: Message) => Result,
@@ -48,11 +67,7 @@ export const agentHandlers = (
             ? "Confirmation changed or is missing; request confirmation again."
             : actionError(model, operation);
     const result =
-      operation === null || error !== null
-        ? { model }
-        : operation._tag === "Navigate"
-          ? { model, commands: [NavigateInternal({ url: hrefFor(operation.route) })] }
-          : dispatch(model, operation);
+      operation === null || error !== null ? { model } : perform(model, operation, dispatch);
     const commands = result.commands ?? [];
     return {
       model: result.model,
@@ -87,8 +102,12 @@ type ShellHandlers = Pick<
   | "ConfirmedAccentPicker"
   | "AccentSaveFinished"
   | "GotRoute"
+  | "FailedDetailLoad"
   | "ClickedLink"
   | "Navigated"
+  | "CompletedReplyToAgent"
+  | "SettledSheet"
+  | "SupersededStyleSave"
   | "ClickedCopyTemplatePrompt"
   | "TemplatePromptCopyFinished"
   | "ResetTemplatePromptCopy"
@@ -162,7 +181,13 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
           ? { ...model, route, templateActionsFor: null }
           : { ...model, route, editor: null, templateActionsFor: null }
         : { ...model, route, editor: null, templateActionsFor: null };
-    base = { ...base, historyActionsFor: null, showCreate: false, accentDraft: null };
+    base = {
+      ...base,
+      historyActionsFor: null,
+      showCreate: false,
+      accentDraft: null,
+      detailLoadFailed: false,
+    };
     // Clear history detail when leaving SessionDetail
     if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
       base = {
@@ -187,7 +212,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     }
     // Offer a fresh suggested name on entry; preserve any explicitly typed name.
     if (route._tag === "StartTab" && base.activeSession === null) {
-      return { model: { ...base, placeholderName: generateSessionName() } };
+      return { model: base, commands: [GeneratePlaceholderName({})] };
     }
     return { model: base };
   },
@@ -213,6 +238,10 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     return { model, commands: [NavigateInternal({ url })] };
   },
   Navigated: () => ({ model }),
+  FailedDetailLoad: () => ({ model: { ...model, detailLoadFailed: true } }),
+  CompletedReplyToAgent: () => ({ model }),
+  SettledSheet: () => ({ model }),
+  SupersededStyleSave: () => ({ model }),
   ClickedCopyTemplatePrompt: () =>
     model.promptCopyStatus === "copying" || model.promptCopyStatus === "copied"
       ? { model }

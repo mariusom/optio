@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 
 import type { Model } from "../main";
-import { FieldDef, FieldKind } from "../livestore/schema";
+import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerDataSchema } from "../web/features/session/runner";
 import { RouteSchema } from "../web/routes";
 import { Theme } from "../web/theme";
@@ -106,7 +106,7 @@ export const AgentState = Schema.Struct({
   showEditHistoryName: Schema.Boolean,
   editHistoryNameInput: Schema.String,
   pendingNavigationUrl: Schema.NullOr(Schema.String),
-  csvError: Schema.NullOr(Schema.String),
+  historyError: Schema.NullOr(Schema.String),
 });
 export type AgentState = typeof AgentState.Type;
 
@@ -160,6 +160,6 @@ export const projectAgentState = (model: Model): AgentState => {
     showEditHistoryName: model.showEditHistoryName,
     editHistoryNameInput: model.editHistoryNameInput,
     pendingNavigationUrl: model.pendingNavigationUrl,
-    csvError: model.csvError,
+    historyError: model.historyError,
   };
 };

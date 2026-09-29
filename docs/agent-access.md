@@ -31,7 +31,8 @@ field values and foreign IDs; only the active session can open in the runner.
 Storage and measurement rules are described in [architecture](architecture.md).
 
 Action success means the update loop accepted and dispatched the operation, not
-that an asynchronous write committed. Inspect the returned state, then read until
+that an asynchronous write committed. Answers set through `ChangedFieldValue` are
+written at once, without the typing pause the UI waits for. Inspect the returned state, then read until
 the expected data or error appears. No response indicates global idle. After a
 timeout, inspect state before retrying creation, recording or deletion;
 cancellation stops waiting, not an already dispatched write.

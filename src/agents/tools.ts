@@ -2,11 +2,12 @@ import { Effect, Schema } from "effect";
 import { Tool, Toolkit } from "effect/unstable/ai";
 
 import type { AppStore } from "../livestore/client";
+import { archivedSessions } from "../livestore/queries";
 import { tables } from "../livestore/schema";
 import { AgentAction, AgentResult } from "./actions";
 import type { AgentApplication } from "./connection";
 
-export class AgentReadError extends Schema.TaggedError<AgentReadError>()("AgentReadError", {
+class AgentReadError extends Schema.TaggedError<AgentReadError>()("AgentReadError", {
   message: Schema.String,
 }) {}
 
@@ -87,30 +88,13 @@ export const OptioTools = Toolkit.make(
   ActOnApp,
 );
 
-const summaries = (store: Pick<AppStore, "query">) => {
-  const counts = new Map<string, number>();
-  for (const record of store.query(tables.taskRecords.select())) {
-    counts.set(record.sessionId, (counts.get(record.sessionId) ?? 0) + 1);
-  }
-  return store
-    .query(tables.sessions.select())
-    .flatMap((session) =>
-      session.endedAt === null
-        ? []
-        : [
-            {
-              id: session.id,
-              sessionName: session.sessionName,
-              templateName: session.templateName,
-              startedAt: Number(session.startedAt),
-              endedAt: Number(session.endedAt),
-              durationMs: Number(session.endedAt) - Number(session.startedAt),
-              taskCount: counts.get(session.id) ?? 0,
-            },
-          ],
-    )
-    .toSorted((a, b) => b.startedAt - a.startedAt || a.id.localeCompare(b.id));
-};
+/** Archived sessions, newest first; the History list reads the same query. */
+const summaries = (store: Pick<AppStore, "query">) =>
+  store.query(archivedSessions).map((session) => ({
+    ...session,
+    // A device clock change mid-session must not report a negative duration.
+    durationMs: Math.max(0, session.endedAt - session.startedAt),
+  }));
 
 /** Reads use a read-only store handle; all writes go through the app update loop. */
 export const makeToolHandlers = (

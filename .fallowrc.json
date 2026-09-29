@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "entry": [
+    "src/entry.ts",
+    "src/main.ts",
+    "src/livestore/livestore.worker.ts",
+    "src/**/*.test.ts",
+    "src/**/*.browser.ts",
+    "scripts/**/*.{mjs,ts}",
+    "vite.config.ts"
+  ],
+  "ignorePatterns": [
+    "src/web/componentStyles.generated.ts",
+    "src/components/ui/{label,progress,skeleton}.ts"
+  ],
+  "ignoreExports": [
+    {
+      "file": "src/components/ui/**",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/livestore/{modules,queries}.ts",
+      "exports": ["*"]
+    },
+    {
+      "file": "src/components/app/icons.ts",
+      "exports": ["icon"]
+    }
+  ],
+  "ignoreDependencies": ["@livestore/wa-sqlite", "@foldkit/devtools", "vite-plus"]
+}

@@ -1,32 +1,59 @@
 import type { Update } from "foldkit";
 
-import { confirmationState, invalidatesAgentConfirmation } from "../agents/actions";
-import { Message } from "../messages";
+import { confirmationChanged, invalidatesAgentConfirmation } from "../agents/actions";
+import type { Message } from "../messages";
 import { editorFieldHandlers, editorLoadHandlers, editorSaveHandlers } from "./editorUpdate";
 import { historyHandlers } from "./historyUpdate";
 import type { Model } from "./model";
 import { sessionHandlers } from "./sessionUpdate";
+import { storageHandlers } from "./storageUpdate";
 import { agentHandlers, shellHandlers } from "./shellUpdate";
 import { templateHandlers } from "./templateUpdate";
 
-const updateInternal = (model: Model, message: Message): Update.Return<Model, Message> =>
-  Message.match<Update.Return<Model, Message>>(message, {
-    ...agentHandlers(model, update),
-    ...shellHandlers(model),
-    ...templateHandlers(model),
-    ...editorLoadHandlers(model),
-    ...editorFieldHandlers(model),
-    ...editorSaveHandlers(model),
-    ...sessionHandlers(model),
-    ...historyHandlers(model),
-  });
+type Result = Update.Return<Model, Message>;
+type Tag = Message["_tag"];
+type Handler = (message: Message) => Result;
 
-export const update = (model: Model, message: Message): Update.Return<Model, Message> => {
+// Feature handler groups close over the model lazily (they only return object
+// literals), so each message builds just the group that owns its tag.
+const handlerGroups = [
+  (model: Model) => agentHandlers(model, (next, message) => update(next, message)),
+  shellHandlers,
+  templateHandlers,
+  editorLoadHandlers,
+  editorFieldHandlers,
+  editorSaveHandlers,
+  sessionHandlers,
+  historyHandlers,
+  storageHandlers,
+] as const;
+
+type KeysOf<T> = T extends unknown ? keyof T : never;
+type CoveredTag = KeysOf<ReturnType<(typeof handlerGroups)[number]>>;
+// Compile-time exhaustiveness: every message tag has a handler group.
+const everyTagHandled: [Exclude<Tag, CoveredTag>] extends [never] ? true : never = true;
+void everyTagHandled;
+
+const groupByTag = new Map<string, (model: Model) => Record<string, Handler>>(
+  handlerGroups.flatMap((group) =>
+    Object.keys(group(null as never)).map(
+      (tag) => [tag, group as unknown as (model: Model) => Record<string, Handler>] as const,
+    ),
+  ),
+);
+
+const updateInternal = (model: Model, message: Message): Result => {
+  const group = groupByTag.get(message._tag);
+  if (group === undefined) throw new Error(`Unhandled message: ${message._tag}`);
+  return (group(model)[message._tag] as Handler)(message);
+};
+
+export const update = (model: Model, message: Message): Result => {
   const result = updateInternal(model, message);
   if (message._tag === "AgentRequest") return result;
   if (
-    confirmationState(model) !== confirmationState(result.model) ||
-    invalidatesAgentConfirmation(message)
+    invalidatesAgentConfirmation(message) ||
+    (result.model !== model && confirmationChanged(model, result.model))
   ) {
     return {
       ...result,

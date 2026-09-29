@@ -1,12 +1,17 @@
-import { Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema as S } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
-import { friendlyFailure } from "../../errors";
+import { friendlyFailure, reportFailure } from "../../errors";
 import { isBooleanTrue } from "../../fields";
-import { getStore } from "../../../livestore/client";
-import { events, tables } from "../../../livestore/schema";
-import { buildArchiveCsv, filenameForArchive, type ArchiveTask } from "./helpers";
+import { withStore } from "../../../livestore/access";
+import {
+  buildArchiveCsv,
+  displayNameFor,
+  filenameForArchive,
+  groupSectionsByRecord,
+  type ArchiveTask,
+} from "./helpers";
 
 // Safari-compatible Blob URL + a[download]. Non-browser callers still get the filename.
 const downloadCsv = (csv: string, filename: string) => {
@@ -31,36 +36,46 @@ const downloadCsv = (csv: string, filename: string) => {
   return Message.CsvExported({ filename });
 };
 
+const toCsvSection = (section: {
+  readonly sectionName: string;
+  readonly sectionType: string;
+  readonly value: string;
+}) => ({
+  sectionName: section.sectionName,
+  // Keep unanswered distinct from an explicit No.
+  value:
+    section.sectionType === "boolean" && section.value !== ""
+      ? String(isBooleanTrue(section.value))
+      : section.value,
+});
+
+const failedHistoryOp = (error: string) => Message.FailedHistoryOp({ error });
+const failedExport = (error: string) => Message.FailedCsvExport({ error });
+
 // DeleteHistorySession → sessionDeleted
 export const DeleteHistorySession = Command.define("DeleteHistorySession", {
   args: { id: S.String },
-  messages: [Message.HistoryDeleted, Message.FailedCsvExport],
+  messages: [Message.HistoryDeleted, Message.FailedHistoryOp],
   execute: ({ id }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      store.commit(events.sessionDeleted({ id }));
-      return Message.HistoryDeleted();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("delete", cause) })),
-      ),
-    ),
+    withStore(({ store, events }) =>
+      Effect.sync(() => {
+        store.commit(events.sessionDeleted({ id }));
+        return Message.HistoryDeleted();
+      }),
+    ).pipe(reportFailure("delete", failedHistoryOp)),
 });
 
 // RenameHistorySession → sessionRenamed
 export const RenameHistorySession = Command.define("RenameHistorySession", {
   args: { id: S.String, sessionName: S.String },
-  messages: [Message.HistoryNameUpdated, Message.FailedCsvExport],
+  messages: [Message.HistoryNameUpdated, Message.FailedHistoryOp],
   execute: ({ id, sessionName }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
-      store.commit(events.sessionRenamed({ id, sessionName }));
-      return Message.HistoryNameUpdated();
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("save", cause) })),
-      ),
-    ),
+    withStore(({ store, events }) =>
+      Effect.sync(() => {
+        store.commit(events.sessionRenamed({ id, sessionName }));
+        return Message.HistoryNameUpdated();
+      }),
+    ).pipe(reportFailure("save", failedHistoryOp)),
 });
 
 // ExportSessionCsv — archive format only (history is archive)
@@ -68,92 +83,27 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
   args: { sessionId: S.String, spreadsheetSafe: S.optionalKey(S.Boolean) },
   messages: [Message.CsvExported, Message.FailedCsvExport],
   execute: ({ sessionId, spreadsheetSafe = false }) =>
-    Effect.gen(function* () {
-      const store = yield* Effect.promise(getStore);
+    withStore(({ store, queries }) =>
+      Effect.gen(function* () {
+        const exportedAt = new Date(yield* Clock.currentTimeMillis);
+        // Reads only this session's records and answers, in question order.
+        const { session, records, sections } = store.query(queries.archiveRows(sessionId));
+        if (session === null) return failedExport("That session is no longer here.");
+        if (records.length === 0)
+          return failedExport("There are no tasks in this session to export.");
 
-      // Fetch session for displayName + filename
-      const sessions = store.query(
-        tables.sessions.select().where({ id: sessionId }),
-      ) as ReadonlyArray<{
-        id: string;
-        sessionName: string;
-        templateName: string;
-        startedAt: Date | number;
-        endedAt: Date | number | null;
-      }>;
-      const session = sessions[0];
-      if (!session) return Message.FailedCsvExport({ error: "That session is no longer here." });
+        const sectionsByRecord = groupSectionsByRecord(sections);
+        const tasks: ReadonlyArray<ArchiveTask> = records.map((record) => ({
+          taskId: record.taskId,
+          startedAt: record.startedAt,
+          endedAt: record.endedAt,
+          sections: (sectionsByRecord.get(record.id) ?? []).map(toCsvSection),
+        }));
 
-      const displayName = session.sessionName !== "" ? session.sessionName : session.templateName;
-
-      // Fetch taskRecords + section records for archive CSV
-      const taskRows = store.query(
-        tables.taskRecords.select().where({ sessionId }).orderBy("taskId", "asc"),
-      ) as ReadonlyArray<{
-        id: string;
-        taskId: number;
-        startedAt: Date | number | null;
-        endedAt: Date | number | null;
-      }>;
-
-      if (taskRows.length === 0) {
-        return Message.FailedCsvExport({ error: "There are no tasks in this session to export." });
-      }
-
-      const allSectionRows = store.query(tables.taskSectionRecords.select()) as ReadonlyArray<{
-        id: string;
-        taskRecordId: string;
-        sectionName: string;
-        value: string;
-        sectionType: string;
-        isRequired: number;
-        startedAt: Date | number | null;
-      }>;
-
-      const sectionsByRecord = new Map<string, Array<(typeof allSectionRows)[number]>>();
-      for (const section of allSectionRows) {
-        const sections = sectionsByRecord.get(section.taskRecordId) ?? [];
-        sections.push(section);
-        sectionsByRecord.set(section.taskRecordId, sections);
-      }
-
-      const records: ReadonlyArray<ArchiveTask> = taskRows.map((tr) => {
-        const secs = sectionsByRecord.get(tr.id) ?? [];
-        const startedAt =
-          tr.startedAt === null || tr.startedAt === undefined
-            ? null
-            : tr.startedAt instanceof Date
-              ? tr.startedAt
-              : new Date(Number(tr.startedAt));
-        const endedAt =
-          tr.endedAt === null || tr.endedAt === undefined
-            ? null
-            : tr.endedAt instanceof Date
-              ? tr.endedAt
-              : new Date(Number(tr.endedAt));
-        return {
-          taskId: Number(tr.taskId),
-          startedAt,
-          endedAt,
-          sections: secs.map((s) => ({
-            sectionName: s.sectionName,
-            // Keep unanswered distinct from an explicit No.
-            value:
-              s.sectionType === "boolean" && s.value !== ""
-                ? String(isBooleanTrue(s.value))
-                : s.value,
-          })),
-        };
-      });
-
-      // Use helper to build CSV
-      const csv = buildArchiveCsv(records, spreadsheetSafe);
-
-      const filename = filenameForArchive(displayName, new Date());
-      return downloadCsv(csv, filename);
-    }).pipe(
-      Effect.catchCause((cause) =>
-        Effect.succeed(Message.FailedCsvExport({ error: friendlyFailure("export", cause) })),
-      ),
-    ),
+        return downloadCsv(
+          buildArchiveCsv(tasks, spreadsheetSafe),
+          filenameForArchive(displayNameFor(session.sessionName, session.templateName), exportedAt),
+        );
+      }),
+    ).pipe(reportFailure("export", failedExport)),
 });

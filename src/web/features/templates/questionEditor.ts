@@ -20,7 +20,7 @@ import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
-import type { FieldKind } from "../../../livestore/schema";
+import type { FieldKind } from "../../../domain/fields";
 import { hasOptions, isScalarAnswerValid } from "../../fields";
 import { isDraftValid } from "./editor";
 import { ANSWER_TYPES, answerTypeName, type Editor } from "./editorTypes";
@@ -42,8 +42,7 @@ const moveButton = (
 /** Why the question can't be saved yet, in the order a person would fix it. */
 const draftHint = (draft: Editor["draft"] & object): string => {
   if (draft.name.trim().length === 0) return "Name the question to save it.";
-  if (hasOptions(draft.kind as FieldKind) && draft.options.length < 2)
-    return "Add at least two choices.";
+  if (hasOptions(draft.kind) && draft.options.length < 2) return "Add at least two choices.";
   if (draft.kind === "checkbox" && draft.options.some((option) => option.includes(",")))
     return "Choices can’t contain commas.";
   return "Finish the question to save it.";
@@ -87,8 +86,8 @@ const choiceRow = (
                 id: `choice-exclusive-${index}`,
                 isChecked: isExclusive,
                 onToggle: () => Message.ToggledExclusiveOption({ index }),
-                label: "Clears other choices",
-                size: "sm",
+                label: "Clears others",
+                labelClass: "font-normal text-muted-foreground",
                 wrapperClass: "flex-1 flex-row-reverse justify-end sm:flex-none",
               },
               h,
@@ -120,8 +119,9 @@ const choiceRow = (
       ),
       button(
         {
-          variant: "destructive",
+          variant: "ghost",
           size: "icon",
+          className: "text-destructive hover:bg-destructive/10 hover:text-destructive",
           onClick: Message.ClickedDeleteOption({ index }),
           attributes: [h.AriaLabel(`Remove choice ${option}`)],
         },
@@ -301,8 +301,8 @@ export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
   const draft = editor.draft;
   if (draft === null) return h.div([], []);
   const isEditing = editor.editingFieldId !== null;
-  const kind = draft.kind as FieldKind;
-  const valid = isDraftValid(draft as unknown as Parameters<typeof isDraftValid>[0]);
+  const kind = draft.kind;
+  const valid = isDraftValid(draft);
 
   const actions = actionGroup(
     {

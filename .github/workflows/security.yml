@@ -3,6 +3,11 @@ name: Security assurance
 on:
   pull_request:
     branches: [main]
+    # Documentation-only PRs cannot change analyzed code. Pushes to main and the
+    # schedule still analyze everything.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   push:
     branches: [main]
   schedule:
@@ -11,10 +16,16 @@ on:
 permissions:
   contents: read
 
+# Superseded PR pushes are cancelled; main and scheduled runs always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   codeql:
     name: CodeQL (JavaScript/TypeScript)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       security-events: write
@@ -22,16 +33,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@311b4ee155dcdab395044f00946f664bd51ff173 # v4
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           languages: javascript-typescript
           build-mode: none
-      - uses: github/codeql-action/analyze@311b4ee155dcdab395044f00946f664bd51ff173 # v4
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
 
   weekly-audit:
     name: Weekly dependency audit (including development dependencies)
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -39,8 +51,7 @@ jobs:
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          node-version-file: .node-version
+      # The audit reads the lockfile; it needs no installed dependencies.
       # pnpm audits production and development dependencies by default.
       - run: pnpm audit --audit-level high

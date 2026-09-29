@@ -1,4 +1,4 @@
-import { Cause } from "effect";
+import { Cause, Effect } from "effect";
 
 /**
  * Users never see stack traces or storage internals. Every failed operation is
@@ -36,3 +36,18 @@ export const friendlyFailure = (action: FailedAction, cause: unknown): string =>
   }
   return phrases[action];
 };
+
+/**
+ * Turns a command's failure into its declared UI message. Interruption is not
+ * a failure the user caused or can retry, so it propagates unreported.
+ */
+export const reportFailure =
+  <M>(action: FailedAction, toMessage: (error: string) => M) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A | M, never, R> =>
+    self.pipe(
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.interrupt
+          : Effect.succeed(toMessage(friendlyFailure(action, cause))),
+      ),
+    );

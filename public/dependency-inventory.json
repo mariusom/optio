@@ -454,23 +454,6 @@
       ]
     },
     {
-      "name": "@typeonce/effect-machine",
-      "version": "0.37.0",
-      "license": "MIT",
-      "role": "production dependency graph",
-      "homepage": "https://github.com/typeonce-dev/effect-machine#readme",
-      "licenseTexts": [
-        {
-          "provenance": "installed package file LICENSE",
-          "sha256": "bd55a6f767f21a1dfe726f60fe81fc38778b47fd60f1e950f17a23d5c3bffd61"
-        },
-        {
-          "provenance": "installed package file NOTICE",
-          "sha256": "3d30f1c2c812bd296d8e269bf620ef9b4515b09d039ef7d2d1b5a97141c18d78"
-        }
-      ]
-    },
-    {
       "name": "@types/chai",
       "version": "5.2.3",
       "license": "MIT",

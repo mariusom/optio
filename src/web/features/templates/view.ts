@@ -6,7 +6,6 @@ import {
   LayoutTemplate,
   Star,
   Trash2,
-  confirmSheet,
   emptyState,
   groupedList,
   icon,
@@ -14,10 +13,9 @@ import {
   page,
   row,
   rowAction,
-  sheet,
-  sheetAction,
   statusPill,
 } from "@/components/app";
+import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
@@ -88,14 +86,13 @@ const actionsSheet = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
       title: template.name,
       description: questionSummaryLine(template.fieldCount, template.requiredCount),
       onDismiss: Message.ClosedTemplateActions(),
-      dismissLabel: `Close actions for "${template.name}"`,
       footer: {
         cancel: { label: "Cancel", onClick: Message.ClosedTemplateActions() },
       },
     },
     [
       h.div(
-        [h.Class("flex flex-col gap-2")],
+        [h.Class("flex flex-col gap-1")],
         [
           ...(template.isDefault
             ? []
@@ -144,7 +141,6 @@ const deleteSheet = (
       confirmLabel: "Delete",
       confirmAriaLabel: "Confirm delete",
       cancelAriaLabel: "Cancel delete",
-      dismissLabel: "Cancel deleting template",
       destructive: true,
       onConfirm: Message.ConfirmedDeleteTemplate(),
       onCancel: Message.CanceledDeleteTemplate(),

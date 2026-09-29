@@ -1,10 +1,59 @@
 import { Schema as S } from "effect";
-import { FieldDef, FieldKind } from "../livestore/schema";
+import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
 import { Accent, Font, IconLibrary, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
-import { generateSessionName } from "../web/random-name";
+
+// Payload shapes shared by the Model and the Messages that deliver them.
+
+/** The open session shown on the Start tab. */
+export const ActiveSessionSummary = S.Struct({
+  id: S.String,
+  templateId: S.Union([S.Null, S.String]),
+  templateName: S.String,
+  sessionName: S.String,
+  startedAt: S.Number,
+  completedCount: S.Number,
+});
+
+/** One archived session in the History list. */
+export const HistorySessionSummary = S.Struct({
+  id: S.String,
+  displayName: S.String,
+  templateName: S.String,
+  sessionName: S.String,
+  startedAt: S.Number,
+  endedAt: S.Number,
+  taskCount: S.Number,
+});
+
+/** An archived session with its tasks and answers. */
+export const HistorySessionDetail = S.Struct({
+  id: S.String,
+  sessionName: S.String,
+  templateName: S.String,
+  startedAt: S.Number,
+  endedAt: S.Union([S.Null, S.Number]),
+  taskCount: S.Number,
+  tasks: S.Array(
+    S.Struct({
+      id: S.String,
+      taskId: S.Number,
+      startedAt: S.Union([S.Null, S.Number]),
+      endedAt: S.Union([S.Null, S.Number]),
+      sections: S.Array(
+        S.Struct({
+          sectionName: S.String,
+          value: S.String,
+          sectionType: S.String,
+          isRequired: S.Boolean,
+          startedAt: S.Union([S.Null, S.Number]),
+        }),
+      ),
+    }),
+  ),
+});
 
 export const Model = S.Struct({
   agentConfirmationVersion: S.Number,
@@ -81,62 +130,18 @@ export const Model = S.Struct({
   selectedTemplateId: S.Union([S.Null, S.String]),
   sessionNameInput: S.String,
   placeholderName: S.String,
-  activeSession: S.Union([
-    S.Null,
-    S.Struct({
-      id: S.String,
-      templateId: S.Union([S.Null, S.String]),
-      templateName: S.String,
-      sessionName: S.String,
-      startedAt: S.Number,
-      completedCount: S.Number,
-    }),
-  ]),
+  activeSession: S.NullOr(ActiveSessionSummary),
   pendingDiscardSession: S.Boolean,
   // Live session form
   runner: S.Union([S.Null, RunnerStateSchema]),
-  // Machine phase for the live Session statechart (Idle ⇔ runner === null)
-  runnerPhase: S.Union([S.Literal("collecting"), S.Literal("confirming")]),
   // Archived sessions
-  history: S.Array(
-    S.Struct({
-      id: S.String,
-      displayName: S.String,
-      templateName: S.String,
-      sessionName: S.String,
-      startedAt: S.Number,
-      endedAt: S.Number,
-      taskCount: S.Number,
-    }),
-  ),
-  selectedHistorySession: S.Union([
-    S.Null,
-    S.Struct({
-      id: S.String,
-      sessionName: S.String,
-      templateName: S.String,
-      startedAt: S.Number,
-      endedAt: S.Union([S.Null, S.Number]),
-      taskCount: S.Number,
-      tasks: S.Array(
-        S.Struct({
-          id: S.String,
-          taskId: S.Number,
-          startedAt: S.Union([S.Null, S.Number]),
-          endedAt: S.Union([S.Null, S.Number]),
-          sections: S.Array(
-            S.Struct({
-              sectionName: S.String,
-              value: S.String,
-              sectionType: S.String,
-              isRequired: S.Boolean,
-              startedAt: S.Union([S.Null, S.Number]),
-            }),
-          ),
-        }),
-      ),
-    }),
-  ]),
+  history: S.Array(HistorySessionSummary),
+  selectedHistorySession: S.NullOr(HistorySessionDetail),
+  /**
+   * The open session detail or template editor could not be read. Without it a
+   * null detail means "still opening"; a missing item navigates away instead.
+   */
+  detailLoadFailed: S.Boolean,
   pendingHistoryDelete: S.Union([S.Null, S.Struct({ id: S.String, displayName: S.String })]),
   showEditHistoryName: S.Boolean,
   editHistoryNameInput: S.String,
@@ -144,7 +149,11 @@ export const Model = S.Struct({
   historyActionsFor: S.Union([S.Null, S.String]),
   /** Where an internal link wanted to go while the editor had unsaved changes. */
   pendingNavigationUrl: S.Union([S.Null, S.String]),
-  csvError: S.Union([S.Null, S.String]),
+  /** Failed history delete, rename or export. */
+  historyError: S.Union([S.Null, S.String]),
+  /** Whether studies persist, live only in memory, or cannot be opened. */
+  storage: S.Literals(["opening", "persisted", "in-memory", "unavailable"]),
+  memoryStorageAcknowledged: S.Boolean,
   promptCopyStatus: S.Literals(["idle", "copying", "copied", "failed"]),
 });
 export type Model = typeof Model.Type;
@@ -176,20 +185,23 @@ const initialModel = (route: Route): Model => ({
   editor: null,
   selectedTemplateId: null,
   sessionNameInput: "",
-  placeholderName: generateSessionName(),
+  // Filled by the GeneratePlaceholderName command that init issues.
+  placeholderName: "",
   activeSession: null,
   pendingDiscardSession: false,
   runner: null,
-  runnerPhase: "collecting",
   history: [],
   selectedHistorySession: null,
+  detailLoadFailed: false,
   pendingHistoryDelete: null,
   showEditHistoryName: false,
   editHistoryNameInput: "",
   selectedHistoryTaskId: null,
   historyActionsFor: null,
   pendingNavigationUrl: null,
-  csvError: null,
+  historyError: null,
+  storage: "opening",
+  memoryStorageAcknowledged: false,
   promptCopyStatus: "idle",
 });
 

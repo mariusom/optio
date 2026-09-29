@@ -1,7 +1,9 @@
-import { inertHtml, type HtmlBuilder } from "foldkit/html";
+import { inertHtml, type Html, type HtmlBuilder } from "foldkit/html";
+import { Scene } from "foldkit/test";
 import { describe, expect, it } from "vitest";
 
-import type { Message } from "../messages";
+import { ShowSheet } from "../components/app/sheet";
+import { Message } from "../messages";
 import { editSessionNameSheet } from "./features/history/editSessionNameSheet";
 import { historyPage } from "./features/history/historyView";
 import { taskDetailView } from "./features/history/taskDetailView";
@@ -15,6 +17,26 @@ import { templatesPage } from "./features/templates/view";
 // These tests inspect VNodes without dispatching messages.
 const h = inertHtml as unknown as HtmlBuilder<Message>;
 type Node = NonNullable<ReturnType<typeof h.div>>;
+/** Renders views that embed sheets, which need a runtime frame and settle their show Mounts. */
+const render = (view: (h: HtmlBuilder<Message>) => Html): Node | null => {
+  let rendered: Html = null;
+  Scene.scene(
+    {
+      update: (model: null, _message: Message) => ({ model }),
+      view: (_model: null, frame) => view(frame),
+    },
+    Scene.given(null),
+    (simulation: Scene.SceneSimulation<null, Message>) =>
+      Scene.Mount.resolveAll(
+        ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
+      )(simulation),
+    (simulation: Scene.SceneSimulation<null, Message>) => {
+      rendered = simulation.html;
+      return simulation;
+    },
+  );
+  return rendered;
+};
 const nodes = (node: Node | null): Node[] =>
   node === null
     ? []
@@ -74,85 +96,105 @@ const runner: RunnerState = {
   showSidebar: false,
   showEndConfirm: true,
   lastError: null,
+  fieldWrites: { revision: 0, pending: [] },
 };
 const editSheet = () =>
-  editSessionNameSheet(
-    {
-      showEditHistoryName: true,
-      editHistoryNameInput: "",
-      selectedHistorySession: null,
-    },
-    h,
+  render((frame) =>
+    editSessionNameSheet(
+      {
+        showEditHistoryName: true,
+        editHistoryNameInput: "",
+        selectedHistorySession: null,
+      },
+      frame,
+    ),
   );
 
 describe("audited view accessibility", () => {
-  it("names every modal backdrop while retaining click dismissal", () => {
+  it("dismisses every modal from its backdrop and Escape", () => {
     const views = [
-      templatesPage(
-        {
-          templates: [],
-          showCreate: true,
-          newName: "",
-          pendingDelete: { id: "t", name: "T" },
-          lastError: null,
-        },
-        h,
+      render((frame) =>
+        templatesPage(
+          {
+            templates: [],
+            showCreate: true,
+            newName: "",
+            pendingDelete: { id: "t", name: "T" },
+            lastError: null,
+          },
+          frame,
+        ),
       ),
-      templateEditorPage({ editor, lastError: null }, h),
-      historyPage(
-        {
-          history: [],
-          pendingHistoryDelete: { id: "s", displayName: "S" },
-          historyActionsFor: null,
-          csvError: null,
-        },
-        h,
+      render((frame) => templateEditorPage({ editor, lastError: null }, frame)),
+      render((frame) =>
+        historyPage(
+          {
+            history: [],
+            pendingHistoryDelete: { id: "s", displayName: "S" },
+            historyActionsFor: null,
+            historyError: null,
+          },
+          frame,
+        ),
       ),
       editSheet(),
-      startView(
-        {
-          templates: [],
-          selectedTemplateId: null,
-          sessionNameInput: "",
-          placeholderName: "S",
-          pendingDiscardSession: true,
-          now: 0,
-          activeSession: {
-            id: "s",
-            templateId: null,
-            templateName: "T",
-            sessionName: "S",
-            startedAt: 0,
-            completedCount: 0,
+      render((frame) =>
+        startView(
+          {
+            templates: [],
+            selectedTemplateId: null,
+            sessionNameInput: "",
+            placeholderName: "S",
+            pendingDiscardSession: true,
+            now: 0,
+            activeSession: {
+              id: "s",
+              templateId: null,
+              templateName: "T",
+              sessionName: "S",
+              startedAt: 0,
+              completedCount: 0,
+            },
           },
-        },
-        h,
+          frame,
+        ),
       ),
-      endConfirmModal(runner, h),
+      render((frame) => endConfirmModal(runner, frame)),
     ];
-    const backdrops = views.flatMap(nodes).filter((n) => n.data?.class?.["modal-backdrop"]);
+    const dialogs = views.flatMap(nodes).filter((n) => n.sel?.startsWith("dialog"));
     // Creation and question editing are inline; only confirmations/actions are modal.
-    expect(backdrops).toHaveLength(6);
-    for (const backdrop of backdrops) {
-      expect(backdrop.sel).toBe("button");
-      expect(backdrop.data?.attrs?.["aria-label"]).toEqual(expect.any(String));
-      expect(backdrop.data?.attrs?.["aria-label"]).not.toBe("");
-      expect(backdrop.data?.on?.click).toBeTypeOf("function");
+    expect(dialogs).toHaveLength(6);
+    for (const dialog of dialogs) {
+      // Escape arrives as the dialog's cancel event; the backdrop is decorative.
+      expect(dialog.data?.on?.cancel).toBeTypeOf("function");
+      const backdrop = nodes(dialog).find((n) => n.data?.class?.["modal-backdrop"]);
+      expect(backdrop?.sel).toBe("div");
+      expect(backdrop?.data?.on?.click).toBeTypeOf("function");
+      // A named in-panel action always offers the same way out.
+      expect(
+        nodes(dialog).some(
+          (n) =>
+            n.sel === "button" &&
+            /^(Cancel|Continue|Keep)/.test(String(n.data?.attrs?.["aria-label"] ?? "")),
+        ),
+      ).toBe(true);
     }
   });
 
   it("provides named modal roles and describes the interrupting error", () => {
-    const details = taskDetailView(
-      { task: { id: "t", taskId: 1, startedAt: null, endedAt: null, sections: [] } },
-      h,
+    const details = render((frame) =>
+      taskDetailView(
+        { task: { id: "t", taskId: 1, startedAt: null, endedAt: null, sections: [] } },
+        frame,
+      ),
     );
     // Sheets take their accessible name from the visible title.
     for (const [view, title] of [
       [editSheet(), "Session name"],
       [details, "Task 1"],
-      [endConfirmModal(runner, h), "End session?"],
+      [render((frame) => endConfirmModal(runner, frame)), "End session?"],
     ] as const) {
-      expect(view?.data?.attrs?.role).toBe("dialog");
+      expect(view?.sel).toBe("dialog");
       expect(view?.data?.attrs?.["aria-modal"]).toBeTruthy();
       const titleId = view?.data?.attrs?.["aria-labelledby"];
       expect(titleId).toEqual(expect.any(String));
@@ -180,8 +222,12 @@ describe("audited view accessibility", () => {
 
   it("names every question control with the question it acts on", () => {
     const all = [
-      ...nodes(templateEditorPage({ editor, lastError: null }, h)),
-      ...nodes(templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, h)),
+      ...nodes(render((frame) => templateEditorPage({ editor, lastError: null }, frame))),
+      ...nodes(
+        render((frame) =>
+          templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, frame),
+        ),
+      ),
     ];
     for (const label of [
       "Edit question Observed",
@@ -199,9 +245,11 @@ describe("audited view accessibility", () => {
   it("labels every switch in the template editor with its own clickable label", () => {
     const textEditor = { ...editor, draft: { ...editor.draft!, kind: "textInput" as const } };
     for (const view of [
-      templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, h),
-      templateEditorPage({ editor, lastError: null }, h),
-      templateEditorPage({ editor: textEditor, lastError: null }, h),
+      render((frame) =>
+        templateEditorPage({ editor: { ...editor, draft: null }, lastError: null }, frame),
+      ),
+      render((frame) => templateEditorPage({ editor, lastError: null }, frame)),
+      render((frame) => templateEditorPage({ editor: textEditor, lastError: null }, frame)),
     ]) {
       const all = nodes(view);
       const switches = all.filter((n) => n.data?.attrs?.role === "switch");
@@ -258,7 +306,7 @@ describe("audited view accessibility", () => {
             history: [session],
             pendingHistoryDelete: null,
             historyActionsFor: null,
-            csvError: null,
+            historyError: null,
           },
           h,
         ),

@@ -2,12 +2,13 @@ import { Schema as S } from "effect";
 import { defineMessageUnion } from "foldkit/message";
 import { UrlRequest } from "foldkit/navigation";
 
-import { FieldDef } from "./livestore/schema";
+import { FieldDef } from "./domain/fields";
 import { RouteSchema } from "./web/routes";
 import { TemplateSummary } from "./web/types";
 import { Accent, Font, IconLibrary, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 import { RunnerDataSchema } from "./web/features/session/runner";
+import { ActiveSessionSummary, HistorySessionDetail, HistorySessionSummary } from "./app/model";
 
 // Central flat Message union. Payload schemas are grouped by feature;
 // root-model handlers are composed by src/app/update.ts.
@@ -18,13 +19,24 @@ export const Message = defineMessageUnion({
     action: S.Unknown,
     confirmationVersion: S.optionalKey(S.Number),
   },
+  // ── Storage ────────────────────────────────────────────────────────────
+  StoreOpened: { storageMode: S.Literals(["persisted", "in-memory"]) },
+  StoreUnavailable: {},
+  ClickedRetryStore: {},
+  AcknowledgedMemoryStorage: {},
+
   // ── Routing ────────────────────────────────────────────────────────────
   GotRoute: { route: RouteSchema },
   ClickedLink: { request: UrlRequest },
   Navigated: {},
+  CompletedReplyToAgent: {},
+  /** A sheet was shown or released; the page model already owns whether it is open. */
+  SettledSheet: {},
   SelectedTheme: { theme: Theme },
   ThemeSaveFinished: { theme: Theme, saved: S.Boolean },
   SelectedStyle: { style: FoldcnStyle },
+  /** A newer style selection replaced this one before its styles loaded. */
+  SupersededStyleSave: {},
   StyleSaveFinished: {
     style: FoldcnStyle,
     appliedStyle: FoldcnStyle,
@@ -103,6 +115,7 @@ export const Message = defineMessageUnion({
 
   // ── Start tab (Session start / Resume / Discard) ──────────────────────────
   ChangedSessionNameInput: { text: S.String },
+  GotPlaceholderName: { name: S.String },
   SelectedTemplate: { id: S.String },
   ClickedStartSession: {},
   SessionStarted: { sessionId: S.String },
@@ -111,20 +124,9 @@ export const Message = defineMessageUnion({
   ConfirmedDiscardSession: {},
   CanceledDiscardSession: {},
   SessionDiscarded: {},
-  GotActiveSession: {
-    activeSession: S.Union([
-      S.Null,
-      S.Struct({
-        id: S.String,
-        templateId: S.Union([S.Null, S.String]),
-        templateName: S.String,
-        sessionName: S.String,
-        startedAt: S.Number,
-        completedCount: S.Number,
-      }),
-    ]),
-  },
+  GotActiveSession: { activeSession: S.NullOr(ActiveSessionSummary) },
   FailedSessionOp: { error: S.String },
+  FailedDetailLoad: {},
 
   // ── Runner (live session form canvas) ─────────────────────────────────────
   GotRunnerData: {
@@ -132,6 +134,9 @@ export const Message = defineMessageUnion({
   },
   Tick: { now: S.Number },
   ChangedFieldValue: { taskFieldId: S.String, value: S.String },
+  /** Typing paused, or the page is being hidden or left: write pending answers. */
+  SettledFieldInput: {},
+  BlurredField: {},
   AdjustedCounter: { taskFieldId: S.String, delta: S.Literals([-1, 1]) },
   UpdatedFieldValue: {},
   ClickedRecord: {},
@@ -152,49 +157,8 @@ export const Message = defineMessageUnion({
   ToggledSidebar: {},
 
   // ── History tab + Session detail + CSV ──────────────────────────────────────
-  GotHistory: {
-    history: S.Array(
-      S.Struct({
-        id: S.String,
-        displayName: S.String,
-        templateName: S.String,
-        sessionName: S.String,
-        startedAt: S.Number,
-        endedAt: S.Number,
-        taskCount: S.Number,
-      }),
-    ),
-  },
-  GotHistoryDetail: {
-    detail: S.Union([
-      S.Null,
-      S.Struct({
-        id: S.String,
-        sessionName: S.String,
-        templateName: S.String,
-        startedAt: S.Number,
-        endedAt: S.Union([S.Null, S.Number]),
-        taskCount: S.Number,
-        tasks: S.Array(
-          S.Struct({
-            id: S.String,
-            taskId: S.Number,
-            startedAt: S.Union([S.Null, S.Number]),
-            endedAt: S.Union([S.Null, S.Number]),
-            sections: S.Array(
-              S.Struct({
-                sectionName: S.String,
-                value: S.String,
-                sectionType: S.String,
-                isRequired: S.Boolean,
-                startedAt: S.Union([S.Null, S.Number]),
-              }),
-            ),
-          }),
-        ),
-      }),
-    ]),
-  },
+  GotHistory: { history: S.Array(HistorySessionSummary) },
+  GotHistoryDetail: { detail: S.NullOr(HistorySessionDetail) },
   RequestedHistoryDelete: { id: S.String, displayName: S.String },
   OpenedHistoryActions: { id: S.String },
   ClosedHistoryActions: {},
@@ -207,11 +171,12 @@ export const Message = defineMessageUnion({
   ConfirmedEditHistoryName: {},
   CanceledEditHistoryName: {},
   HistoryNameUpdated: {},
+  FailedHistoryOp: { error: S.String },
   ClickedHistoryTask: { taskId: S.String },
   DismissedHistoryTask: {},
   ClickedExportHistoryCsv: { sessionId: S.String, spreadsheetSafe: S.optionalKey(S.Boolean) },
   CsvExported: { filename: S.String },
   FailedCsvExport: { error: S.String },
-  DismissedCsvError: {},
+  DismissedHistoryError: {},
 });
 export type Message = typeof Message.Type;

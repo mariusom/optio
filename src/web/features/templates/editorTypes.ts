@@ -1,4 +1,4 @@
-import type { FieldDef, FieldKind } from "../../../livestore/schema";
+import type { FieldDef, FieldKind } from "../../../domain/fields";
 
 export const ANSWER_TYPES: ReadonlyArray<FieldKind> = [
   "textInput",
@@ -34,6 +34,7 @@ export const answerTypeName = (kind: FieldKind): string => {
 
 export type EditorModel = {
   readonly showCreate?: boolean;
+  readonly detailLoadFailed?: boolean;
   readonly editor: {
     readonly id: string;
     readonly name: string;
@@ -50,7 +51,7 @@ export type EditorModel = {
     readonly draft: {
       readonly id: string;
       readonly name: string;
-      readonly kind: string;
+      readonly kind: FieldKind;
       readonly isRequired: boolean;
       readonly defaultValue: string;
       readonly sortOrder: number;

@@ -1,7 +1,7 @@
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
-import { sheet } from "@/components/app";
+import { sheet } from "../../sheets";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
@@ -22,7 +22,6 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
       id: "edit-session-name",
       title: "Session name",
       onDismiss: Message.CanceledEditHistoryName(),
-      dismissLabel: "Cancel editing session",
       size: "md",
       footer: {
         cancel: {

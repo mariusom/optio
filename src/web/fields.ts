@@ -1,38 +1,6 @@
-import type { FieldKind } from "../livestore/schema";
+import type { FieldKind } from "../domain/fields";
 
 // FieldKind metadata shared by templates and observations.
-
-export const FIELD_KINDS: ReadonlyArray<FieldKind> = [
-  "radio",
-  "checkbox",
-  "textInput",
-  "textArea",
-  "boolean",
-  "number",
-  "counter",
-  "rating",
-];
-
-export const fieldDisplayName = (kind: FieldKind): string => {
-  switch (kind) {
-    case "radio":
-      return "Single Choice";
-    case "checkbox":
-      return "Multiple Choice";
-    case "textInput":
-      return "Text Field";
-    case "textArea":
-      return "Text Area";
-    case "boolean":
-      return "Yes/No";
-    case "number":
-      return "Number";
-    case "counter":
-      return "Counter";
-    case "rating":
-      return "Rating";
-  }
-};
 
 /** Empty is unanswered; requiredness is checked separately. */
 export const isScalarAnswerValid = (kind: string, value: string): boolean => {
@@ -46,16 +14,6 @@ export const isScalarAnswerValid = (kind: string, value: string): boolean => {
 };
 
 export const hasOptions = (kind: FieldKind): boolean => kind === "radio" || kind === "checkbox";
-
-export const parseJsonArray = (json: string): ReadonlyArray<string> => {
-  try {
-    const parsed: unknown = JSON.parse(json);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is string => typeof item === "string");
-  } catch {
-    return [];
-  }
-};
 
 /**
  * CheckboxSelectionLogic — port of CheckboxSelectionTests-encoded semantics.

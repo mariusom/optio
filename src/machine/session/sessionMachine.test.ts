@@ -1,15 +1,12 @@
 import { describe, expect, it } from "@effect/vitest";
-import { vi } from "vitest";
 
-import { Machine } from "@typeonce/effect-machine";
-import { Effect } from "effect";
-
-import { planSession, type RunnerState, type SessionPlan } from "./plan";
 import {
   nextFocusForField,
-  SessionMachine,
-  SessionStates,
+  planSession,
+  sessionPhase,
   type RunnerData,
+  type RunnerState,
+  type SessionEvent,
 } from "./sessionMachine";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -72,22 +69,20 @@ const liveRunner = (overrides: Partial<RunnerState> = {}) => ({
   lastError: null,
   now: 1_700_000_001_000,
   showEndConfirm: false,
+  fieldWrites: { revision: 0, pending: [] },
   ...overrides,
 });
 
 // ── Helper: plan via the bridge, asserting no error ─────────────────────────
 
-const plan = (
-  runner: ReturnType<typeof liveRunner> | null,
-  event: Parameters<typeof planSession>[1],
-) => planSession({ runner, phase: "collecting", now: runner?.now ?? 0 }, event);
+const plan = (runner: ReturnType<typeof liveRunner> | null, event: SessionEvent) => {
+  const result = planSession({ runner, now: runner?.now ?? 0 }, event);
+  return { ...result, phase: sessionPhase(result.runner) };
+};
+type Planned = ReturnType<typeof plan>;
 
 /** Plans from a previous result, carrying its runner and ticked time forward. */
-const planFrom = (previous: SessionPlan, event: Parameters<typeof planSession>[1]) =>
-  planSession(
-    { runner: previous.runner, phase: previous.phase, now: previous.runner?.now ?? 0 },
-    event,
-  );
+const planFrom = (previous: Planned, event: SessionEvent) => plan(previous.runner, event);
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
@@ -119,29 +114,62 @@ describe("sessionMachine topology", () => {
     expect(result.runner?.lastError).toMatch(/correct invalid answers/);
   });
 
-  it.effect("starts Idle", () =>
-    Effect.gen(function* () {
-      expect(
-        SessionStates.matches((yield* Machine.planInitial(SessionMachine)).state, "Idle"),
-      ).toBe(true);
-    }),
-  );
-
-  it("keeps the current state and suppresses emissions when snapshot decoding fails", () => {
-    const runner = liveRunner({ completedCount: "invalid" as never });
-    const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    try {
-      expect(
-        planSession({ runner, phase: "confirming", now: runner.now }, { _tag: "EndConfirmed" }),
-      ).toEqual({
-        runner,
-        phase: "confirming",
-        emissions: [],
-      });
-      expect(log).toHaveBeenCalledWith("[sessionMachine] plan failed", expect.anything());
-    } finally {
-      log.mockRestore();
+  it("stays Idle for events other than live data", () => {
+    for (const event of [
+      { _tag: "RecordRequested" },
+      { _tag: "EndConfirmed" },
+      { _tag: "TaskListToggled" },
+    ] as const) {
+      expect(plan(null, event)).toEqual({ runner: null, phase: "collecting", emissions: [] });
     }
+  });
+
+  it("returns the same runner reference for events that don't apply", () => {
+    const runner = liveRunner();
+    expect(plan(runner, { _tag: "EndCancelled" }).runner).toBe(runner);
+    expect(plan(runner, { _tag: "EditSaved" }).runner).toBe(runner);
+    expect(plan(runner, { _tag: "SectionFocused", fieldId: null }).runner).toBe(runner);
+  });
+
+  it("ignores field and counter changes for completed tasks outside edit mode", () => {
+    const runner = liveRunner();
+    runner.tasks = [
+      runner.tasks[0],
+      { ...runner.tasks[1], sections: [section("count", "Count", "counter", false, "1")] },
+    ];
+    const changed = plan(runner, { _tag: "FieldChanged", taskFieldId: "count", value: "4" });
+    expect(changed.emissions).toEqual([]);
+    expect(changed.runner).toBe(runner);
+    const adjusted = plan(runner, { _tag: "CounterAdjusted", taskFieldId: "count", delta: 1 });
+    expect(adjusted.emissions).toEqual([]);
+  });
+
+  it("clears a stale error once recording succeeds", () => {
+    const failed = plan(liveRunner(), { _tag: "RecordRequested" });
+    expect(failed.runner?.lastError).toMatch(/required questions/);
+    const answered = plan(failed.runner, {
+      _tag: "DataSynced",
+      data: data({
+        tasks: [
+          {
+            ...data().tasks[0]!,
+            sections: [
+              section("f-activity", "Activity", "textInput", true, "Typing", 0),
+              section("f-category", "Category", "radio", true, "A", 1),
+            ],
+          },
+          data().tasks[1]!,
+        ],
+      }),
+    });
+    const recorded = planFrom(answered, { _tag: "RecordRequested" });
+    expect(recorded.emissions).toEqual([
+      { _tag: "CommitRecord", sessionId: "sess-1", taskId: "task-1" },
+    ]);
+    expect(recorded.runner?.lastError).toBeNull();
+    const withError = { ...recorded.runner!, lastError: "write failed" };
+    expect(plan(withError, { _tag: "RecordAcked" }).runner?.lastError).toBeNull();
+    expect(plan(withError, { _tag: "EditAcked" }).runner?.lastError).toBeNull();
   });
 
   it("enters Live.Collecting with fresh controls on first DataSynced", () => {
@@ -191,14 +219,14 @@ describe("sessionMachine topology", () => {
 });
 
 describe("sessionMachine recording", () => {
-  it("emits CommitFieldValue and keeps focus for non-radio fields", () => {
+  it("commits a first answer at once and keeps focus for non-radio fields", () => {
     const { runner, emissions } = plan(liveRunner(), {
       _tag: "FieldChanged",
       taskFieldId: "f-activity",
       value: "More typing",
     });
     expect(emissions).toEqual([
-      { _tag: "CommitFieldValue", taskFieldId: "f-activity", value: "More typing" },
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-activity", value: "More typing" }] },
     ]);
     expect(runner!.focusedSectionId).toBeNull();
   });
@@ -301,7 +329,7 @@ describe("sessionMachine task selection + edit", () => {
       value: "Changed",
     });
     expect(changed.emissions).toEqual([
-      { _tag: "CommitFieldValue", taskFieldId: "f-note", value: "Changed" },
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-note", value: "Changed" }] },
     ]);
     const changedData = {
       ...editing,
@@ -514,5 +542,201 @@ describe("nextFocusForField", () => {
     };
     expect(nextFocusForField(unsorted, "radio", "A")).toEqual({ changed: true, next: "next" });
     expect(nextFocusForField(unsorted, "radio", "")).toEqual({ changed: false, next: null });
+  });
+});
+
+// ── Batched field writes ─────────────────────────────────────────────────────
+
+const writesOf = (emissions: ReadonlyArray<{ _tag: string }>) =>
+  emissions.filter((emission) => emission._tag === "CommitFieldValues");
+
+describe("sessionMachine field writes", () => {
+  const type = (runner: RunnerState | null, taskFieldId: string, value: string) =>
+    plan(runner, { _tag: "FieldChanged", taskFieldId, value });
+
+  it("writes a typed answer's first keystroke at once, then batches until a pause", () => {
+    const first = type(liveRunner(), "f-activity", "O");
+    // Dispatched now so the store's COALESCE start time is the first keystroke.
+    expect(first.emissions).toEqual([
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-activity", value: "O" }] },
+    ]);
+    let current = first;
+    for (const value of ["Ob", "Obs", "Observe"]) {
+      current = type(current.runner, "f-activity", value);
+      expect(current.emissions).toEqual([]);
+    }
+    // The runner shows every keystroke at once.
+    expect(current.runner!.tasks[0]!.sections[0]!.value).toBe("Observe");
+    expect(current.runner!.fieldWrites.revision).toBe(4);
+
+    const flushed = plan(current.runner, { _tag: "FlushRequested" });
+    expect(flushed.emissions).toEqual([
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-activity", value: "Observe" }] },
+    ]);
+    // Kept, marked dispatched, until the store echoes the value.
+    expect(flushed.runner!.fieldWrites.pending).toEqual([
+      { taskFieldId: "f-activity", value: "Observe", committed: true },
+    ]);
+    // Nothing left: a second flush is a no-op.
+    const again = plan(flushed.runner, { _tag: "FlushRequested" });
+    expect(again.emissions).toEqual([]);
+    expect(again.runner).toBe(flushed.runner);
+  });
+
+  it("types 20 characters into a started answer with one write", () => {
+    const started = liveRunner({
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        sections: task.sections.map((field) => ({ ...field, startDate: 1_700_000_000_100 })),
+      })),
+    });
+    let current = plan(started, { _tag: "SectionFocused", fieldId: "f-activity" });
+    const text = "Tightened four bolts";
+    let emitted = 0;
+    for (let index = 1; index <= text.length; index += 1) {
+      current = type(current.runner, "f-activity", text.slice(0, index));
+      emitted += writesOf(current.emissions).length;
+    }
+    const flushed = plan(current.runner, { _tag: "FlushRequested" });
+    emitted += writesOf(flushed.emissions).length;
+    expect(text).toHaveLength(20);
+    expect(emitted).toBe(1);
+  });
+
+  it("writes discrete choices at once", () => {
+    const { emissions } = type(liveRunner(), "f-category", "A");
+    expect(emissions).toEqual([
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-category", value: "A" }] },
+    ]);
+  });
+
+  it("keeps an unwritten answer when a stale store emission arrives", () => {
+    const first = type(liveRunner(), "f-activity", "O");
+    const typed = type(first.runner, "f-activity", "Observe");
+    // The store has not seen either keystroke yet.
+    const stale = plan(typed.runner, { _tag: "DataSynced", data: data() });
+    const activity = stale.runner!.tasks[0]!.sections[0]!;
+    expect(activity.value).toBe("Observe");
+    // The locally stamped start survives until the store reports its own.
+    expect(activity.startDate).toBe(1_700_000_001_000);
+    expect(stale.runner!.fieldWrites.pending).toHaveLength(1);
+  });
+
+  it("drops a dispatched answer from the overlay once the store reflects it", () => {
+    const first = type(liveRunner(), "f-category", "B");
+    const echoed = data({
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        sections: task.sections.map((field) =>
+          field.id === "f-category"
+            ? { ...field, value: "B", startDate: 1_700_000_000_900 }
+            : field,
+        ),
+      })),
+    });
+    const synced = plan(first.runner, { _tag: "DataSynced", data: echoed });
+    expect(synced.runner!.fieldWrites.pending).toEqual([]);
+    expect(synced.runner!.tasks[0]!.sections[1]!.startDate).toBe(1_700_000_000_900);
+  });
+
+  it.each([
+    ["RecordRequested", { _tag: "RecordRequested" }, "CommitRecord"],
+    ["EndConfirmed", { _tag: "EndConfirmed" }, "CommitEndSession"],
+    ["TaskSelected", { _tag: "TaskSelected", taskId: "task-2" }, "CommitSelectTask"],
+    [
+      "CounterAdjusted",
+      { _tag: "CounterAdjusted", taskFieldId: "f-count", delta: 1 },
+      "CommitCounterAdjustment",
+    ],
+  ] as const)("writes pending answers before %s", (_, event, command) => {
+    const base = liveRunner({
+      tasks: data().tasks.map((task) =>
+        task.id === "task-1"
+          ? {
+              ...task,
+              sections: [
+                ...task.sections.map((field) => ({ ...field, startDate: 1_700_000_000_100 })),
+                { ...section("f-count", "Count", "counter", false, "1", 2), startDate: 1 },
+              ],
+            }
+          : task,
+      ),
+    });
+    const answered = type(base, "f-category", "A");
+    const typed = type(answered.runner, "f-activity", "Observed");
+    expect(typed.emissions).toEqual([]);
+    const ready =
+      event._tag === "EndConfirmed" ? plan(typed.runner, { _tag: "EndRequested" }) : typed;
+    const next = plan(ready.runner, event);
+    expect(next.emissions.map((emission) => emission._tag)).toEqual(["CommitFieldValues", command]);
+    expect(next.emissions[0]).toEqual({
+      _tag: "CommitFieldValues",
+      writes: [{ taskFieldId: "f-activity", value: "Observed" }],
+    });
+    expect(next.runner!.fieldWrites.pending.every((write) => write.committed)).toBe(true);
+  });
+
+  it("keeps a dispatched answer when an earlier write's emission arrives", () => {
+    const first = type(liveRunner(), "f-activity", "Obs");
+    const typed = type(first.runner, "f-activity", "Observe");
+    const flushed = plan(typed.runner, { _tag: "FlushRequested" });
+    // The first write's echo arrives while the flushed write is still in flight.
+    const earlier = data({
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        sections: task.sections.map((field) =>
+          field.id === "f-activity" ? { ...field, value: "Obs", startDate: 1 } : field,
+        ),
+      })),
+    });
+    const stale = plan(flushed.runner, { _tag: "DataSynced", data: earlier });
+    expect(stale.runner!.tasks[0]!.sections[0]!.value).toBe("Observe");
+    const echoed = plan(stale.runner, {
+      _tag: "DataSynced",
+      data: data({
+        tasks: earlier.tasks.map((task) => ({
+          ...task,
+          sections: task.sections.map((field) =>
+            field.id === "f-activity" ? { ...field, value: "Observe" } : field,
+          ),
+        })),
+      }),
+    });
+    expect(echoed.runner!.fieldWrites.pending).toEqual([]);
+  });
+
+  it("drops the overlay for a task the store no longer lets you edit", () => {
+    const typed = type(liveRunner(), "f-activity", "Late");
+    const finished = data({
+      tasks: data().tasks.map((task) =>
+        task.id === "task-1" ? { ...task, endDate: 1_700_000_000_900 } : task,
+      ),
+    });
+    const synced = plan(typed.runner, { _tag: "DataSynced", data: finished });
+    expect(synced.runner!.fieldWrites.pending).toEqual([]);
+  });
+
+  it("writes pending answers before an edit is cancelled, which then restores them", () => {
+    const editing = data({
+      currentTaskId: "task-2",
+      tasks: data().tasks.map((task) => ({
+        ...task,
+        isBeingEdited: task.id === "task-2",
+        sections: task.sections.map((field) => ({ ...field, startDate: 1 })),
+      })),
+    });
+    const synced = plan(liveRunner(), { _tag: "DataSynced", data: editing });
+    const typed = type(synced.runner, "f-note", "Draft");
+    const cancelled = plan(typed.runner, { _tag: "EditCancelled" });
+    expect(cancelled.emissions).toEqual([
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-note", value: "Draft" }] },
+      { _tag: "CommitCancelEdit", taskId: "task-2" },
+    ]);
+  });
+
+  it("ignores typing into a task that is no longer editable", () => {
+    const typed = type(liveRunner(), "f-note", "Late");
+    expect(typed.emissions).toEqual([]);
+    expect(typed.runner!.fieldWrites.pending).toEqual([]);
   });
 });

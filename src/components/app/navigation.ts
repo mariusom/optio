@@ -15,19 +15,17 @@ export type TabDef = Readonly<{
   icon: IconNode;
 }>;
 
-const TABS: ReadonlyArray<TabDef> = [
+/** Always the same four tabs, so nothing shifts once the first session is
+ *  saved; History shows its own empty state until then. */
+export const navigationTabs: ReadonlyArray<TabDef> = [
   { tag: "TemplatesTab", label: "Templates", icon: FileText },
   { tag: "StartTab", label: "Session", icon: Play },
   { tag: "HistoryTab", label: "History", icon: Clock },
   { tag: "SettingsTab", label: "Settings", icon: Settings2 },
 ];
 
-/** History only appears once there is something to look back on. */
-export const navigationTabs = (hasHistory: boolean): ReadonlyArray<TabDef> =>
-  hasHistory ? TABS : TABS.filter((tab) => tab.tag !== "HistoryTab");
-
 /** The tab a route belongs to, so detail routes keep their parent highlighted. */
-export const activeTab = (route: Route): TabTag => {
+const activeTab = (route: Route): TabTag => {
   switch (route._tag) {
     case "TemplatesTab":
     case "TemplateEditor":
@@ -51,8 +49,8 @@ export const activeTab = (route: Route): TabTag => {
  * iOS-style tab bar. Anchors drive hash routing. Hidden at md+ where the
  * sidebar takes over, and on full-screen routes (the live session).
  */
-export const tabBar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>): Html => {
-  const tabs = navigationTabs(hasHistory);
+export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
+  const tabs = navigationTabs;
   const current = activeTab(route);
   return h.nav(
     [
@@ -80,8 +78,26 @@ export const tabBar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>):
               ...(active ? [h.AriaCurrent("page")] : []),
             ],
             [
-              icon(h, tab.icon, cn("size-6 shrink-0", active ? "fill-primary/15" : "")),
-              h.span([h.Class("text-[0.625rem] font-medium leading-none")], [tab.label]),
+              // The pill marks the current tab beyond colour alone.
+              h.span(
+                [
+                  h.Class(
+                    cn(
+                      "grid h-7 w-14 place-items-center rounded-full transition-colors duration-150",
+                      active && "bg-primary/12",
+                    ),
+                  ),
+                ],
+                [icon(h, tab.icon, "size-6 shrink-0")],
+              ),
+              h.span(
+                [
+                  h.Class(
+                    cn("text-[0.625rem] leading-none", active ? "font-semibold" : "font-medium"),
+                  ),
+                ],
+                [tab.label],
+              ),
             ],
           );
         }),
@@ -97,8 +113,8 @@ export const tabBar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>):
  * tablets, a labeled column on wide screens. Same links, same order as the
  * tab bar, so nothing moves when the device rotates or the window grows.
  */
-export const sidebar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>): Html => {
-  const tabs = navigationTabs(hasHistory);
+export const sidebar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
+  const tabs = navigationTabs;
   const current = activeTab(route);
   return h.aside(
     [
@@ -148,7 +164,7 @@ export const sidebar = <M>(route: Route, hasHistory: boolean, h: HtmlBuilder<M>)
                 cn(
                   "flex min-h-11 items-center gap-3 rounded-lg px-2.5 text-sm font-medium transition-colors justify-center xl:justify-start",
                   active
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-primary/10 font-semibold text-primary"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                 ),
               ),

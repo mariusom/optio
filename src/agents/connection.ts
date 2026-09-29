@@ -1,18 +1,20 @@
 import { Effect, Exit, Schema } from "effect";
 import type { Runtime } from "foldkit";
-import { Model } from "../main";
+// The model schema decodes replies at runtime; import it directly, not via main.ts.
+import { Model } from "../app/model";
 
 import {
   type AgentAction,
   type AgentPortReply,
   type AgentResult,
   type agentPorts,
+  confirmationLabel,
   confirmationTarget,
   requiresConfirmation,
 } from "./actions";
 import { projectAgentState } from "./state";
 
-export class AgentConnectionError extends Schema.TaggedError<AgentConnectionError>()(
+class AgentConnectionError extends Schema.TaggedError<AgentConnectionError>()(
   "AgentConnectionError",
   {
     message: Schema.String,
@@ -77,7 +79,14 @@ export const connectAgentApplication = (
       confirmationVersion = state.agentConfirmationVersion;
       const approved = yield* Effect.sync(() =>
         confirm(
-          `Allow the agent to ${action._tag}: ${target.name} (ID: ${target.id})? This can permanently discard data or end recording. Review the pending confirmation in Optio before allowing.`,
+          [
+            `Allow the assistant to ${confirmationLabel(action)}?`,
+            // Study names are untrusted input: quote them and keep them off the question line.
+            `Name: ${JSON.stringify(target.name)}`,
+            `ID: ${target.id}`,
+            "",
+            "Review the pending confirmation in Optio before allowing.",
+          ].join("\n"),
         ),
       );
       if (!approved)

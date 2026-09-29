@@ -28,12 +28,13 @@ type HistoryHandlers = Pick<
   | "CanceledEditHistoryName"
   | "ConfirmedEditHistoryName"
   | "HistoryNameUpdated"
+  | "FailedHistoryOp"
   | "ClickedHistoryTask"
   | "DismissedHistoryTask"
   | "ClickedExportHistoryCsv"
   | "CsvExported"
   | "FailedCsvExport"
-  | "DismissedCsvError"
+  | "DismissedHistoryError"
 >;
 export const historyHandlers = (model: Model): HistoryHandlers => ({
   GotHistory: ({ history }) => ({ model: { ...model, history } }),
@@ -142,13 +143,16 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     };
   },
   HistoryNameUpdated: () => ({ model: { ...model, showEditHistoryName: false } }),
+  FailedHistoryOp: ({ error }) => ({
+    model: { ...model, pendingHistoryDelete: null, historyError: error },
+  }),
   ClickedHistoryTask: ({ taskId }) => ({ model: { ...model, selectedHistoryTaskId: taskId } }),
   DismissedHistoryTask: () => ({ model: { ...model, selectedHistoryTaskId: null } }),
   ClickedExportHistoryCsv: ({ sessionId, spreadsheetSafe = false }) => ({
-    model: { ...model, csvError: null, historyActionsFor: null },
+    model: { ...model, historyError: null, historyActionsFor: null },
     commands: [ExportSessionCsv({ sessionId, spreadsheetSafe })],
   }),
   CsvExported: () => ({ model }),
-  FailedCsvExport: ({ error }) => ({ model: { ...model, csvError: error } }),
-  DismissedCsvError: () => ({ model: { ...model, csvError: null } }),
+  FailedCsvExport: ({ error }) => ({ model: { ...model, historyError: error } }),
+  DismissedHistoryError: () => ({ model: { ...model, historyError: null } }),
 });

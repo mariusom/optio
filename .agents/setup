@@ -8,13 +8,14 @@ step() {
   printf '\n[%s] %s\n' "$(date --iso-8601=seconds)" "$1"
 }
 
-step "Preparing Node.js 24"
+node_major="$(cat .node-version)"
+step "Preparing Node.js $node_major"
 export PNPM_HOME="${PNPM_HOME:-$HOME/.local/share/pnpm}"
 export PATH="$PNPM_HOME/bin:$PATH"
 mkdir -p "$PNPM_HOME/bin"
 
-if [[ ! -x "$PNPM_HOME/bin/node" ]] || [[ "$($PNPM_HOME/bin/node --version)" != v24.* ]]; then
-  pnpm runtime set node 24 --global
+if [[ ! -x "$PNPM_HOME/bin/node" ]] || [[ "$($PNPM_HOME/bin/node --version)" != "v$node_major".* ]]; then
+  pnpm runtime set node "$node_major" --global
 fi
 
 profile_marker="# optio pnpm-managed Node.js runtime"
@@ -32,6 +33,9 @@ fi
 
 step "Installing pnpm dependencies"
 pnpm install --frozen-lockfile
+
+step "Installing Playwright's headless Chromium for tests"
+pnpm exec playwright install --only-shell chromium
 
 step "Orb setup complete"
 printf 'Node.js %s, pnpm %s\n' "$(node --version)" "$(pnpm --version)"

@@ -3,8 +3,9 @@ import { Port } from "foldkit";
 
 import { Message } from "../messages";
 import { RouteSchema, type Route } from "../web/routes";
-import { FieldKind, type FieldDef } from "../livestore/schema";
+import { FieldKind, type FieldDef } from "../domain/fields";
 import { isScalarAnswerValid } from "../web/fields";
+import { editableSection } from "../web/features/session/runner";
 import type { Model } from "../main";
 import { AgentState } from "./state";
 
@@ -135,16 +136,20 @@ const checkboxValueError = (
   return null;
 };
 
+/** Agents may only change the selected task, and only while it accepts changes. */
+const selectedEditableSection = (model: Model, taskFieldId: string) => {
+  const task = model.runner?.tasks.find(
+    (candidate) => candidate.id === model.runner?.currentTaskId,
+  );
+  return task === undefined ? null : editableSection({ tasks: [task] }, taskFieldId);
+};
+
 const fieldValueError = (
   model: Model,
   action: Extract<AgentAction, { _tag: "ChangedFieldValue" }>,
 ): string | null => {
-  const task = model.runner?.tasks.find(
-    (candidate) => candidate.id === model.runner?.currentTaskId,
-  );
-  const field = task?.sections.find((section) => section.id === action.taskFieldId);
-  if (!field || (task?.endDate !== null && !task?.isBeingEdited))
-    return "Select the task for editing before changing its fields.";
+  const field = selectedEditableSection(model, action.taskFieldId);
+  if (field === null) return "Select the task for editing before changing its fields.";
   if (field.kind === "radio" && !Schema.is(Schema.Literals(["", ...field.options]))(action.value))
     return "Choose a listed radio option.";
   if (!isScalarAnswerValid(field.kind, action.value))
@@ -153,15 +158,10 @@ const fieldValueError = (
   return null;
 };
 
-const counterError = (model: Model, taskFieldId: string): string | null => {
-  const task = model.runner?.tasks.find(
-    (candidate) => candidate.id === model.runner?.currentTaskId,
-  );
-  const field = task?.sections.find((section) => section.id === taskFieldId);
-  return field?.kind === "counter" && (task?.endDate === null || task?.isBeingEdited)
+const counterError = (model: Model, taskFieldId: string): string | null =>
+  selectedEditableSection(model, taskFieldId)?.kind === "counter"
     ? null
     : "Select an editable counter first.";
-};
 
 /** UI controls normally constrain these values/IDs; an external caller must not bypass that. */
 export const actionError = (model: Model, action: AgentAction): string | null => {
@@ -216,12 +216,14 @@ type ConfirmationTarget = { readonly id: string; readonly name: string };
 const confirmedActions = [
   {
     tag: "ConfirmedDeleteTemplate",
+    label: "permanently delete the template",
     target: (model: Model) => model.pendingDelete,
     // Re-requesting the same target must also invalidate an approval (A→A and A→B→A).
     invalidatedBy: ["RequestedDeleteTemplate"],
   },
   {
     tag: "ConfirmedHistoryDelete",
+    label: "permanently delete the recorded session",
     target: (model: Model) =>
       model.pendingHistoryDelete && {
         id: model.pendingHistoryDelete.id,
@@ -231,6 +233,7 @@ const confirmedActions = [
   },
   {
     tag: "ConfirmedDiscardSession",
+    label: "discard the live session and its recordings",
     target: (model: Model) =>
       model.pendingDiscardSession && model.activeSession
         ? { id: model.activeSession.id, name: model.activeSession.sessionName }
@@ -239,6 +242,7 @@ const confirmedActions = [
   },
   {
     tag: "ConfirmedEndSession",
+    label: "end recording the live session",
     target: (model: Model) =>
       model.runner?.showEndConfirm
         ? { id: model.runner.sessionId, name: model.runner.sessionName }
@@ -247,6 +251,7 @@ const confirmedActions = [
   },
   {
     tag: "ConfirmedDiscard",
+    label: "discard unsaved template changes",
     target: (model: Model) =>
       model.editor?.pendingDiscard
         ? { id: model.editor.id, name: model.editor.name, draft: model.editor }
@@ -255,6 +260,7 @@ const confirmedActions = [
   },
 ] as const satisfies ReadonlyArray<{
   tag: AgentAction["_tag"];
+  label: string;
   target: (model: Model) => ConfirmationTarget | null;
   invalidatedBy: ReadonlyArray<AgentAction["_tag"]>;
 }>;
@@ -268,8 +274,25 @@ export const confirmationTarget = (model: Model, action: AgentAction) => {
   return metadata?.target(model) ?? null;
 };
 
-export const confirmationState = (model: Model) =>
-  JSON.stringify(confirmedActions.map(({ target }) => target(model)));
+/** Plain-language description of a confirmed action for the browser prompt. */
+export const confirmationLabel = (action: AgentAction) =>
+  confirmedActions.find(({ tag }) => tag === action._tag)?.label ?? action._tag;
+
+const sameTarget = (
+  a: (ConfirmationTarget & { readonly draft?: unknown }) | null | false,
+  b: (ConfirmationTarget & { readonly draft?: unknown }) | null | false,
+) =>
+  a === b ||
+  (!!a &&
+    !!b &&
+    a.id === b.id &&
+    a.name === b.name &&
+    // Models are immutable, so an unchanged draft keeps its reference.
+    a.draft === b.draft);
+
+/** Whether any destructive confirmation target differs between two models. */
+export const confirmationChanged = (before: Model, after: Model) =>
+  confirmedActions.some(({ target }) => !sameTarget(target(before), target(after)));
 
 /** Events that consume approval even when their resulting target snapshot is unchanged. */
 export const invalidatesAgentConfirmation = (action: { readonly _tag: string }) =>

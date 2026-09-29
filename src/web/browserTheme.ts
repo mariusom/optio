@@ -39,11 +39,17 @@ const updateFavicon = () => {
   link.href = `data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
 };
 
+// sRGB equivalents of --background in src/index.css; browser chrome does not
+// reliably accept oklch() in theme-color.
+const themeColors = { light: "#ffffff", dark: "#0a0a0a" } as const;
+
 const applyTheme = () => {
-  document.documentElement.classList.toggle(
-    "dark",
-    isDarkTheme(currentTheme, window.matchMedia("(prefers-color-scheme: dark)").matches),
-  );
+  const dark = isDarkTheme(currentTheme, window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.classList.toggle("dark", dark);
+  // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    meta.content = dark ? themeColors.dark : themeColors.light;
+  }
   updateFavicon();
 };
 
