@@ -75,6 +75,23 @@ test(
       await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
       await waitValue("Torque bolts");
       await operation().fill("Unsaved correction");
+      // fill() updates the DOM before the debounced answer reaches SQLite.
+      // Confirm both the edit backup and answer reached the worker before
+      // discarding the page: this journey tests durable edit recovery.
+      await page.waitForFunction((expected) => {
+        const store = globalThis["__debugLiveStore"]?.["optio-v3"];
+        if (!store) return false;
+        const edits = store.query({
+          query: `SELECT f.value, t.editBackup FROM sessionTaskFields f
+            JOIN sessionTasks t ON t.id = f.taskId
+            WHERE f.name = 'Operation' AND t.isBeingEdited = 1`,
+          bindValues: {},
+        });
+        return (
+          edits.some((edit) => edit.value === expected && edit.editBackup !== null) &&
+          store.syncStatus().pendingCount === 0
+        );
+      }, "Unsaved correction");
       await page.reload();
       await waitValue("Unsaved correction");
       await context.close();

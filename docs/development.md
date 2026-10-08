@@ -100,7 +100,11 @@ a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
 ends the session and checks the downloaded CSV. It also refuses OPFS in a
 fresh context to check the in-memory storage warning. No stored user data or
-deployed service is used. Unit tests separately check deterministic event
+deployed service is used. Before restarting during an edit, it waits for the
+answer and rollback backup in SQLite and for worker persistence to finish;
+an input's DOM value alone does not prove durability. Page-leaving flushes
+are best effort, so this journey does not promise immediate-reload durability.
+Unit tests separately check deterministic event
 replay; `src/livestore/*.browser.ts` check materializer guards and queries
 against a real in-memory store. Native WebMCP integration and real Safari/mobile-device behavior still
 need separate verification.
@@ -168,21 +172,23 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 - Keep Effect aligned with FoldKit's exact peer requirement.
   Keep Vitest and its browser provider aligned with the version bundled by Vite+.
-  As of 2026-09-29, FoldKit 0.163.0 and its Vite plugin 0.24.0 need Effect
-  rc.116. Testing the rc.116 group failed because LiveStore 0.5.0-dev.0 still imports the removed
-  `effect/testing/FastCheck` and `Msgpack` export from `effect/unstable/encoding`.
-  Keep the working rc.112 group until LiveStore supports the newer APIs.
-  Its matching `@effect/vitest` requires Vitest 4, so retain Vite+ 0.3.3 and
-  Vitest 4.1.11 together. Vite+ 1.0.0 bundles Vitest 5.0.1; a future upgrade
-  also needs its documented `vite` alias to `@voidzero-dev/vite-plus-core`
-  and exact `vitest` override to avoid duplicate test-runner state.
+  As of 2026-10-08, the eligible FoldKit 0.166.0 group and Vite plugin
+  0.26.1 require Effect 4.0.0. LiveStore's newest dev release remains
+  0.5.0-dev.0 and still imports the removed `effect/testing/FastCheck` and
+  `Msgpack` export from `effect/unstable/encoding`. Keep the working FoldKit
+  0.159.0 / plugin 0.21.0 / Effect rc.112 group until LiveStore supports the
+  newer APIs. Its matching `@effect/vitest` requires Vitest 4, so retain Vite+
+  0.3.3 and Vitest 4.1.11 together. Vite+ 1.1.0 bundles Vitest 5.0.3; a future
+  upgrade also needs its documented `vite` alias to
+  `@voidzero-dev/vite-plus-core` and exact `vitest` override to avoid duplicate
+  test-runner state.
 - The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
   protocol expected by this Effect release. Remove it only when an upstream
   adapter includes the codec and the production storage journey passes.
 - The scoped Nano ID override removes known advisories in LiveStore's pinned
   version. Reassess it when updating LiveStore. Keep the 24-hour release-age
   guard; do not bypass it for routine dependency updates.
-- pnpm 12.6.0 is pinned. Use the pinned version for its two-document lockfile.
+- pnpm 12.10.1 is pinned. Use the pinned version for its two-document lockfile.
   Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.
 - Dependabot proposes grouped lockfile and GitHub Actions updates, waiting a

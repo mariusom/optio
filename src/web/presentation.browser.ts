@@ -508,6 +508,7 @@ describe("persistent presentation regressions", () => {
     await other.click();
     await expect.element(hex).toHaveValue("#f4c542");
     await hex.fill("#123456");
+    await hex.click();
     await userEvent.keyboard("{Escape}");
     await expect.element(dialog).not.toBeInTheDocument();
     expect(await Effect.runPromise(initializeAccent)).toBe("#f4c542");

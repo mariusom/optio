@@ -41,9 +41,9 @@ const FIELD_WRITE_DELAY = Duration.millis(500);
 
 /**
  * The page may be discarded after these, so pending answers are written at
- * once. `beforeunload` fires when a reload or navigation starts, early enough
- * for the asynchronous write to finish; the listener exists only while
- * answers are pending.
+ * once. `beforeunload` starts the flush when reload or navigation begins,
+ * but the browser may discard the page before the asynchronous write finishes.
+ * The listener exists only while answers are pending.
  */
 const pageLeaving: Stream.Stream<unknown> =
   typeof document === "undefined"
