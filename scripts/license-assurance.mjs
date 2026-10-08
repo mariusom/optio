@@ -28,9 +28,9 @@ const devOnlyLicenses = new Map([
   ["(MIT OR CC0-1.0)", "type-fest types reached through tempy and workbox-build"],
 ]);
 const redisFallback = {
-  file: "redis-6.2.1-LICENSE",
+  file: "redis-6.3.0-LICENSE",
   source:
-    "https://github.com/redis/node-redis/blob/90fd0652bc3f2a0a1b2f79fa9096b02a86b0ac58/LICENSE",
+    "https://github.com/redis/node-redis/blob/c3e8b53b0d9c97d05ca674f92a24a9ee91a50a0e/LICENSE",
 };
 const reviewedFallbacks = new Map([
   [
@@ -41,12 +41,12 @@ const reviewedFallbacks = new Map([
         "https://github.com/cloudflare/workerd/blob/17143186b375231689b60a23e53933315fd9e24e/LICENSE",
     },
   ],
-  ["redis@6.2.1", redisFallback],
-  ["@redis/bloom@6.2.1", redisFallback],
-  ["@redis/client@6.2.1", redisFallback],
-  ["@redis/json@6.2.1", redisFallback],
-  ["@redis/search@6.2.1", redisFallback],
-  ["@redis/time-series@6.2.1", redisFallback],
+  ["redis@6.3.0", redisFallback],
+  ["@redis/bloom@6.3.0", redisFallback],
+  ["@redis/client@6.3.0", redisFallback],
+  ["@redis/json@6.3.0", redisFallback],
+  ["@redis/search@6.3.0", redisFallback],
+  ["@redis/time-series@6.3.0", redisFallback],
   [
     "qrcode-generator@2.0.4",
     {
