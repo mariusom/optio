@@ -100,9 +100,11 @@ A field's first answer and discrete choices are written immediately, so
 `startDate` is the first keystroke's time, never the flush time. Runner write
 commands take one lock in dispatch order, so a batch commits before the command
 that follows it. Written values stay in the overlay until the store echoes
-them, so an emission from an earlier write cannot revert a field. A crash or a
-killed tab that skips those events can lose at most the last 500 ms of typing;
-assistant answers are written without that delay.
+them, so an emission from an earlier write cannot revert a field. Page-leaving
+flushes are best effort: browsers do not wait for asynchronous worker writes
+before discarding a page. An immediate reload, crash or killed tab can lose
+pending answers, including the last 500 ms of typing and writes still reaching
+the worker. Assistant answers are written without the typing delay.
 
 Wall-clock time reaches the UI through the Model. The runtime boot and the
 ticker subscription read Effect's Clock; `Tick` stamps `model.now` and

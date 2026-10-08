@@ -100,7 +100,11 @@ a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
 ends the session and checks the downloaded CSV. It also refuses OPFS in a
 fresh context to check the in-memory storage warning. No stored user data or
-deployed service is used. Unit tests separately check deterministic event
+deployed service is used. Before restarting during an edit, it waits for the
+answer and rollback backup in SQLite and for worker persistence to finish;
+an input's DOM value alone does not prove durability. Page-leaving flushes
+are best effort, so this journey does not promise immediate-reload durability.
+Unit tests separately check deterministic event
 replay; `src/livestore/*.browser.ts` check materializer guards and queries
 against a real in-memory store. Native WebMCP integration and real Safari/mobile-device behavior still
 need separate verification.
