@@ -12,6 +12,8 @@ const booted = initWithFlags(
     font: "sans",
     iconLibrary: "hugeicons",
     accent: "default",
+    look: "classic",
+    controlSize: "standard",
     now: 0,
     idSeed: "boot",
   },

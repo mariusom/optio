@@ -11,9 +11,28 @@ const PresetAccent = Schema.Literals(["default", "blue", "violet", "green", "ros
 export const HexColour = Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/));
 export const Accent = Schema.Union([PresetAccent, HexColour]);
 export type Accent = typeof Accent.Type;
+/** Whole-app looks: palette, surfaces and typography over the same layout. */
+export const Look = Schema.Literals(["classic", "studio", "swiss", "shopfloor", "blueprint"]);
+export type Look = typeof Look.Type;
+/** "large" (glove mode) enlarges text, answer choices and primary actions. */
+export const ControlSize = Schema.Literals(["standard", "large"]);
+export type ControlSize = typeof ControlSize.Type;
 
 export const fonts = Font.literals;
 export const accents = PresetAccent.literals;
+export const looks = Look.literals;
+
+/**
+ * sRGB equivalents of each look's --background (src/looks.css; Classic in
+ * src/index.css) for browser chrome, which does not reliably accept oklch().
+ */
+export const lookThemeColors: Readonly<Record<Look, { light: string; dark: string }>> = {
+  classic: { light: "#ffffff", dark: "#0a0a0a" },
+  studio: { light: "#faf6f1", dark: "#1a1510" },
+  swiss: { light: "#ffffff", dark: "#060606" },
+  shopfloor: { light: "#e3e7ea", dark: "#13161a" },
+  blueprint: { light: "#ecf7ff", dark: "#09152c" },
+};
 
 /** Choose the higher-contrast foreground for a validated sRGB hex colour. */
 export const accentForeground = (hex: string): "#000000" | "#ffffff" => {
@@ -29,6 +48,8 @@ const themeStorageKey = "optio-theme";
 const fontStorageKey = "optio-font";
 const accentStorageKey = "optio-accent";
 const iconLibraryStorageKey = "optio-icon-library";
+const lookStorageKey = "optio-look";
+const controlSizeStorageKey = "optio-control-size";
 
 export const readTheme = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
@@ -80,6 +101,32 @@ export const readAccent = Effect.gen(function* () {
 export const saveAccent = Effect.fn("saveAccent")(function* (accent: Accent) {
   const store = yield* KeyValueStore.KeyValueStore;
   yield* store.set(accentStorageKey, accent);
+});
+
+export const readLook = Effect.gen(function* () {
+  const store = yield* KeyValueStore.KeyValueStore;
+  const value = yield* store.get(lookStorageKey);
+  return yield* Schema.decodeUnknownEffect(Look)(value).pipe(
+    Effect.catch(() => Effect.succeed("classic" as const)),
+  );
+});
+
+export const saveLook = Effect.fn("saveLook")(function* (look: Look) {
+  const store = yield* KeyValueStore.KeyValueStore;
+  yield* store.set(lookStorageKey, look);
+});
+
+export const readControlSize = Effect.gen(function* () {
+  const store = yield* KeyValueStore.KeyValueStore;
+  const value = yield* store.get(controlSizeStorageKey);
+  return yield* Schema.decodeUnknownEffect(ControlSize)(value).pipe(
+    Effect.catch(() => Effect.succeed("standard" as const)),
+  );
+});
+
+export const saveControlSize = Effect.fn("saveControlSize")(function* (size: ControlSize) {
+  const store = yield* KeyValueStore.KeyValueStore;
+  yield* store.set(controlSizeStorageKey, size);
 });
 
 export const isDarkTheme = (theme: Theme, systemIsDark: boolean): boolean =>

@@ -39,6 +39,8 @@ it("operates template/field CRUD and the full record → edit → archive → de
         font: "sans",
         iconLibrary: "hugeicons",
         accent: "default",
+        look: "classic",
+        controlSize: "standard",
         now: Date.now(),
         idSeed: "agent-test",
       } as const),

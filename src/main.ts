@@ -5,7 +5,7 @@ import { EnsureTemplatesSeeded } from "./web/features/templates/commands";
 import { parseRoute } from "./web/routes";
 import { GeneratePlaceholderName } from "./app/commands";
 import { initialModel } from "./app/model";
-import { Accent, Font, IconLibrary, Theme } from "./web/theme";
+import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 
 export { Model } from "./app/model";
@@ -20,6 +20,8 @@ export const Flags = Schema.Struct({
   font: Font,
   iconLibrary: IconLibrary,
   accent: Accent,
+  look: Look,
+  controlSize: ControlSize,
   /** From Effect's Clock, never Date.now(), so the first render has a real time. */
   now: Schema.Number,
   /** Random per boot, so IDs that update derives from it are unique (see `takeId`). */

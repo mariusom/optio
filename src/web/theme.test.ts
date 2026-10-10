@@ -6,6 +6,12 @@ import {
   accents,
   fonts,
   isDarkTheme,
+  looks,
+  lookThemeColors,
+  readControlSize,
+  readLook,
+  saveControlSize,
+  saveLook,
   readAccent,
   readFont,
   readIconLibrary,
@@ -90,5 +96,46 @@ describe("theme preference", () => {
     expect(accentForeground("#0000ff")).toBe("#ffffff");
     expect(accentForeground("#757575")).toBe("#ffffff");
     expect(accentForeground("#767676")).toBe("#000000");
+  });
+});
+
+describe("look and control size preferences", () => {
+  it.effect("default to Classic and standard controls when missing or invalid", () =>
+    Effect.gen(function* () {
+      expect(yield* readLook).toBe("classic");
+      expect(yield* readControlSize).toBe("standard");
+      const store = yield* KeyValueStore.KeyValueStore;
+      for (const [look, size] of [
+        ["neon", "huge"],
+        ["Studio", "LARGE"],
+        ["", "true"],
+      ] as const) {
+        yield* store.set("optio-look", look);
+        yield* store.set("optio-control-size", size);
+        expect(yield* readLook).toBe("classic");
+        expect(yield* readControlSize).toBe("standard");
+      }
+    }).pipe(Effect.provide(KeyValueStore.layerMemory)),
+  );
+
+  it.effect("round-trip every look and control size", () =>
+    Effect.gen(function* () {
+      for (const look of looks) {
+        yield* saveLook(look);
+        expect(yield* readLook).toBe(look);
+      }
+      for (const size of ["large", "standard"] as const) {
+        yield* saveControlSize(size);
+        expect(yield* readControlSize).toBe(size);
+      }
+    }).pipe(Effect.provide(KeyValueStore.layerMemory)),
+  );
+
+  it("gives every look an opaque sRGB browser-chrome colour per scheme", () => {
+    expect(Object.keys(lookThemeColors)).toEqual([...looks]);
+    for (const colors of Object.values(lookThemeColors)) {
+      expect(colors.light).toMatch(/^#[0-9a-f]{6}$/);
+      expect(colors.dark).toMatch(/^#[0-9a-f]{6}$/);
+    }
   });
 });

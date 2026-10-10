@@ -1,0 +1,405 @@
+/* ── Looks ──────────────────────────────────────────────────────────────────
+ * A look restyles the whole app through `html[data-look]`: it replaces the
+ * colour tokens from index.css for both schemes, then adds a few rules on
+ * stable hooks (data-slot, data-surface, ARIA state). Classic is index.css
+ * itself, so it has no block here.
+ *
+ * Precedence: the light block (html[data-look], 0-1-1) outranks `.dark`
+ * (0-1-0), so every dark block (html.dark[data-look], 0-2-1) redefines the
+ * same tokens. A look sets `--look-primary*`; `:root` turns those into
+ * `--primary`, so a chosen accent (html[data-accent], later in index.css) or a
+ * custom colour (inline style) still replaces it. Rules that rescope
+ * `--primary` inside the page check `[data-accent="default"]` for the same
+ * reason. The dark navigation of Shopfloor and Blueprint keeps its own
+ * highlight under every accent, because an accent made for light pages can
+ * lack contrast there.
+ *
+ * `.look-swatch[data-look]` repeats the selectors so Settings can preview each
+ * look with its real tokens. Fonts are system stacks only: no downloads.
+ * `src/web/looks.test.ts` checks the contrast of every block. */
+
+/* ── Studio: warm paper, deep teal, serif titles, soft shadows ─────────── */
+
+html[data-look="studio"],
+.look-swatch[data-look="studio"] {
+  --background: oklch(0.975 0.008 80);
+  --foreground: oklch(0.24 0.02 60);
+  --card: oklch(0.995 0.004 85);
+  --card-foreground: oklch(0.24 0.02 60);
+  --popover: oklch(0.995 0.004 85);
+  --popover-foreground: oklch(0.24 0.02 60);
+  --secondary: oklch(0.935 0.014 80);
+  --secondary-foreground: oklch(0.28 0.02 60);
+  --muted: oklch(0.945 0.012 80);
+  --muted-foreground: oklch(0.5 0.025 65);
+  --accent: oklch(0.93 0.025 190);
+  --accent-foreground: oklch(0.3 0.06 195);
+  --border: oklch(0.9 0.014 80);
+  --input: oklch(0.62 0.025 70);
+  --sidebar: oklch(0.955 0.013 80);
+  --sidebar-foreground: oklch(0.24 0.02 60);
+  --sidebar-accent: oklch(0.92 0.016 80);
+  --look-primary: oklch(0.44 0.085 195);
+  --look-primary-foreground: oklch(0.985 0.006 85);
+  --look-ring: oklch(0.44 0.085 195);
+  --look-shadow: 0 1px 2px oklch(0.35 0.03 60 / 0.08), 0 6px 20px -6px oklch(0.35 0.03 60 / 0.16);
+  --radius: 0.875rem;
+}
+
+html.dark[data-look="studio"],
+.dark .look-swatch[data-look="studio"] {
+  --background: oklch(0.2 0.012 65);
+  --foreground: oklch(0.95 0.012 85);
+  --card: oklch(0.245 0.014 65);
+  --card-foreground: oklch(0.95 0.012 85);
+  --popover: oklch(0.245 0.014 65);
+  --popover-foreground: oklch(0.95 0.012 85);
+  --secondary: oklch(0.3 0.014 65);
+  --secondary-foreground: oklch(0.95 0.012 85);
+  --muted: oklch(0.29 0.014 65);
+  --muted-foreground: oklch(0.76 0.02 75);
+  --accent: oklch(0.33 0.035 195);
+  --accent-foreground: oklch(0.95 0.012 85);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(0.56 0.02 70);
+  --sidebar: oklch(0.225 0.013 65);
+  --sidebar-foreground: oklch(0.95 0.012 85);
+  --sidebar-accent: oklch(0.3 0.014 65);
+  --look-primary: oklch(0.76 0.09 190);
+  --look-primary-foreground: oklch(0.2 0.03 195);
+  --look-ring: oklch(0.72 0.09 190);
+  --look-shadow: 0 1px 2px oklch(0 0 0 / 0.3), 0 6px 20px -6px oklch(0 0 0 / 0.45);
+}
+
+html[data-look="studio"]
+  .app-shell
+  :is([data-slot="grouped-list"][data-surface="card"], [data-slot="card"]) {
+  box-shadow: var(--look-shadow);
+}
+
+html[data-look="studio"]
+  .app-shell
+  :is([data-slot="page-header"], [data-slot="nav-bar"])
+  :is(h1, h2) {
+  font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  letter-spacing: -0.01em;
+}
+
+html[data-look="studio"] .app-shell [data-slot="section-header"] {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Swiss: white, hairlines, heavy rules, signal red, huge titles ─────── */
+
+html[data-look="swiss"],
+.look-swatch[data-look="swiss"] {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.13 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.13 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0 0);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.13 0 0);
+  --muted: oklch(0.965 0 0);
+  --muted-foreground: oklch(0.46 0 0);
+  --accent: oklch(0.945 0 0);
+  --accent-foreground: oklch(0.13 0 0);
+  --border: oklch(0.86 0 0);
+  --input: oklch(0.5 0 0);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.13 0 0);
+  --sidebar-accent: oklch(0.945 0 0);
+  --look-primary: oklch(0.58 0.22 28);
+  --look-primary-foreground: oklch(1 0 0);
+  --look-ring: oklch(0.13 0 0);
+  --radius: 0.125rem;
+}
+
+html.dark[data-look="swiss"],
+.dark .look-swatch[data-look="swiss"] {
+  --background: oklch(0.12 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.17 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.24 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --border: oklch(0.32 0 0);
+  --input: oklch(0.58 0 0);
+  --sidebar: oklch(0.12 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
+  --look-primary: oklch(0.68 0.2 28);
+  --look-primary-foreground: oklch(0.12 0 0);
+  --look-ring: oklch(0.98 0 0);
+}
+
+html[data-look="swiss"] .app-shell [data-slot="grouped-list"][data-surface="card"] {
+  border-block: 1px solid var(--foreground);
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+html[data-look="swiss"] .app-shell [data-slot="section-header"] {
+  border-top: 2px solid var(--foreground);
+  padding-top: 0.5rem;
+  font-weight: 700;
+}
+
+html[data-look="swiss"] .app-shell [data-slot="page-header"] h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  @media (min-width: 48rem) {
+    font-size: 3.5rem;
+  }
+}
+
+/* Selected answers fill with ink; the indicator inside follows the inverse.
+ * A selected "Unanswered" choice keeps its quieter outline. */
+html[data-look="swiss"]
+  .app-shell
+  :is(
+    [role="radiogroup"] > label:has(> input:checked):not(:has(> input[value=""])),
+    [role="group"] > [role="checkbox"][aria-checked="true"]
+  ) {
+  --primary: var(--background);
+  border-color: var(--foreground);
+  background-color: var(--foreground);
+  color: var(--background);
+}
+
+/* ── Shopfloor: cool grey, dark navigation, safety amber, square ───────── */
+
+html[data-look="shopfloor"],
+.look-swatch[data-look="shopfloor"] {
+  --background: oklch(0.925 0.006 250);
+  --foreground: oklch(0.2 0.012 250);
+  --card: oklch(0.99 0.002 250);
+  --card-foreground: oklch(0.2 0.012 250);
+  --popover: oklch(0.99 0.002 250);
+  --popover-foreground: oklch(0.2 0.012 250);
+  --secondary: oklch(0.885 0.008 250);
+  --secondary-foreground: oklch(0.2 0.012 250);
+  --muted: oklch(0.9 0.008 250);
+  --muted-foreground: oklch(0.44 0.015 250);
+  --accent: oklch(0.88 0.01 250);
+  --accent-foreground: oklch(0.2 0.012 250);
+  --border: oklch(0.82 0.008 250);
+  --input: oklch(0.54 0.012 250);
+  --sidebar: oklch(0.24 0.012 250);
+  --sidebar-foreground: oklch(0.96 0.004 250);
+  --sidebar-accent: oklch(0.32 0.014 250);
+  --look-primary: oklch(0.8 0.16 75);
+  --look-primary-foreground: oklch(0.2 0.03 70);
+  --look-ring: oklch(0.47 0.11 60);
+  /* Amber is too light for text on light pages; there `--primary` is this ink. */
+  --look-ink: oklch(0.47 0.11 60);
+  --look-ink-foreground: oklch(0.99 0.002 250);
+  --look-nav-primary: oklch(0.8 0.16 75);
+  --look-nav-primary-foreground: oklch(0.2 0.03 70);
+  --look-nav-muted: oklch(0.76 0.012 250);
+  --look-nav-border: oklch(1 0 0 / 12%);
+  --look-nav-ring: oklch(0.8 0.16 75);
+  --radius: 0.25rem;
+}
+
+html.dark[data-look="shopfloor"],
+.dark .look-swatch[data-look="shopfloor"] {
+  --background: oklch(0.2 0.01 250);
+  --foreground: oklch(0.96 0.004 250);
+  --card: oklch(0.25 0.012 250);
+  --card-foreground: oklch(0.96 0.004 250);
+  --popover: oklch(0.25 0.012 250);
+  --popover-foreground: oklch(0.96 0.004 250);
+  --secondary: oklch(0.3 0.012 250);
+  --secondary-foreground: oklch(0.96 0.004 250);
+  --muted: oklch(0.29 0.012 250);
+  --muted-foreground: oklch(0.75 0.012 250);
+  --accent: oklch(0.33 0.014 250);
+  --accent-foreground: oklch(0.96 0.004 250);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(0.56 0.012 250);
+  --sidebar: oklch(0.15 0.008 250);
+  --sidebar-foreground: oklch(0.96 0.004 250);
+  --sidebar-accent: oklch(0.24 0.01 250);
+  --look-primary: oklch(0.82 0.16 78);
+  --look-primary-foreground: oklch(0.2 0.03 70);
+  --look-ring: oklch(0.8 0.15 75);
+  --look-ink: oklch(0.82 0.16 78);
+  --look-ink-foreground: oklch(0.2 0.03 70);
+  --look-nav-primary: oklch(0.82 0.16 78);
+  --look-nav-primary-foreground: oklch(0.2 0.03 70);
+  --look-nav-muted: oklch(0.74 0.012 250);
+  --look-nav-border: oklch(1 0 0 / 10%);
+  --look-nav-ring: oklch(0.82 0.16 78);
+}
+
+/* Page text uses the ink; primary actions, badges and selected answers keep amber. */
+html[data-look="shopfloor"][data-accent="default"] .app-shell main {
+  --primary: var(--look-ink);
+  --primary-foreground: var(--look-ink-foreground);
+}
+
+html[data-look="shopfloor"][data-accent="default"]
+  .app-shell
+  :is([data-slot="button"][data-variant="default"], [data-slot="badge"][data-variant="default"]) {
+  --primary: var(--look-primary);
+  --primary-foreground: var(--look-primary-foreground);
+}
+
+html[data-look="shopfloor"][data-accent="default"]
+  .app-shell
+  :is(
+    [role="radiogroup"] > label:has(> input:checked):not(:has(> input[value=""])),
+    [role="group"] > [role="checkbox"][aria-checked="true"]
+  ) {
+  --primary: var(--look-primary-foreground);
+  border-color: var(--look-primary-foreground);
+  background-color: var(--look-primary);
+  color: var(--look-primary-foreground);
+}
+
+html[data-look="shopfloor"] .app-shell :is([data-slot="page-header"] h1, [data-slot="nav-bar"] h1) {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+html[data-look="shopfloor"]
+  .app-shell
+  :is([data-slot="section-header"], [data-slot="badge"], .tabular, .tabular-nums) {
+  font-family: var(--font-mono);
+}
+
+html[data-look="shopfloor"] .app-shell [data-slot="section-header"] {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Blueprint: pale blue grid, cobalt ink and navigation, dashed outlines ─ */
+
+html[data-look="blueprint"],
+.look-swatch[data-look="blueprint"] {
+  --background: oklch(0.97 0.018 245);
+  --foreground: oklch(0.3 0.12 262);
+  --card: oklch(0.99 0.008 245);
+  --card-foreground: oklch(0.3 0.12 262);
+  --popover: oklch(0.99 0.008 245);
+  --popover-foreground: oklch(0.3 0.12 262);
+  --secondary: oklch(0.93 0.03 250);
+  --secondary-foreground: oklch(0.32 0.13 262);
+  --muted: oklch(0.935 0.025 248);
+  --muted-foreground: oklch(0.47 0.09 262);
+  --accent: oklch(0.92 0.04 255);
+  --accent-foreground: oklch(0.32 0.15 262);
+  --border: oklch(0.45 0.2 262 / 22%);
+  --input: oklch(0.58 0.12 262);
+  --sidebar: oklch(0.4 0.17 262);
+  --sidebar-foreground: oklch(0.97 0.015 245);
+  --sidebar-accent: oklch(0.47 0.17 262);
+  --look-primary: oklch(0.45 0.2 262);
+  --look-primary-foreground: oklch(0.98 0.01 245);
+  --look-ring: oklch(0.45 0.2 262);
+  --look-nav-primary: oklch(0.98 0.01 245);
+  --look-nav-primary-foreground: oklch(0.4 0.17 262);
+  --look-nav-muted: oklch(0.88 0.04 250);
+  --look-nav-border: oklch(1 0 0 / 22%);
+  --look-nav-ring: oklch(0.98 0.01 245);
+  --look-grid: oklch(0.45 0.2 262 / 7%);
+  --radius: 0.375rem;
+}
+
+html.dark[data-look="blueprint"],
+.dark .look-swatch[data-look="blueprint"] {
+  --background: oklch(0.2 0.05 262);
+  --foreground: oklch(0.93 0.03 245);
+  --card: oklch(0.24 0.06 262);
+  --card-foreground: oklch(0.93 0.03 245);
+  --popover: oklch(0.24 0.06 262);
+  --popover-foreground: oklch(0.93 0.03 245);
+  --secondary: oklch(0.3 0.07 262);
+  --secondary-foreground: oklch(0.93 0.03 245);
+  --muted: oklch(0.28 0.06 262);
+  --muted-foreground: oklch(0.77 0.06 250);
+  --accent: oklch(0.33 0.08 262);
+  --accent-foreground: oklch(0.93 0.03 245);
+  --border: oklch(0.8 0.08 250 / 18%);
+  --input: oklch(0.6 0.09 255);
+  --sidebar: oklch(0.3 0.13 262);
+  --sidebar-foreground: oklch(0.96 0.02 245);
+  --sidebar-accent: oklch(0.38 0.14 262);
+  --look-primary: oklch(0.76 0.12 255);
+  --look-primary-foreground: oklch(0.2 0.06 262);
+  --look-ring: oklch(0.74 0.12 255);
+  --look-nav-primary: oklch(0.96 0.02 245);
+  --look-nav-primary-foreground: oklch(0.3 0.13 262);
+  --look-nav-muted: oklch(0.85 0.05 250);
+  --look-nav-border: oklch(1 0 0 / 18%);
+  --look-nav-ring: oklch(0.96 0.02 245);
+  --look-grid: oklch(0.8 0.1 250 / 7%);
+}
+
+html[data-look="blueprint"] .app-shell {
+  background-image:
+    linear-gradient(var(--look-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--look-grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+html[data-look="blueprint"]
+  .app-shell
+  :is([role="radiogroup"] > label, [role="group"] > [role="checkbox"], [data-slot="badge"]) {
+  border-style: dashed;
+}
+
+html[data-look="blueprint"]
+  .app-shell
+  :is(
+    [role="radiogroup"] > label:has(> input:checked),
+    [role="group"] > [role="checkbox"][aria-checked="true"]
+  ) {
+  border-style: solid;
+}
+
+html[data-look="blueprint"] .app-shell [data-slot="badge"] {
+  border-color: currentColor;
+}
+
+html[data-look="blueprint"] .app-shell :is([data-slot="section-header"], [data-slot="badge"]) {
+  font-family: var(--font-mono);
+}
+
+html[data-look="blueprint"] .app-shell [data-slot="section-header"] {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Dark navigation (Shopfloor, Blueprint) ────────────────────────────── */
+
+html:is([data-look="shopfloor"], [data-look="blueprint"])
+  .app-shell
+  :is([data-slot="sidebar"], [data-slot="tab-bar"]) {
+  --card: var(--sidebar);
+  --foreground: var(--sidebar-foreground);
+  --muted-foreground: var(--look-nav-muted);
+  --border: var(--look-nav-border);
+  --primary: var(--look-nav-primary);
+  --primary-foreground: var(--look-nav-primary-foreground);
+  --ring: var(--look-nav-ring);
+  color: var(--sidebar-foreground);
+}

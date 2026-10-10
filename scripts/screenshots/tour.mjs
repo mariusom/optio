@@ -1,5 +1,6 @@
 // Screenshot tour: every screen at phone/tablet/desktop, light and dark.
 // Usage: pnpm build && pnpm preview --port 60002 & node scripts/screenshots/tour.mjs /tmp/tour
+// Seed saved preferences with OPTIO_INIT_STORAGE (JSON of localStorage keys and values).
 import { chromium } from "playwright";
 
 const out = process.argv[2] ?? "/tmp/tour";
@@ -9,6 +10,8 @@ const allSizes = { phone: [390, 844], tablet: [820, 1180], desktop: [1440, 900] 
 const pick = (value, all) => (value ? value.split(",") : all);
 const sizes = pick(process.env.OPTIO_SIZES, Object.keys(allSizes));
 const schemes = pick(process.env.OPTIO_SCHEMES, ["light", "dark"]);
+// Optional saved preferences as JSON, e.g. OPTIO_INIT_STORAGE='{"optio-look":"studio"}'.
+const initStorage = JSON.parse(process.env.OPTIO_INIT_STORAGE ?? "{}");
 const browser = await chromium.launch();
 let failures = 0;
 
@@ -16,6 +19,9 @@ for (const scheme of schemes) {
   for (const size of sizes) {
     const [width, height] = allSizes[size];
     const context = await browser.newContext({ viewport: { width, height }, colorScheme: scheme });
+    await context.addInitScript((entries) => {
+      for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);
+    }, initStorage);
     const page = await context.newPage();
     const shot = (name) => page.screenshot({ path: `${out}/${size}-${scheme}-${name}.png` });
     const step = async (name, run) => {
