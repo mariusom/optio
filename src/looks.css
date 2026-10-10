@@ -114,7 +114,7 @@ html[data-look="swiss"],
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.13 0 0);
   --sidebar-accent: oklch(0.945 0 0);
-  --look-primary: oklch(0.58 0.22 28);
+  --look-primary: oklch(0.52 0.2 28);
   --look-primary-foreground: oklch(1 0 0);
   --look-ring: oklch(0.13 0 0);
   --radius: 0.125rem;
@@ -179,6 +179,19 @@ html[data-look="swiss"]
   border-color: var(--foreground);
   background-color: var(--foreground);
   color: var(--background);
+}
+
+/* The focus ring is ink too, so on an ink-filled answer it would vanish: a
+ * focused selected answer gets an outline outside the card in the look's red,
+ * which keeps 3:1 against the page in both schemes. */
+html[data-look="swiss"]
+  .app-shell
+  :is(
+    [role="radiogroup"] > label:has(> input:checked):has(:focus-visible),
+    [role="group"] > [role="checkbox"][aria-checked="true"]:focus-visible
+  ) {
+  outline: 3px solid var(--look-primary);
+  outline-offset: 2px;
 }
 
 /* ── Shopfloor: cool grey, dark navigation, safety amber, square ───────── */

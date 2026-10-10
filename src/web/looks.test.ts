@@ -132,7 +132,43 @@ const optional: ReadonlyArray<readonly [string, string, number]> = [
   ["--look-nav-ring", "--sidebar", 3],
 ];
 
-const failures = (tokens: Tokens, accent: string): Array<string> => {
+/** `front` over `tint` at `alpha` on `back`, as Tailwind's `bg-x/10` surfaces draw it. */
+const contrastOnTint = (
+  tokens: Tokens,
+  front: string,
+  surface: Readonly<{ tint: string; alpha: number; back: string }>,
+): number => {
+  const base = oklch(resolve(tokens, surface.back));
+  const tint = oklch(resolve(tokens, surface.tint));
+  const mixed = tint.rgb.map((c, i) =>
+    decode(encode(c) * surface.alpha + encode(base.rgb[i]!) * (1 - surface.alpha)),
+  );
+  const top = oklch(resolve(tokens, front)).rgb;
+  const [high, low] = [luminance(top), luminance(mixed)].toSorted((x, y) => y - x);
+  return (high! + 0.05) / (low! + 0.05);
+};
+
+// Status text on its own tinted wash: destructive buttons and notices
+// (bg-destructive/10, /20 in dark), selected primary rows and badges
+// (bg-primary/12), and success status text.
+const tinted = (dark: boolean): ReadonlyArray<readonly [string, string, number, string]> => [
+  ["--destructive", "--destructive", dark ? 0.2 : 0.1, "--background"],
+  ["--destructive", "--destructive", dark ? 0.2 : 0.1, "--card"],
+  ["--primary", "--primary", 0.12, "--background"],
+  ["--primary", "--primary", 0.12, "--card"],
+  ["--success", "--background", 0, "--background"],
+  ["--success", "--card", 0, "--card"],
+];
+
+const tintFailures = (tokens: Tokens, dark: boolean): Array<string> =>
+  tinted(dark).flatMap(([front, tint, alpha, back]) => {
+    const ratio = contrastOnTint(tokens, front, { tint, alpha, back });
+    return ratio >= 4.5
+      ? []
+      : [`${front} on ${tint}/${alpha} over ${back}: ${ratio.toFixed(2)} < 4.5`];
+  });
+
+const failures = (tokens: Tokens, accent: string, dark: boolean): Array<string> => {
   const checks: Array<readonly [string, string, number]> = [
     ...text.map(([front, back]) => [front, back, 4.5] as const),
     ...nonText.map(([front, back]) => [front, back, 3] as const),
@@ -141,10 +177,19 @@ const failures = (tokens: Tokens, accent: string): Array<string> => {
       : []),
     ...optional.filter(([front]) => tokens[front] !== undefined),
   ];
-  return checks.flatMap(([front, back, minimum]) => {
-    const ratio = contrast(tokens, front, back);
-    return ratio >= minimum ? [] : [`${front} on ${back}: ${ratio.toFixed(2)} < ${minimum}`];
-  });
+  return [
+    ...checks.flatMap(([front, back, minimum]) => {
+      const ratio = contrast(tokens, front, back);
+      return ratio >= minimum ? [] : [`${front} on ${back}: ${ratio.toFixed(2)} < ${minimum}`];
+    }),
+    // Shopfloor rescopes --primary inside pages, so its tinted primary is checked via ink.
+    ...tintFailures(tokens, dark).filter(
+      (failure) =>
+        tokens["--look-ink"] === undefined ||
+        accent !== "default" ||
+        !failure.startsWith("--primary"),
+    ),
+  ];
 };
 
 // Classic keeps its earlier palette unchanged. These pairs fall just short and
@@ -166,14 +211,16 @@ describe("looks", () => {
   for (const look of looks) {
     for (const dark of [false, true]) {
       it(`${look} ${dark ? "dark" : "light"} keeps text, outline and focus contrast`, () => {
-        expect(unexpected(look, dark, failures(palette(look, dark), "default"))).toEqual([]);
+        expect(unexpected(look, dark, failures(palette(look, dark), "default", dark))).toEqual([]);
       });
 
       it(`${look} ${dark ? "dark" : "light"} keeps preset accents legible`, () => {
         const results = accents
           .filter((accent) => accent !== "default")
           .flatMap((accent) =>
-            failures(palette(look, dark, accent), accent).map((failure) => `${accent}: ${failure}`),
+            failures(palette(look, dark, accent), accent, dark).map(
+              (failure) => `${accent}: ${failure}`,
+            ),
           );
         expect(unexpected(look, dark, results)).toEqual([]);
       });

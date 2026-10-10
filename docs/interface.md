@@ -70,7 +70,8 @@ data stay the same. Blueprint is the default look (`defaultLook` in `web/theme.t
 wins); Classic uses the base tokens in `index.css`. The static `theme-color` tags
 in `index.html` and the PWA manifest colours match Blueprint. A non-default
 accent still replaces a look's primary colour, except in the dark navigation of
-Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast;
+Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast, including status text on
+its own tint (`bg-destructive/10`, `/20` in dark, `bg-primary/12`);
 add new looks there. Browser chrome uses each look's `lookThemeColors` entry.
 “Larger controls” (`html[data-control-size="large"]`) scales text to 112.5%,
 gives answer choices and primary actions 56px and stacks choices on phones.

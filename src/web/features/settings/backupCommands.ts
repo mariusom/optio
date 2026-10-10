@@ -1,10 +1,11 @@
-import { Clock, Effect, Option, Schema } from "effect";
+import { Clock, Duration, Effect, Option, Schedule, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
 import { withStore, type StoreAccess } from "../../../livestore/access";
 import {
   backupFilename,
+  backupProblem,
   decodeBackup,
   encodeBackup,
   planRestore,
@@ -108,6 +109,26 @@ const readChosenFile = (inputId: string) =>
     return file === undefined ? null : file.text();
   });
 
+/** Longest wait for a restore to reach disk before reporting it as still saving. */
+const saveTimeout = Duration.seconds(60);
+
+/** The global event number of a LiveStore head such as "e12" or "e12.3". */
+const headNumber = (head: string): number => Number(/^e(\d+)/.exec(head)?.[1] ?? Number.NaN);
+
+/**
+ * True once the leader (which writes to disk) has confirmed every event this
+ * session had committed when called; false if that takes longer than the wait.
+ * Commit updates `localHead` synchronously; `upstreamHead` follows the leader.
+ */
+const savedToDisk = (store: Access["store"]) => {
+  const target = headNumber(store.syncStatus().localHead);
+  return Effect.sync(() => headNumber(store.syncStatus().upstreamHead) >= target).pipe(
+    Effect.repeat({ until: (confirmed) => confirmed, schedule: Schedule.spaced("100 millis") }),
+    Effect.timeoutOption(saveTimeout),
+    Effect.map(Option.isSome),
+  );
+};
+
 const restore = (access: Access, file: BackupFile) =>
   Effect.gen(function* () {
     const { store, tables, events } = access;
@@ -119,10 +140,14 @@ const restore = (access: Access, file: BackupFile) =>
     store.commit(
       events.backupRestored({ now, templates: plan.templates, sessions: plan.sessions }),
     );
+    // Only report success once the restore has reached disk: a reload before
+    // that (seconds for a large backup) would silently lose it.
+    const saved = yield* savedToDisk(store);
     return Message.BackupRestored({
       templates: plan.templates.length,
       sessions: plan.sessions.length,
       skipped: plan.skipped,
+      saved,
     });
   });
 
@@ -135,6 +160,8 @@ export const RestoreBackup = Command.define("RestoreBackup", {
       if (text === null) return failed("Choose a backup file to restore.");
       const file = decodeBackup(text);
       if (Option.isNone(file)) return failed("That file isn't an Optio backup.");
+      const problem = backupProblem(file.value, yield* Clock.currentTimeMillis);
+      if (problem !== null) return failed(problem);
       return yield* withStore((access) => restore(access, file.value));
     }).pipe(reportFailure("restore", failed)),
 });

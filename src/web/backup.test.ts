@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   backupFilename,
+  backupProblem,
   decodeBackup,
   encodeBackup,
   planRestore,
@@ -156,5 +157,58 @@ describe("planRestore", () => {
     expect(plan.sessions[0]!.sessionName).toBe("Morning");
     expect(plan.sessions[0]!.records).toHaveLength(1);
     expect(plan.skipped).toBe(2);
+  });
+});
+
+describe("backupProblem", () => {
+  const now = file.exportedAt.getTime() + 60_000;
+  const [template] = file.templates;
+  const [session] = file.sessions;
+  const [record] = session!.records;
+  const withTemplate = (patch: object): BackupFile => ({
+    ...file,
+    templates: [{ ...template!, ...patch }],
+  });
+  const withField = (patch: object): BackupFile =>
+    withTemplate({ fields: [{ ...template!.fields[0]!, ...patch }] });
+  const withSession = (patch: object): BackupFile => ({
+    ...file,
+    sessions: [{ ...session!, ...patch }],
+  });
+
+  it("accepts a backup Optio wrote", () => {
+    expect(backupProblem(file, now)).toBeNull();
+  });
+
+  it("rejects values the store cannot hold", () => {
+    expect(backupProblem(withField({ sortOrder: 1.5 }), now)).not.toBeNull();
+    expect(backupProblem(withField({ sortOrder: 1e308 }), now)).not.toBeNull();
+    expect(backupProblem(withField({ sortOrder: -1 }), now)).not.toBeNull();
+    expect(
+      backupProblem(withSession({ records: [{ ...record!, taskIdNumber: -1 }] }), now),
+    ).not.toBeNull();
+    expect(
+      backupProblem(withSession({ records: [{ ...record!, taskIdNumber: 1.5 }] }), now),
+    ).not.toBeNull();
+  });
+
+  it("rejects unnamed templates and questions", () => {
+    expect(backupProblem(withTemplate({ name: " " }), now)).not.toBeNull();
+    expect(backupProblem(withField({ name: "" }), now)).not.toBeNull();
+    expect(backupProblem(withSession({ templateName: "" }), now)).not.toBeNull();
+  });
+
+  it("rejects impossible times", () => {
+    expect(
+      backupProblem(withSession({ endedAt: new Date(session!.startedAt.getTime() - 1) }), now),
+    ).not.toBeNull();
+    // After the export, or (with a far-future export date) after now.
+    expect(backupProblem(withSession({ endedAt: new Date(2413, 7, 23) }), now)).not.toBeNull();
+    const future = {
+      ...withSession({ endedAt: new Date(2413, 7, 23) }),
+      exportedAt: new Date(2413, 8, 1),
+    };
+    expect(backupProblem(future, now)).not.toBeNull();
+    expect(backupProblem(withSession({ startedAt: new Date(-1) }), now)).not.toBeNull();
   });
 });

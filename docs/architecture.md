@@ -161,5 +161,11 @@ commits one `v3.BackupRestored` event that adds only what is missing. The
 command plans the restore first: templates whose ID exists, or with the same
 name and questions (each browser seeds its own samples), are kept, and their
 sessions are repointed to the existing template. The materializer still
-skips any existing ID, so replays and repeated restores stay harmless. Service-worker
+skips any existing ID, so replays and repeated restores stay harmless.
+Before committing, `backupProblem` refuses files with values Optio never
+writes (fractional or negative question order, task numbers below 1, unnamed
+templates or questions, impossible times), which would otherwise break the
+store. Restore reports success only once the leader has confirmed the event
+(`upstreamHead` reaches the `localHead` seen after commit), because a reload
+before then loses it; large backups can take several seconds. Service-worker
 updates must wait for the user's refresh action rather than interrupt recording.

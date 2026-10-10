@@ -124,3 +124,42 @@ export const planRestore = (
   const skipped = file.templates.length - templates.length + file.sessions.length - sessions.length;
   return { templates, sessions, skipped };
 };
+
+const validTime = (date: Date | null, latest: number): boolean =>
+  date === null ||
+  (Number.isFinite(date.getTime()) && date.getTime() >= 0 && date.getTime() <= latest);
+
+/**
+ * Values Optio never writes, which would corrupt the store or show nonsense:
+ * fractional or negative question order, task numbers below 1, unnamed
+ * templates or questions, times outside 1970 to the export (or after now),
+ * and sessions that end before they start. Null when the file can be restored.
+ */
+export const backupProblem = (file: BackupFile, now: number): string | null => {
+  const latest = Math.min(file.exportedAt.getTime(), now + 86_400_000);
+  const badTemplate = file.templates.some(
+    (t) =>
+      t.name.trim() === "" ||
+      t.fields.some(
+        (f) => f.name.trim() === "" || !Number.isSafeInteger(f.sortOrder) || f.sortOrder < 0,
+      ),
+  );
+  const badSession = file.sessions.some(
+    (s) =>
+      s.templateName.trim() === "" ||
+      !validTime(s.startedAt, latest) ||
+      !validTime(s.endedAt, latest) ||
+      s.endedAt.getTime() < s.startedAt.getTime() ||
+      s.records.some(
+        (r) =>
+          !Number.isSafeInteger(r.taskIdNumber) ||
+          r.taskIdNumber < 1 ||
+          !validTime(r.startedAt, latest) ||
+          !validTime(r.endedAt, latest) ||
+          r.sections.some((section) => !validTime(section.startedAt, latest)),
+      ),
+  );
+  return badTemplate || badSession
+    ? "That backup contains values Optio can't use, so nothing was restored."
+    : null;
+};

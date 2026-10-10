@@ -73,7 +73,13 @@ export const Message = defineMessageUnion({
   BackupDownloaded: { filename: Schema.String },
   /** A backup file was chosen in Settings; its text is read by RestoreBackup. */
   ChoseBackupFile: {},
-  BackupRestored: { templates: Schema.Number, sessions: Schema.Number, skipped: Schema.Number },
+  BackupRestored: {
+    templates: Schema.Number,
+    sessions: Schema.Number,
+    skipped: Schema.Number,
+    /** False when it had not reached disk within the wait; it may still be saving. */
+    saved: Schema.Boolean,
+  },
   FailedBackup: { error: Schema.String },
 
   // ── Templates ──────────────────────────────────────────────────────────
