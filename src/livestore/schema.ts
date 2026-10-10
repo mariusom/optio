@@ -2,7 +2,8 @@ import { Events, State, makeSchema } from "@livestore/livestore";
 import { Schema } from "effect";
 
 import { FieldDef } from "../domain/fields";
-import { ArchiveRecord } from "../domain/archive";
+import { ArchiveRecord, uniqueTasks } from "../domain/archive";
+import { idClaimer } from "./restoreIds";
 
 // ── Tables ────────────────────────────────────────────────────────────────
 
@@ -429,18 +430,16 @@ const materializers = State.SQLite.materializers(events, {
   // Restores only what is missing, so a repeated or overlapping restore is
   // harmless: a template is skipped when its ID or any question ID exists, a
   // session when its ID exists. Restored templates never take the default.
+  // IDs taken earlier in the same event count as existing, so a file that
+  // repeats an ID can never insert it twice (a UNIQUE failure breaks the store).
   "v3.BackupRestored": ({ now, templates, sessions }, { query }) => {
-    const exists = (table: string, ids: ReadonlyArray<string>) =>
-      ids.some(
-        (id) =>
-          query({ query: `select 1 from ${table} where id = $id`, bindValues: { id } }).length > 0,
-      );
+    const claim = idClaimer(query);
     return [
       ...templates
         .filter(
           (t) =>
-            !exists("templates", [t.id]) &&
-            !exists(
+            claim("templates", [t.id]) &&
+            claim(
               "templateFields",
               t.fields.map((f) => f.id),
             ),
@@ -456,10 +455,10 @@ const materializers = State.SQLite.materializers(events, {
           ...insertTemplateFields(t.id, t.fields),
         ]),
       ...sessions
-        .filter((s) => !exists("sessions", [s.id]))
+        .filter((s) => claim("sessions", [s.id]))
         .flatMap(({ records, ...session }) => [
           tables.sessions.insert(session),
-          ...insertArchiveRecords(session.id, records),
+          ...insertArchiveRecords(session.id, uniqueTasks(records)),
         ]),
     ];
   },

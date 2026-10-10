@@ -91,6 +91,20 @@ const reportingDetailFailure = (stream: Stream.Stream<Message>): Stream.Stream<M
     ),
   );
 
+/** A template's report, or a failure message its sheet shows instead of loading forever. */
+const reportingReportFailure = (templateId: string): Stream.Stream<Message> =>
+  templateReportStream(templateId).pipe(
+    Stream.catchCause((cause) =>
+      Cause.hasInterruptsOnly(cause)
+        ? Stream.empty
+        : Stream.fromEffect(
+            Effect.logError("Optio could not read this template's report.", cause).pipe(
+              Effect.as(Message.FailedTemplateReport({ templateId })),
+            ),
+          ),
+    ),
+  );
+
 /**
  * Reports a failed list read, so its page shows a retry rather than loading
  * forever. The stream ends; "Try again" restarts it via `listReadAttempt`.
@@ -194,7 +208,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     {
       modelToDependencies: (model) => ({ templateId: model.templateReportFor }),
       dependenciesToStream: ({ templateId }) =>
-        templateId === null ? Stream.empty : loggingFailure(templateReportStream(templateId)),
+        templateId === null ? Stream.empty : reportingReportFailure(templateId),
     },
   ),
   activeSession: entry(

@@ -131,7 +131,16 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
           data: model.templates,
           skeleton: listSkeleton,
           page: (templates) =>
-            templatesPage({ ...model, templates, liveSession: activeSessionOf(model) }, h),
+            templatesPage(
+              {
+                ...model,
+                templates,
+                liveSession: activeSessionOf(model),
+                // While storage is unavailable the report cannot load either.
+                templateReportFailed: model.templateReportFailed || model.storage === "unavailable",
+              },
+              h,
+            ),
         },
         h,
       ),

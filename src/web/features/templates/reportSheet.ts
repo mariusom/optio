@@ -15,7 +15,13 @@ const sessionsLabel = (count: number) => `${count} session${count === 1 ? "" : "
 const note = (text: string, h: HtmlBuilder<Message>): Html =>
   h.p([h.Class("text-sm text-muted-foreground")], [text]);
 
-const reportBody = (report: TemplateReport | null, h: HtmlBuilder<Message>): Html => {
+const reportBody = (report: TemplateReport | "failed" | null, h: HtmlBuilder<Message>): Html => {
+  if (report === "failed") {
+    return h.p(
+      [h.Role("alert"), h.Class("text-sm text-destructive")],
+      ["Couldn't load the report right now. Close it and try again."],
+    );
+  }
   if (report === null) {
     return h.p([h.Role("status"), h.Class("text-sm text-muted-foreground")], ["Loading report…"]);
   }
@@ -50,7 +56,7 @@ const reportBody = (report: TemplateReport | null, h: HtmlBuilder<Message>): Htm
 /** Opened from the template action sheet; data follows `templateReportFor`. */
 export const templateReportSheet = (
   template: TemplateSummary,
-  report: TemplateReport | null,
+  report: TemplateReport | "failed" | null,
   h: HtmlBuilder<Message>,
 ): Html =>
   sheet(
@@ -61,6 +67,6 @@ export const templateReportSheet = (
       onDismiss: Message.ClosedTemplateReport(),
       footer: { cancel: { label: "Close", onClick: Message.ClosedTemplateReport() } },
     },
-    [reportBody(report?.templateId === template.id ? report : null, h)],
+    [reportBody(report === "failed" || report?.templateId === template.id ? report : null, h)],
     h,
   );

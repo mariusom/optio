@@ -132,6 +132,7 @@ export const Model = Schema.Struct({
   /** Template whose time report sheet is open; its data arrives as `templateReport`. */
   templateReportFor: Schema.Union([Schema.Null, Schema.String]),
   templateReport: Schema.NullOr(TemplateReport),
+  templateReportFailed: Schema.Boolean,
   lastError: Schema.Union([Schema.Null, Schema.String]),
   editor: Schema.Union([
     Schema.Null,
@@ -240,6 +241,7 @@ const initialModel = (route: Route): Model => ({
   templateActionsFor: null,
   templateReportFor: null,
   templateReport: null,
+  templateReportFailed: false,
   lastError: null,
   editor: null,
   selectedTemplateId: null,

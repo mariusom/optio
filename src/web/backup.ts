@@ -1,6 +1,6 @@
 import { Option, Schema } from "effect";
 
-import { ArchiveRecord } from "../domain/archive";
+import { ArchiveRecord, uniqueTasks } from "../domain/archive";
 import { FieldDef } from "../domain/fields";
 
 // The backup file: every template and every finished session, as JSON.
@@ -82,7 +82,9 @@ const templateSignature = (template: Pick<BackupTemplate, "name" | "fields">): s
  * What a restore adds. A backup template is already here when its ID exists
  * or an existing template has the same name and questions (each browser seeds
  * its own copies of the samples); its sessions then point at that template.
- * Sessions whose IDs exist are kept as they are.
+ * Like the store's own guard, a template whose question IDs are taken, a
+ * session whose ID exists, and any ID repeated within the file are skipped,
+ * so the summary counts exactly what the restore adds.
  */
 export const planRestore = (
   file: BackupFile,
@@ -91,22 +93,31 @@ export const planRestore = (
     sessionIds: ReadonlySet<string>;
   }>,
 ) => {
-  const existingIds = new Set(existing.templates.map((t) => t.id));
+  const templateIds = new Set(existing.templates.map((t) => t.id));
+  const fieldIds = new Set(existing.templates.flatMap((t) => t.fields.map((f) => f.id)));
   const bySignature = new Map(existing.templates.map((t) => [templateSignature(t), t.id]));
   const remap = new Map<string, string>();
   const templates = file.templates.filter((template) => {
-    if (existingIds.has(template.id)) return false;
+    if (templateIds.has(template.id) || remap.has(template.id)) return false;
     const match = bySignature.get(templateSignature(template));
-    if (match !== undefined) remap.set(template.id, match);
-    return match === undefined;
+    if (match !== undefined) {
+      remap.set(template.id, match);
+      return false;
+    }
+    const ids = template.fields.map((f) => f.id);
+    if (new Set(ids).size !== ids.length || ids.some((id) => fieldIds.has(id))) return false;
+    templateIds.add(template.id);
+    for (const id of ids) fieldIds.add(id);
+    return true;
   });
-  const sessions = file.sessions
-    .filter((session) => !existing.sessionIds.has(session.id))
-    .map((session) =>
-      session.templateId === null || !remap.has(session.templateId)
-        ? session
-        : { ...session, templateId: remap.get(session.templateId)! },
-    );
+  const sessionIds = new Set(existing.sessionIds);
+  const sessions = file.sessions.flatMap((session) => {
+    if (sessionIds.has(session.id)) return [];
+    sessionIds.add(session.id);
+    const templateId =
+      session.templateId === null ? null : (remap.get(session.templateId) ?? session.templateId);
+    return [{ ...session, templateId, records: uniqueTasks(session.records) }];
+  });
   const skipped = file.templates.length - templates.length + file.sessions.length - sessions.length;
   return { templates, sessions, skipped };
 };

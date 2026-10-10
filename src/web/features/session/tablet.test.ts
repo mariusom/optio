@@ -78,6 +78,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   templateActionsFor: null,
   templateReportFor: null,
   templateReport: null,
+  templateReportFailed: false,
   lastError: null,
   editor: null,
   selectedTemplateId: null,

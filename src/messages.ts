@@ -99,6 +99,8 @@ export const Message = defineMessageUnion({
   OpenedTemplateReport: { id: Schema.String },
   ClosedTemplateReport: {},
   GotTemplateReport: { report: TemplateReport },
+  /** Reading a template's report failed; its sheet shows the failure. */
+  FailedTemplateReport: { templateId: Schema.String },
   ClickedAddSampleTemplates: {},
   SampleTemplatesAdded: {},
 

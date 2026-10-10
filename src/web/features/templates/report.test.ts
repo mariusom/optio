@@ -66,6 +66,16 @@ describe("template report state", () => {
     );
   });
 
+  it("records a failure for the open report only, and clears it on reopening", () => {
+    const open = update(appModel, Message.OpenedTemplateReport({ id: "t1" })).model;
+    const other = update(open, Message.FailedTemplateReport({ templateId: "t2" })).model;
+    expect(other.templateReportFailed).toBe(false);
+    const failed = update(open, Message.FailedTemplateReport({ templateId: "t1" })).model;
+    expect(failed.templateReportFailed).toBe(true);
+    const reopened = update(failed, Message.OpenedTemplateReport({ id: "t1" })).model;
+    expect(reopened.templateReportFailed).toBe(false);
+  });
+
   it("closes on Close and when the route changes", () => {
     const open = update(appModel, Message.OpenedTemplateReport({ id: "t1" })).model;
     expect(update(open, Message.ClosedTemplateReport()).model.templateReportFor).toBeNull();
@@ -114,6 +124,18 @@ describe("template report sheet", () => {
       Scene.given(model),
       settleSheets,
       Scene.expect(Scene.role("status")).toHaveText("Loading report…"),
+    );
+  });
+
+  it("shows a failure instead of loading forever", () => {
+    Scene.scene(
+      config,
+      Scene.given({ ...model, templateReportFailed: true }),
+      settleSheets,
+      Scene.expect(Scene.role("alert")).toHaveText(
+        "Couldn't load the report right now. Close it and try again.",
+      ),
+      Scene.expect(Scene.text("Loading report…")).toBeAbsent(),
     );
   });
 

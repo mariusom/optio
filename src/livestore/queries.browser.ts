@@ -254,3 +254,33 @@ it("restores a backup once, keeping what is already present and the default", as
   expect(store.query(queries.archiveRows("old")).sections).toHaveLength(6);
   expect(store.query(queries.templateReportRows("restored")).summary.sessionCount).toBe(1);
 });
+
+it("survives a restore that repeats IDs, inserting each once", async () => {
+  const store = await openStore();
+  const template = { id: "t", name: "T", fields };
+  const session = {
+    id: "dup",
+    templateId: "t",
+    templateName: "T",
+    sessionName: "",
+    startedAt: new Date(1000),
+    endedAt: new Date(2000),
+    records: [archivedTask(1), archivedTask(1)],
+  };
+  store.commit(
+    events.backupRestored({
+      now: new Date(3),
+      // Same template twice, a second template reusing its question IDs, and
+      // the same session twice: each would otherwise hit a UNIQUE constraint.
+      templates: [template, template, { ...template, id: "t2" }],
+      sessions: [session, { ...session, sessionName: "copy" }],
+    }),
+  );
+  expect(store.query(queries.templateSummaries).map((row) => row.id)).toEqual(["t"]);
+  expect(store.query(queries.archivedSessions)).toEqual([
+    expect.objectContaining({ id: "dup", taskCount: 1 }),
+  ]);
+  // The store keeps working afterwards.
+  store.commit(events.templateCreated({ id: "x", name: "X", isDefault: false, now: new Date(4) }));
+  expect(store.query(queries.templateSummaries)).toHaveLength(2);
+});

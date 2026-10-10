@@ -38,6 +38,8 @@ type TemplatesModel = {
   readonly templateActionsFor?: string | null;
   readonly templateReportFor?: string | null;
   readonly templateReport?: TemplateReport | null;
+  /** The report could not be read, or the store is unavailable. */
+  readonly templateReportFailed?: boolean;
   readonly lastError: string | null;
   /** The live session, if any: only one can run, so the sheet offers to resume it. */
   readonly liveSession?: ActiveSession | null;
@@ -267,7 +269,13 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
       ...(openFor === null ? [] : [actionsSheet(openFor, model.liveSession ?? null, h)]),
       ...(reportFor === null
         ? []
-        : [templateReportSheet(reportFor, model.templateReport ?? null, h)]),
+        : [
+            templateReportSheet(
+              reportFor,
+              model.templateReportFailed === true ? "failed" : (model.templateReport ?? null),
+              h,
+            ),
+          ]),
       ...(model.pendingDelete === null ? [] : [deleteSheet(model.pendingDelete, h)]),
     ],
     h,

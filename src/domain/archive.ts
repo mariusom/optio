@@ -18,3 +18,9 @@ export const ArchiveRecord = Schema.Struct({
     }),
   ),
 });
+
+/** The first record for each task number (a backup may repeat one). */
+export const uniqueTasks = <R extends { readonly taskIdNumber: number }>(
+  records: ReadonlyArray<R>,
+): ReadonlyArray<R> =>
+  records.filter((r, i) => records.findIndex((o) => o.taskIdNumber === r.taskIdNumber) === i);

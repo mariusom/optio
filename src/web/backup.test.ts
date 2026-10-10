@@ -126,10 +126,35 @@ describe("planRestore", () => {
     const edited = {
       ...template!,
       id: "local",
-      fields: template!.fields.map((f) => ({ ...f, options: ["A", "B", "C"] })),
+      fields: template!.fields.map((f) => ({ ...f, id: "local-f", options: ["A", "B", "C"] })),
     };
     const plan = planRestore(file, { templates: [edited], sessionIds: new Set() });
     expect(plan.templates.map((t) => t.id)).toEqual(["t"]);
     expect(plan.sessions.map((s) => s.templateId)).toEqual(["t"]);
+  });
+
+  it("skips a template whose question IDs are taken, as the store would", () => {
+    const other = { id: "other", name: "Other", fields: template!.fields };
+    const plan = planRestore(file, { templates: [other], sessionIds: new Set() });
+    expect(plan.templates).toEqual([]);
+    expect(plan.skipped).toBe(1);
+  });
+
+  it("keeps only the first of any ID repeated within the file", () => {
+    const [session] = file.sessions;
+    const repeated: BackupFile = {
+      ...file,
+      templates: [template!, template!],
+      sessions: [
+        { ...session!, records: [...session!.records, ...session!.records] },
+        { ...session!, sessionName: "Copy" },
+      ],
+    };
+    const plan = planRestore(repeated, none);
+    expect(plan.templates).toHaveLength(1);
+    expect(plan.sessions).toHaveLength(1);
+    expect(plan.sessions[0]!.sessionName).toBe("Morning");
+    expect(plan.sessions[0]!.records).toHaveLength(1);
+    expect(plan.skipped).toBe(2);
   });
 });

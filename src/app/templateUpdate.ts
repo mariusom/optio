@@ -38,12 +38,44 @@ type TemplateHandlers = Pick<
   | "OpenedTemplateReport"
   | "ClosedTemplateReport"
   | "GotTemplateReport"
+  | "FailedTemplateReport"
   | "ClickedAddSampleTemplates"
   | "SampleTemplatesAdded"
   | "TemplateOpDone"
   | "TemplatesSeededCheck"
   | "FailedTemplateOp"
 >;
+type ReportMessage =
+  | "OpenedTemplateReport"
+  | "ClosedTemplateReport"
+  | "GotTemplateReport"
+  | "FailedTemplateReport";
+
+/** A template's time report sheet: open while `templateReportFor` is set. */
+const reportHandlers = (model: Model): Pick<AllHandlers, ReportMessage> => ({
+  // The report replaces the action sheet; data for another template is dropped.
+  OpenedTemplateReport: ({ id }) => ({
+    model: {
+      ...model,
+      templateActionsFor: null,
+      templateReportFor: id,
+      templateReport: model.templateReport?.templateId === id ? model.templateReport : null,
+      templateReportFailed: false,
+    },
+  }),
+  ClosedTemplateReport: () => ({ model: { ...model, templateReportFor: null } }),
+  GotTemplateReport: ({ report }) => ({
+    model:
+      report.templateId === model.templateReportFor
+        ? { ...model, templateReport: report, templateReportFailed: false }
+        : model,
+  }),
+  FailedTemplateReport: ({ templateId }) => ({
+    model:
+      templateId === model.templateReportFor ? { ...model, templateReportFailed: true } : model,
+  }),
+});
+
 export const templateHandlers = (model: Model): TemplateHandlers => ({
   GotTemplates: ({ templates }) => {
     let nextSelected = model.selectedTemplateId;
@@ -137,20 +169,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     commands: model.placeholderName === "" ? [GeneratePlaceholderName()] : [],
   }),
   ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
-  // The report replaces the action sheet; data for another template is dropped.
-  OpenedTemplateReport: ({ id }) => ({
-    model: {
-      ...model,
-      templateActionsFor: null,
-      templateReportFor: id,
-      templateReport: model.templateReport?.templateId === id ? model.templateReport : null,
-    },
-  }),
-  ClosedTemplateReport: () => ({ model: { ...model, templateReportFor: null } }),
-  GotTemplateReport: ({ report }) => ({
-    model:
-      report.templateId === model.templateReportFor ? { ...model, templateReport: report } : model,
-  }),
+  ...reportHandlers(model),
   ClickedStartTemplateSession: ({ id }) => {
     const closed = { ...model, templateActionsFor: null };
     const template = templatesOf(model).find((candidate) => candidate.id === id);
