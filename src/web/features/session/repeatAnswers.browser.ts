@@ -35,6 +35,8 @@ const flags = Effect.succeed({
   font: "sans",
   iconLibrary: "hugeicons",
   accent: "default",
+  look: "classic",
+  controlSize: "standard",
   now: Date.now(),
   idSeed: "repeat-answers-test",
 } as const);
