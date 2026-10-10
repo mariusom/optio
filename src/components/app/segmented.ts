@@ -11,6 +11,7 @@ export type Segment<M> = Readonly<{ label: string; selected: boolean; onSelect: 
  * Native radio inputs supply the semantics: one tab stop on the checked
  * option, arrow keys move and select, and the group is named by its header.
  * Each input covers its whole 44px segment, so taps and tests hit the input.
+ * Labels wrap rather than truncate, so larger text never hides a choice.
  */
 export const segmentedControl = <M>(
   config: Readonly<{
@@ -37,7 +38,7 @@ export const segmentedControl = <M>(
           h.label(
             [
               h.Class(
-                "relative flex min-h-11 min-w-0 items-center justify-center rounded-md px-3 text-center text-sm font-medium text-foreground transition-colors hover:bg-background/60 has-[:checked]:bg-background has-[:checked]:font-semibold has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-input has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+                "relative flex min-h-11 min-w-0 items-center justify-center rounded-md px-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-background/60 has-[:checked]:bg-background has-[:checked]:font-semibold has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-input has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
               ),
             ],
             [
@@ -49,7 +50,7 @@ export const segmentedControl = <M>(
                 h.Checked(segment.selected),
                 h.OnChange(() => segment.onSelect),
               ]),
-              h.span([h.Class("pointer-events-none truncate")], [segment.label]),
+              h.span([h.Class("pointer-events-none py-1 leading-tight [overflow-wrap:anywhere]")], [segment.label]),
             ],
           ),
         ),
