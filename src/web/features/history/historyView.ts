@@ -42,11 +42,20 @@ type HistoryModel = {
 // ── One session ───────────────────────────────────────────────────────────
 
 const summaryFor = (session: HistorySession): string =>
-  [
-    session.templateName,
-    taskCountLabel(session.taskCount),
-    formatDurationShort(session.endedAt - session.startedAt),
-  ].join(" · ");
+  [session.templateName, taskCountLabel(session.taskCount)].join(" · ");
+
+/** Start time over duration, right-aligned, so neither is cut off on phones. */
+const timesFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+  h.span(
+    [h.Class("flex flex-col items-end text-sm leading-tight")],
+    [
+      h.span([], [formatTimeOnly(session.startedAt)]),
+      h.span(
+        [h.Class("text-xs text-muted-foreground tabular")],
+        [formatDurationShort(session.endedAt - session.startedAt)],
+      ),
+    ],
+  );
 
 /**
  * A tappable row plus its own "⋯" button. The two controls sit side by side
@@ -61,12 +70,12 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
         {
           title: session.displayName,
           subtitle: summaryFor(session),
-          value: h.span([h.Class("text-sm")], [formatTimeOnly(session.startedAt)]),
+          value: timesFor(session, h),
           onClick: Message.ClickedHistoryRow({ id: session.id }),
           chevron: true,
           lazy: true,
           className: "min-w-0 flex-1",
-          attributes: [h.AriaLabel(`Open session ${session.displayName}`)],
+          // Named by its visible text, so voice control matches it.
         },
         h,
       ),

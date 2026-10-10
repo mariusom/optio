@@ -322,8 +322,11 @@ describe("history detail regressions", () => {
         ),
       ),
     );
-    expect(rendered).toContain("1 task · 6s");
-    expect(rendered).not.toContain("· 0m");
+    // The duration sits under the start time, not in the truncating subtitle.
+    expect(rendered).toContain("1 task");
+    expect(rendered).not.toContain("1 task · 6s");
+    expect(rendered).toContain("6s");
+    expect(rendered).not.toMatch(/\b0m\b/);
     expect(rendered).toContain("Today");
     expect(rendered).toContain("· 2 sessions · 1h 10m");
   });

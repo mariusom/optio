@@ -67,7 +67,7 @@ const legendItem = (segment: BreakdownSegment, h: HtmlBuilder<Message>): Html =>
       ),
       h.span(
         [h.Class("shrink-0 text-right tabular text-muted-foreground")],
-        [`${formatDurationHms(segment.durationMs)} · ${formatShare(segment.share)}`],
+        [`${formatDurationHms(segment.durationMs)} · ${formatShare(segment)}`],
       ),
     ],
   );

@@ -110,7 +110,7 @@ for (const scheme of schemes) {
       await shot("history-actions");
       await page.keyboard.press("Escape");
       await page
-        .getByRole("button", { name: /Open session/ })
+        .locator("main [data-slot=grouped-list] button:not([aria-label])")
         .first()
         .click({ timeout: 5000 });
       await page.waitForTimeout(800);

@@ -20,6 +20,8 @@ export type BreakdownSegment = {
   readonly kind: "answer" | "other" | "unanswered";
   readonly durationMs: number;
   readonly share: number;
+  /** Whole percent; a question's segments always total 100. */
+  readonly percent: number;
   readonly slot: number | null;
 };
 
@@ -93,6 +95,30 @@ const orderedAnswers = (tally: Tally): Array<[string, number]> => {
   );
 };
 
+/**
+ * Largest-remainder rounding: floor every share, then give the leftover
+ * points to the largest remainders, so the percents total exactly 100.
+ */
+export const wholePercents = (shares: ReadonlyArray<number>): ReadonlyArray<number> => {
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  if (total <= 0) return shares.map(() => 0);
+  const exact = shares.map((share) => (share / total) * 100);
+  const floors = exact.map(Math.floor);
+  const leftover = 100 - floors.reduce((sum, value) => sum + value, 0);
+  const byRemainder = exact
+    .map((value, index) => ({ index, remainder: value - floors[index]! }))
+    .toSorted((a, b) => b.remainder - a.remainder || a.index - b.index);
+  const bonus = new Set(byRemainder.slice(0, leftover).map(({ index }) => index));
+  return floors.map((value, index) => value + (bonus.has(index) ? 1 : 0));
+};
+
+const withPercents = (
+  segments: ReadonlyArray<Omit<BreakdownSegment, "percent">>,
+): ReadonlyArray<BreakdownSegment> => {
+  const percents = wholePercents(segments.map((segment) => segment.share));
+  return segments.map((segment, index) => ({ ...segment, percent: percents[index]! }));
+};
+
 const toBreakdown = (tally: Tally): QuestionBreakdown => {
   const answers = orderedAnswers(tally);
   // Folding a single answer into "Other" would only hide its name.
@@ -101,7 +127,9 @@ const toBreakdown = (tally: Tally): QuestionBreakdown => {
   const otherMs = answers.slice(named.length).reduce((sum, [, ms]) => sum + ms, 0);
   const answeredMs = answers.reduce((sum, [, ms]) => sum + ms, 0);
   const totalMs = answeredMs + tally.unansweredMs;
-  const segment = (fields: Omit<BreakdownSegment, "share">): BreakdownSegment => ({
+  const segment = (
+    fields: Omit<BreakdownSegment, "share" | "percent">,
+  ): Omit<BreakdownSegment, "percent"> => ({
     ...fields,
     share: totalMs === 0 ? 0 : fields.durationMs / totalMs,
   });
@@ -109,7 +137,7 @@ const toBreakdown = (tally: Tally): QuestionBreakdown => {
     key: tally.key,
     question: tally.question,
     totalMs,
-    segments: [
+    segments: withPercents([
       ...named.map(([label, durationMs], slot) =>
         segment({ key: `answer:${label}`, label, kind: "answer", durationMs, slot }),
       ),
@@ -135,7 +163,7 @@ const toBreakdown = (tally: Tally): QuestionBreakdown => {
               slot: null,
             }),
           ]),
-    ],
+    ]),
   };
 };
 
@@ -153,8 +181,7 @@ export const timeBreakdown = (
     .filter((breakdown) => breakdown.totalMs > 0);
 
 /** "45%", "<1%" for a sliver, so no visible share reads as zero. */
-export const formatShare = (share: number): string => {
-  if (share <= 0) return "0%";
-  const percent = Math.round(share * 100);
-  return percent === 0 ? "<1%" : `${percent}%`;
+export const formatShare = (segment: Pick<BreakdownSegment, "share" | "percent">): string => {
+  if (segment.share <= 0) return "0%";
+  return segment.percent === 0 ? "<1%" : `${segment.percent}%`;
 };

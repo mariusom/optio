@@ -138,9 +138,7 @@ test(
       // Ending returns to Start; navigating earlier would be overridden.
       await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
-      await page
-        .getByRole("button", { name: "Open session Assembly observation", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Assembly observation\b/ }).click();
       await page.getByRole("button", { name: "View details for Task 2", exact: true }).waitFor();
       await screenshot("results");
 
@@ -391,9 +389,7 @@ test(
       // Ending returns to Start; navigating earlier would be overridden.
       await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
-      await page
-        .getByRole("button", { name: "Open session Quantitative check", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Quantitative check\b/ }).click();
       await page.getByRole("button", { name: "Export Quantitative check", exact: true }).waitFor();
       const ready = page.waitForEvent("download");
       await page.getByRole("button", { name: "Export Quantitative check", exact: true }).click();

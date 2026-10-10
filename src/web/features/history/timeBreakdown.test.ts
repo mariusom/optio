@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatShare, timeBreakdown } from "./timeBreakdown";
+import { formatShare, timeBreakdown, wholePercents } from "./timeBreakdown";
 
 const section = (sectionName: string, sectionType: string, value: string) => ({
   sectionName,
@@ -124,10 +124,31 @@ describe("timeBreakdown", () => {
 });
 
 describe("formatShare", () => {
-  it("rounds to whole percentages without hiding slivers", () => {
-    expect(formatShare(0.456)).toBe("46%");
-    expect(formatShare(1)).toBe("100%");
-    expect(formatShare(0.001)).toBe("<1%");
-    expect(formatShare(0)).toBe("0%");
+  it("shows whole percentages without hiding slivers", () => {
+    expect(formatShare({ share: 0.456, percent: 46 })).toBe("46%");
+    expect(formatShare({ share: 1, percent: 100 })).toBe("100%");
+    expect(formatShare({ share: 0.001, percent: 0 })).toBe("<1%");
+    expect(formatShare({ share: 0, percent: 0 })).toBe("0%");
+  });
+});
+
+describe("wholePercents", () => {
+  it("always totals 100 using the largest remainders", () => {
+    // Plain rounding gives 33 + 33 + 33 = 99 for thirds and 63 + 21 + 17 = 101
+    // for 62.5/21.25/16.25.
+    expect(wholePercents([1 / 3, 1 / 3, 1 / 3])).toEqual([34, 33, 33]);
+    expect(wholePercents([0.625, 0.2125, 0.1625])).toEqual([63, 21, 16]);
+    expect(wholePercents([0.994, 0.006])).toEqual([99, 1]);
+    expect(wholePercents([0, 0])).toEqual([0, 0]);
+  });
+
+  it("keeps every question's segments at 100% in a breakdown", () => {
+    const tasks = [4_000, 1_300, 1_100].map((ms, index) => ({
+      startedAt: 0,
+      endedAt: ms,
+      sections: [{ sectionName: "Type", value: ["A", "B", "C"][index]!, sectionType: "radio" }],
+    }));
+    const [question] = timeBreakdown(tasks);
+    expect(question!.segments.reduce((sum, segment) => sum + segment.percent, 0)).toBe(100);
   });
 });
