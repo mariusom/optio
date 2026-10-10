@@ -124,6 +124,11 @@ flushes are best effort: browsers do not wait for asynchronous worker writes
 before discarding a page. An immediate reload, crash or killed tab can lose
 pending answers, including the last 500 ms of typing and writes still reaching
 the worker. Assistant answers are written without the typing delay.
+"Repeat last answers" is planned by the session reducer: it copies the previous
+recorded task's answers into questions the open task has never answered (no
+`startDate`), as one `UpdateFieldValues` batch through the same lock, so each
+copy is that field's first write. A recorded task's vibration is a command
+(`VibrateRecorded`), feature-detected and skipped silently where unsupported.
 
 Wall-clock time reaches the UI through the Model. The runtime boot and the
 ticker subscription read Effect's Clock; `Tick` stamps `model.now` and

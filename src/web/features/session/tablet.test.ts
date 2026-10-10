@@ -34,6 +34,7 @@ const makeRunner = (
     lastError: null,
     now: Date.now(),
     fieldWrites: { revision: 0, pending: [] },
+    announcement: null,
     ...overrides,
   } as NonNullable<Model["runner"]>;
   // ensure showSidebar defaults to true if not overridden explicitly as false

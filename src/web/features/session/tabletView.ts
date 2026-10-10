@@ -1,6 +1,6 @@
 import type { HtmlBuilder } from "foldkit/html";
 
-import { List, groupedList, icon, navBarAction, sectionHeader } from "@/components/app";
+import { groupedList, navBarAction, sectionHeader } from "@/components/app";
 import { Message } from "../../../messages";
 import { currentTask, type RunnerState } from "./runner";
 import {
@@ -11,6 +11,7 @@ import {
   runnerNavBar,
   taskRows,
 } from "./runnerView";
+import { taskCountLabel, taskCountName } from "./runnerStatus";
 
 // The tablet screen is the phone screen with the task list pinned open as a
 // column instead of a sheet: same nav bar, same form, same action bar.
@@ -18,12 +19,9 @@ import {
 const sidebarToggle = (runner: RunnerState, h: HtmlBuilder<Message>) =>
   navBarAction(
     {
-      label: h.span(
-        [h.Class("flex items-center gap-1.5")],
-        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.completedCount}`])],
-      ),
+      label: taskCountLabel(runner, h),
       onClick: Message.ToggledSidebar(),
-      ariaLabel: runner.showSidebar ? "Collapse sidebar" : "Expand sidebar",
+      ariaLabel: taskCountName(runner, runner.showSidebar ? "collapse sidebar" : "expand sidebar"),
       attributes: [h.AriaExpanded(runner.showSidebar), h.AriaControls("runner-task-sidebar")],
     },
     h,
@@ -68,7 +66,7 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
           runnerNavBar(runner, [sidebarToggle(runner, h)], h),
           h.section(
             [h.Class("flex min-h-0 min-w-0 flex-1 flex-col"), h.AriaLabel("Task answers")],
-            [runnerCanvas({ task, scope: "tablet" }, h), runnerActionBar(runner, task, h)],
+            [runnerCanvas({ runner, task, scope: "tablet" }, h), runnerActionBar(runner, task, h)],
           ),
         ],
       ),

@@ -32,6 +32,8 @@ type SessionHandlers = Pick<
   | "AdjustedCounter"
   | "ClickedRecord"
   | "TaskRecorded"
+  | "GaveRecordFeedback"
+  | "ClickedRepeatLastAnswers"
   | "ClickedEndSession"
   | "CanceledEndSession"
   | "ConfirmedEndSession"
@@ -144,7 +146,9 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   AdjustedCounter: ({ taskFieldId, delta }) =>
     applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta }),
   ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
-  TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
+  TaskRecorded: ({ taskId }) => applyPlan(model, { _tag: "RecordAcked", taskId }),
+  GaveRecordFeedback: () => ({ model }),
+  ClickedRepeatLastAnswers: () => applyPlan(model, { _tag: "RepeatRequested" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
   CanceledEndSession: () => applyPlan(model, { _tag: "EndCancelled" }),
   ConfirmedEndSession: () => applyPlan(model, { _tag: "EndConfirmed" }),

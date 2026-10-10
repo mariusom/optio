@@ -2,7 +2,6 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 
 import {
   Check,
-  List,
   Timer,
   actionGroup,
   emptyState,
@@ -17,9 +16,8 @@ import {
 } from "@/components/app";
 import { confirmSheet, sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
-import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
+import { formatDurationHms, formatTimeOnly } from "../../format";
 import { isBooleanTrue, isScalarAnswerValid } from "../../fields";
 import { formSectionsView } from "./questionControls";
 import {
@@ -31,63 +29,42 @@ import {
   type RunnerState,
   type RunnerTask,
 } from "./runner";
-
-// ── Status line ─────────────────────────────────────────────────────────────
-
-/** Compact live status under the title: "Task 4 · 00:42". */
-const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
-  const task = currentTask(runner);
-  const isEditing = task !== null && task.isBeingEdited;
-  const taskStart = task === null ? null : taskStartDate(task);
-  const isRecording = !isEditing && taskStart !== null;
-  const elapsed =
-    taskStart !== null
-      ? Math.max(0, runner.now - taskStart)
-      : Math.max(0, runner.now - runner.startedAt);
-  const parts =
-    task === null
-      ? [formatClock(elapsed)]
-      : isEditing
-        ? [`Editing task ${task.orderIndex}`]
-        : [`Task ${task.orderIndex}`, formatClock(elapsed)];
-
-  return h.p(
-    [h.Class("flex items-center gap-1.5 text-xs text-muted-foreground tabular")],
-    [
-      h.span([
-        h.Class(
-          cn(
-            "size-1.5 shrink-0 rounded-full",
-            isEditing ? "bg-warning" : isRecording ? "bg-success animate-pulse" : "bg-border",
-          ),
-        ),
-        h.AriaHidden(true),
-      ]),
-      h.span([], [parts.join(" · ")]),
-    ],
-  );
-};
+import {
+  announcementView,
+  repeatAnswersRow,
+  requiredProgress,
+  sessionTimerView,
+  taskCountLabel,
+  taskCountName,
+} from "./runnerStatus";
 
 export { formSectionsView } from "./questionControls";
 
 /** Scrolling form area; identical on phone, tablet and desktop. */
 export const runnerCanvas = (
-  options: Readonly<{ task: RunnerTask; scope: string }>,
+  options: Readonly<{ runner: RunnerState; task: RunnerTask; scope: string }>,
   h: HtmlBuilder<Message>,
-) =>
-  h.div(
+) => {
+  const repeat = repeatAnswersRow(options.runner, options.scope, h);
+  return h.div(
     [h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain")],
-    [formSectionsView(options.task, h, options.scope)],
+    [
+      formSectionsView(options.task, h, {
+        scope: options.scope,
+        leading: repeat === null ? [] : [repeat],
+      }),
+    ],
   );
+};
 
 // ── Nav bar pieces ──────────────────────────────────────────────────────────
 
+/** Ends recording, so it is neutral rather than a "success" action; it confirms first. */
 const endAction = (h: HtmlBuilder<Message>) =>
   button(
     {
+      variant: "outline",
       onClick: Message.ClickedEndSession(),
-      className:
-        "bg-emerald-700 text-white hover:bg-emerald-800 dark:bg-emerald-400 dark:text-emerald-950 dark:hover:bg-emerald-300",
       attributes: [h.AriaLabel("End session")],
     },
     "End",
@@ -97,12 +74,9 @@ const endAction = (h: HtmlBuilder<Message>) =>
 const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
   navBarAction(
     {
-      label: h.span(
-        [h.Class("flex items-center gap-1.5")],
-        [icon(h, List, "size-5"), h.span([h.Class("tabular")], [`${runner.completedCount}`])],
-      ),
+      label: taskCountLabel(runner, h),
       onClick: Message.ToggledTaskList(),
-      ariaLabel: "Show task list",
+      ariaLabel: taskCountName(runner, "show task list"),
     },
     h,
   );
@@ -123,7 +97,7 @@ export const runnerNavBar = (
       h.div(
         [
           h.Class(
-            "grid min-h-16 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-3 px-safe py-2",
+            "grid min-h-16 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-safe py-2 sm:gap-3",
           ),
         ],
         [
@@ -132,10 +106,10 @@ export const runnerNavBar = (
             [h.Class("min-w-0 text-center")],
             [
               h.h1(
-                [h.Class("truncate text-base font-semibold tracking-tight")],
+                [h.Class("truncate text-sm font-semibold tracking-tight sm:text-base")],
                 [runner.sessionName === "" ? runner.templateName : runner.sessionName],
               ),
-              h.div([h.Class("text-xs text-muted-foreground")], [sessionTimerView(runner, h)]),
+              sessionTimerView(runner, h),
             ],
           ),
           h.div([h.Class("flex items-center justify-end")], [endAction(h)]),
@@ -204,6 +178,7 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
         ),
         ...(canRecord ? [] : [hint(recordHint(task), h)]),
       ];
+  const progressBar = requiredProgress(task, h);
 
   return h.div(
     [
@@ -213,7 +188,12 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
     [
       h.div(
         [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-3 pb-3")],
-        [...(runner.lastError === null ? [] : [errorAlert(runner.lastError, h)]), ...actions],
+        [
+          ...(runner.lastError === null ? [] : [errorAlert(runner.lastError, h)]),
+          announcementView(runner, h),
+          ...(progressBar === null ? [] : [progressBar]),
+          ...actions,
+        ],
       ),
     ],
   );
@@ -242,6 +222,16 @@ const taskValue = (task: RunnerTask): string | undefined => {
   return formatDurationHms(task.endDate - start);
 };
 
+/**
+ * Status pill text with at least 4.5:1 contrast: success text is darkened
+ * (lightened in dark mode) on its tint, and neutral text is not muted on muted.
+ */
+const pillContrast = {
+  recording: "text-[color-mix(in_oklab,var(--color-success)_65%,var(--color-foreground))]",
+  editing: undefined,
+  done: "text-foreground/75",
+} as const;
+
 /** One row per task; shared by the phone sheet and the tablet sidebar. */
 const taskRow = (
   task: RunnerTask,
@@ -261,11 +251,14 @@ const taskRow = (
       trailing: statusPill(
         {
           tone: status === "recording" ? "success" : status === "editing" ? "warning" : "neutral",
+          className: pillContrast[status],
         },
         [status === "recording" ? "Recording" : status === "editing" ? "Editing" : "Done"],
         h,
       ),
       onClick: Message.ClickedSelectTask({ taskId: task.id }),
+      // Muted text is below 4.5:1 on the selected row's accent background.
+      className: options.isCurrent ? "[&_.text-muted-foreground]:text-foreground/75" : undefined,
       attributes: [
         h.AriaLabel(`Task ${task.orderIndex} ${label}`),
         ...(options.isCurrent ? [h.AriaCurrent("true")] : []),
@@ -384,7 +377,7 @@ export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
     [h.Class("flex h-full min-h-0 w-full flex-col bg-background text-foreground")],
     [
       phoneNavBar(runner, h),
-      runnerCanvas({ task, scope: "mobile" }, h),
+      runnerCanvas({ runner, task, scope: "mobile" }, h),
       runnerActionBar(runner, task, h),
     ],
   );

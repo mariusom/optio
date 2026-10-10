@@ -81,7 +81,7 @@ registry-component exclusions are used.
 dependencies, and duplicate export names. The config lists the real entry points
 (the app entry, the LiveStore worker, tests and scripts). It exempts exports of
 the Foldcn registry copies in `src/components/ui`, and ignores the generated style table
-and the retained registry items without consumers (label, progress;
+and the retained registry item without a consumer (label;
 see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or

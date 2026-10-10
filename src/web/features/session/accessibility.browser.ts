@@ -29,6 +29,7 @@ const runnerFixture = (value: string, override: Partial<RunnerState> = {}): Runn
   showEndConfirm: false,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
   tasks: [
     {
       id: "task",
@@ -370,10 +371,20 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
         name: width < 768 ? "Show task list" : "Collapse sidebar",
       });
       await expect.element(toggle).toBeVisible();
-      expect(toggle.element().textContent).toBe(String(completedCount));
+      // The visible label is part of the accessible name (WCAG 2.5.3).
+      const visible = `${completedCount} ${completedCount === 1 ? "task" : "tasks"}`;
+      expect(toggle.element().textContent).toBe(visible);
+      expect(toggle.element().getAttribute("aria-label")).toContain(visible);
       const header = toggle.element().closest("header")!;
-      expect(header.textContent).toContain(`Task ${completedCount + 1} · 00:59`);
-      expect(header.textContent).not.toContain("recorded");
+      const timer = header.querySelector<HTMLElement>('[data-slot="timer"]')!;
+      expect(timer.textContent).toBe(`Task ${completedCount + 1}00:59`);
+      expect(timer.closest("[aria-live]")).toBeNull();
+      expect(timer.textContent).not.toContain("recorded");
+      // The clock is large enough to read at a glance; the label stays small.
+      const clock = [...timer.children].at(-1)!;
+      expect(Number.parseFloat(getComputedStyle(clock).fontSize)).toBeGreaterThanOrEqual(24);
+      const title = page.getByRole("heading", { name: "Keyboard accessibility" }).element();
+      expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
     },
   );
 
@@ -458,6 +469,9 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await expect
       .element(page.getByRole("button", { name: "End session", exact: true }))
       .toHaveFocus();
+    await userEvent.tab();
+    // Disabled (aria-disabled) on the first task, but focusable with its reason.
+    await expect.element(page.getByRole("button", { name: "Repeat last answers" })).toHaveFocus();
     await userEvent.tab();
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
     await page.getByRole("button", { name: "Expand sidebar" }).click();

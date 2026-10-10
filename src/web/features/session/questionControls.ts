@@ -364,12 +364,19 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
         h,
       );
 
-export const formSectionsView = (task: RunnerTask, h: HtmlBuilder<Message>, scope = "mobile") => {
+/** `leading` renders above the first question, below the scroll target. */
+export const formSectionsView = (
+  task: RunnerTask,
+  h: HtmlBuilder<Message>,
+  options: Readonly<{ scope?: string; leading?: ReadonlyArray<Html> }> = {},
+) => {
+  const scope = options.scope ?? "mobile";
   const sections = task.sections.toSorted((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
     [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-6 px-safe pt-4 pb-8")],
     [
       h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)]),
+      ...(options.leading ?? []),
       ...sections.map((section) => questionView(section, scope, h)),
     ],
   );
