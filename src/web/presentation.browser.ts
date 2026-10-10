@@ -377,7 +377,9 @@ describe("persistent presentation regressions", () => {
     expect(getComputedStyle(document.querySelector("#template-name")!.parentElement!).padding).toBe(
       itemPadding,
     );
-    expect(css('[aria-label="Edit question Outcome"]').padding).toBe(itemPadding);
+    expect(
+      getComputedStyle(page.getByRole("button", { name: /^Outcome / }).element()).padding,
+    ).toBe(itemPadding);
   });
 
   it.each(foldcnStyles)(
@@ -430,16 +432,16 @@ describe("persistent presentation regressions", () => {
     await page.viewport(width, 1224);
     const dialog = page.getByRole("dialog", { name: template.name });
     await expect.element(dialog).toBeVisible();
-    const actions = ["Set as default", "Duplicate", "Delete"].map((name) =>
+    const actions = ["Start session", "Set as default", "Duplicate", "Delete"].map((name) =>
       dialog.getByRole("button", { name, exact: true }).element(),
     );
     for (const action of actions) expect(action.querySelector("svg")).not.toBeNull();
     const boxes = actions.map((action) => action.getBoundingClientRect());
-    expect(boxes[0]!.bottom).toBeLessThanOrEqual(boxes[1]!.top);
-    expect(boxes[1]!.bottom).toBeLessThanOrEqual(boxes[2]!.top);
+    for (let index = 1; index < boxes.length; index += 1)
+      expect(boxes[index - 1]!.bottom).toBeLessThanOrEqual(boxes[index]!.top);
     expect(new Set(boxes.map((box) => box.left)).size).toBe(1);
     expect(new Set(boxes.map((box) => box.width)).size).toBe(1);
-    expect(actions[2]!.closest('[data-slot="action-group"]')).toBeNull();
+    expect(actions[3]!.closest('[data-slot="action-group"]')).toBeNull();
   });
 
   it("matches the favicon mark to the sidebar and updates saved/custom/theme colours", async () => {
@@ -626,7 +628,7 @@ describe("persistent presentation regressions", () => {
     expect(document.querySelector("#template-name")).toBeNull();
     await expect.element(page.getByText("Morning study", { exact: true })).toBeVisible();
     await done.click();
-    const edit = page.getByRole("button", { name: "Edit question Activity" });
+    const edit = page.getByRole("button", { name: /^Activity / });
     await expect.element(edit).toBeVisible();
     await expect.element(page.getByRole("button", { name: "Save template" })).toBeEnabled();
     await edit.click();
@@ -651,7 +653,7 @@ describe("persistent presentation regressions", () => {
     expect(remove!.left).toBe(group.getBoundingClientRect().left);
     expect(confirm!.right).toBe(group.getBoundingClientRect().right);
     if (width === 1280) expect(remove!.top).toBe(confirm!.top);
-    expect(document.querySelector('[aria-label="Edit question Activity"]')).toBeNull();
+    expect(page.getByRole("button", { name: /^Activity / }).query()).toBeNull();
     await page.getByRole("textbox", { name: "Question", exact: true }).fill("Canceled change");
     await page.getByRole("button", { name: "Cancel editing question" }).click();
     await expect.element(edit).toBeVisible();

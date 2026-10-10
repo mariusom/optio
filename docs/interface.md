@@ -46,7 +46,15 @@ component APIs; review local customizations before refreshing a registry item.
 - Durations in lists use `formatDurationShort` (seconds under a minute, then
   hours and minutes); detail screens use `formatDurationHms`.
 - Key rows in lists that insert or reorder items (`row({ key })` or
-  `h.keyed`), so focus stays with the same item.
+  `h.keyed`), so focus stays with the same item. Reorder with explicit up/down
+  buttons (`reorderButtons` in the template feature): 44px targets, muted so item
+  names dominate, disabled at the ends.
+- Name tappable rows by their visible text; do not override it with an
+  `aria-label` (WCAG 2.5.3), so voice control can say what it sees. Icon-only
+  controls beside a row keep their own labels (“Actions for …”, “Move … up”).
+- Only one session can be live. Controls that start a session offer to resume
+  the live one instead: the Session tab shows “Resume session”, and the template
+  action sheet replaces “Start session” with “Resume live session” and says why.
 
 Component style presets are separate from appearance and preserve app-owned
 layout and touch sizing. Default/Nova keeps local defaults; other styles use

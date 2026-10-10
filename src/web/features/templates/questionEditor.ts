@@ -1,20 +1,9 @@
 import { Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
-import {
-  ArrowDown,
-  ArrowUp,
-  X,
-  actionGroup,
-  controlRow,
-  groupedList,
-  hint,
-  icon,
-  rowAction,
-} from "@/components/app";
+import { X, actionGroup, controlRow, groupedList, hint, icon, rowAction } from "@/components/app";
 import { button } from "@/components/ui/button";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
-import { itemSizes } from "@/components/ui/item";
 import { nativeSelect } from "@/components/ui/native-select";
 import { switch_ } from "@/components/ui/switch";
 import { textareaClass } from "@/components/ui/textarea";
@@ -24,20 +13,7 @@ import type { FieldKind } from "../../../domain/fields";
 import { hasOptions, isScalarAnswerValid } from "../../fields";
 import { isDraftValid } from "./editor";
 import { ANSWER_TYPES, answerTypeName, type Editor } from "./editorTypes";
-
-const moveButton = (
-  config: Readonly<{ label: string; onClick: Message; isDisabled: boolean; up: boolean }>,
-  h: HtmlBuilder<Message>,
-) =>
-  rowAction(
-    {
-      isDisabled: config.isDisabled,
-      attributes: [h.AriaLabel(config.label)],
-      onClick: config.onClick,
-    },
-    [icon(h, config.up ? ArrowUp : ArrowDown, "size-5")],
-    h,
-  );
+import { reorderButtons } from "./reorderButtons";
 
 /** Why the question can't be saved yet, in the order a person would fix it. */
 const draftHint = (draft: Editor["draft"] & object): string => {
@@ -63,6 +39,39 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
     h,
   );
 
+/** Compact "Clears others" toggle: a 44px target around a small labelled chip. */
+const exclusiveToggle = (
+  config: Readonly<{ option: string; index: number; isExclusive: boolean }>,
+  h: HtmlBuilder<Message>,
+) =>
+  h.button(
+    [
+      h.Type("button"),
+      h.Class(
+        "group/exclusive flex h-auto min-h-11 shrink-0 items-center self-stretch px-1 outline-none focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-ring",
+      ),
+      h.AriaPressed(String(config.isExclusive)),
+      h.AriaLabel(`${config.option} clears others`),
+      h.OnClick(Message.ToggledExclusiveOption({ index: config.index })),
+    ],
+    [
+      h.span(
+        [
+          h.Class(
+            cn(
+              "rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors motion-reduce:transition-none",
+              config.isExclusive
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground group-hover/exclusive:border-foreground/30 group-hover/exclusive:text-foreground",
+            ),
+          ),
+        ],
+        ["Clears others"],
+      ),
+    ],
+  );
+
+/** One line per choice: name, then compact controls (toggle, reorder, remove). */
 const choiceRow = (
   options: Readonly<{
     option: string;
@@ -76,52 +85,26 @@ const choiceRow = (
   const { option, index, total, isExclusive, showExclusive } = options;
   return h.keyed("div")(
     option,
-    [h.Class(cn(itemSizes.default, "flex w-full flex-wrap items-center"))],
+    [h.Class("flex min-h-11 w-full items-stretch")],
     [
-      h.span([h.Class("min-w-0 basis-full break-words text-sm sm:basis-auto sm:flex-1")], [option]),
-      ...(showExclusive
-        ? [
-            switch_(
-              {
-                id: `choice-exclusive-${index}`,
-                isChecked: isExclusive,
-                onToggle: () => Message.ToggledExclusiveOption({ index }),
-                label: "Clears others",
-                labelClass: "font-normal text-muted-foreground",
-                wrapperClass: "flex-1 flex-row-reverse justify-end sm:flex-none",
-              },
-              h,
-            ),
-          ]
-        : []),
-      h.div(
-        [h.Class("ml-auto flex shrink-0 items-stretch")],
-        [
-          moveButton(
-            {
-              label: `Move choice ${option} up`,
-              up: true,
-              isDisabled: index === 0,
-              onClick: Message.ClickedMoveOption({ index, direction: -1 }),
-            },
-            h,
-          ),
-          moveButton(
-            {
-              label: `Move choice ${option} down`,
-              up: false,
-              isDisabled: index === total - 1,
-              onClick: Message.ClickedMoveOption({ index, direction: 1 }),
-            },
-            h,
-          ),
-        ],
+      h.span(
+        [h.Class("ml-3 flex min-w-0 flex-1 items-center py-2.5 pr-1 text-sm break-words")],
+        [h.span([h.Class("min-w-0 break-words")], [option])],
       ),
-      button(
+      ...(showExclusive ? [exclusiveToggle({ option, index, isExclusive }, h)] : []),
+      reorderButtons(
         {
-          variant: "ghost",
-          size: "icon",
-          className: "text-destructive hover:bg-destructive/10 hover:text-destructive",
+          subject: `choice ${option}`,
+          index,
+          total,
+          up: Message.ClickedMoveOption({ index, direction: -1 }),
+          down: Message.ClickedMoveOption({ index, direction: 1 }),
+        },
+        h,
+      ),
+      rowAction(
+        {
+          className: "text-destructive/80 hover:bg-destructive/10 hover:text-destructive",
           onClick: Message.ClickedDeleteOption({ index }),
           attributes: [h.AriaLabel(`Remove choice ${option}`)],
         },
@@ -143,7 +126,9 @@ const choicesSection = (
   return groupedList(
     {
       header: "Choices",
-      footer: `${draft.options.length} choice${draft.options.length === 1 ? "" : "s"}`,
+      footer: `${draft.options.length} choice${draft.options.length === 1 ? "" : "s"}${
+        kind === "checkbox" ? ". Picking a choice that clears others unticks the rest." : ""
+      }`,
     },
     [
       ...draft.options.map((option, index) =>

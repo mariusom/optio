@@ -14,7 +14,7 @@ type Attrs<M> = ReadonlyArray<Attribute<M> | ChildAttribute>;
 
 /** Edge-to-edge action cell beside a grouped-list row. */
 export const rowAction = <M>(
-  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes">,
+  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes" | "className">,
   label: ButtonLabel,
   h: HtmlBuilder<M>,
 ): Html =>
@@ -23,8 +23,10 @@ export const rowAction = <M>(
       ...config,
       variant: "ghost",
       size: "icon",
-      className:
+      className: cn(
         "h-auto min-h-11 w-11 self-stretch rounded-none border-0 bg-clip-border focus-visible:-outline-offset-3 focus-visible:outline-2 focus-visible:outline-ring active:translate-y-0",
+        config.className,
+      ),
     },
     label,
     h,

@@ -1,8 +1,6 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { HtmlBuilder } from "foldkit/html";
 
 import {
-  ArrowDown,
-  ArrowUp,
   Plus,
   controlRow,
   groupedList,
@@ -13,7 +11,6 @@ import {
   notice,
   page,
   row,
-  rowAction,
   statusPill,
 } from "@/components/app";
 import { confirmSheet } from "../../sheets";
@@ -26,26 +23,13 @@ import { hrefFor } from "../../routes";
 import { hasChanges, isTemplateValid } from "./editor";
 import { answerTypeName, type Editor, type EditorModel } from "./editorTypes";
 import { questionForm } from "./questionEditor";
+import { reorderButtons } from "./reorderButtons";
 
 const backLink = { href: hrefFor({ _tag: "TemplatesTab" }), label: "Templates" };
 /** Leaving with unsaved changes asks first (ClickedCancelEditTemplate checks for changes). */
 const guardedBackLink = { ...backLink, onClick: Message.ClickedCancelEditTemplate() };
 
 // ── Questions list ─────────────────────────────────────────────────────────
-
-const moveButton = (
-  config: Readonly<{ label: string; onClick: Message; isDisabled: boolean; up: boolean }>,
-  h: HtmlBuilder<Message>,
-): Html =>
-  rowAction(
-    {
-      isDisabled: config.isDisabled,
-      attributes: [h.AriaLabel(config.label)],
-      onClick: config.onClick,
-    },
-    [icon(h, config.up ? ArrowUp : ArrowDown, "size-5")],
-    h,
-  );
 
 const questionRow = (
   options: Readonly<{ field: FieldDef; index: number; total: number; isDisabled: boolean }>,
@@ -64,32 +48,20 @@ const questionRow = (
           className: "min-w-0 flex-1",
           onClick: Message.ClickedEditField({ id: field.id }),
           isDisabled,
-          attributes: [h.AriaLabel(`Edit question ${field.name}`)],
+          // Named by its visible text (name, answer type, Required) for voice control.
         },
         h,
       ),
-      h.div(
-        [h.Class("flex shrink-0 items-stretch")],
-        [
-          moveButton(
-            {
-              label: `Move ${field.name} up`,
-              up: true,
-              isDisabled: isDisabled || index === 0,
-              onClick: Message.ClickedMoveFieldUp({ id: field.id }),
-            },
-            h,
-          ),
-          moveButton(
-            {
-              label: `Move ${field.name} down`,
-              up: false,
-              isDisabled: isDisabled || index === total - 1,
-              onClick: Message.ClickedMoveFieldDown({ id: field.id }),
-            },
-            h,
-          ),
-        ],
+      reorderButtons(
+        {
+          subject: field.name,
+          index,
+          total,
+          isDisabled,
+          up: Message.ClickedMoveFieldUp({ id: field.id }),
+          down: Message.ClickedMoveFieldDown({ id: field.id }),
+        },
+        h,
       ),
     ],
   );

@@ -5,13 +5,14 @@ import {
   DuplicateTemplate,
   SetDefaultTemplate,
 } from "../web/features/templates/commands";
+import { StartSession } from "../web/features/session/startCommands";
 import { effectiveTemplateId } from "../web/features/session/startHelpers";
-import { templateEditorRouter } from "../web/routes";
+import { sessionRunnerRouter, templateEditorRouter } from "../web/routes";
 import { GeneratePlaceholderName, NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
 import { Message, type MessageHandlers } from "../messages";
 import { AsyncData } from "foldkit";
-import { takeId, templatesOf, type Model } from "./model";
+import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
 type AllHandlers = MessageHandlers<Result>;
@@ -33,6 +34,7 @@ type TemplateHandlers = Pick<
   | "ClickedDuplicateTemplate"
   | "OpenedTemplateActions"
   | "ClosedTemplateActions"
+  | "ClickedStartTemplateSession"
   | "ClickedAddSampleTemplates"
   | "SampleTemplatesAdded"
   | "TemplateOpDone"
@@ -126,8 +128,38 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     model: { ...model, templateActionsFor: null },
     commands: [DuplicateTemplate({ id })],
   }),
-  OpenedTemplateActions: ({ id }) => ({ model: { ...model, templateActionsFor: id } }),
+  // The sheet's "Start session" names the session like the Session tab does.
+  OpenedTemplateActions: ({ id }) => ({
+    model: { ...model, templateActionsFor: id },
+    commands: model.placeholderName === "" ? [GeneratePlaceholderName()] : [],
+  }),
   ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
+  ClickedStartTemplateSession: ({ id }) => {
+    const closed = { ...model, templateActionsFor: null };
+    const template = templatesOf(model).find((candidate) => candidate.id === id);
+    if (template === undefined) return { model: closed };
+    // One live session at a time: like the Session tab, offer to resume it instead.
+    const active = activeSessionOf(model);
+    if (active !== null) {
+      return {
+        model: closed,
+        commands: [NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId: active.id })}` })],
+      };
+    }
+    const [sessionId, next] = takeId(closed);
+    return {
+      model: { ...next, selectedTemplateId: id },
+      commands: [
+        StartSession({
+          id: sessionId,
+          templateId: id,
+          templateName: template.name,
+          sessionName: model.placeholderName,
+          fields: [],
+        }),
+      ],
+    };
+  },
   ClickedAddSampleTemplates: () => ({
     model: { ...model, lastError: null },
     commands: [AddSampleTemplates()],

@@ -1,7 +1,7 @@
 import { AsyncData } from "foldkit";
 import type { Document, Html, HtmlBuilder } from "foldkit/html";
 import { Message } from "../messages";
-import { templatesOf, type Model } from "./model";
+import { activeSessionOf, templatesOf, type Model } from "./model";
 import { RouteSchema, isFullScreenRoute, type Route } from "../web/routes";
 import { settingsPage } from "../web/features/settings/view";
 import { infoPage } from "../web/features/settings/infoView";
@@ -130,7 +130,8 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
         {
           data: model.templates,
           skeleton: listSkeleton,
-          page: (templates) => templatesPage({ ...model, templates }, h),
+          page: (templates) =>
+            templatesPage({ ...model, templates, liveSession: activeSessionOf(model) }, h),
         },
         h,
       ),

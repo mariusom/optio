@@ -230,12 +230,15 @@ describe("audited view accessibility", () => {
         ),
       ),
     ];
-    for (const label of [
-      "Edit question Observed",
-      "Move Observed up",
-      "Move Observed down",
-      "Delete question Observed",
-    ]) {
+    // The edit row is named by its visible text, not an aria-label (WCAG 2.5.3).
+    expect(
+      all.some(
+        (n) =>
+          n.sel === "button" &&
+          String(n.data?.attrs?.["aria-label"] ?? "").startsWith("Edit question"),
+      ),
+    ).toBe(false);
+    for (const label of ["Move Observed up", "Move Observed down", "Delete question Observed"]) {
       const controls = all.filter(
         (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === label,
       );
