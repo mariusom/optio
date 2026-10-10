@@ -277,7 +277,10 @@ export const choiceRows = <M>(
           ...(choice.subtitle === undefined ? {} : { subtitle: choice.subtitle }),
           onClick: choice.onSelect,
           chevron: false,
-          className: "py-3",
+          // Muted subtitles fall below 4.5:1 on the selected row's background.
+          className: choice.selected
+            ? "py-3 [&_.text-muted-foreground]:text-foreground/75"
+            : "py-3",
           trailing: choice.selected
             ? icon(h, Check, "size-5 shrink-0 text-primary")
             : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)]),

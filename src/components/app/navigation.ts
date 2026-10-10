@@ -125,7 +125,6 @@ export const sidebar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
             "mt-4 mb-6 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent/60 xl:mx-0 justify-center xl:justify-start",
           ),
           h.Href(hrefFor({ _tag: "StartTab" })),
-          h.AriaLabel("Optio home"),
         ],
         [
           h.span(
@@ -137,12 +136,18 @@ export const sidebar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
             ],
             ["o"],
           ),
+          // Named by its content, "optio home": the brand is screen-reader-only
+          // below 1280px, so voice control can say what it sees.
           h.span(
-            [h.Class("hidden xl:block")],
+            [h.Class("sr-only xl:not-sr-only xl:block")],
             [
-              h.span([h.Class("block text-base font-semibold tracking-tight")], ["optio"]),
               h.span(
-                [h.Class("block text-[0.6875rem] text-muted-foreground")],
+                [h.Class("block text-base font-semibold tracking-tight")],
+                ["optio", h.span([h.Class("sr-only")], [" home"])],
+              ),
+              // Decorative tagline, not part of the link's name.
+              h.span(
+                [h.Class("block text-[0.6875rem] text-muted-foreground"), h.AriaHidden(true)],
                 ["Time & motion studies"],
               ),
             ],

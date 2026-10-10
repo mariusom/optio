@@ -239,8 +239,6 @@ const taskRow = (
   h: HtmlBuilder<Message>,
 ) => {
   const status = taskStatus(task);
-  const label =
-    status === "recording" ? "in progress" : status === "editing" ? "editing" : "completed";
   return row(
     {
       key: task.id,
@@ -259,10 +257,8 @@ const taskRow = (
       onClick: Message.ClickedSelectTask({ taskId: task.id }),
       // Muted text is below 4.5:1 on the selected row's accent background.
       className: options.isCurrent ? "[&_.text-muted-foreground]:text-foreground/75" : undefined,
-      attributes: [
-        h.AriaLabel(`Task ${task.orderIndex} ${label}`),
-        ...(options.isCurrent ? [h.AriaCurrent("true")] : []),
-      ],
+      // Named by its visible text ("Task 2 … Recording"), so voice control matches it.
+      attributes: options.isCurrent ? [h.AriaCurrent("true")] : [],
     },
     h,
   );

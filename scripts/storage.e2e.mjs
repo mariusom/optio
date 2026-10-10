@@ -68,11 +68,11 @@ test(
       await page.getByRole("radio", { name: "Value-added", exact: true }).press("Space");
       await page.getByRole("checkbox", { name: "Torque driver", exact: true }).press("Space");
       await page.getByRole("button", { name: "Record task", exact: true }).click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).waitFor();
 
       // Begin a completed-task edit, confirm it reached persistent state, then
       // restart the entire browser, not just the view/model test harness.
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Torque bolts");
       await operation().fill("Unsaved correction");
       // fill() updates the DOM before the debounced answer reaches SQLite.
@@ -99,7 +99,7 @@ test(
       await page.goto(runnerUrl);
       await waitValue("Unsaved correction");
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Torque bolts");
       assert.equal(
         await page.getByRole("radio", { name: "Station 2", exact: true }).isChecked(),
@@ -110,7 +110,7 @@ test(
         true,
       );
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();
 
       await page.getByRole("radio", { name: "Station 3", exact: true }).press("Space");
       await operation().fill("Inspect alignment");
@@ -120,7 +120,7 @@ test(
         await page.locator("#tablet-formTop").scrollIntoViewIfNeeded();
       await screenshot("recording");
       await page.getByRole("button", { name: "Record task", exact: true }).click();
-      await page.getByRole("button", { name: "Task 3 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 3\b.*Recording$/ }).waitFor();
 
       // Wait for installed precache before simulating network loss. Actual
       // offline reload must reopen the real local database and its workers.
@@ -129,7 +129,7 @@ test(
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
       await context.setOffline(true);
       await page.reload();
-      await page.getByRole("button", { name: "Task 3 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 3\b.*Recording$/ }).waitFor();
       await page.getByRole("button", { name: "End session", exact: true }).click();
       await page
         .getByRole("dialog")
@@ -333,20 +333,20 @@ test(
       assert.equal(await record.isDisabled(), true);
       await page.getByRole("radio", { name: "4", exact: true }).press("Space");
       await record.click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).waitFor();
       await waitValue("Items packed", "");
       assert.equal(
         await page.getByRole("radio", { name: "Unanswered", exact: true }).isChecked(),
         true,
       );
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Items packed", "12");
       await input("Items packed").fill("-1");
       await page
         .getByText("Correct invalid answers before continuing.")
         .filter({ visible: true })
         .waitFor();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();
       await page
         .getByText(
           "Complete required questions and correct invalid answers, or cancel the edit first.",
@@ -376,7 +376,7 @@ test(
       await page.reload();
       await input("Items packed").waitFor();
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Items packed", "12");
       await input("Items packed").fill("0");
       await waitValue("Items packed", "0");

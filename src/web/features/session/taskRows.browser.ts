@@ -33,7 +33,12 @@ const runnerWith = (count: number): RunnerState => ({
   tasks: Array.from({ length: count }, (_, index) => taskFixture(index + 1, count)),
 });
 
-const firstTask = () => document.querySelector<HTMLElement>('[aria-label^="Task 1 "]');
+/** Rows are named by their visible text: "Task 1 … Done". */
+const taskButton = (index: number) =>
+  [...document.querySelectorAll<HTMLElement>("button")].find((button) =>
+    new RegExp(`^Task ${index}(?!\\d)`).test(button.textContent ?? ""),
+  ) ?? null;
+const firstTask = () => taskButton(1);
 
 const ports = { inbound: { recorded: Port.inbound(Schema.Number) } };
 let handle: Runtime.EmbedHandle<typeof ports> | undefined;
@@ -69,11 +74,11 @@ it("keeps keyboard focus on the same task when a newer task is added above it", 
   await expect.poll(firstTask).not.toBeNull();
   firstTask()!.focus();
   const focused = document.activeElement;
-  expect(focused?.getAttribute("aria-label")).toBe("Task 1 completed");
+  expect(focused?.textContent).toMatch(/^Task 1(?!\d).*Done$/);
 
   handle.ports.recorded.send(3);
-  await expect.poll(() => document.querySelector('[aria-label^="Task 3 "]')).not.toBeNull();
+  await expect.poll(() => taskButton(3)).not.toBeNull();
 
   expect(document.activeElement).toBe(focused);
-  expect(document.activeElement?.getAttribute("aria-label")).toBe("Task 1 completed");
+  expect(document.activeElement?.textContent).toMatch(/^Task 1(?!\d).*Done$/);
 });

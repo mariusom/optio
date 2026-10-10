@@ -98,6 +98,9 @@ const findFrame = (tree: FrameTree): string | undefined =>
     ? tree.frame.id
     : tree.childFrames?.map(findFrame).find(Boolean);
 
+/** The open task's row, named by its visible text ("Task 1 … Recording"). */
+const isTaskOneRecording = (name: string | undefined) => /^Task 1\b.*Recording$/.test(name ?? "");
+
 const accessibleTaskNames = async () => {
   const client = cdp() as unknown as CdpClient;
   const { frameTree } = (await client.send("Page.getFrameTree")) as { frameTree: FrameTree };
@@ -444,9 +447,13 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await expect.element(sidebar).toBeVisible();
     expect(
       [...sidebar.element().querySelectorAll("button")].map((button) =>
-        button.getAttribute("aria-label"),
+        button.getAttribute("aria-label") === null ? button.textContent : null,
       ),
-    ).toEqual(["Task 3 in progress", "Task 2 completed", "Task 1 completed"]);
+    ).toEqual([
+      expect.stringMatching(/^Task 3.*Recording$/),
+      expect.stringMatching(/^Task 2.*Done$/),
+      expect.stringMatching(/^Task 1.*Done$/),
+    ]);
   });
 
   it("removes collapsed descendants from focus and accessibility, then restores them", async () => {
@@ -461,7 +468,7 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     expect(
       page.getByRole("button", { name: "Expand sidebar" }).element().getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(await accessibleTaskNames()).not.toContain("Task 1 in progress");
+    expect((await accessibleTaskNames()).some(isTaskOneRecording)).toBe(false);
     expect(await accessibleTaskNames()).not.toContain("Task navigation sidebar");
     task.focus();
     expect(document.activeElement).not.toBe(task);
@@ -476,7 +483,10 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
     await page.getByRole("button", { name: "Expand sidebar" }).click();
     await expect.poll(() => sidebar.inert).toBe(false);
-    expect(await accessibleTaskNames()).toContain("Task 1 in progress");
+    // Chrome names the row from its content once the sidebar is laid out again.
+    await expect
+      .poll(async () => (await accessibleTaskNames()).some(isTaskOneRecording))
+      .toBe(true);
     await expect
       .element(page.getByRole("complementary", { name: "Task navigation sidebar" }))
       .toBeVisible();
