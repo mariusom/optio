@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -8,11 +8,11 @@ import { FieldDef } from "../../../domain/fields";
 
 export const SaveTemplate = Command.define("SaveTemplate", {
   args: {
-    id: S.String,
-    name: S.String,
-    isDefault: S.Boolean,
-    isNew: S.optionalKey(S.Boolean),
-    fields: S.Array(FieldDef),
+    id: Schema.String,
+    name: Schema.String,
+    isDefault: Schema.Boolean,
+    isNew: Schema.optionalKey(Schema.Boolean),
+    fields: Schema.Array(FieldDef),
   },
   messages: [Message.TemplateSaved, Message.FailedTemplateOp],
   execute: ({ id, name, isDefault, fields, isNew }) =>

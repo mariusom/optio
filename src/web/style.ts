@@ -1,7 +1,7 @@
-import { Effect, Schema as S } from "effect";
-import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore";
+import { Effect, Schema } from "effect";
+import * as KeyValueStore from "effect/persistence/KeyValueStore";
 
-export const FoldcnStyle = S.Literals([
+export const FoldcnStyle = Schema.Literals([
   "nova",
   "vega",
   "maia",
@@ -38,7 +38,7 @@ export const setCurrentStyle = async (style: FoldcnStyle): Promise<boolean> => {
 export const readStyle = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(storageKey);
-  return yield* S.decodeUnknownEffect(FoldcnStyle)(value).pipe(
+  return yield* Schema.decodeUnknownEffect(FoldcnStyle)(value).pipe(
     Effect.catch(() => Effect.succeed("nova" as const)),
   );
 });

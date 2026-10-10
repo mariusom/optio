@@ -3,11 +3,12 @@ import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
 import { sessionRunnerRouter } from "../web/routes";
 import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
 import type { Update } from "foldkit";
-import { Message } from "../messages";
-import type { Model } from "./model";
+import { Message, type MessageHandlers } from "../messages";
+import { AsyncData } from "foldkit";
+import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
-type AllHandlers = Parameters<typeof Message.match<Result>>[1];
+type AllHandlers = MessageHandlers<Result>;
 
 type SessionHandlers = Pick<
   AllHandlers,
@@ -48,19 +49,21 @@ type SessionHandlers = Pick<
   | "ToggledSidebar"
 >;
 export const sessionHandlers = (model: Model): SessionHandlers => ({
-  GotActiveSession: ({ activeSession }) => ({ model: { ...model, activeSession } }),
+  GotActiveSession: ({ activeSession }) => ({
+    model: { ...model, activeSession: AsyncData.succeed(activeSession) },
+  }),
   ChangedSessionNameInput: ({ text }) => ({ model: { ...model, sessionNameInput: text } }),
   GotPlaceholderName: ({ name }) => ({ model: { ...model, placeholderName: name } }),
   SelectedTemplate: ({ id }) => ({ model: { ...model, selectedTemplateId: id } }),
   ClickedStartSession: () => {
-    const selected = resolveSelectedTemplate(model.templates, model.selectedTemplateId);
+    const selected = resolveSelectedTemplate(templatesOf(model), model.selectedTemplateId);
     if (selected === null) return { model };
     const sessionName =
       model.sessionNameInput.trim() !== "" ? model.sessionNameInput.trim() : model.placeholderName;
-    const id = crypto.randomUUID();
+    const [id, next] = takeId(model);
     // Pass empty fields array; StartSession will resolve via store fallback
     return {
-      model,
+      model: next,
       commands: [
         StartSession({
           id,
@@ -79,17 +82,18 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       lastError: null,
     },
     commands: [
-      GeneratePlaceholderName({}),
+      GeneratePlaceholderName(),
       NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
     ],
   }),
   ClickedResumeSession: () => {
-    if (model.activeSession === null) return { model };
+    const active = activeSessionOf(model);
+    if (active === null) return { model };
     return {
       model,
       commands: [
         NavigateInternal({
-          url: `#${sessionRunnerRouter({ sessionId: model.activeSession.id })}`,
+          url: `#${sessionRunnerRouter({ sessionId: active.id })}`,
         }),
       ],
     };
@@ -97,20 +101,21 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   ClickedDiscardSession: () => ({ model: { ...model, pendingDiscardSession: true } }),
   CanceledDiscardSession: () => ({ model: { ...model, pendingDiscardSession: false } }),
   ConfirmedDiscardSession: () => {
-    if (model.activeSession === null) return { model: { ...model, pendingDiscardSession: false } };
+    const active = activeSessionOf(model);
+    if (active === null) return { model: { ...model, pendingDiscardSession: false } };
     return {
       model: { ...model, pendingDiscardSession: false },
-      commands: [DiscardLiveSession({ sessionId: model.activeSession.id })],
+      commands: [DiscardLiveSession({ sessionId: active.id })],
     };
   },
   SessionDiscarded: () => ({
     model: {
       ...model,
-      activeSession: null,
+      activeSession: AsyncData.succeed(null),
       pendingDiscardSession: false,
       lastError: null,
     },
-    commands: [GeneratePlaceholderName({})],
+    commands: [GeneratePlaceholderName()],
   }),
   FailedSessionOp: ({ error }) => ({
     model: { ...model, lastError: error, pendingDiscardSession: false },
@@ -149,7 +154,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       model: planned.model,
       commands: [
         ...(planned.commands ?? []),
-        GeneratePlaceholderName({}),
+        GeneratePlaceholderName(),
         NavigateInternal({ url: "#/start" }),
       ],
     };

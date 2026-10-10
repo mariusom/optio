@@ -1,4 +1,4 @@
-import { Result, Schema as S } from "effect";
+import { Result, Schema } from "effect";
 import {
   actionError,
   AgentAction,
@@ -6,9 +6,11 @@ import {
   requiresConfirmation,
 } from "../agents/actions";
 import { hrefFor } from "../web/routes";
-import { HexColour } from "../web/theme";
+import { HexColour, isDarkTheme } from "../web/theme";
+import { ReloadForUpdate } from "../web/appUpdate";
 import { hasChanges } from "../web/features/templates/editor";
 import {
+  ApplyColorScheme,
   GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
@@ -23,11 +25,11 @@ import {
 } from "./commands";
 import type { Update } from "foldkit";
 import { toString as urlToString } from "foldkit/url";
-import { Message } from "../messages";
-import type { Model } from "./model";
+import { Message, type MessageHandlers } from "../messages";
+import { activeSessionOf, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
-type AllHandlers = Parameters<typeof Message.match<Result>>[1];
+type AllHandlers = MessageHandlers<Result>;
 
 type AgentHandlers = Pick<AllHandlers, "AgentRequest">;
 
@@ -54,7 +56,7 @@ export const agentHandlers = (
   dispatch: (model: Model, message: Message) => Result,
 ): AgentHandlers => ({
   AgentRequest: ({ requestId, action, confirmationVersion }) => {
-    const decoded = action === null ? null : S.decodeUnknownResult(AgentAction)(action);
+    const decoded = action === null ? null : Schema.decodeUnknownResult(AgentAction)(action);
     const operation = decoded !== null && Result.isSuccess(decoded) ? decoded.success : null;
     const error =
       decoded !== null && Result.isFailure(decoded)
@@ -89,6 +91,10 @@ type ShellHandlers = Pick<
   AllHandlers,
   | "SelectedTheme"
   | "ThemeSaveFinished"
+  | "ChangedSystemColorScheme"
+  | "AppliedColorScheme"
+  | "AppUpdateReady"
+  | "ClickedApplyUpdate"
   | "SelectedStyle"
   | "StyleSaveFinished"
   | "SelectedFont"
@@ -115,11 +121,26 @@ type ShellHandlers = Pick<
 export const shellHandlers = (model: Model): ShellHandlers => ({
   SelectedTheme: ({ theme }) => ({
     model: { ...model, theme },
-    commands: [SaveTheme({ theme })],
+    commands: [
+      ApplyColorScheme({ dark: isDarkTheme(theme, model.systemPrefersDark) }),
+      SaveTheme({ theme }),
+    ],
   }),
+  ChangedSystemColorScheme: ({ prefersDark }) => {
+    const next = { ...model, systemPrefersDark: prefersDark };
+    // A fixed light or dark choice ignores the system scheme.
+    if (model.theme !== "auto") return { model: next };
+    return { model: next, commands: [ApplyColorScheme({ dark: prefersDark })] };
+  },
+  AppliedColorScheme: () => ({ model }),
+  AppUpdateReady: () =>
+    model.appUpdate === "none" ? { model: { ...model, appUpdate: "ready" } } : { model },
+  ClickedApplyUpdate: () =>
+    model.appUpdate === "ready"
+      ? { model: { ...model, appUpdate: "applying" }, commands: [ReloadForUpdate()] }
+      : { model },
   ThemeSaveFinished: ({ theme, saved }) => ({
     model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
-    commands: [],
   }),
   SelectedStyle: ({ style }) => ({
     model: { ...model, style },
@@ -135,7 +156,6 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
             styleLoadFailed: loadFailed,
           }
         : model,
-    commands: [],
   }),
   SelectedFont: ({ font }) => ({
     model: { ...model, font },
@@ -163,7 +183,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   }),
   CanceledAccentPicker: () => ({ model: { ...model, accentDraft: null } }),
   ConfirmedAccentPicker: () => {
-    if (!S.is(HexColour)(model.accentDraft)) return { model };
+    if (!Schema.is(HexColour)(model.accentDraft)) return { model };
     const accent = model.accentDraft.toLowerCase();
     return {
       model: { ...model, accent, accentDraft: null },
@@ -211,8 +231,8 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
       };
     }
     // Offer a fresh suggested name on entry; preserve any explicitly typed name.
-    if (route._tag === "StartTab" && base.activeSession === null) {
-      return { model: base, commands: [GeneratePlaceholderName({})] };
+    if (route._tag === "StartTab" && activeSessionOf(base) === null) {
+      return { model: base, commands: [GeneratePlaceholderName()] };
     }
     return { model: base };
   },
@@ -245,10 +265,10 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   ClickedCopyTemplatePrompt: () =>
     model.promptCopyStatus === "copying" || model.promptCopyStatus === "copied"
       ? { model }
-      : { model: { ...model, promptCopyStatus: "copying" }, commands: [CopyTemplatePrompt({})] },
+      : { model: { ...model, promptCopyStatus: "copying" }, commands: [CopyTemplatePrompt()] },
   TemplatePromptCopyFinished: ({ copied }) => ({
     model: { ...model, promptCopyStatus: copied ? "copied" : "failed" },
-    commands: copied ? [ResetTemplatePromptCopy({})] : [],
+    commands: copied ? [ResetTemplatePromptCopy()] : [],
   }),
   ResetTemplatePromptCopy: () => ({ model: { ...model, promptCopyStatus: "idle" } }),
 });

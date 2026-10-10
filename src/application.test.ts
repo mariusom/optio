@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { Option, Schema as S } from "effect";
+import { Option, Schema } from "effect";
 import { fromString } from "foldkit/url";
 import { applicationConfig } from "./application.ts";
 
@@ -29,6 +29,7 @@ describe("application wiring", () => {
       [
         "activeSession",
         "agentRequest",
+        "appUpdates",
         "currentTaskScroll",
         "editorDraftFocus",
         "fieldWriteFlush",
@@ -38,6 +39,7 @@ describe("application wiring", () => {
         "historyDetail",
         "runner",
         "storage",
+        "systemColorScheme",
         "templateDetail",
         "templates",
         "ticker",
@@ -58,14 +60,15 @@ describe("application wiring", () => {
     });
   });
 
-  it("starts from decoded Flags carrying saved preferences and the boot time", () => {
-    const flags = S.decodeUnknownSync(applicationConfig.Flags)({
+  it("starts from decoded Flags carrying saved preferences, the boot time and ID seed", () => {
+    const flags = Schema.decodeUnknownSync(applicationConfig.Flags)({
       theme: "dark",
       style: "lyra",
       font: "serif",
       iconLibrary: "lucide",
       accent: "rose",
       now: 1_700_000_000_000,
+      idSeed: "boot-seed",
     });
     const url = Option.getOrThrow(fromString("https://optio.test/#/history"));
     const { model } = applicationConfig.init(flags, url);
@@ -77,9 +80,11 @@ describe("application wiring", () => {
       iconLibrary: "lucide",
       accent: "rose",
       now: 1_700_000_000_000,
+      idSeed: "boot-seed",
+      idCounter: 0,
     });
     expect(() =>
-      S.decodeUnknownSync(applicationConfig.Flags)({ ...flags, theme: "neon" }),
+      Schema.decodeUnknownSync(applicationConfig.Flags)({ ...flags, theme: "neon" }),
     ).toThrow();
   });
 });

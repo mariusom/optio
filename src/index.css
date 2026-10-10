@@ -51,6 +51,17 @@ main,
   }
 }
 
+/* Loading states wait before appearing, so quick reads never flash them. */
+@keyframes loading-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+.loading-reveal {
+  animation: loading-reveal 0.2s ease-out 0.4s both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

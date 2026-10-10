@@ -4,6 +4,7 @@ import type { IconNode } from "lucide";
 import { Empty } from "@/components/ui/empty";
 import { Alert } from "@/components/ui/alert";
 import { button } from "@/components/ui/button";
+import { spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { CircleAlert, Info, TriangleAlert, X, icon } from "./icons";
 
@@ -104,4 +105,20 @@ export const hint = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Htm
   h.p(
     [h.Class(cn("text-center text-sm text-muted-foreground", className)), h.Role("status")],
     [text],
+  );
+
+/**
+ * Saved data that has not been read yet. It appears only after a short delay
+ * (`loading-reveal`), so a fast read goes straight from blank to content
+ * instead of flashing a spinner or an empty state.
+ */
+export const loadingState = <M>(text: string, h: HtmlBuilder<M>): Html =>
+  h.div(
+    [h.Class("loading-reveal flex h-full min-h-40 items-center justify-center p-8")],
+    [
+      h.p(
+        [h.Class("flex items-center gap-2 text-sm text-muted-foreground"), h.Role("status")],
+        [spinner({}, h), text],
+      ),
+    ],
   );

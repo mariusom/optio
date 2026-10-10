@@ -1,15 +1,15 @@
-import { Effect, Schema as S } from "effect";
-import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore";
+import { Effect, Schema } from "effect";
+import * as KeyValueStore from "effect/persistence/KeyValueStore";
 
-export const Theme = S.Literals(["light", "dark", "auto"]);
+export const Theme = Schema.Literals(["light", "dark", "auto"]);
 export type Theme = typeof Theme.Type;
-export const Font = S.Literals(["sans", "serif", "mono"]);
+export const Font = Schema.Literals(["sans", "serif", "mono"]);
 export type Font = typeof Font.Type;
-export const IconLibrary = S.Literals(["hugeicons", "lucide"]);
+export const IconLibrary = Schema.Literals(["hugeicons", "lucide"]);
 export type IconLibrary = typeof IconLibrary.Type;
-const PresetAccent = S.Literals(["default", "blue", "violet", "green", "rose"]);
-export const HexColour = S.String.check(S.isPattern(/^#[0-9a-fA-F]{6}$/));
-export const Accent = S.Union([PresetAccent, HexColour]);
+const PresetAccent = Schema.Literals(["default", "blue", "violet", "green", "rose"]);
+export const HexColour = Schema.String.check(Schema.isPattern(/^#[0-9a-fA-F]{6}$/));
+export const Accent = Schema.Union([PresetAccent, HexColour]);
 export type Accent = typeof Accent.Type;
 
 export const fonts = Font.literals;
@@ -33,7 +33,7 @@ const iconLibraryStorageKey = "optio-icon-library";
 export const readTheme = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(themeStorageKey);
-  return yield* S.decodeUnknownEffect(Theme)(value).pipe(
+  return yield* Schema.decodeUnknownEffect(Theme)(value).pipe(
     Effect.catch(() => Effect.succeed("auto" as const)),
   );
 });
@@ -46,7 +46,7 @@ export const saveTheme = Effect.fn("saveTheme")(function* (theme: Theme) {
 export const readFont = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(fontStorageKey);
-  return yield* S.decodeUnknownEffect(Font)(value).pipe(
+  return yield* Schema.decodeUnknownEffect(Font)(value).pipe(
     Effect.catch(() => Effect.succeed("sans" as const)),
   );
 });
@@ -59,7 +59,7 @@ export const saveFont = Effect.fn("saveFont")(function* (font: Font) {
 export const readIconLibrary = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(iconLibraryStorageKey);
-  return yield* S.decodeUnknownEffect(IconLibrary)(value).pipe(
+  return yield* Schema.decodeUnknownEffect(IconLibrary)(value).pipe(
     Effect.catch(() => Effect.succeed("hugeicons" as const)),
   );
 });
@@ -72,7 +72,7 @@ export const saveIconLibrary = Effect.fn("saveIconLibrary")(function* (library: 
 export const readAccent = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(accentStorageKey);
-  return yield* S.decodeUnknownEffect(Accent)(value).pipe(
+  return yield* Schema.decodeUnknownEffect(Accent)(value).pipe(
     Effect.catch(() => Effect.succeed("default" as const)),
   );
 });

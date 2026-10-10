@@ -1,4 +1,4 @@
-import { Duration, Effect, Schema as S } from "effect";
+import { Duration, Effect, Match, Schema } from "effect";
 import { Command, Navigation, Port, Update } from "foldkit";
 import { Message } from "../messages";
 import { AgentPortReply, agentPorts } from "../agents/actions";
@@ -6,8 +6,9 @@ import {
   changeAccent,
   changeFont,
   changeIconLibrary,
+  applyColorScheme,
   changeStyle,
-  changeTheme,
+  saveThemeChoice,
 } from "../web/browserTheme";
 import { Accent, Font, IconLibrary, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
@@ -30,7 +31,7 @@ import {
 import type { Model } from "./model";
 
 const NavigateInternal = Command.define("NavigateInternal", {
-  args: { url: S.String },
+  args: { url: Schema.String },
   messages: [Message.Navigated],
   execute: ({ url }) => Effect.map(Navigation.pushUrl(url), () => Message.Navigated()),
 });
@@ -39,7 +40,13 @@ const SaveTheme = Command.define("SaveTheme", {
   args: { theme: Theme },
   messages: [Message.ThemeSaveFinished],
   execute: ({ theme }) =>
-    Effect.map(changeTheme(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
+    Effect.map(saveThemeChoice(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
+});
+
+const ApplyColorScheme = Command.define("ApplyColorScheme", {
+  args: { dark: Schema.Boolean },
+  messages: [Message.AppliedColorScheme],
+  execute: ({ dark }) => Effect.as(applyColorScheme(dark), Message.AppliedColorScheme()),
 });
 
 const SaveStyle = Command.define("SaveStyle", {
@@ -77,34 +84,29 @@ const SaveAccent = Command.define("SaveAccent", {
 });
 
 const NavigateExternal = Command.define("NavigateExternal", {
-  args: { href: S.String },
+  args: { href: Schema.String },
   messages: [Message.Navigated],
   execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
 });
 
 const CopyTemplatePrompt = Command.define("CopyTemplatePrompt", {
-  args: {},
   messages: [Message.TemplatePromptCopyFinished],
-  execute: () =>
-    Effect.tryPromise(() => navigator.clipboard.writeText(templatePrompt)).pipe(
-      Effect.match({
-        onSuccess: () => Message.TemplatePromptCopyFinished({ copied: true }),
-        onFailure: () => Message.TemplatePromptCopyFinished({ copied: false }),
-      }),
-    ),
+  execute: Effect.tryPromise(() => navigator.clipboard.writeText(templatePrompt)).pipe(
+    Effect.match({
+      onSuccess: () => Message.TemplatePromptCopyFinished({ copied: true }),
+      onFailure: () => Message.TemplatePromptCopyFinished({ copied: false }),
+    }),
+  ),
 });
 
 const ResetTemplatePromptCopy = Command.define("ResetTemplatePromptCopy", {
-  args: {},
   messages: [Message.ResetTemplatePromptCopy],
-  execute: () =>
-    Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
+  execute: Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
 });
 
 const GeneratePlaceholderName = Command.define("GeneratePlaceholderName", {
-  args: {},
   messages: [Message.GotPlaceholderName],
-  execute: () => Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
+  execute: Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
 });
 
 const ReplyToAgent = Command.define("ReplyToAgent", {
@@ -118,24 +120,16 @@ const ReplyToAgent = Command.define("ReplyToAgent", {
 
 // ── Session planner bridge (pure reducer → FoldKit commands) ─────────────
 
-const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> => {
-  switch (emission._tag) {
-    case "CommitFieldValues":
-      return [UpdateFieldValues({ writes: emission.writes })];
-    case "CommitCounterAdjustment":
-      return [AdjustCounter({ taskFieldId: emission.taskFieldId, delta: emission.delta })];
-    case "CommitRecord":
-      return [RecordTask({ sessionId: emission.sessionId, currentTaskId: emission.taskId })];
-    case "CommitSelectTask":
-      return [SelectTask({ sessionId: emission.sessionId, taskId: emission.taskId })];
-    case "CommitCancelEdit":
-      return [CancelEdit({ taskId: emission.taskId })];
-    case "CommitSaveEdit":
-      return [SaveEdit({ taskId: emission.taskId })];
-    case "CommitEndSession":
-      return [EndSession({ sessionId: emission.sessionId })];
-  }
-};
+const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> =>
+  Match.valueTags(emission, {
+    CommitFieldValues: ({ writes }) => [UpdateFieldValues({ writes })],
+    CommitCounterAdjustment: ({ taskFieldId, delta }) => [AdjustCounter({ taskFieldId, delta })],
+    CommitRecord: ({ sessionId, taskId }) => [RecordTask({ sessionId, currentTaskId: taskId })],
+    CommitSelectTask: ({ sessionId, taskId }) => [SelectTask({ sessionId, taskId })],
+    CommitCancelEdit: ({ taskId }) => [CancelEdit({ taskId })],
+    CommitSaveEdit: ({ taskId }) => [SaveEdit({ taskId })],
+    CommitEndSession: ({ sessionId }) => [EndSession({ sessionId })],
+  });
 
 /** Plan a session event; merge the result into model + commands. */
 const applyPlan = (model: Model, event: SessionEvent): Update.Return<Model, Message> => {
@@ -149,6 +143,7 @@ const applyPlan = (model: Model, event: SessionEvent): Update.Return<Model, Mess
 };
 
 export {
+  ApplyColorScheme,
   CopyTemplatePrompt,
   GeneratePlaceholderName,
   NavigateExternal,

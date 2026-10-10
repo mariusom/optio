@@ -68,12 +68,7 @@ const checkMark = (isSelected: boolean, h: HtmlBuilder<Message>, muted = false) 
       h.AriaHidden(true),
     ],
     isSelected
-      ? [
-          h.span(
-            [h.Class(cn("size-2 rounded-full", muted ? "bg-muted-foreground" : "bg-primary"))],
-            [],
-          ),
-        ]
+      ? [h.span([h.Class(cn("size-2 rounded-full", muted ? "bg-muted-foreground" : "bg-primary"))])]
       : [],
   );
 
@@ -374,7 +369,7 @@ export const formSectionsView = (task: RunnerTask, h: HtmlBuilder<Message>, scop
   return h.div(
     [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-6 px-safe pt-4 pb-8")],
     [
-      h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)], []),
+      h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)]),
       ...sections.map((section) => questionView(section, scope, h)),
     ],
   );

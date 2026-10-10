@@ -267,7 +267,7 @@ export const choiceRows = <M>(
           className: "py-3",
           trailing: choice.selected
             ? icon(h, Check, "size-5 shrink-0 text-primary")
-            : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)], []),
+            : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)]),
           attributes: [
             h.Role("radio"),
             h.AriaChecked(choice.selected),

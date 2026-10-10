@@ -1,4 +1,4 @@
-import { Option, pipe, Schema as S } from "effect";
+import { Option, pipe, Schema } from "effect";
 import {
   defineRouteUnion,
   literal,
@@ -19,9 +19,9 @@ export const RouteSchema = defineRouteUnion({
   SettingsTab: {},
   AgentHelp: {},
   About: {},
-  SessionRunner: { sessionId: S.String },
-  TemplateEditor: { templateId: S.String },
-  SessionDetail: { sessionId: S.String },
+  SessionRunner: { sessionId: Schema.String },
+  TemplateEditor: { templateId: Schema.String },
+  SessionDetail: { sessionId: Schema.String },
 });
 
 export const { StartTab, HistoryTab, TemplatesTab, SessionRunner, TemplateEditor, SessionDetail } =
@@ -79,28 +79,18 @@ export const parseRoute = (url: Url): Route =>
 
 // PRINT — Route → href string for anchors
 
-export const hrefFor = (route: Route): string => {
-  switch (route._tag) {
-    case "AgentHelp":
-      return `#${agentHelpRouter()}`;
-    case "About":
-      return `#${aboutRouter()}`;
-    case "SettingsTab":
-      return `#${settingsRouter()}`;
-    case "HistoryTab":
-      return `#${historyRouter()}`;
-    case "TemplatesTab":
-      return `#${templatesRouter()}`;
-    case "SessionRunner":
-      return `#${sessionRunnerRouter({ sessionId: route.sessionId })}`;
-    case "TemplateEditor":
-      return `#${templateEditorRouter({ templateId: route.templateId })}`;
-    case "SessionDetail":
-      return `#${sessionDetailRouter({ sessionId: route.sessionId })}`;
-    case "StartTab":
-      return `#${startRouter()}`;
-  }
-};
+export const hrefFor = (route: Route): string =>
+  `#${RouteSchema.match(route, {
+    AgentHelp: () => agentHelpRouter(),
+    About: () => aboutRouter(),
+    SettingsTab: () => settingsRouter(),
+    HistoryTab: () => historyRouter(),
+    TemplatesTab: () => templatesRouter(),
+    SessionRunner: ({ sessionId }) => sessionRunnerRouter({ sessionId }),
+    TemplateEditor: ({ templateId }) => templateEditorRouter({ templateId }),
+    SessionDetail: ({ sessionId }) => sessionDetailRouter({ sessionId }),
+    StartTab: () => startRouter(),
+  })}`;
 
 /** Routes where the bottom tab bar is hidden (full-screen pages). */
 export const isFullScreenRoute = (route: Route): boolean =>

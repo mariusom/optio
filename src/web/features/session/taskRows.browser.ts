@@ -1,5 +1,5 @@
 import { afterEach, expect, it } from "vitest";
-import { Schema as S } from "effect";
+import { Schema } from "effect";
 import { Port, Runtime, Subscription } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -34,7 +34,7 @@ const runnerWith = (count: number): RunnerState => ({
 
 const firstTask = () => document.querySelector<HTMLElement>('[aria-label^="Task 1 "]');
 
-const ports = { inbound: { recorded: Port.inbound(S.Number) } };
+const ports = { inbound: { recorded: Port.inbound(Schema.Number) } };
 let handle: Runtime.EmbedHandle<typeof ports> | undefined;
 
 afterEach(() => {
@@ -48,7 +48,7 @@ it("keeps keyboard focus on the same task when a newer task is added above it", 
   document.body.append(container);
   handle = Runtime.embed(
     Runtime.makeElement({
-      Model: S.Struct({ count: S.Number }),
+      Model: Schema.Struct({ count: Schema.Number }),
       container,
       ports,
       slow: false,
@@ -58,7 +58,7 @@ it("keeps keyboard focus on the same task when a newer task is added above it", 
         message._tag === "Tick" ? { model: { count: message.now } } : { model },
       view: (model, h) => h.div([], taskRows(runnerWith(model.count), h)),
       subscriptions: Subscription.make<{ readonly count: number }, Message>()(() => ({
-        recorded: Port.subscription(ports.inbound.recorded, (count) =>
+        recorded: Port.subscriptionEntry(ports.inbound.recorded, (count) =>
           Message.Tick({ now: count }),
         ),
       })),

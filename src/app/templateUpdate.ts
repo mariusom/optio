@@ -9,11 +9,12 @@ import { effectiveTemplateId } from "../web/features/session/startHelpers";
 import { templateEditorRouter } from "../web/routes";
 import { GeneratePlaceholderName, NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
-import { Message } from "../messages";
-import type { Model } from "./model";
+import { Message, type MessageHandlers } from "../messages";
+import { AsyncData } from "foldkit";
+import { takeId, templatesOf, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
-type AllHandlers = Parameters<typeof Message.match<Result>>[1];
+type AllHandlers = MessageHandlers<Result>;
 
 type TemplateHandlers = Pick<
   AllHandlers,
@@ -50,38 +51,43 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     // Ensure placeholder exists when on Start tab
     const needsPlaceholder = model.route._tag === "StartTab" && model.placeholderName === "";
     return {
-      model: { ...model, templates, selectedTemplateId: nextSelected },
-      commands: needsPlaceholder ? [GeneratePlaceholderName({})] : [],
+      model: {
+        ...model,
+        templates: AsyncData.succeed(templates),
+        selectedTemplateId: nextSelected,
+      },
+      commands: needsPlaceholder ? [GeneratePlaceholderName()] : [],
     };
   },
-  ClickedNewTemplate: () => ({
-    model: {
-      ...model,
-      showCreate: true,
-      newName: "",
-      lastError: null,
-      editor: {
-        id: crypto.randomUUID(),
-        name: "",
-        isDefault: model.templates.length === 0,
-        fields: [],
-        original: { name: "", isDefault: model.templates.length === 0, fields: [] },
-        isSaving: false,
-        showAddField: false,
-        editingFieldId: null,
-        draft: null,
-        pendingDiscard: false,
-      },
-    },
-  }),
-  ChangedNewName: ({ text }) => ({ model: { ...model, newName: text } }),
-  ConfirmedCreateTemplate: () =>
-    model.newName.trim() === ""
-      ? { model }
-      : {
-          model,
-          commands: [CreateTemplate({ id: crypto.randomUUID(), name: model.newName.trim() })],
+  ClickedNewTemplate: () => {
+    const [id, next] = takeId(model);
+    return {
+      model: {
+        ...next,
+        showCreate: true,
+        newName: "",
+        lastError: null,
+        editor: {
+          id,
+          name: "",
+          isDefault: templatesOf(model).length === 0,
+          fields: [],
+          original: { name: "", isDefault: templatesOf(model).length === 0, fields: [] },
+          isSaving: false,
+          showAddField: false,
+          editingFieldId: null,
+          draft: null,
+          pendingDiscard: false,
         },
+      },
+    };
+  },
+  ChangedNewName: ({ text }) => ({ model: { ...model, newName: text } }),
+  ConfirmedCreateTemplate: () => {
+    if (model.newName.trim() === "") return { model };
+    const [id, next] = takeId(model);
+    return { model: next, commands: [CreateTemplate({ id, name: model.newName.trim() })] };
+  },
   TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "", editor: null } }),
   CanceledCreateTemplate: () => ({
     model: { ...model, showCreate: false, newName: "", editor: null },
@@ -95,7 +101,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
   }),
   RequestedDeleteTemplate: ({ id }) => {
-    const template = model.templates.find((candidate) => candidate.id === id);
+    const template = templatesOf(model).find((candidate) => candidate.id === id);
     return {
       model: {
         ...model,
@@ -124,17 +130,17 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
   ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
   ClickedAddSampleTemplates: () => ({
     model: { ...model, lastError: null },
-    commands: [AddSampleTemplates({})],
+    commands: [AddSampleTemplates()],
   }),
   SampleTemplatesAdded: () => ({ model }),
   TemplateOpDone: () => ({ model }),
-  TemplatesSeededCheck: () => ({ model }),
+  TemplatesSeededCheck: () => ({ model: { ...model, templatesSeedChecked: true } }),
   FailedTemplateOp: ({ error }) => {
+    // A failed startup seed must not keep the templates subscription waiting.
+    const base = { ...model, templatesSeedChecked: true, lastError: error };
     if (model.editor !== null && model.editor.isSaving) {
-      return {
-        model: { ...model, editor: { ...model.editor, isSaving: false }, lastError: error },
-      };
+      return { model: { ...base, editor: { ...model.editor, isSaving: false } } };
     }
-    return { model: { ...model, lastError: error, pendingDelete: null } };
+    return { model: { ...base, pendingDelete: null } };
   },
 });

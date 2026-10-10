@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema as S, Semaphore } from "effect";
+import { Clock, Effect, Schema, Semaphore } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -44,7 +44,9 @@ const isPersistedFieldEditable = (
 
 /** Commits a batch of answers together; each keeps its first-write time. */
 export const UpdateFieldValues = Command.define("UpdateFieldValues", {
-  args: { writes: S.Array(S.Struct({ taskFieldId: S.String, value: S.String })) },
+  args: {
+    writes: Schema.Array(Schema.Struct({ taskFieldId: Schema.String, value: Schema.String })),
+  },
   messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
   execute: ({ writes }) =>
     withStore((access) =>
@@ -69,7 +71,7 @@ export const UpdateFieldValues = Command.define("UpdateFieldValues", {
 /** Read and commit synchronously after opening the store: rapid taps must not
  * derive their next value from a stale rendered snapshot. */
 export const AdjustCounter = Command.define("AdjustCounter", {
-  args: { taskFieldId: S.String, delta: S.Literals([-1, 1]) },
+  args: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
   execute: ({ taskFieldId, delta }) =>
     withStore((access) =>
@@ -93,7 +95,7 @@ export const AdjustCounter = Command.define("AdjustCounter", {
 // ── RecordTask → taskFinished + taskSpawned ─────────────────────────────────
 
 export const RecordTask = Command.define("RecordTask", {
-  args: { sessionId: S.String, currentTaskId: S.String },
+  args: { sessionId: Schema.String, currentTaskId: Schema.String },
   messages: [Message.TaskRecorded, Message.FailedRunnerOp],
   execute: ({ sessionId, currentTaskId }) =>
     withStore(({ store, tables, events }) =>
@@ -139,7 +141,7 @@ export const RecordTask = Command.define("RecordTask", {
 // ── EndSession → archive or delete then clear live graph, navigate ─────────
 
 export const EndSession = Command.define("EndSession", {
-  args: { sessionId: S.String },
+  args: { sessionId: Schema.String },
   messages: [Message.SessionEnded, Message.FailedRunnerOp],
   execute: ({ sessionId }) =>
     withStore(({ store, tables, events }) =>
@@ -205,7 +207,7 @@ export const EndSession = Command.define("EndSession", {
 // ── SelectTask → taskEditStarted / taskEditFinished ─────────────────────────
 
 export const SelectTask = Command.define("SelectTask", {
-  args: { sessionId: S.String, taskId: S.String },
+  args: { sessionId: Schema.String, taskId: Schema.String },
   messages: [Message.TaskEditStarted, Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ sessionId, taskId }) =>
     withStore(({ store, tables, events }) =>
@@ -238,7 +240,7 @@ export const SelectTask = Command.define("SelectTask", {
 });
 
 export const CancelEdit = Command.define("CancelEdit", {
-  args: { taskId: S.String },
+  args: { taskId: Schema.String },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ taskId }) =>
     withStore(({ store, events }) =>
@@ -250,7 +252,7 @@ export const CancelEdit = Command.define("CancelEdit", {
 });
 
 export const SaveEdit = Command.define("SaveEdit", {
-  args: { taskId: S.String },
+  args: { taskId: Schema.String },
   messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
   execute: ({ taskId }) =>
     withStore(({ store, tables, events }) =>

@@ -28,6 +28,7 @@ const components = [
   "item",
   "native-select",
   "sheet",
+  "skeleton",
   "spinner",
   "switch",
   "textarea",

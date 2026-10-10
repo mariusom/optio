@@ -1,14 +1,14 @@
-import { Schema as S } from "effect";
+import { Schema } from "effect";
 
 // Shared model payload schemas (used by Messages and the shell Model)
 
-export const TemplateSummary = S.Struct({
-  id: S.String,
-  name: S.String,
-  isDefault: S.Boolean,
-  createdAt: S.Number,
-  updatedAt: S.Number,
-  fieldCount: S.Number,
-  requiredCount: S.Number,
+export const TemplateSummary = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  isDefault: Schema.Boolean,
+  createdAt: Schema.Number,
+  updatedAt: Schema.Number,
+  fieldCount: Schema.Number,
+  requiredCount: Schema.Number,
 });
 export type TemplateSummary = typeof TemplateSummary.Type;

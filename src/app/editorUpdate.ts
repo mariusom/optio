@@ -20,11 +20,11 @@ import {
 import { templatesRouter } from "../web/routes";
 import { NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
-import { Message } from "../messages";
-import type { Model } from "./model";
+import { Message, type MessageHandlers } from "../messages";
+import { takeId, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
-type AllHandlers = Parameters<typeof Message.match<Result>>[1];
+type AllHandlers = MessageHandlers<Result>;
 
 type EditorLoadHandlers = Pick<
   AllHandlers,
@@ -98,10 +98,11 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
   ClickedAddField: () => {
     if (model.editor === null || model.editor.draft !== null || model.editor.isSaving)
       return { model };
-    const draft = makeEmptyDraft(model.editor.fields.length);
+    const [id, next] = takeId(model);
+    const draft = makeEmptyDraft(id, model.editor.fields.length);
     return {
       model: {
-        ...model,
+        ...next,
         editor: { ...model.editor, showAddField: true, editingFieldId: null, draft },
       },
     };

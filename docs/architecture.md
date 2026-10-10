@@ -7,10 +7,17 @@ subscriptions bring store changes back into the model.
 
 ## Where behavior lives
 
-- [entry.ts](../src/entry.ts) starts the browser runtime, the
-  service-worker update prompt and optional agent registration. Saved
-  preferences and the boot time reach `init` as schema-checked FoldKit Flags
-  (`Flags` and `initWithFlags` in [main.ts](../src/main.ts)).
+- [entry.ts](../src/entry.ts) registers the service worker before anything
+  else (so offline support installs even if the app fails to boot), then
+  starts the browser runtime and optional agent registration. Saved preferences, the boot time and a random ID seed reach
+  `init` as schema-checked FoldKit Flags (`Flags` and `initWithFlags` in
+  [main.ts](../src/main.ts)). Browser events reach the app through
+  subscriptions, never ad-hoc listeners: the service worker's "update ready"
+  (handed over by `web/updateSignal.ts` even if it fired before the app
+  subscribed; [web/appUpdate.ts](../src/web/appUpdate.ts) applies it only
+  when tapped), the
+  system color scheme that the "auto" theme follows (update issues
+  `ApplyColorScheme`), visibility and page-leaving events.
 - [application.ts](../src/application.ts) wires the runtime;
   [main.ts](../src/main.ts) initializes and exports the application modules.
 - [app/model.ts](../src/app/model.ts) defines the root model and initial state.
@@ -22,11 +29,20 @@ subscriptions bring store changes back into the model.
   `managedStream.ts` owns store subscriptions, their cleanup and recovery
   after a failed open (the stream reports the store unavailable, then
   resubscribes once it opens), and ends a stream whose subscription failed;
-  subscriptions log such failures, and detail pages show them instead of
-  loading forever. `domStreams.ts` owns focus and scroll effects, waiting for
+  subscriptions log such failures, and detail and list pages show them
+  instead of loading forever (a failed list becomes `AsyncData` `Failure`;
+  "Try again" bumps `listReadAttempt`, which restarts the list subscriptions). `domStreams.ts` owns focus and scroll effects, waiting for
   FoldKit's `Render.afterCommit`/`afterPaint`. Keep subscriptions wired:
   without them the app renders but stops receiving data. The live-timer ticker
   pauses while the tab is hidden.
+- Store-backed lists in the Model (`templates`, `history`, `activeSession`)
+  are FoldKit `AsyncData`: `Loading` until their stream first emits. Pages
+  render only once their data is read (`whenLoaded` in `app/view.ts`), so a
+  reload never flashes an empty state; slow reads fade in a skeleton of the page.
+  Handlers and agent checks read loaded rows through `templatesOf`,
+  `historyOf` and `activeSessionOf`. The templates subscription starts only after
+  the startup sample-template check (`templatesSeedChecked`), so a first run
+  never shows "No templates yet" before the samples are written.
 - [app/view.ts](../src/app/view.ts) composes navigation and feature pages.
   A sheet is open exactly while its page renders it: page-model state (such as
   `pendingHistoryDelete`) is the only open/closed state, so agent actions and
@@ -77,7 +93,10 @@ joins and counts) so a commit that touches several tables emits one consistent
 result. Read only the rows a screen shows; never subscribe to a whole table.
 
 Materializers must be deterministic: capture wall-clock times (Effect's Clock)
-and random IDs in commands and include them in events. Tabs commit concurrently,
+and random IDs in commands and include them in events. Update never reads a
+clock or random source either: IDs it needs at once (a new template, a question
+draft, a session or template a command will create) come from `takeId`, which
+combines the per-boot random `idSeed` with a counter in the Model. Tabs commit concurrently,
 so materializers also guard their own invariants: one live session, tasks only in
 a live session, first finish time wins, one default template and no duplicate
 samples. Archived answers keep their question `position`. Archive IDs derive from session ID, task
@@ -111,7 +130,8 @@ ticker subscription read Effect's Clock; `Tick` stamps `model.now` and
 `runner.now`, and the session planner receives that time as part of its input.
 `model.now` is the latest sample, refreshed while a screen with a live timer is
 active, so live timing renders from the Model instead of the clock. History
-day-grouping is the deliberate exception: it labels days from the real clock.
+labels days ("Today") from `model.now`, which the ticker refreshes on entry and
+each minute while History is open.
 
 Completed-task edit rollback belongs to SQLite, not the UI model.
 `TaskEditStarted` stores the original field values in `sessionTasks.editBackup`

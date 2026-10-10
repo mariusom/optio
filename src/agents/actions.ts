@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Match, Schema } from "effect";
 import { Port } from "foldkit";
 
 import { Message } from "../messages";
@@ -7,6 +7,7 @@ import { FieldKind, type FieldDef } from "../domain/fields";
 import { isScalarAnswerValid } from "../web/fields";
 import { editableSection } from "../web/features/session/runner";
 import type { Model } from "../main";
+import { activeSessionOf, historyOf, templatesOf } from "../app/model";
 import { AgentState } from "./state";
 
 // Only user operations: never allow fabricated store snapshots, completion
@@ -79,48 +80,47 @@ export const AgentAction = Schema.Union([
 ]);
 export type AgentAction = typeof AgentAction.Type;
 
-const routeError = (model: Model, route: Route): string | null => {
-  switch (route._tag) {
-    case "SessionRunner":
-      return model.activeSession?.id === route.sessionId
-        ? null
-        : "Only the active session can be opened in the runner.";
-    case "TemplateEditor":
-      return model.templates.some((template) => template.id === route.templateId)
-        ? null
-        : "Template not found.";
-    case "SessionDetail":
-      return model.history.some((session) => session.id === route.sessionId)
-        ? null
-        : "Archived session not found.";
-    default:
-      return null;
-  }
-};
+const routeError = (model: Model, route: Route): string | null =>
+  RouteSchema.matchOrElse(
+    route,
+    {
+      SessionRunner: ({ sessionId }) =>
+        activeSessionOf(model)?.id === sessionId
+          ? null
+          : "Only the active session can be opened in the runner.",
+      TemplateEditor: ({ templateId }) =>
+        templatesOf(model).some((template) => template.id === templateId)
+          ? null
+          : "Template not found.",
+      SessionDetail: ({ sessionId }) =>
+        historyOf(model).some((session) => session.id === sessionId)
+          ? null
+          : "Archived session not found.",
+    },
+    () => null,
+  );
 
-const targetError = (model: Model, action: AgentAction): string | null => {
-  switch (action._tag) {
-    case "ClickedSetDefaultTemplate":
-    case "ClickedDuplicateTemplate":
-    case "ClickedTemplateRow":
-    case "RequestedDeleteTemplate":
-    case "SelectedTemplate":
-      return model.templates.some((template) => template.id === action.id)
+const targetError = (model: Model, action: AgentAction): string | null =>
+  Match.value(action).pipe(
+    Match.tag(
+      "ClickedSetDefaultTemplate",
+      "ClickedDuplicateTemplate",
+      "ClickedTemplateRow",
+      "RequestedDeleteTemplate",
+      "SelectedTemplate",
+      ({ id }) =>
+        templatesOf(model).some((template) => template.id === id) ? null : "Template not found.",
+    ),
+    Match.tag("RequestedHistoryDelete", "ClickedHistoryRow", ({ id }) =>
+      historyOf(model).some((session) => session.id === id) ? null : "Archived session not found.",
+    ),
+    Match.tag("ClickedExportHistoryCsv", ({ sessionId }) =>
+      historyOf(model).some((session) => session.id === sessionId)
         ? null
-        : "Template not found.";
-    case "RequestedHistoryDelete":
-    case "ClickedHistoryRow":
-      return model.history.some((session) => session.id === action.id)
-        ? null
-        : "Archived session not found.";
-    case "ClickedExportHistoryCsv":
-      return model.history.some((session) => session.id === action.sessionId)
-        ? null
-        : "Archived session not found.";
-    default:
-      return null;
-  }
-};
+        : "Archived session not found.",
+    ),
+    Match.orElse(() => null),
+  );
 
 const checkboxValueError = (
   field: Pick<FieldDef, "options" | "exclusiveOptions">,
@@ -164,24 +164,21 @@ const counterError = (model: Model, taskFieldId: string): string | null =>
     : "Select an editable counter first.";
 
 /** UI controls normally constrain these values/IDs; an external caller must not bypass that. */
-export const actionError = (model: Model, action: AgentAction): string | null => {
-  switch (action._tag) {
-    case "Navigate":
-      return routeError(model, action.route);
-    case "ClickedStartSession":
-      return model.activeSession === null
+export const actionError = (model: Model, action: AgentAction): string | null =>
+  Match.value(action).pipe(
+    Match.tag("Navigate", ({ route }) => routeError(model, route)),
+    Match.tag("ClickedStartSession", () =>
+      activeSessionOf(model) === null
         ? null
-        : "A session is already active. Resume or end it first.";
-    case "ConfirmedDiscardSession":
-      return model.pendingDiscardSession ? null : "Request session discard first.";
-    case "ChangedFieldValue":
-      return fieldValueError(model, action);
-    case "AdjustedCounter":
-      return counterError(model, action.taskFieldId);
-    default:
-      return targetError(model, action);
-  }
-};
+        : "A session is already active. Resume or end it first.",
+    ),
+    Match.tag("ConfirmedDiscardSession", () =>
+      model.pendingDiscardSession ? null : "Request session discard first.",
+    ),
+    Match.tag("ChangedFieldValue", (changed) => fieldValueError(model, changed)),
+    Match.tag("AdjustedCounter", ({ taskFieldId }) => counterError(model, taskFieldId)),
+    Match.orElse((other) => targetError(model, other)),
+  );
 
 export const AgentPortReply = Schema.Struct({
   requestId: Schema.String,
@@ -234,10 +231,12 @@ const confirmedActions = [
   {
     tag: "ConfirmedDiscardSession",
     label: "discard the live session and its recordings",
-    target: (model: Model) =>
-      model.pendingDiscardSession && model.activeSession
-        ? { id: model.activeSession.id, name: model.activeSession.sessionName }
-        : null,
+    target: (model: Model) => {
+      const active = activeSessionOf(model);
+      return model.pendingDiscardSession && active
+        ? { id: active.id, name: active.sessionName }
+        : null;
+    },
     invalidatedBy: [],
   },
   {

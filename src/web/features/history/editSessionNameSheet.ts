@@ -15,7 +15,7 @@ type EditModel = {
 };
 
 export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) => {
-  if (!model.showEditHistoryName) return h.div([], []);
+  if (!model.showEditHistoryName) return h.div([]);
   const templateName = model.selectedHistorySession?.templateName ?? "";
   return sheet(
     {

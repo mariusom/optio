@@ -9,13 +9,11 @@ import { Message } from "../messages";
 
 /** Opens the store again after a failure; subscriptions resume when it opens. */
 export const RetryStore = Command.define("RetryStore", {
-  args: {},
   messages: [Message.StoreOpened, Message.StoreUnavailable],
-  execute: () =>
-    openStoreAccess.pipe(
-      Effect.map(({ store }) => Message.StoreOpened({ storageMode: store.storageMode })),
-      Effect.catch(() => Effect.succeed(Message.StoreUnavailable())),
-    ),
+  execute: openStoreAccess.pipe(
+    Effect.map(({ store }) => Message.StoreOpened({ storageMode: store.storageMode })),
+    Effect.catch(() => Effect.succeed(Message.StoreUnavailable())),
+  ),
 });
 
 type StorageModel = {

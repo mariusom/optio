@@ -299,7 +299,7 @@ const defaultAnswerSection = (
 
 export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
   const draft = editor.draft;
-  if (draft === null) return h.div([], []);
+  if (draft === null) return h.div([]);
   const isEditing = editor.editingFieldId !== null;
   const kind = draft.kind;
   const valid = isDraftValid(draft);

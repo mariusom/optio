@@ -146,19 +146,19 @@ describe("isTemplateValid", () => {
 
 describe("isDraftValid", () => {
   it("requires trimmed name", () => {
-    const draft = makeEmptyDraft(0);
+    const draft = makeEmptyDraft("draft", 0);
     expect(isDraftValid(draft)).toBe(false);
     expect(isDraftValid({ ...draft, name: "   " })).toBe(false);
     expect(isDraftValid({ ...draft, name: "Activity" })).toBe(true);
   });
 
   it("requires ≥2 options when hasOptions", () => {
-    const base = { ...makeEmptyDraft(0), name: "Category", kind: "radio" as const };
+    const base = { ...makeEmptyDraft("draft", 0), name: "Category", kind: "radio" as const };
     expect(isDraftValid(base)).toBe(false);
     expect(isDraftValid({ ...base, options: ["A"] })).toBe(false);
     expect(isDraftValid({ ...base, options: ["A", "B"] })).toBe(true);
     const checkbox = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Tools",
       kind: "checkbox" as const,
       options: [],
@@ -169,8 +169,12 @@ describe("isDraftValid", () => {
   });
 
   it("textInput and boolean pass without options", () => {
-    expect(isDraftValid({ ...makeEmptyDraft(0), name: "Notes", kind: "textArea" })).toBe(true);
-    expect(isDraftValid({ ...makeEmptyDraft(0), name: "Interrupted", kind: "boolean" })).toBe(true);
+    expect(isDraftValid({ ...makeEmptyDraft("draft", 0), name: "Notes", kind: "textArea" })).toBe(
+      true,
+    );
+    expect(
+      isDraftValid({ ...makeEmptyDraft("draft", 0), name: "Interrupted", kind: "boolean" }),
+    ).toBe(true);
   });
 });
 
@@ -440,7 +444,7 @@ describe.each([
   ["textArea", "textInput"],
 ] as const)("withKindChanged from %s to %s", (kind, nextKind) => {
   it.each(["true", "false"])("preserves literal text default %s", (defaultValue) => {
-    const draft = { ...makeEmptyDraft(0), kind, defaultValue };
+    const draft = { ...makeEmptyDraft("draft", 0), kind, defaultValue };
     expect(withKindChanged(draft, nextKind).defaultValue).toBe(defaultValue);
   });
 });
@@ -452,7 +456,7 @@ describe("text default newline conversion", () => {
     ["CRLF", "first\r\nsecond", "firstsecond"],
   ])("strips %s when converting textArea to textInput", (_label, defaultValue, expected) => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Notes",
       kind: "textArea" as const,
       defaultValue,
@@ -488,7 +492,7 @@ describe.each(["textInput", "textArea"] as const)(
   "withKindChanged from boolean to %s",
   (nextKind) => {
     it.each(["true", "false"])("clears boolean default %s", (defaultValue) => {
-      const draft = { ...makeEmptyDraft(0), kind: "boolean" as const, defaultValue };
+      const draft = { ...makeEmptyDraft("draft", 0), kind: "boolean" as const, defaultValue };
       expect(withKindChanged(draft, nextKind).defaultValue).toBe("");
     });
   },
@@ -498,7 +502,7 @@ describe("draftToFieldDef normalization", () => {
   it.each(["radio", "checkbox"] as const)(
     "clears stale %s defaults and preserves valid ones",
     (kind) => {
-      const draft = { ...makeEmptyDraft(0), name: "Choice", kind, options: ["A", "B"] };
+      const draft = { ...makeEmptyDraft("draft", 0), name: "Choice", kind, options: ["A", "B"] };
       expect(draftToFieldDef({ ...draft, defaultValue: "old text" }).defaultValue).toBe("");
       expect(draftToFieldDef({ ...draft, defaultValue: "A" }).defaultValue).toBe("A");
       expect(draftToFieldDef({ ...draft, defaultValue: "A,B" }).defaultValue).toBe(
@@ -511,14 +515,14 @@ describe("draftToFieldDef normalization", () => {
 
   it.each(["radio", "checkbox"] as const)("clears text defaults when changing to %s", (kind) => {
     for (const textKind of ["textInput", "textArea"] as const) {
-      const draft = { ...makeEmptyDraft(0), kind: textKind, defaultValue: "stale text" };
+      const draft = { ...makeEmptyDraft("draft", 0), kind: textKind, defaultValue: "stale text" };
       expect(withKindChanged(draft, kind).defaultValue).toBe("");
     }
   });
 
   it("boolean preserves requiredness and normalizes invalid defaults to unanswered", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Interrupted",
       kind: "boolean" as const,
       isRequired: true,
@@ -532,7 +536,7 @@ describe("draftToFieldDef normalization", () => {
 
   it("non-option types clear options and exclusive", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Notes",
       kind: "textArea" as const,
       options: ["A"],
@@ -545,7 +549,7 @@ describe("draftToFieldDef normalization", () => {
 
   it("checkbox keeps exclusive only if still in options", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Tools",
       kind: "checkbox" as const,
       options: ["A", "B"],
@@ -556,7 +560,11 @@ describe("draftToFieldDef normalization", () => {
   });
 
   it("trims name", () => {
-    const draft = { ...makeEmptyDraft(0), name: "  Activity  ", kind: "textInput" as const };
+    const draft = {
+      ...makeEmptyDraft("draft", 0),
+      name: "  Activity  ",
+      kind: "textInput" as const,
+    };
     expect(draftToFieldDef(draft).name).toBe("Activity");
   });
 });
@@ -566,7 +574,7 @@ describe("option helpers", () => {
     "reorders %s choices without changing defaults or exclusivity",
     (kind) => {
       const draft: FieldDraft = {
-        ...makeEmptyDraft(0),
+        ...makeEmptyDraft("draft", 0),
         name: "Activity",
         kind,
         options: ["Work", "Wait", "None"],
@@ -593,7 +601,7 @@ describe("option helpers", () => {
 
   it("rejects comma-bearing checkbox names without losing the input", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Tools",
       kind: "checkbox" as const,
       options: ["A", "B"],
@@ -613,7 +621,7 @@ describe("option helpers", () => {
 
   it("addOptionToDraft trims, ignores blank and duplicate", () => {
     let draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Cat",
       kind: "radio" as const,
       options: ["A"],
@@ -631,7 +639,7 @@ describe("option helpers", () => {
 
   it("deleteOption removes option and its exclusive", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Tools",
       kind: "checkbox" as const,
       options: ["A", "B", "None"],
@@ -644,7 +652,7 @@ describe("option helpers", () => {
 
   it("toggleExclusiveOption adds/removes", () => {
     let draft: FieldDraft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Tools",
       kind: "checkbox",
       options: ["A", "None"],
@@ -658,7 +666,7 @@ describe("option helpers", () => {
 
   it("toggleExclusive does nothing for non-checkbox", () => {
     const draft = {
-      ...makeEmptyDraft(0),
+      ...makeEmptyDraft("draft", 0),
       name: "Cat",
       kind: "radio" as const,
       options: ["A"],

@@ -54,7 +54,12 @@ Other commands are in `package.json`.
 ## Lint limits and module size
 
 `pnpm check` uses the Oxlint configuration in `vite.config.ts`, including in CI.
-For a lint-only run, use `pnpm exec vp lint`. Hand-maintained production code
+For a lint-only run, use `pnpm exec vp lint`. It includes
+[`@foldkit/oxlint-plugin`](https://www.npmjs.com/package/@foldkit/oxlint-plugin)'s
+recommended rules (pure update, exhaustive `match`, Effect module names, keyed
+rows), minus five listed in `vite.config.ts` that assume child Submodels or
+Option-only Models, which Optio does not use. Tests, entry files and Node
+scripts get the plugin's own exemptions. Hand-maintained production code
 is limited to 500 lines per file, 150 lines per function (both exclude blanks
 and comments), 25 statements per function, complexity 15, nesting depth 4,
 three parameters and three nested callbacks. Imports must come first, be unique
@@ -76,7 +81,7 @@ registry-component exclusions are used.
 dependencies, and duplicate export names. The config lists the real entry points
 (the app entry, the LiveStore worker, tests and scripts). It exempts exports of
 the Foldcn registry copies in `src/components/ui`, and ignores the generated style table
-and the retained registry items without consumers (label, progress, skeleton;
+and the retained registry items without consumers (label, progress;
 see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
@@ -170,24 +175,28 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- Keep Effect aligned with FoldKit's exact peer requirement.
-  Keep Vitest and its browser provider aligned with the version bundled by Vite+.
-  As of 2026-10-08, the eligible FoldKit 0.166.0 group and Vite plugin
-  0.26.1 require Effect 4.0.0. LiveStore's newest dev release remains
-  0.5.0-dev.0 and still imports the removed `effect/testing/FastCheck` and
-  `Msgpack` export from `effect/unstable/encoding`. Keep the working FoldKit
-  0.159.0 / plugin 0.21.0 / Effect rc.112 group until LiveStore supports the
-  newer APIs. Its matching `@effect/vitest` requires Vitest 4, so retain Vite+
-  0.3.3 and Vitest 4.1.11 together. Vite+ 1.1.0 bundles Vitest 5.0.3; a future
-  upgrade also needs its documented `vite` alias to
+- Keep Effect aligned with FoldKit's exact peer requirement (FoldKit 0.167.0,
+  its UI/DevTools packages and Vite plugin 0.27.0 require Effect 4.0.0).
+  Effect 4.0.0 promoted the `effect/unstable/*` modules to `effect/*` (for
+  example `effect/persistence/KeyValueStore`, `effect/ai`).
+- LiveStore is pinned to an exact main-branch snapshot
+  (`0.0.0-snapshot-3cb74e6…`, 2026-10-05): its newest release, 0.5.0-dev.0,
+  imports Effect rc.112 APIs that every later Effect release removes, while the
+  snapshots target Effect 4.0.0. Snapshots carry no semver guarantee; move to
+  the first LiveStore release that supports Effect 4.0.0, and on any LiveStore
+  change rerun `pnpm test:e2e` and `scripts/test-dev-store.mjs`, which prove
+  that writes reach OPFS and survive reloads. (Patching 0.5.0-dev.0 instead
+  loaded and type-checked but silently never persisted: `syncStatus()` kept
+  every event pending.) No LiveStore patches are needed.
+- `@effect/vitest` 4.0.0 declares Vitest 5, but Vite+ 0.3.3 bundles Vitest
+  4.1.11; the test suites pass with it. Keep Vitest and its browser provider
+  aligned with the version bundled by Vite+. Vite+ 1.1.0 bundles Vitest 5.0.3;
+  that upgrade also needs its documented `vite` alias to
   `@voidzero-dev/vite-plus-core` and exact `vitest` override to avoid duplicate
   test-runner state.
-- The LiveStore adapter patch supplies `Schema.toCodecJson` to the worker RPC
-  protocol expected by this Effect release. Remove it only when an upstream
-  adapter includes the codec and the production storage journey passes.
-- The scoped Nano ID override removes known advisories in LiveStore's pinned
-  version. Reassess it when updating LiveStore. Keep the 24-hour release-age
-  guard; do not bypass it for routine dependency updates.
+- The Nano ID override (`@livestore/utils>nanoid`) removes known advisories in
+  LiveStore's pinned version. Reassess it when updating LiveStore. Keep the
+  24-hour release-age guard; do not bypass it for routine dependency updates.
 - pnpm 12.10.1 is pinned. Use the pinned version for its two-document lockfile.
   Verify external scanners and
   Dependabot parse the app graph, not only the package-manager document.

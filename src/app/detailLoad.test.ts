@@ -54,6 +54,16 @@ describe("detail pages when an item cannot be read", () => {
     }),
   );
 
+  it.effect("reports a failed list read so its page can offer a retry", () =>
+    Effect.gen(function* () {
+      vi.mocked(getStore).mockResolvedValue(unreadableStore);
+      const messages = yield* subscriptions.history
+        .dependenciesToStream({ attempt: 0 })
+        .pipe(Stream.take(1), Stream.runCollect);
+      expect(messages).toEqual([Message.FailedListRead({ list: "history" })]);
+    }),
+  );
+
   it("keeps the failure until the route changes", () => {
     const failed = update(at("/history/s1"), Message.FailedDetailLoad()).model;
     expect(failed.detailLoadFailed).toBe(true);

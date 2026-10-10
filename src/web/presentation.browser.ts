@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { Effect, Option } from "effect";
-import { Runtime } from "foldkit";
+import { AsyncData, Runtime } from "foldkit";
 import { fromString } from "foldkit/url";
 
 import { init, Model, update, view as appView } from "../main";
@@ -19,7 +19,7 @@ import { setCurrentIconLibrary } from "../lib/iconPreference";
 import {
   changeAccent,
   changeFont,
-  changeTheme,
+  applyColorScheme,
   initializeAccent,
   initializeFont,
   initializeIconLibrary,
@@ -241,6 +241,7 @@ describe("persistent presentation regressions", () => {
         startView(
           {
             ...model,
+            templates: [],
             activeSession: active
               ? {
                   id: "session-1",
@@ -451,12 +452,12 @@ describe("persistent presentation regressions", () => {
     await Effect.runPromise(initializeAccent);
     expect(favicon().querySelector("rect")!.getAttribute("fill")).toBe("#eeeeee");
     await Effect.runPromise(changeAccent("blue"));
-    await Effect.runPromise(changeTheme("light"));
+    await Effect.runPromise(applyColorScheme(false));
     const light = favicon().querySelector("rect")!.getAttribute("fill");
-    await Effect.runPromise(changeTheme("dark"));
+    await Effect.runPromise(applyColorScheme(true));
     expect(favicon().querySelector("rect")!.getAttribute("fill")).not.toBe(light);
     expect(document.querySelectorAll('link[rel="icon"]')).toHaveLength(1);
-    await Effect.runPromise(changeTheme("auto"));
+    await Effect.runPromise(applyColorScheme(false));
   });
 
   it("loads defaults and reports unsaved choices when browser storage is blocked", async () => {
@@ -603,7 +604,11 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each([390, 1280])("creates and edits questions in a focused page at %ipx", async (width) => {
-    await mount((model, h) => appView({ ...model, route: { _tag: "TemplatesTab" } }, h).body);
+    await mount(
+      (model, h) =>
+        appView({ ...model, route: { _tag: "TemplatesTab" }, templates: AsyncData.succeed([]) }, h)
+          .body,
+    );
     await page.viewport(width, 900);
     await page.getByRole("button", { name: "Create template", exact: true }).click();
     await expect
@@ -716,10 +721,12 @@ describe("persistent presentation regressions", () => {
           {
             ...model,
             route: { _tag: "TemplatesTab" },
-            templates: Array.from({ length: 30 }, (_, index) => ({
-              ...template,
-              id: `template-${index}`,
-            })),
+            templates: AsyncData.succeed(
+              Array.from({ length: 30 }, (_, index) => ({
+                ...template,
+                id: `template-${index}`,
+              })),
+            ),
           },
           h,
         ).body,
@@ -746,7 +753,7 @@ describe("persistent presentation regressions", () => {
           {
             ...model,
             route: { _tag: "TemplatesTab" },
-            templates: [template],
+            templates: AsyncData.succeed([template]),
             templateActionsFor: template.id,
           },
           h,
@@ -852,7 +859,9 @@ describe("persistent presentation regressions", () => {
   it.each([390, 820, 1440])(
     "uses base form geometry in the session page at %ipx",
     async (width) => {
-      await mount((model, h) => startView({ ...model, templates: [template] }, h));
+      await mount((model, h) =>
+        startView({ ...model, activeSession: null, templates: [template] }, h),
+      );
       await page.viewport(width, 900);
       await expect.element(page.getByLabelText("Session name", { exact: true })).toBeVisible();
       for (const name of ["Study template", "Session name"]) {
@@ -919,7 +928,7 @@ describe("persistent presentation regressions", () => {
   it("renders a converted text input default exactly as it is stored", async () => {
     const convertedDraft = withKindChanged(
       {
-        ...makeEmptyDraft(0),
+        ...makeEmptyDraft("draft", 0),
         name: "Notes",
         kind: "textArea",
         defaultValue: "first\r\nsecond\nthird\rfourth",
@@ -1019,7 +1028,10 @@ describe("persistent presentation regressions", () => {
   it("traps focus in sheets, locks scrolling and hands focus back across a sheet swap", async () => {
     await mount(
       (model, h) =>
-        appView({ ...model, route: { _tag: "HistoryTab" }, history: [history] }, h).body,
+        appView(
+          { ...model, route: { _tag: "HistoryTab" }, history: AsyncData.succeed([history]) },
+          h,
+        ).body,
       900,
     );
     await page.viewport(390, 844);
@@ -1056,7 +1068,10 @@ describe("persistent presentation regressions", () => {
   it("releases a sheet as soon as its page stops rendering it", async () => {
     await mount(
       (model, h) =>
-        appView({ ...model, route: { _tag: "TemplatesTab" }, templates: [template] }, h).body,
+        appView(
+          { ...model, route: { _tag: "TemplatesTab" }, templates: AsyncData.succeed([template]) },
+          h,
+        ).body,
       900,
     );
     const trigger = page.getByRole("button", { name: 'Actions for "Observation"' });

@@ -23,10 +23,10 @@ it.effect("reports an unavailable store, then resumes its subscription after a r
       .mockResolvedValue(store as unknown as AppStore);
 
     const retried: Array<Message> = [];
-    const messages = yield* subscriptions.activeSession.dependenciesToStream({}).pipe(
+    const messages = yield* subscriptions.activeSession.dependenciesToStream({ attempt: 0 }).pipe(
       Stream.tap((message) =>
         message._tag === "StoreUnavailable"
-          ? Effect.map(RetryStore({}).effect, (result) => retried.push(result))
+          ? Effect.map(RetryStore().effect, (result) => retried.push(result))
           : Effect.void,
       ),
       Stream.take(2),

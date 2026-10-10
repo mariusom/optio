@@ -86,17 +86,14 @@ const itemGroup = <M>(
   );
 
 const itemSeparator = <M>(config: ItemSeparatorConfig, h: HtmlBuilder<M>): Html =>
-  h.div(
-    [
-      h.Class(cn(itemSeparatorClass, config.className)),
-      h.Role("separator"),
-      h.AriaOrientation(config.orientation ?? "horizontal"),
-      h.DataAttribute("slot", "item-separator"),
-      h.DataAttribute("orientation", config.orientation ?? "horizontal"),
-      h.DataAttribute(config.orientation ?? "horizontal", ""),
-    ],
-    [],
-  );
+  h.div([
+    h.Class(cn(itemSeparatorClass, config.className)),
+    h.Role("separator"),
+    h.AriaOrientation(config.orientation ?? "horizontal"),
+    h.DataAttribute("slot", "item-separator"),
+    h.DataAttribute("orientation", config.orientation ?? "horizontal"),
+    h.DataAttribute(config.orientation ?? "horizontal", ""),
+  ]);
 
 const itemContainer = <M>(
   config: ItemConfig,

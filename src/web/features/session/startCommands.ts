@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -50,11 +50,11 @@ const failed = (error: string) => Message.FailedSessionOp({ error });
 
 export const StartSession = Command.define("StartSession", {
   args: {
-    id: S.String,
-    templateId: S.Union([S.Null, S.String]),
-    templateName: S.String,
-    sessionName: S.String,
-    fields: S.Array(FieldDef),
+    id: Schema.String,
+    templateId: Schema.Union([Schema.Null, Schema.String]),
+    templateName: Schema.String,
+    sessionName: Schema.String,
+    fields: Schema.Array(FieldDef),
   },
   messages: [Message.SessionStarted, Message.FailedSessionOp],
   execute: ({ id, templateId, templateName, sessionName, fields }) =>
@@ -88,7 +88,7 @@ export const StartSession = Command.define("StartSession", {
 });
 
 export const DiscardLiveSession = Command.define("DiscardLiveSession", {
-  args: { sessionId: S.String },
+  args: { sessionId: Schema.String },
   messages: [Message.SessionDiscarded, Message.FailedSessionOp],
   execute: ({ sessionId }) =>
     withStore(({ store, tables, events }) =>

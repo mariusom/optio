@@ -3,6 +3,29 @@ import { foldkit } from "@foldkit/vite-plugin";
 import { playwright } from "vite-plus/test/browser-playwright";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin, type UserConfig } from "vite-plus";
+import foldkitRecommendedJson from "@foldkit/oxlint-plugin/recommended.json" with { type: "json" };
+
+type RuleLevel = "error" | "off";
+type LintOverride = { files: string[]; excludeFiles?: string[]; rules: Record<string, RuleLevel> };
+// JSON imports widen rule levels to `string`; the plugin ships only these two.
+const foldkitRecommended = foldkitRecommendedJson as Omit<
+  typeof foldkitRecommendedJson,
+  "rules" | "overrides"
+> & { rules: Record<string, RuleLevel>; overrides: LintOverride[] };
+
+// FoldKit's recommended rules, minus those that assume conventions Optio does
+// not use: it has no child Submodels, so `Got…` names store results rather than
+// wrapping child Messages, and the Model keeps nullable fields.
+const foldkitRules: Record<string, RuleLevel> = {
+  ...foldkitRecommended.rules,
+  "foldkit/got-prefix-requires-submodel-payload": "off",
+  "foldkit/got-wrapper-carries-only-routing": "off",
+  "foldkit/no-child-message-construction-in-root": "off",
+  "foldkit/prefer-option-over-nullable-in-model": "off",
+  // Module state is limited to deliberate handles: the memoized store open
+  // (see livestore/client.ts) and the applied style table read by `cn`.
+  "foldkit/no-module-level-mutable-state": "off",
+};
 
 // One test run schedules both projects concurrently; `--project` selects one.
 const test: UserConfig["test"] = {
@@ -30,6 +53,71 @@ const test: UserConfig["test"] = {
   ],
 };
 
+const lint: UserConfig["lint"] = {
+  plugins: ["typescript", "unicorn", "oxc", "import", "promise"],
+  jsPlugins: foldkitRecommended.jsPlugins,
+  categories: { correctness: "error", suspicious: "error" },
+  rules: {
+    "max-statements": ["error", 25],
+    "max-lines-per-function": ["error", { max: 150, skipBlankLines: true, skipComments: true }],
+    "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
+    "max-depth": ["error", 4],
+    complexity: ["error", 15],
+    "max-params": ["error", 3],
+    "max-nested-callbacks": ["error", 3],
+    "import/no-cycle": "error",
+    "import/first": "error",
+    "import/no-duplicates": "error",
+    "import/no-unassigned-import": ["error", { allow: ["**/*.css", "**/*.woff", "**/*.woff2"] }],
+    "typescript/no-require-imports": "error",
+    "no-unused-vars": ["error", { args: "all", argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    "promise/catch-or-return": "error",
+    "unicorn/no-abusive-eslint-disable": "error",
+    "import/no-default-export": "off",
+    "no-console": "off",
+    "no-underscore-dangle": ["error", { allow: ["_tag"] }],
+    ...foldkitRules,
+  },
+  overrides: [
+    // Entry and test files may read the clock or generate IDs directly; Node
+    // scripts and browser/e2e tests get the same exemptions as unit tests.
+    ...foldkitRecommended.overrides.map((override) =>
+      override.files.includes("**/*.test.ts")
+        ? { ...override, files: [...override.files, "**/*.browser.ts", "scripts/**"] }
+        : override,
+    ),
+    {
+      // Generated registry data is not hand-maintained application logic.
+      files: ["src/web/componentStyles.generated.ts"],
+      rules: { "max-lines": "off" },
+    },
+    {
+      // Vite supplies default constructors for worker query imports.
+      files: ["src/livestore/openStore.ts"],
+      rules: { "import/default": "off" },
+    },
+    {
+      files: [
+        "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+        "**/{test,tests,__tests__}/**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+        "**/*.stories.{js,jsx,ts,tsx}",
+        "**/*.story.{js,jsx,ts,tsx}",
+        "**/*.browser.ts",
+        "**/*.e2e.mjs",
+      ],
+      rules: {
+        "max-statements": "off",
+        "max-lines-per-function": "off",
+        "max-lines": "off",
+        "max-depth": "off",
+        complexity: "off",
+        "max-params": "off",
+        "max-nested-callbacks": "off",
+      },
+    },
+  ],
+};
+
 // Deployed to GitHub Pages project site: https://mariusom.github.io/optio/
 export default defineConfig(({ command, mode }) => {
   const bundledDev = command === "serve" && mode !== "test";
@@ -41,67 +129,7 @@ export default defineConfig(({ command, mode }) => {
     for (const plugin of tailwind) delete plugin.hotUpdate;
   }
   return defineConfig({
-    lint: {
-      plugins: ["typescript", "unicorn", "oxc", "import", "promise"],
-      categories: { correctness: "error", suspicious: "error" },
-      rules: {
-        "max-statements": ["error", 25],
-        "max-lines-per-function": ["error", { max: 150, skipBlankLines: true, skipComments: true }],
-        "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
-        "max-depth": ["error", 4],
-        complexity: ["error", 15],
-        "max-params": ["error", 3],
-        "max-nested-callbacks": ["error", 3],
-        "import/no-cycle": "error",
-        "import/first": "error",
-        "import/no-duplicates": "error",
-        "import/no-unassigned-import": [
-          "error",
-          { allow: ["**/*.css", "**/*.woff", "**/*.woff2"] },
-        ],
-        "typescript/no-require-imports": "error",
-        "no-unused-vars": [
-          "error",
-          { args: "all", argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-        ],
-        "promise/catch-or-return": "error",
-        "unicorn/no-abusive-eslint-disable": "error",
-        "import/no-default-export": "off",
-        "no-console": "off",
-        "no-underscore-dangle": ["error", { allow: ["_tag"] }],
-      },
-      overrides: [
-        {
-          // Generated registry data is not hand-maintained application logic.
-          files: ["src/web/componentStyles.generated.ts"],
-          rules: { "max-lines": "off" },
-        },
-        {
-          // Vite supplies default constructors for worker query imports.
-          files: ["src/livestore/openStore.ts"],
-          rules: { "import/default": "off" },
-        },
-        {
-          files: [
-            "**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
-            "**/{test,tests,__tests__}/**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
-            "**/*.stories.{js,jsx,ts,tsx}",
-            "**/*.story.{js,jsx,ts,tsx}",
-            "**/*.browser.ts",
-            "**/*.e2e.mjs",
-          ],
-          rules: {
-            "max-statements": "off",
-            "max-lines-per-function": "off",
-            "max-lines": "off",
-            "max-depth": "off",
-            complexity: "off",
-            "max-params": "off",
-            "max-nested-callbacks": "off",
-          },
-        },
-      ],
-    },
+    lint,
     experimental: { bundledDev },
     base: "/optio/",
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
@@ -181,7 +209,11 @@ export default defineConfig(({ command, mode }) => {
       rolldownOptions: {
         output: {
           codeSplitting: {
-            groups: [{ name: "vendor", test: /node_modules/ }],
+            // FoldKit's plugin serves `foldkit` unbundled, and its pre-bundled
+            // companions (UI, DevTools overlay) import it. Grouping them with
+            // Effect would make the vendor chunk import raw FoldKit, which
+            // imports Effect back from the still-initializing vendor chunk.
+            groups: [{ name: "vendor", test: /node_modules\/(?!.*@foldkit\/)/ }],
           },
         },
       },

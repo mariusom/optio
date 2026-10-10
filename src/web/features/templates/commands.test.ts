@@ -45,13 +45,13 @@ describe.each([
   ],
   [
     "seed",
-    () => EnsureTemplatesSeeded({}),
+    () => EnsureTemplatesSeeded(),
     Message.TemplatesSeededCheck(),
     "Couldn't create that. Please try again.",
   ],
   [
     "add samples",
-    () => AddSampleTemplates({}),
+    () => AddSampleTemplates(),
     Message.SampleTemplatesAdded(),
     "Couldn't create that. Please try again.",
   ],
@@ -139,22 +139,19 @@ describe("CreateTemplate", () => {
 
 describe("sampleTemplates", () => {
   it("offers one showcase study per setting, only the first being the default", () => {
-    expect(sampleTemplates().map((template) => template.name)).toEqual([
+    expect(sampleTemplates(() => crypto.randomUUID()).map((template) => template.name)).toEqual([
       "Assembly line",
       "Ward round",
       "Warehouse pick",
       "Packing measurements",
     ]);
-    expect(sampleTemplates().map((template) => template.isDefault)).toEqual([
-      true,
-      false,
-      false,
-      false,
-    ]);
+    expect(
+      sampleTemplates(() => crypto.randomUUID()).map((template) => template.isDefault),
+    ).toEqual([true, false, false, false]);
   });
 
   it("uses every answer type, with one choice that clears the others", () => {
-    for (const template of sampleTemplates().slice(0, 3)) {
+    for (const template of sampleTemplates(() => crypto.randomUUID()).slice(0, 3)) {
       expect(new Set(template.fields.map((f) => f.kind))).toEqual(
         new Set(["radio", "checkbox", "textInput", "textArea", "boolean"]),
       );
@@ -167,7 +164,9 @@ describe("sampleTemplates", () => {
   });
 
   it("demonstrates quantitative answers and required unanswered Yes/No", () => {
-    const demo = sampleTemplates().find((t) => t.name === "Packing measurements")!;
+    const demo = sampleTemplates(() => crypto.randomUUID()).find(
+      (t) => t.name === "Packing measurements",
+    )!;
     expect(demo.fields.map((f) => f.kind)).toEqual(["number", "counter", "rating", "boolean"]);
     expect(demo.fields.map((f) => f.defaultValue)).toEqual(["", "", "", ""]);
     expect(demo.fields.every((f) => f.isRequired)).toBe(true);
@@ -177,8 +176,8 @@ describe("sampleTemplates", () => {
 describe("template queries", () => {
   it.effect.each([
     () => CreateTemplate({ id: "new", name: "Study" }),
-    () => EnsureTemplatesSeeded({}),
-    () => AddSampleTemplates({}),
+    () => EnsureTemplatesSeeded(),
+    () => AddSampleTemplates(),
   ])("reports query failures without committing", (command) =>
     Effect.gen(function* () {
       query.mockImplementation(() => {
@@ -193,7 +192,7 @@ describe("template queries", () => {
 
   it.effect("seeds the four sample templates when the app is empty", () =>
     Effect.gen(function* () {
-      expect(yield* EnsureTemplatesSeeded({}).effect).toEqual(Message.TemplatesSeededCheck());
+      expect(yield* EnsureTemplatesSeeded().effect).toEqual(Message.TemplatesSeededCheck());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Ward round",
@@ -206,7 +205,7 @@ describe("template queries", () => {
   it.effect("skips seeding when templates already exist", () =>
     Effect.gen(function* () {
       query.mockReturnValue([{ id: "existing" }]);
-      expect(yield* EnsureTemplatesSeeded({}).effect).toEqual(Message.TemplatesSeededCheck());
+      expect(yield* EnsureTemplatesSeeded().effect).toEqual(Message.TemplatesSeededCheck());
       expect(commit).not.toHaveBeenCalled();
     }),
   );
@@ -216,7 +215,7 @@ describe("AddSampleTemplates", () => {
   it.effect("adds only the samples whose names are missing and keeps the current default", () =>
     Effect.gen(function* () {
       query.mockReturnValue([{ name: "Ward round" }, { name: "My own study" }]);
-      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Warehouse pick",
@@ -228,15 +227,17 @@ describe("AddSampleTemplates", () => {
 
   it.effect("commits nothing when every sample is already there", () =>
     Effect.gen(function* () {
-      query.mockReturnValue(sampleTemplates().map((template) => ({ name: template.name })));
-      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      query.mockReturnValue(
+        sampleTemplates(() => crypto.randomUUID()).map((template) => ({ name: template.name })),
+      );
+      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
       expect(commit).not.toHaveBeenCalled();
     }),
   );
 
   it.effect("makes the first sample the default when the app has no templates", () =>
     Effect.gen(function* () {
-      expect(yield* AddSampleTemplates({}).effect).toEqual(Message.SampleTemplatesAdded());
+      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
       expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
         true,
         false,

@@ -1,5 +1,5 @@
 import { Context, Effect, ManagedRuntime, Option, Schema, Stream } from "effect";
-import { Tool } from "effect/unstable/ai";
+import { Tool } from "effect/ai";
 
 import { OptioTools, type makeToolHandlers } from "./tools";
 

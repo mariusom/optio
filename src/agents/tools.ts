@@ -1,5 +1,5 @@
 import { Effect, Schema } from "effect";
-import { Tool, Toolkit } from "effect/unstable/ai";
+import { Tool, Toolkit } from "effect/ai";
 
 import type { AppStore } from "../livestore/client";
 import { archivedSessions } from "../livestore/queries";

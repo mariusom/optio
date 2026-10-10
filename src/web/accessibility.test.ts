@@ -130,6 +130,7 @@ describe("audited view accessibility", () => {
         historyPage(
           {
             history: [],
+            now: 0,
             pendingHistoryDelete: { id: "s", displayName: "S" },
             historyActionsFor: null,
             historyError: null,
@@ -304,6 +305,7 @@ describe("audited view accessibility", () => {
         view: historyPage(
           {
             history: [session],
+            now: session.startedAt,
             pendingHistoryDelete: null,
             historyActionsFor: null,
             historyError: null,
