@@ -85,6 +85,7 @@ export const Message = defineMessageUnion({
   TemplatesSeededCheck: {},
   OpenedTemplateActions: { id: Schema.String },
   ClosedTemplateActions: {},
+  ClickedStartTemplateSession: { id: Schema.String },
   ClickedAddSampleTemplates: {},
   SampleTemplatesAdded: {},
 

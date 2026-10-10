@@ -46,12 +46,12 @@ for (const scheme of schemes) {
     });
     await step("editor", async () => {
       await page
-        .getByRole("button", { name: /Assembly line/ })
+        .getByRole("button", { name: /^Assembly line / })
         .first()
         .click({ timeout: 5000 });
       await page.waitForTimeout(800);
       await shot("editor");
-      await page.getByRole("button", { name: /Edit question Tools used/ }).click({ timeout: 5000 });
+      await page.getByRole("button", { name: /^Tools used / }).click({ timeout: 5000 });
       await page.waitForTimeout(500);
       await shot("question-sheet");
       await page.keyboard.press("Escape");
