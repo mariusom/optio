@@ -5,7 +5,7 @@ import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
 import { Accent, ControlSize, defaultLook, Font, IconLibrary, Look, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
-import { TemplateSummary } from "../web/types";
+import { TemplateReport, TemplateSummary } from "../web/types";
 
 // Payload shapes shared by the Model and the Messages that deliver them.
 
@@ -124,6 +124,9 @@ export const Model = Schema.Struct({
   ]),
   /** Template whose "⋯" action sheet is open, if any. */
   templateActionsFor: Schema.Union([Schema.Null, Schema.String]),
+  /** Template whose time report sheet is open; its data arrives as `templateReport`. */
+  templateReportFor: Schema.Union([Schema.Null, Schema.String]),
+  templateReport: Schema.NullOr(TemplateReport),
   lastError: Schema.Union([Schema.Null, Schema.String]),
   editor: Schema.Union([
     Schema.Null,
@@ -228,6 +231,8 @@ const initialModel = (route: Route): Model => ({
   newName: "",
   pendingDelete: null,
   templateActionsFor: null,
+  templateReportFor: null,
+  templateReport: null,
   lastError: null,
   editor: null,
   selectedTemplateId: null,

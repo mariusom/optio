@@ -1,6 +1,7 @@
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
+  ChartBar,
   Copy,
   Ellipsis,
   LayoutTemplate,
@@ -21,7 +22,8 @@ import { button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
-import type { TemplateSummary } from "../../types";
+import type { TemplateReport, TemplateSummary } from "../../types";
+import { templateReportSheet } from "./reportSheet";
 import { displaySessionName, type ActiveSession } from "../session/startHelpers";
 
 // Templates tab — a grouped list of templates (a two-column card grid from
@@ -34,6 +36,8 @@ type TemplatesModel = {
   readonly newName: string;
   readonly pendingDelete: { readonly id: string; readonly name: string } | null;
   readonly templateActionsFor?: string | null;
+  readonly templateReportFor?: string | null;
+  readonly templateReport?: TemplateReport | null;
   readonly lastError: string | null;
   /** The live session, if any: only one can run, so the sheet offers to resume it. */
   readonly liveSession?: ActiveSession | null;
@@ -158,6 +162,14 @@ const actionsSheet = (
               ]),
           sheetAction(
             {
+              label: "Time report",
+              leading: icon(h, ChartBar),
+              onClick: Message.OpenedTemplateReport({ id: template.id }),
+            },
+            h,
+          ),
+          sheetAction(
+            {
               label: "Duplicate",
               leading: icon(h, Copy),
               onClick: Message.ClickedDuplicateTemplate({ id: template.id }),
@@ -205,6 +217,10 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
     model.templateActionsFor === undefined || model.templateActionsFor === null
       ? null
       : (model.templates.find((t) => t.id === model.templateActionsFor) ?? null);
+  const reportFor =
+    model.templateReportFor === undefined || model.templateReportFor === null
+      ? null
+      : (model.templates.find((t) => t.id === model.templateReportFor) ?? null);
 
   const body =
     model.templates.length === 0
@@ -249,6 +265,9 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
       ...(model.lastError === null ? [] : [notice({ tone: "error", text: model.lastError }, h)]),
       body,
       ...(openFor === null ? [] : [actionsSheet(openFor, model.liveSession ?? null, h)]),
+      ...(reportFor === null
+        ? []
+        : [templateReportSheet(reportFor, model.templateReport ?? null, h)]),
       ...(model.pendingDelete === null ? [] : [deleteSheet(model.pendingDelete, h)]),
     ],
     h,

@@ -4,7 +4,7 @@ import { UrlRequest } from "foldkit/navigation";
 
 import { FieldDef } from "./domain/fields";
 import { RouteSchema } from "./web/routes";
-import { TemplateSummary } from "./web/types";
+import { TemplateReport, TemplateSummary } from "./web/types";
 import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 import { RunnerDataSchema } from "./web/features/session/runner";
@@ -90,6 +90,9 @@ export const Message = defineMessageUnion({
   OpenedTemplateActions: { id: Schema.String },
   ClosedTemplateActions: {},
   ClickedStartTemplateSession: { id: Schema.String },
+  OpenedTemplateReport: { id: Schema.String },
+  ClosedTemplateReport: {},
+  GotTemplateReport: { report: TemplateReport },
   ClickedAddSampleTemplates: {},
   SampleTemplatesAdded: {},
 

@@ -43,6 +43,9 @@ component APIs; review local customizations before refreshing a registry item.
   in `history/timeBreakdownView.ts`, with their own dark-mode steps, assigned
   in order and never cycled (fold extra categories into “Other”). Missing data
   uses a muted neutral. Re-validate any slot change in light and dark mode.
+- A template's “Time report” (its action sheet) sums the session-detail
+  breakdown over every finished session recorded with it. It is a sheet, open
+  while `templateReportFor` is set, fed by the `templateReport` subscription.
 - Durations in lists use `formatDurationShort` (seconds under a minute, then
   hours and minutes); detail screens use `formatDurationHms`.
 - The runner's primary action has one desktop shortcut, Ctrl/⌘+Enter: Record,

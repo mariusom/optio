@@ -223,9 +223,9 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     let base =
       route._tag === "TemplateEditor"
         ? model.editor !== null && model.editor.id === route.templateId
-          ? { ...model, route, templateActionsFor: null }
-          : { ...model, route, editor: null, templateActionsFor: null }
-        : { ...model, route, editor: null, templateActionsFor: null };
+          ? { ...model, route, templateActionsFor: null, templateReportFor: null }
+          : { ...model, route, editor: null, templateActionsFor: null, templateReportFor: null }
+        : { ...model, route, editor: null, templateActionsFor: null, templateReportFor: null };
     base = {
       ...base,
       historyActionsFor: null,

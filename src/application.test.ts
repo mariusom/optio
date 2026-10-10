@@ -42,6 +42,7 @@ describe("application wiring", () => {
         "storage",
         "systemColorScheme",
         "templateDetail",
+        "templateReport",
         "templates",
         "ticker",
       ].toSorted(),

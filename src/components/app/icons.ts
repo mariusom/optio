@@ -6,6 +6,7 @@ import { icon as lucideIcon } from "@/lib/icons";
 export {
   ArrowDown,
   ArrowUp,
+  ChartBar,
   Check,
   ChevronLeft,
   ChevronRight,

@@ -35,6 +35,9 @@ type TemplateHandlers = Pick<
   | "OpenedTemplateActions"
   | "ClosedTemplateActions"
   | "ClickedStartTemplateSession"
+  | "OpenedTemplateReport"
+  | "ClosedTemplateReport"
+  | "GotTemplateReport"
   | "ClickedAddSampleTemplates"
   | "SampleTemplatesAdded"
   | "TemplateOpDone"
@@ -134,6 +137,20 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     commands: model.placeholderName === "" ? [GeneratePlaceholderName()] : [],
   }),
   ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
+  // The report replaces the action sheet; data for another template is dropped.
+  OpenedTemplateReport: ({ id }) => ({
+    model: {
+      ...model,
+      templateActionsFor: null,
+      templateReportFor: id,
+      templateReport: model.templateReport?.templateId === id ? model.templateReport : null,
+    },
+  }),
+  ClosedTemplateReport: () => ({ model: { ...model, templateReportFor: null } }),
+  GotTemplateReport: ({ report }) => ({
+    model:
+      report.templateId === model.templateReportFor ? { ...model, templateReport: report } : model,
+  }),
   ClickedStartTemplateSession: ({ id }) => {
     const closed = { ...model, templateActionsFor: null };
     const template = templatesOf(model).find((candidate) => candidate.id === id);

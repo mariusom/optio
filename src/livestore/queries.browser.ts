@@ -166,3 +166,48 @@ it("updates archived and active sessions as a session ends", async () => {
     for (const unsubscribe of unsubscribes) unsubscribe();
   }
 });
+
+const reportSession = (id: string, templateId: string, startedAt: number) =>
+  events.sessionStarted({
+    id,
+    templateId,
+    templateName: "Study",
+    sessionName: "",
+    now: new Date(startedAt),
+  });
+// Ending archives finished tasks, so each task is spawned and finished first.
+const endWithTasks = (id: string, endedAt: number, tasks: number) => [
+  ...Array.from({ length: tasks }, (_, index) => [
+    events.taskSpawned({
+      sessionId: id,
+      id: `${id}-${index + 1}`,
+      orderIndex: index + 1,
+      fields,
+    }),
+    events.taskFinished({ id: `${id}-${index + 1}`, endedAt: new Date(endedAt) }),
+  ]).flat(),
+  events.sessionEnded({
+    id,
+    endedAt: new Date(endedAt),
+    records: Array.from({ length: tasks }, (_, index) => archivedTask(index + 1)),
+  }),
+  events.sessionLiveGraphCleared({ sessionId: id }),
+];
+
+it("reads a template's report from its finished sessions only", async () => {
+  const store = await openStore();
+  // Sessions end one at a time: only one can be live.
+  store.commit(reportSession("a", "t", 1000), ...endWithTasks("a", 4000, 2));
+  store.commit(reportSession("other", "x", 5000), ...endWithTasks("other", 6000, 1));
+  store.commit(reportSession("b", "t", 7000), ...endWithTasks("b", 9000, 1));
+  store.commit(reportSession("live", "t", 10_000));
+
+  const { summary, records, sections } = store.query(queries.templateReportRows("t"));
+  expect(summary).toEqual({ sessionCount: 2, totalMs: 5000 });
+  expect(records.map((row) => `${row.sessionId}:${row.taskId}`)).toEqual(["a:1", "a:2", "b:1"]);
+  expect(sections).toHaveLength(9);
+  expect(store.query(queries.templateReportRows("none")).summary).toEqual({
+    sessionCount: 0,
+    totalMs: 0,
+  });
+});

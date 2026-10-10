@@ -74,6 +74,8 @@ const makeModel = (runner: Model["runner"]): Model => ({
   newName: "",
   pendingDelete: null,
   templateActionsFor: null,
+  templateReportFor: null,
+  templateReport: null,
   lastError: null,
   editor: null,
   selectedTemplateId: null,
