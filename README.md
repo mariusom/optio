@@ -15,7 +15,8 @@ computers, and can be added to your home screen. After the first visit finishes
 loading, you can use it offline. No account is needed.
 
 Studies stay in your browser, with no automatic backup or sync. Clearing site
-data can erase them, so export important results. Optional assistant access can
+data can erase them, so download a backup from Settings (it can be restored on
+any device) or export results as CSV. Optional assistant access can
 share study data with an assistant provider; see [agent access](docs/agent-access.md)
 before enabling it.
 

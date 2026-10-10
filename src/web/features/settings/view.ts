@@ -6,6 +6,7 @@ import { Message } from "../../../messages";
 import type { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../../theme";
 import type { FoldcnStyle } from "../../style";
 import { hrefFor } from "../../routes";
+import { backupSection } from "./backupView";
 import {
   accentPicker,
   accentRows,
@@ -107,7 +108,7 @@ const privacy = (h: HtmlBuilder<Message>) =>
     {
       header: "Privacy",
       footer:
-        "No account is needed. After the first load, studies work offline. Export important results; browser storage is not a backup.",
+        "No account is needed. After the first load, studies work offline. Browser storage is not a backup: download one to keep or move your studies.",
     },
     [
       row(
@@ -131,6 +132,8 @@ type SettingsModel = FailureOptions &
     iconLibrary: IconLibrary;
     look: Look;
     controlSize: ControlSize;
+    backupBusy: boolean;
+    backupNotice: { readonly tone: "success" | "error"; readonly text: string } | null;
   }>;
 
 /** One settings column; columns sit side by side from 1280px (xl). */
@@ -189,6 +192,7 @@ export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
                 h,
               ),
               ...failureNotices(model, h),
+              backupSection(model, h),
               privacy(h),
               helpAndAbout(h),
             ],

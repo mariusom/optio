@@ -3,6 +3,7 @@ import type { Update } from "foldkit";
 import { confirmationChanged, invalidatesAgentConfirmation } from "../agents/actions";
 import type { Message } from "../messages";
 import { editorFieldHandlers, editorLoadHandlers, editorSaveHandlers } from "./editorUpdate";
+import { backupHandlers } from "./backupUpdate";
 import { historyHandlers } from "./historyUpdate";
 import type { Model } from "./model";
 import { sessionHandlers } from "./sessionUpdate";
@@ -26,6 +27,7 @@ const handlerGroups = [
   sessionHandlers,
   historyHandlers,
   storageHandlers,
+  backupHandlers,
 ] as const;
 
 type KeysOf<T> = T extends unknown ? keyof T : never;

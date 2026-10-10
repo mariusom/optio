@@ -69,6 +69,12 @@ export const Message = defineMessageUnion({
   ClickedCopyTemplatePrompt: {},
   TemplatePromptCopyFinished: { copied: Schema.Boolean },
   ResetTemplatePromptCopy: {},
+  ClickedDownloadBackup: {},
+  BackupDownloaded: { filename: Schema.String },
+  /** A backup file was chosen in Settings; its text is read by RestoreBackup. */
+  ChoseBackupFile: {},
+  BackupRestored: { templates: Schema.Number, sessions: Schema.Number, skipped: Schema.Number },
+  FailedBackup: { error: Schema.String },
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: Schema.Array(TemplateSummary) },

@@ -155,5 +155,11 @@ Optio adds no runtime network dependency for studies. Browser storage can still
 be cleared or evicted; persistence is not a backup guarantee. After a session starts
 on disk, `RequestPersistentStorage` asks the browser to exempt the site from
 eviction under storage pressure (`navigator.storage.persist()`); the answer is
-informational, and users can still clear site data. Service-worker
+informational, and users can still clear site data. Settings downloads a JSON
+backup of every template and finished session (`web/backup.ts`); restoring
+commits one `v3.BackupRestored` event that adds only what is missing. The
+command plans the restore first: templates whose ID exists, or with the same
+name and questions (each browser seeds its own samples), are kept, and their
+sessions are repointed to the existing template. The materializer still
+skips any existing ID, so replays and repeated restores stay harmless. Service-worker
 updates must wait for the user's refresh action rather than interrupt recording.

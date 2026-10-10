@@ -103,6 +103,11 @@ export const Model = Schema.Struct({
   accentSaveFailed: Schema.Boolean,
   accentDraft: Schema.NullOr(Schema.String),
   look: Look,
+  /** Settings' backup feedback; `backupBusy` disables both actions meanwhile. */
+  backupBusy: Schema.Boolean,
+  backupNotice: Schema.NullOr(
+    Schema.Struct({ tone: Schema.Literals(["success", "error"]), text: Schema.String }),
+  ),
   lookSaveFailed: Schema.Boolean,
   controlSize: ControlSize,
   controlSizeSaveFailed: Schema.Boolean,
@@ -221,6 +226,8 @@ const initialModel = (route: Route): Model => ({
   accentSaveFailed: false,
   accentDraft: null,
   look: defaultLook,
+  backupBusy: false,
+  backupNotice: null,
   lookSaveFailed: false,
   controlSize: "standard",
   controlSizeSaveFailed: false,
