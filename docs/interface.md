@@ -56,6 +56,18 @@ component APIs; review local customizations before refreshing a registry item.
   the live one instead: the Session tab shows “Resume session”, and the template
   action sheet replaces “Start session” with “Resume live session” and says why.
 
+Looks (Classic, Studio, Swiss, Shopfloor, Blueprint) restyle colours,
+surfaces and headings through `html[data-look]` in [looks.css](../src/looks.css),
+with a light and a dark palette each and system fonts only; layout, sizes and
+data stay the same. Classic is the default tokens in `index.css`. A non-default
+accent still replaces a look's primary colour, except in the dark navigation of
+Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast;
+add new looks there. Browser chrome uses each look's `lookThemeColors` entry.
+“Larger controls” (`html[data-control-size="large"]`) scales text to 112.5%,
+gives answer choices and primary actions 56px and stacks choices on phones.
+Settings uses native-radio segmented controls (`segmentedControl` in app
+primitives) for short single choices such as appearance and icon style.
+
 Component style presets are separate from appearance and preserve app-owned
 layout and touch sizing. Default/Nova keeps local defaults; other styles use
 upstream radii. Use the generator described in [development](development.md)
@@ -65,7 +77,9 @@ instead of editing the generated style table.
 
 Reviewed the 66-item registry against upstream
 [`a6a82bd`](https://github.com/elianiva/foldcn/commit/a6a82bd820578ef064257c39ea81ec77ea45a0dc).
-Registry URLs are live, not commit-pinned. The 16 modules the app renders have
+Registry URLs are live, not commit-pinned. Rechecked on 2026-10-10 against
+[`5fa3b78`](https://github.com/elianiva/foldcn/commit/5fa3b78): the only change is
+a new `message` component; no imported component changed. The 16 modules the app renders have
 style mappings for the eight presets (skeleton and progress were added on
 2026-10-10 for loading pages and required-answer progress); checkbox, fieldset,
 label, radio-group and separator keep their local classes under every preset
@@ -115,7 +129,7 @@ than copied without consumers. “New” identifies additions since September 9.
 | avatar                 | No account/profile UI.                                                                         |
 | breadcrumb             | Current shallow navigation uses back actions.                                                  |
 | bubble (new)           | No chat UI.                                                                                    |
-| button-group           | Existing actions are independent, not connected segmented controls.                            |
+| button-group           | Settings' segmented choices are form selections, so native radios serve them better.           |
 | calendar               | No date-selection workflow.                                                                    |
 | carousel (new)         | No slide/media workflow; would add Embla unnecessarily.                                        |
 | collapsible            | No current disclosure interaction to replace.                                                  |
@@ -133,6 +147,7 @@ than copied without consumers. “New” identifies additions since September 9.
 | kbd                    | No existing shortcut legend.                                                                   |
 | listbox                | Native selects already serve current selection needs.                                          |
 | marker                 | Existing status badges and notices cover current indicators.                                   |
+| message (new)          | Chat message layout; Optio has no chat or transcript.                                          |
 | menu                   | Keep visible actions rather than hiding them in dropdowns.                                     |
 | menubar                | Not a desktop menu-driven app; upstream lacks cross-menu arrow traversal.                      |
 | message-scroller (new) | No transcript or live-edge chat scrolling.                                                     |
@@ -150,6 +165,6 @@ than copied without consumers. “New” identifies additions since September 9.
 | tabs                   | App tabs are route navigation, not an in-page tab-panel widget.                                |
 | toast                  | Persistent inline errors and explicit refresh prompts must not auto-dismiss.                   |
 | toggle                 | Existing switches and buttons already express boolean/actions semantics.                       |
-| toggle-group           | Existing single/multiple-choice controls express form selection semantics.                     |
+| toggle-group           | Evaluated for segmented settings; a stateful submodel adds machinery native radios avoid.      |
 | tooltip                | Essential labels/help already remain visible and touch-accessible.                             |
 | virtual-list           | No measured rendering bottleneck justifies changing focus/scroll behavior.                     |

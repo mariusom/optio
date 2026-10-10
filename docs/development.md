@@ -117,7 +117,8 @@ need separate verification.
 For interface changes, inspect affected states on phone, tablet and desktop,
 including keyboard navigation and light/dark appearance. The screenshot helper
 `node scripts/screenshots/tour.mjs /tmp/optio-tour` expects a production preview
-on port 60002; set `OPTIO_URL` to override its base URL. Screenshots need inspection
+on port 60002; set `OPTIO_URL` to override its base URL and `OPTIO_INIT_STORAGE`
+(JSON, e.g. `{"optio-look":"studio"}`) to start with saved preferences. Screenshots need inspection
 and are not substitutes for assertions.
 
 Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,

@@ -50,7 +50,10 @@ export const segmentedControl = <M>(
                 h.Checked(segment.selected),
                 h.OnChange(() => segment.onSelect),
               ]),
-              h.span([h.Class("pointer-events-none py-1 leading-tight [overflow-wrap:anywhere]")], [segment.label]),
+              h.span(
+                [h.Class("pointer-events-none py-1 leading-tight [overflow-wrap:anywhere]")],
+                [segment.label],
+              ),
             ],
           ),
         ),
