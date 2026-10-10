@@ -97,6 +97,7 @@ const runner: RunnerState = {
   showEndConfirm: true,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
 };
 const editSheet = () =>
   render((frame) =>

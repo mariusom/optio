@@ -29,6 +29,7 @@ const runnerWith = (count: number): RunnerState => ({
   showEndConfirm: false,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
   tasks: Array.from({ length: count }, (_, index) => taskFixture(index + 1, count)),
 });
 

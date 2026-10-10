@@ -57,6 +57,16 @@ export type FieldWrites = typeof FieldWritesSchema.Type;
 
 export const noFieldWrites: FieldWrites = { revision: 0, pending: [] };
 
+/**
+ * A short confirmation for the runner's polite status region ("Task 3
+ * recorded"). It stays until the next answer change or task action.
+ */
+const RunnerAnnouncementSchema = Schema.Struct({
+  kind: Schema.Literals(["recorded", "filled"]),
+  text: Schema.String,
+});
+export type RunnerAnnouncement = typeof RunnerAnnouncementSchema.Type;
+
 export const RunnerStateSchema = Schema.Struct({
   ...RunnerDataSchema.fields,
   focusedSectionId: Schema.Union([Schema.Null, Schema.String]),
@@ -66,6 +76,7 @@ export const RunnerStateSchema = Schema.Struct({
   lastError: Schema.Union([Schema.Null, Schema.String]),
   now: Schema.Number,
   fieldWrites: FieldWritesSchema,
+  announcement: Schema.NullOr(RunnerAnnouncementSchema),
 });
 export type RunnerState = typeof RunnerStateSchema.Type;
 

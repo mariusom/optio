@@ -70,6 +70,7 @@ const liveRunner = (overrides: Partial<RunnerState> = {}) => ({
   now: 1_700_000_001_000,
   showEndConfirm: false,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
   ...overrides,
 });
 
@@ -168,7 +169,7 @@ describe("sessionMachine topology", () => {
     ]);
     expect(recorded.runner?.lastError).toBeNull();
     const withError = { ...recorded.runner!, lastError: "write failed" };
-    expect(plan(withError, { _tag: "RecordAcked" }).runner?.lastError).toBeNull();
+    expect(plan(withError, { _tag: "RecordAcked", taskId: "task-1" }).runner?.lastError).toBeNull();
     expect(plan(withError, { _tag: "EditAcked" }).runner?.lastError).toBeNull();
   });
 
@@ -298,6 +299,7 @@ describe("sessionMachine recording", () => {
   it("RecordAcked clears focus and task list", () => {
     const { runner } = plan(liveRunner({ focusedSectionId: "f-activity", showTaskList: true }), {
       _tag: "RecordAcked",
+      taskId: "task-1",
     });
     expect(runner!.focusedSectionId).toBeNull();
     expect(runner!.showTaskList).toBe(false);

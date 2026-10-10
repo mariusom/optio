@@ -21,6 +21,7 @@ import {
   SelectTask,
   UpdateFieldValues,
 } from "../web/features/session/runnerCommands";
+import { VibrateRecorded } from "../web/features/session/recordFeedback";
 import { templatePrompt } from "../web/features/settings/infoView";
 import { randomSessionName } from "../web/random-name";
 import {
@@ -125,6 +126,7 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
     CommitFieldValues: ({ writes }) => [UpdateFieldValues({ writes })],
     CommitCounterAdjustment: ({ taskFieldId, delta }) => [AdjustCounter({ taskFieldId, delta })],
     CommitRecord: ({ sessionId, taskId }) => [RecordTask({ sessionId, currentTaskId: taskId })],
+    ConfirmRecorded: () => [VibrateRecorded()],
     CommitSelectTask: ({ sessionId, taskId }) => [SelectTask({ sessionId, taskId })],
     CommitCancelEdit: ({ taskId }) => [CancelEdit({ taskId })],
     CommitSaveEdit: ({ taskId }) => [SaveEdit({ taskId })],

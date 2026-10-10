@@ -11,11 +11,13 @@ import {
   isTaskDone,
   isTaskEditable,
   noFieldWrites,
+  type RunnerAnnouncement,
   type RunnerData,
   type RunnerSection,
   type RunnerState,
   type RunnerTask,
 } from "../../web/features/session/runner";
+import { repeatPlan } from "../../web/features/session/repeatAnswers";
 
 export type { RunnerData, RunnerState };
 
@@ -35,6 +37,8 @@ const SessionEvent = Schema.TaggedUnion({
   CounterAdjusted: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   SectionFocused: { fieldId: Schema.Union([Schema.Null, Schema.String]) },
   RecordRequested: {},
+  /** Fill the open task's unanswered questions from the previous recorded task. */
+  RepeatRequested: {},
   TaskSelected: { taskId: Schema.String },
   TaskListToggled: {},
   EndRequested: {},
@@ -42,7 +46,7 @@ const SessionEvent = Schema.TaggedUnion({
   EndConfirmed: {},
   EditCancelled: {},
   EditSaved: {},
-  RecordAcked: {},
+  RecordAcked: { taskId: Schema.String },
   EditAcked: {},
   EndAcked: {},
   /** Typing paused, a field lost focus, or the page is being hidden or left. */
@@ -56,6 +60,8 @@ const SessionEmission = Schema.TaggedUnion({
   },
   CommitCounterAdjustment: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   CommitRecord: { sessionId: Schema.String, taskId: Schema.String },
+  /** Brief device feedback once a task is recorded (vibration where supported). */
+  ConfirmRecorded: {},
   CommitSelectTask: { sessionId: Schema.String, taskId: Schema.String },
   CommitCancelEdit: { taskId: Schema.String },
   CommitSaveEdit: { taskId: Schema.String },
@@ -120,6 +126,7 @@ const freshRunner = (data: RunnerData, now: number): RunnerState => ({
   lastError: null,
   now,
   fieldWrites: noFieldWrites,
+  announcement: null,
 });
 
 const stay = (runner: RunnerState | null): SessionPlan => ({ runner, emissions: [] });
@@ -229,11 +236,63 @@ const flushesFirst = new Set<SessionEvent["_tag"]>([
   "FlushRequested",
   "CounterAdjusted",
   "RecordRequested",
+  "RepeatRequested",
   "TaskSelected",
   "EditCancelled",
   "EditSaved",
   "EndConfirmed",
 ]);
+
+/** User actions that change answers or tasks replace the last confirmation. */
+const clearsAnnouncement = new Set<SessionEvent["_tag"]>([
+  "FieldChanged",
+  "CounterAdjusted",
+  "RecordRequested",
+  "RepeatRequested",
+  "TaskSelected",
+  "EditCancelled",
+  "EditSaved",
+  "EndConfirmed",
+]);
+
+const recordedAnnouncement = (runner: RunnerState, taskId: string): RunnerAnnouncement => {
+  const task = runner.tasks.find((t) => t.id === taskId);
+  return { kind: "recorded", text: task ? `Task ${task.orderIndex} recorded` : "Task recorded" };
+};
+
+/**
+ * Copies the previous recorded task's answers into unanswered questions as
+ * one batch. Each is a first write, so the store stamps its `startDate` now;
+ * the overlay keeps the values until the store echoes them.
+ */
+const repeatAnswers = (runner: RunnerState): SessionPlan => {
+  const plan = repeatPlan(runner);
+  if (plan === null || plan.source === null || plan.writes.length === 0) return stay(runner);
+  const { writes, source } = plan;
+  const ids = new Set(writes.map((write) => write.taskFieldId));
+  const filled = writes.reduce(
+    (state, { taskFieldId, value }) => withSectionValue(state, taskFieldId, value),
+    runner,
+  );
+  const count = writes.length;
+  return next(
+    {
+      ...filled,
+      fieldWrites: {
+        revision: runner.fieldWrites.revision + 1,
+        pending: [
+          ...runner.fieldWrites.pending.filter((write) => !ids.has(write.taskFieldId)),
+          ...writes.map((write) => ({ ...write, committed: true })),
+        ],
+      },
+      announcement: {
+        kind: "filled",
+        text: `Filled ${count} answer${count === 1 ? "" : "s"} from task ${source.orderIndex}`,
+      },
+    },
+    { _tag: "CommitFieldValues", writes: writes.map((write) => ({ ...write })) },
+  );
+};
 
 /** Events accepted in either live phase. */
 const planLive = (runner: RunnerState, event: SessionEvent, now: number): SessionPlan | null =>
@@ -249,8 +308,17 @@ const planLive = (runner: RunnerState, event: SessionEvent, now: number): Sessio
         : next({ ...runner, focusedSectionId: fieldId }),
     ),
     Match.tag("TaskListToggled", () => next({ ...runner, showTaskList: !runner.showTaskList })),
-    Match.tag("RecordAcked", () =>
-      next({ ...runner, focusedSectionId: null, showTaskList: false, lastError: null }),
+    Match.tag("RecordAcked", ({ taskId }) =>
+      next(
+        {
+          ...runner,
+          focusedSectionId: null,
+          showTaskList: false,
+          lastError: null,
+          announcement: recordedAnnouncement(runner, taskId),
+        },
+        { _tag: "ConfirmRecorded" },
+      ),
     ),
     Match.tag("EditAcked", () =>
       next({
@@ -311,6 +379,7 @@ const collecting: PhaseHandlers = {
       ? next(updated, { _tag: "CommitFieldValues", writes: [{ taskFieldId, value }] })
       : next(updated);
   },
+  RepeatRequested: repeatAnswers,
   RecordRequested: (runner) => {
     const task = currentTask(runner);
     // Completed tasks are saved through the edit flow, never recorded again.
@@ -393,7 +462,11 @@ export const planSession = (
       ? next(freshRunner(event.data, now))
       : stay(null);
   }
-  const flush = flushesFirst.has(event._tag) ? takeWrites(runner) : stay(runner);
+  const quiet =
+    runner.announcement !== null && clearsAnnouncement.has(event._tag)
+      ? { ...runner, announcement: null }
+      : runner;
+  const flush = flushesFirst.has(event._tag) ? takeWrites(quiet) : stay(quiet);
   // `flush.runner` is non-null: takeWrites only clears the pending list.
   const current = flush.runner as RunnerState;
   const plan =

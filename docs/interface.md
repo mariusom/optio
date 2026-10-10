@@ -65,10 +65,10 @@ instead of editing the generated style table.
 
 Reviewed the 66-item registry against upstream
 [`a6a82bd`](https://github.com/elianiva/foldcn/commit/a6a82bd820578ef064257c39ea81ec77ea45a0dc).
-Registry URLs are live, not commit-pinned. The 15 modules the app renders have
-style mappings for the eight presets (skeleton was added on 2026-10-10 for
-loading pages); checkbox, fieldset, label, progress,
-radio-group and separator keep their local classes under every preset
+Registry URLs are live, not commit-pinned. The 16 modules the app renders have
+style mappings for the eight presets (skeleton and progress were added on
+2026-10-10 for loading pages and required-answer progress); checkbox, fieldset,
+label, radio-group and separator keep their local classes under every preset
 until they gain a consumer (add them to the generator then), because every
 mapped class ships in the CSS bundle. Local touch sizing and compact field
 layouts remain intentional overrides. “Unchanged” below means the
@@ -89,7 +89,7 @@ authored component had no upstream change since the September 9 snapshot.
 | item            | Unchanged; retain shared list-row styling.                                                                                                                                               |
 | label           | Unchanged; retain helper without forcing a migration of app labels.                                                                                                                      |
 | native-select   | Forward description presence; retain native selects.                                                                                                                                     |
-| progress        | Unchanged; retained, no new consumer.                                                                                                                                                    |
+| progress        | Local `children`/`attributes` for upstream label anatomy and an accessible name; the runner shows required-answer progress ("1 of 3 required answered").                                 |
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel.                                                                                   |

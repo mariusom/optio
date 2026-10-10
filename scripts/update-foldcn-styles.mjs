@@ -27,6 +27,7 @@ const components = [
   "input",
   "item",
   "native-select",
+  "progress",
   "sheet",
   "skeleton",
   "spinner",

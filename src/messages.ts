@@ -157,7 +157,10 @@ export const Message = defineMessageUnion({
   AdjustedCounter: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   UpdatedFieldValue: {},
   ClickedRecord: {},
-  TaskRecorded: {},
+  TaskRecorded: { taskId: Schema.String },
+  /** The recorded-task vibration ran, or was skipped where unsupported. */
+  GaveRecordFeedback: {},
+  ClickedRepeatLastAnswers: {},
   ClickedEndSession: {},
   ConfirmedEndSession: {},
   CanceledEndSession: {},

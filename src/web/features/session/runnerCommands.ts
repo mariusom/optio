@@ -106,7 +106,7 @@ export const RecordTask = Command.define("RecordTask", {
         const currentRow = taskRows.find((r) => r.id === currentTaskId);
         if (currentRow === undefined) return failed("That task isn’t available any more.");
         // Guard: if task already finished, no-op
-        if (currentRow.endDate !== null) return Message.TaskRecorded();
+        if (currentRow.endDate !== null) return Message.TaskRecorded({ taskId: currentTaskId });
 
         const fieldRows = store.query(
           tables.sessionTaskFields
@@ -133,7 +133,7 @@ export const RecordTask = Command.define("RecordTask", {
             fields: nextFields,
           }),
         );
-        return Message.TaskRecorded();
+        return Message.TaskRecorded({ taskId: currentTaskId });
       }),
     ).pipe(serialized, reportFailure("record", failed)),
 });
