@@ -27,11 +27,11 @@ const ICON_LIBRARIES: ReadonlyArray<{ value: IconLibrary; label: string }> = [
 ];
 
 const LOOKS: ReadonlyArray<{ value: Look; label: string; description: string }> = [
+  { value: "blueprint", label: "Blueprint", description: "Grid paper and cobalt ink (default)" },
   { value: "classic", label: "Classic", description: "Neutral and quiet" },
   { value: "studio", label: "Studio", description: "Warm paper, teal, serif titles" },
   { value: "swiss", label: "Swiss", description: "White, ruled lines, signal red" },
   { value: "shopfloor", label: "Shopfloor", description: "Dark navigation, safety amber" },
-  { value: "blueprint", label: "Blueprint", description: "Grid paper and cobalt ink" },
 ];
 
 const ACCENTS: ReadonlyArray<{ value: Accent; label: string }> = [

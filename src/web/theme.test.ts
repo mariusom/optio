@@ -100,9 +100,9 @@ describe("theme preference", () => {
 });
 
 describe("look and control size preferences", () => {
-  it.effect("default to Classic and standard controls when missing or invalid", () =>
+  it.effect("default to Blueprint and standard controls when missing or invalid", () =>
     Effect.gen(function* () {
-      expect(yield* readLook).toBe("classic");
+      expect(yield* readLook).toBe("blueprint");
       expect(yield* readControlSize).toBe("standard");
       const store = yield* KeyValueStore.KeyValueStore;
       for (const [look, size] of [
@@ -112,7 +112,7 @@ describe("look and control size preferences", () => {
       ] as const) {
         yield* store.set("optio-look", look);
         yield* store.set("optio-control-size", size);
-        expect(yield* readLook).toBe("classic");
+        expect(yield* readLook).toBe("blueprint");
         expect(yield* readControlSize).toBe("standard");
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),

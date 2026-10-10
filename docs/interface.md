@@ -59,7 +59,9 @@ component APIs; review local customizations before refreshing a registry item.
 Looks (Classic, Studio, Swiss, Shopfloor, Blueprint) restyle colours,
 surfaces and headings through `html[data-look]` in [looks.css](../src/looks.css),
 with a light and a dark palette each and system fonts only; layout, sizes and
-data stay the same. Classic is the default tokens in `index.css`. A non-default
+data stay the same. Blueprint is the default look (`defaultLook` in `web/theme.ts`; a saved choice
+wins); Classic uses the base tokens in `index.css`. The static `theme-color` tags
+in `index.html` and the PWA manifest colours match Blueprint. A non-default
 accent still replaces a look's primary colour, except in the dark navigation of
 Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast;
 add new looks there. Browser chrome uses each look's `lookThemeColors` entry.

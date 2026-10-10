@@ -3,7 +3,7 @@ import { AsyncData } from "foldkit";
 import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
-import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../web/theme";
+import { Accent, ControlSize, defaultLook, Font, IconLibrary, Look, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
 import { TemplateSummary } from "../web/types";
 
@@ -217,7 +217,7 @@ const initialModel = (route: Route): Model => ({
   accent: "default",
   accentSaveFailed: false,
   accentDraft: null,
-  look: "classic",
+  look: defaultLook,
   lookSaveFailed: false,
   controlSize: "standard",
   controlSizeSaveFailed: false,

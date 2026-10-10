@@ -3,6 +3,7 @@ import * as BrowserKeyValueStore from "@effect/platform-browser/BrowserKeyValueS
 import iconSvg from "../../public/icon.svg?raw";
 import {
   accentForeground,
+  defaultLook,
   isDarkTheme,
   Look,
   lookThemeColors,
@@ -47,7 +48,7 @@ const updateFavicon = () => {
 /** Matches browser chrome and the favicon to the document's look and scheme. */
 const updateBrowserChrome = () => {
   const root = document.documentElement;
-  const look = Schema.is(Look)(root.dataset.look) ? root.dataset.look : "classic";
+  const look = Schema.is(Look)(root.dataset.look) ? root.dataset.look : defaultLook;
   const colors = lookThemeColors[look];
   // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
@@ -75,7 +76,7 @@ const applyLook = (look: Look) => {
 export const initializeLook = Effect.gen(function* () {
   const look = yield* readLook.pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
-    Effect.catchCause(() => Effect.succeed("classic" as const)),
+    Effect.catchCause(() => Effect.succeed(defaultLook)),
   );
   applyLook(look);
   return look;
