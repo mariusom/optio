@@ -1,5 +1,6 @@
 import { DiscardLiveSession, StartSession } from "../web/features/session/startCommands";
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
+import { RequestPersistentStorage } from "../web/storagePersistence";
 import { sessionRunnerRouter } from "../web/routes";
 import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
 import type { Update } from "foldkit";
@@ -18,6 +19,7 @@ type SessionHandlers = Pick<
   | "SelectedTemplate"
   | "ClickedStartSession"
   | "SessionStarted"
+  | "PersistentStorageChecked"
   | "ClickedResumeSession"
   | "ClickedDiscardSession"
   | "CanceledDiscardSession"
@@ -86,8 +88,11 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     commands: [
       GeneratePlaceholderName(),
       NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
+      // Studies on disk can still be evicted; ask the browser to keep them.
+      ...(model.storage === "persisted" ? [RequestPersistentStorage()] : []),
     ],
   }),
+  PersistentStorageChecked: () => ({ model }),
   ClickedResumeSession: () => {
     const active = activeSessionOf(model);
     if (active === null) return { model };

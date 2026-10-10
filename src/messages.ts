@@ -138,6 +138,8 @@ export const Message = defineMessageUnion({
   SelectedTemplate: { id: Schema.String },
   ClickedStartSession: {},
   SessionStarted: { sessionId: Schema.String },
+  /** The browser's answer to keeping saved studies; informational only. */
+  PersistentStorageChecked: { granted: Schema.Boolean },
   ClickedResumeSession: {},
   ClickedDiscardSession: {},
   ConfirmedDiscardSession: {},

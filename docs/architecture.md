@@ -152,5 +152,8 @@ question names in separate columns. UI exports protect formula-like cells
 without modifying stored observations; the raw programmatic format stays exact.
 
 Optio adds no runtime network dependency for studies. Browser storage can still
-be cleared or evicted; persistence is not a backup guarantee. Service-worker
+be cleared or evicted; persistence is not a backup guarantee. After a session starts
+on disk, `RequestPersistentStorage` asks the browser to exempt the site from
+eviction under storage pressure (`navigator.storage.persist()`); the answer is
+informational, and users can still clear site data. Service-worker
 updates must wait for the user's refresh action rather than interrupt recording.
