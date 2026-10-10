@@ -61,17 +61,14 @@ const resumeView = (
               trailing: statusPill(
                 { tone: missing ? "warning" : "success" },
                 [
-                  h.span(
-                    [
-                      h.Class(
-                        cn(
-                          "size-1.5 rounded-full",
-                          missing ? "bg-warning-content" : "bg-success animate-pulse",
-                        ),
+                  h.span([
+                    h.Class(
+                      cn(
+                        "size-1.5 rounded-full",
+                        missing ? "bg-warning-content" : "bg-success animate-pulse",
                       ),
-                    ],
-                    [],
-                  ),
+                    ),
+                  ]),
                   h.span([], [taskCount]),
                 ],
                 h,

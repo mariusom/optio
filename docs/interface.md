@@ -33,6 +33,10 @@ component APIs; review local customizations before refreshing a registry item.
   effects after `Render.afterCommit` (or `afterPaint`), never timers; scripted
   smooth scrolling must fall back to instant under reduced motion. Headings
   focused programmatically hide their outline; they are not in the tab order.
+- Pages showing saved data render a `skeletonPage` outline of their content
+  until the data is read (`whenLoaded` in `app/view.ts`), never an empty state.
+  It appears only after 400 ms (`loading-reveal`), so quick reads show no
+  placeholder; its blocks are hidden from screen readers behind one status.
 - Key rows in lists that insert or reorder items (`row({ key })` or
   `h.keyed`), so focus stays with the same item.
 
@@ -45,9 +49,10 @@ instead of editing the generated style table.
 
 Reviewed the 66-item registry against upstream
 [`a6a82bd`](https://github.com/elianiva/foldcn/commit/a6a82bd820578ef064257c39ea81ec77ea45a0dc).
-Registry URLs are live, not commit-pinned. The 14 modules the app renders have
-style mappings for the eight presets; checkbox, fieldset, label, progress,
-radio-group, separator and skeleton keep their local classes under every preset
+Registry URLs are live, not commit-pinned. The 15 modules the app renders have
+style mappings for the eight presets (skeleton was added on 2026-10-10 for
+loading pages); checkbox, fieldset, label, progress,
+radio-group and separator keep their local classes under every preset
 until they gain a consumer (add them to the generator then), because every
 mapped class ships in the CSS bundle. Local touch sizing and compact field
 layouts remain intentional overrides. “Unchanged” below means the
@@ -72,7 +77,7 @@ authored component had no upstream change since the September 9 snapshot.
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel.                                                                                   |
-| skeleton        | Unchanged; retained, no new consumer.                                                                                                                                                    |
+| skeleton        | Unchanged; loading pages use it through `skeletonPage`.                                                                                                                                  |
 | spinner         | Added to session loading; decorative icon with reduced-motion support and one parent live status.                                                                                        |
 | switch          | Forward description presence; retain settings toggles and local label layout.                                                                                                            |
 | textarea        | Forward description presence; retain editor sizing.                                                                                                                                      |

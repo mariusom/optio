@@ -50,15 +50,12 @@ const accentLabel = (label: string, accent: Accent, h: HtmlBuilder<Message>) =>
   h.span(
     [h.Class("flex items-center gap-3")],
     [
-      h.span(
-        [
-          h.Class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20"),
-          h.DataAttribute("accent", accent),
-          h.AriaHidden(true),
-          ...(accent.startsWith("#") ? [h.Style({ backgroundColor: accent })] : []),
-        ],
-        [],
-      ),
+      h.span([
+        h.Class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20"),
+        h.DataAttribute("accent", accent),
+        h.AriaHidden(true),
+        ...(accent.startsWith("#") ? [h.Style({ backgroundColor: accent })] : []),
+      ]),
       label,
     ],
   );

@@ -161,8 +161,8 @@ export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
   };
 };
 
-export const makeEmptyDraft = (sortOrder: number): FieldDraft => ({
-  id: crypto.randomUUID(),
+export const makeEmptyDraft = (id: string, sortOrder: number): FieldDraft => ({
+  id,
   name: "",
   kind: "textInput",
   isRequired: false,

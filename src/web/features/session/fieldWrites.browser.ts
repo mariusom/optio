@@ -33,6 +33,7 @@ const flags = Effect.succeed({
   iconLibrary: "hugeicons",
   accent: "default",
   now: Date.now(),
+  idSeed: "field-writes-test",
 } as const);
 
 const cleanups: Array<() => void> = [];

@@ -1,4 +1,4 @@
-import { Schema as S } from "effect";
+import { Schema } from "effect";
 import type { Url } from "foldkit/url";
 
 import { EnsureTemplatesSeeded } from "./web/features/templates/commands";
@@ -14,21 +14,23 @@ export { update } from "./app/update";
 export { view } from "./app/view";
 
 /** Startup input read by the browser entry: saved preferences and the boot time. */
-export const Flags = S.Struct({
+export const Flags = Schema.Struct({
   theme: Theme,
   style: FoldcnStyle,
   font: Font,
   iconLibrary: IconLibrary,
   accent: Accent,
   /** From Effect's Clock, never Date.now(), so the first render has a real time. */
-  now: S.Number,
+  now: Schema.Number,
+  /** Random per boot, so IDs that update derives from it are unique (see `takeId`). */
+  idSeed: Schema.String,
 });
 export type Flags = typeof Flags.Type;
 
 /** Initial state with default preferences; tests start here. */
 export const init = (url: Url) => ({
   model: initialModel(parseRoute(url)),
-  commands: [EnsureTemplatesSeeded({}), GeneratePlaceholderName({})],
+  commands: [EnsureTemplatesSeeded(), GeneratePlaceholderName()],
 });
 
 /** Runtime init: the default state with the decoded startup Flags applied. */

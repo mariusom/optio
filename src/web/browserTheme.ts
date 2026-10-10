@@ -20,8 +20,6 @@ import {
 import { setCurrentIconLibrary } from "../lib/iconPreference";
 import { getCurrentStyle, readStyle, saveStyle, setCurrentStyle, type FoldcnStyle } from "./style";
 
-let currentTheme: Theme = "auto";
-
 const updateFavicon = () => {
   const styles = getComputedStyle(document.documentElement);
   const svg = new DOMParser().parseFromString(iconSvg, "image/svg+xml");
@@ -43,15 +41,20 @@ const updateFavicon = () => {
 // reliably accept oklch() in theme-color.
 const themeColors = { light: "#ffffff", dark: "#0a0a0a" } as const;
 
-const applyTheme = () => {
-  const dark = isDarkTheme(currentTheme, window.matchMedia("(prefers-color-scheme: dark)").matches);
-  document.documentElement.classList.toggle("dark", dark);
-  // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
-  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-    meta.content = dark ? themeColors.dark : themeColors.light;
-  }
-  updateFavicon();
-};
+/**
+ * Shows the light or dark scheme in the page, browser chrome and favicon.
+ * Update decides which, from the saved theme and the system scheme it follows
+ * through the `systemColorScheme` subscription.
+ */
+export const applyColorScheme = (dark: boolean) =>
+  Effect.sync(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = dark ? themeColors.dark : themeColors.light;
+    }
+    updateFavicon();
+  });
 
 export const initializeTheme = Effect.gen(function* () {
   const theme = yield* readTheme.pipe(
@@ -59,15 +62,14 @@ export const initializeTheme = Effect.gen(function* () {
     // Accessing localStorage itself can fail when browser storage is blocked.
     Effect.catchCause(() => Effect.succeed("auto" as const)),
   );
-  currentTheme = theme;
-  applyTheme();
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  // Before the first render; later changes arrive through update.
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  yield* applyColorScheme(isDarkTheme(theme, systemDark));
   return theme;
 });
 
-export const changeTheme = Effect.fn("changeTheme")(function* (theme: Theme) {
-  currentTheme = theme;
-  applyTheme();
+/** Saves the theme choice; `applyColorScheme` shows it. */
+export const saveThemeChoice = Effect.fn("saveThemeChoice")(function* (theme: Theme) {
   return yield* saveTheme(theme).pipe(
     Effect.provide(BrowserKeyValueStore.layerLocalStorage),
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),

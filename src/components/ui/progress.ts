@@ -30,17 +30,14 @@ type ProgressConfig = Readonly<{ value?: number; className?: string }>;
 const clampValue = (value: number): number => Math.min(100, Math.max(0, value));
 
 const progressIndicator = <M>(value: number | undefined, h: HtmlBuilder<M>): Html =>
-  h.div(
-    [
-      h.Class(cn(progressIndicatorClass)),
-      h.DataAttribute("slot", "progress-indicator"),
-      // Undefined = indeterminate: empty track until primitives can animate.
-      h.Style({
-        transform: `translateX(-${100 - (value === undefined ? 0 : clampValue(value))}%)`,
-      }),
-    ],
-    [],
-  );
+  h.div([
+    h.Class(cn(progressIndicatorClass)),
+    h.DataAttribute("slot", "progress-indicator"),
+    // Undefined = indeterminate: empty track until primitives can animate.
+    h.Style({
+      transform: `translateX(-${100 - (value === undefined ? 0 : clampValue(value))}%)`,
+    }),
+  ]);
 
 /** Styled progress bar with an accessible track. */
 export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>

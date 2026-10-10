@@ -26,7 +26,7 @@
     },
     {
       "name": "@effect/opentelemetry",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -39,7 +39,7 @@
     },
     {
       "name": "@effect/platform-browser",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -52,7 +52,7 @@
     },
     {
       "name": "@effect/platform-bun",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -65,7 +65,7 @@
     },
     {
       "name": "@effect/platform-node",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -78,7 +78,7 @@
     },
     {
       "name": "@effect/platform-node-shared",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -91,7 +91,7 @@
     },
     {
       "name": "@effect/vitest",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -143,7 +143,7 @@
     },
     {
       "name": "@foldkit/ui",
-      "version": "0.159.0",
+      "version": "0.167.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/foldkit/foldkit#readme",
@@ -182,7 +182,7 @@
     },
     {
       "name": "@livestore/adapter-web",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -195,7 +195,7 @@
     },
     {
       "name": "@livestore/common",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -208,7 +208,7 @@
     },
     {
       "name": "@livestore/common-cf",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -221,7 +221,7 @@
     },
     {
       "name": "@livestore/livestore",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -234,7 +234,7 @@
     },
     {
       "name": "@livestore/sqlite-wasm",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -247,7 +247,7 @@
     },
     {
       "name": "@livestore/utils",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -260,7 +260,7 @@
     },
     {
       "name": "@livestore/wa-sqlite",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -273,7 +273,7 @@
     },
     {
       "name": "@livestore/webmesh",
-      "version": "0.5.0-dev.0",
+      "version": "0.0.0-snapshot-3cb74e62017c463f49323d296ba73450efc60007",
       "license": "Apache-2.0",
       "role": "production dependency graph",
       "homepage": "https://github.com/livestorejs/livestore#readme",
@@ -281,6 +281,19 @@
         {
           "provenance": "installed package file LICENSE",
           "sha256": "9b1397322b4023d6f19ed865d3eda587cf64aacbd9ecbfa5adbc90e3f4352fac"
+        }
+      ]
+    },
+    {
+      "name": "@noble/hashes",
+      "version": "2.4.0",
+      "license": "MIT",
+      "role": "production dependency graph",
+      "homepage": "https://paulmillr.com/noble/",
+      "licenseTexts": [
+        {
+          "provenance": "installed package file LICENSE",
+          "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
         }
       ]
     },
@@ -676,7 +689,7 @@
     },
     {
       "name": "effect",
-      "version": "4.0.0-rc.112",
+      "version": "4.0.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://effect.website",
@@ -740,19 +753,6 @@
       ]
     },
     {
-      "name": "fast-check",
-      "version": "4.10.2",
-      "license": "MIT",
-      "role": "production dependency graph",
-      "homepage": "https://fast-check.dev/",
-      "licenseTexts": [
-        {
-          "provenance": "installed package file LICENSE",
-          "sha256": "fc7c40e5d55fc15c61c2fa2b211976aa719a5f9c54a267d7846f072a21968404"
-        }
-      ]
-    },
-    {
       "name": "fdir",
       "version": "6.5.0",
       "license": "MIT",
@@ -767,7 +767,7 @@
     },
     {
       "name": "foldkit",
-      "version": "0.159.0",
+      "version": "0.167.0",
       "license": "MIT",
       "role": "production dependency graph",
       "homepage": "https://github.com/foldkit/foldkit#readme",
@@ -818,32 +818,6 @@
         {
           "provenance": "installed package file LICENSE",
           "sha256": "cda0745d0629e42687ac3ce75343ed806d0aeacd1619993a41f118112dabfd5f"
-        }
-      ]
-    },
-    {
-      "name": "mime",
-      "version": "4.1.0",
-      "license": "MIT",
-      "role": "production dependency graph",
-      "homepage": "https://github.com/broofa/mime#readme",
-      "licenseTexts": [
-        {
-          "provenance": "installed package file LICENSE",
-          "sha256": "68e28d2ab9d180b8fc3d93fac0cc3e5275e4d19a23ab3dcf5458cf4e31e2233b"
-        }
-      ]
-    },
-    {
-      "name": "msgpackr",
-      "version": "2.1.0",
-      "license": "MIT",
-      "role": "production dependency graph",
-      "homepage": "https://github.com/kriszyp/msgpackr#readme",
-      "licenseTexts": [
-        {
-          "provenance": "installed package file LICENSE",
-          "sha256": "2b41a50a006ffc7770db2450283956e4cb1aae567c193aeb1e65e8aef6c9f1f6"
         }
       ]
     },
@@ -961,19 +935,6 @@
         {
           "provenance": "installed package file license",
           "sha256": "1529f88b3675095087120854c6fa2cc1113ab2da2f88c4f6aa4ffe52e98ef81b"
-        }
-      ]
-    },
-    {
-      "name": "pure-rand",
-      "version": "8.4.2",
-      "license": "MIT",
-      "role": "production dependency graph",
-      "homepage": "https://github.com/dubzzz/pure-rand#readme",
-      "licenseTexts": [
-        {
-          "provenance": "installed package file LICENSE",
-          "sha256": "c90820850e2f2e023824ebf57e2215252f2053cf7094851ea5774069331c0352"
         }
       ]
     },

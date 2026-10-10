@@ -118,7 +118,7 @@ export const buildArchiveCsv = (
   return `${heading}\n${rows.join("\n")}`;
 };
 
-export const filenameForArchive = (displayName: string, now: Date = new Date()): string =>
+export const filenameForArchive = (displayName: string, now: Date): string =>
   `optio_${filenameSafe(displayName)}_${formatFilenameDate(now)}.csv`;
 
 // ── Display helpers ───────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ const startOfDay = (epochMs: number): number => {
 };
 
 /** "Today" / "Yesterday" / "Mon, Feb 3" — section header for a day of sessions. */
-export const dayGroupLabel = (epochMs: number, now: number = Date.now()): string => {
+export const dayGroupLabel = (epochMs: number, now: number): string => {
   const days = Math.round((startOfDay(now) - startOfDay(epochMs)) / 86_400_000);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
@@ -155,7 +155,7 @@ export const formatDay = (epochMs: number): string => fullDayFormatter.format(ne
 /** Groups already date-sorted sessions into consecutive runs of the same day. */
 export const groupByDay = <T extends { readonly startedAt: number }>(
   sessions: ReadonlyArray<T>,
-  now: number = Date.now(),
+  now: number,
 ): ReadonlyArray<{ readonly label: string; readonly sessions: ReadonlyArray<T> }> => {
   const groups: Array<{ label: string; sessions: Array<T> }> = [];
   for (const session of sessions) {

@@ -9,6 +9,7 @@ import {
   groupedList,
   hint,
   icon,
+  loadingState,
   navBarAction,
   notice,
   row,
@@ -16,7 +17,6 @@ import {
 } from "@/components/app";
 import { confirmSheet, sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
-import { spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock, formatDurationHms, formatTimeOnly } from "../../format";
@@ -54,18 +54,15 @@ const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
   return h.p(
     [h.Class("flex items-center gap-1.5 text-xs text-muted-foreground tabular")],
     [
-      h.span(
-        [
-          h.Class(
-            cn(
-              "size-1.5 shrink-0 rounded-full",
-              isEditing ? "bg-warning" : isRecording ? "bg-success animate-pulse" : "bg-border",
-            ),
+      h.span([
+        h.Class(
+          cn(
+            "size-1.5 shrink-0 rounded-full",
+            isEditing ? "bg-warning" : isRecording ? "bg-success animate-pulse" : "bg-border",
           ),
-          h.AriaHidden(true),
-        ],
-        [],
-      ),
+        ),
+        h.AriaHidden(true),
+      ]),
       h.span([], [parts.join(" · ")]),
     ],
   );
@@ -358,16 +355,7 @@ export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
 
 // ── Placeholder states ──────────────────────────────────────────────────────
 
-export const runnerLoadingView = (h: HtmlBuilder<Message>) =>
-  h.div(
-    [h.Class("flex h-full items-center justify-center p-8")],
-    [
-      h.p(
-        [h.Class("flex items-center gap-2 text-sm text-muted-foreground"), h.Role("status")],
-        [spinner({}, h), "Loading session…"],
-      ),
-    ],
-  );
+export const runnerLoadingView = (h: HtmlBuilder<Message>) => loadingState("Loading session…", h);
 
 export const runnerEmptyTaskView = (h: HtmlBuilder<Message>) =>
   emptyState(

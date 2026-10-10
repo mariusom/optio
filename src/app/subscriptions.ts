@@ -1,11 +1,12 @@
-import { Cause, Clock, Duration, Effect, Stream, Schema as S } from "effect";
-import { Port, Subscription } from "foldkit";
+import { Cause, Clock, Duration, Effect, Stream, Schema } from "effect";
+import { Dom, Port, Subscription } from "foldkit";
 import { agentPorts } from "../agents/actions";
 import { Message } from "../messages";
-import type { Model } from "./model";
+import { activeSessionOf, type Model, type StoreList } from "./model";
 import { historyDetailStream, historyStream } from "./historyStreams";
 import { activeSessionStream, runnerStream } from "./sessionStreams";
 import { storageStatusStream } from "./storageStreams";
+import { appUpdates } from "../web/appUpdate";
 import { templateDetailStream, templatesStream } from "./templateStreams";
 import {
   focusEditorDraft,
@@ -23,18 +24,23 @@ const documentVisibility: Stream.Stream<boolean> =
     ? Stream.succeed(true)
     : Stream.concat(
         Stream.suspend(() => Stream.succeed(isDocumentVisible())),
-        Stream.fromEventListener(document, "visibilitychange").pipe(Stream.map(isDocumentVisible)),
+        Dom.streamFromEvent({
+          target: document,
+          type: "visibilitychange",
+          mapEvent: isDocumentVisible,
+        }),
       ).pipe(Stream.changes);
 
 // Reads the time through Effect's Clock, so a test runtime can supply it, and
 // the Model carries the value; views never read the clock themselves. Ticks
 // pause while the tab is hidden; `Stream.tick` emits at once, so returning to
 // the tab refreshes the time immediately.
-const tickStream: Stream.Stream<Message> = documentVisibility.pipe(
-  Stream.switchMap((visible) => (visible ? Stream.tick(Duration.seconds(1)) : Stream.empty)),
-  Stream.mapEffect(() => Clock.currentTimeMillis),
-  Stream.map((now) => Message.Tick({ now })),
-);
+const tickStream = (interval: Duration.Duration): Stream.Stream<Message> =>
+  documentVisibility.pipe(
+    Stream.switchMap((visible) => (visible ? Stream.tick(interval) : Stream.empty)),
+    Stream.mapEffect(() => Clock.currentTimeMillis),
+    Stream.map((now) => Message.Tick({ now })),
+  );
 
 /** Idle time after the last keystroke before typed answers are written. */
 const FIELD_WRITE_DELAY = Duration.millis(500);
@@ -50,11 +56,13 @@ const pageLeaving: Stream.Stream<unknown> =
     ? Stream.empty
     : Stream.mergeAll(
         [
-          Stream.fromEventListener(window, "beforeunload"),
-          Stream.fromEventListener(window, "pagehide"),
-          Stream.fromEventListener(document, "visibilitychange").pipe(
-            Stream.filter(() => document.visibilityState === "hidden"),
-          ),
+          Dom.streamFromEvent({ target: window, type: "beforeunload", mapEvent: () => "leaving" }),
+          Dom.streamFromEvent({ target: window, type: "pagehide", mapEvent: () => "leaving" }),
+          Dom.streamFromEvent({
+            target: document,
+            type: "visibilitychange",
+            mapEvent: () => document.visibilityState,
+          }).pipe(Stream.filter((state) => state === "hidden")),
         ],
         { concurrency: "unbounded" },
       );
@@ -82,6 +90,25 @@ const reportingDetailFailure = (stream: Stream.Stream<Message>): Stream.Stream<M
     ),
   );
 
+/**
+ * Reports a failed list read, so its page shows a retry rather than loading
+ * forever. The stream ends; "Try again" restarts it via `listReadAttempt`.
+ */
+const reportingListFailure =
+  (list: StoreList) =>
+  (stream: Stream.Stream<Message>): Stream.Stream<Message> =>
+    stream.pipe(
+      Stream.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Stream.empty
+          : Stream.fromEffect(
+              Effect.logError("Optio could not read saved data.", cause).pipe(
+                Effect.as(Message.FailedListRead({ list })),
+              ),
+            ),
+      ),
+    );
+
 /** Logs a failed store read and ends that stream, so one failure can't crash the app. */
 const loggingFailure = (stream: Stream.Stream<Message>): Stream.Stream<Message> =>
   stream.pipe(
@@ -95,12 +122,35 @@ const loggingFailure = (stream: Stream.Stream<Message>): Stream.Stream<Message> 
   );
 
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
-  agentRequest: Port.subscription(agentPorts.inbound.agentRequest, Message.AgentRequest),
-  storage: Subscription.persistent(storageStatusStream),
-  templates: Subscription.persistent(loggingFailure(templatesStream)),
-  history: Subscription.persistent(loggingFailure(historyStream)),
+  agentRequest: Port.subscriptionEntry(agentPorts.inbound.agentRequest, Message.AgentRequest),
+  storage: Subscription.persistentEntry(storageStatusStream),
+  appUpdates: Subscription.persistentEntry(appUpdates),
+  systemColorScheme: Subscription.persistentEntry(
+    Dom.streamFromMediaQuery({
+      query: "(prefers-color-scheme: dark)",
+      mapMatches: (prefersDark) => Message.ChangedSystemColorScheme({ prefersDark }),
+    }),
+  ),
+  templates: entry(
+    { seedChecked: Schema.Boolean, attempt: Schema.Number },
+    {
+      modelToDependencies: (model) => ({
+        seedChecked: model.templatesSeedChecked,
+        attempt: model.listReadAttempt,
+      }),
+      dependenciesToStream: ({ seedChecked }) =>
+        seedChecked ? reportingListFailure("templates")(templatesStream) : Stream.empty,
+    },
+  ),
+  history: entry(
+    { attempt: Schema.Number },
+    {
+      modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
+      dependenciesToStream: () => reportingListFailure("history")(historyStream),
+    },
+  ),
   historyDetail: entry(
-    { sessionId: S.Union([S.Null, S.String]) },
+    { sessionId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({
         sessionId: model.route._tag === "SessionDetail" ? model.route.sessionId : null,
@@ -110,7 +160,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   templateDetail: entry(
-    { templateId: S.Union([S.Null, S.String]) },
+    { templateId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({
         templateId: model.route._tag === "TemplateEditor" ? model.route.templateId : null,
@@ -121,9 +171,15 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           : reportingDetailFailure(templateDetailStream(templateId)),
     },
   ),
-  activeSession: Subscription.persistent(loggingFailure(activeSessionStream)),
+  activeSession: entry(
+    { attempt: Schema.Number },
+    {
+      modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
+      dependenciesToStream: () => reportingListFailure("activeSession")(activeSessionStream),
+    },
+  ),
   runner: entry(
-    { sessionId: S.Union([S.Null, S.String]) },
+    { sessionId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({
         sessionId: model.route._tag === "SessionRunner" ? model.route.sessionId : null,
@@ -133,7 +189,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   fieldWriteFlush: entry(
-    { revision: S.Union([S.Null, S.Number]), onRunner: S.Boolean },
+    { revision: Schema.Union([Schema.Null, Schema.Number]), onRunner: Schema.Boolean },
     {
       modelToDependencies: (model) => ({
         revision:
@@ -152,20 +208,28 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   ticker: entry(
-    { active: S.Boolean },
+    { rate: Schema.Literals(["off", "second", "minute"]) },
     {
       modelToDependencies: (model) => ({
         // The runner screen shows a live timer; the Start tab shows elapsed
-        // time for a session that is still open.
-        active:
+        // time for a session that is still open. History labels days
+        // ("Today"), which only needs the time on entry and each minute.
+        rate:
           (model.route._tag === "SessionRunner" && model.runner !== null) ||
-          (model.route._tag === "StartTab" && model.activeSession !== null),
+          (model.route._tag === "StartTab" && activeSessionOf(model) !== null)
+            ? ("second" as const)
+            : model.route._tag === "HistoryTab"
+              ? ("minute" as const)
+              : ("off" as const),
       }),
-      dependenciesToStream: ({ active }) => (active ? tickStream : Stream.empty),
+      dependenciesToStream: ({ rate }) =>
+        rate === "off"
+          ? Stream.empty
+          : tickStream(rate === "second" ? Duration.seconds(1) : Duration.minutes(1)),
     },
   ),
   helpPageEntry: entry(
-    { page: S.Union([S.Null, S.Literals(["AgentHelp", "About"])]) },
+    { page: Schema.Union([Schema.Null, Schema.Literals(["AgentHelp", "About"])]) },
     {
       modelToDependencies: (model) => ({
         page:
@@ -177,14 +241,14 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   editorDraftFocus: entry(
-    { draftId: S.Union([S.Null, S.String]) },
+    { draftId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({ draftId: model.editor?.draft?.id ?? null }),
       dependenciesToStream: ({ draftId }) => focusEditorDraft(draftId),
     },
   ),
   focusedSectionScroll: entry(
-    { focusedSectionId: S.Union([S.Null, S.String]) },
+    { focusedSectionId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({
         focusedSectionId: model.runner?.focusedSectionId ?? null,
@@ -193,7 +257,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   currentTaskScroll: entry(
-    { currentTaskId: S.Union([S.Null, S.String]) },
+    { currentTaskId: Schema.Union([Schema.Null, Schema.String]) },
     {
       modelToDependencies: (model) => ({
         currentTaskId: model.runner?.currentTaskId ?? null,

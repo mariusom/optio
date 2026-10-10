@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 
 import type { Model } from "../main";
+import { activeSessionOf, historyOf, templatesOf } from "../app/model";
 import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerDataSchema } from "../web/features/session/runner";
 import { RouteSchema } from "../web/routes";
@@ -142,7 +143,7 @@ export const projectAgentState = (model: Model): AgentState => {
   return {
     route: model.route,
     theme: model.theme,
-    templates: model.templates,
+    templates: templatesOf(model),
     showCreate: model.showCreate,
     newName: model.newName,
     pendingDelete: model.pendingDelete,
@@ -151,10 +152,10 @@ export const projectAgentState = (model: Model): AgentState => {
     selectedTemplateId: model.selectedTemplateId,
     sessionNameInput: model.sessionNameInput,
     placeholderName: model.placeholderName,
-    activeSession: model.activeSession,
+    activeSession: activeSessionOf(model),
     pendingDiscardSession: model.pendingDiscardSession,
     runner,
-    history: model.history,
+    history: historyOf(model),
     selectedHistorySession: model.selectedHistorySession,
     pendingHistoryDelete: model.pendingHistoryDelete,
     showEditHistoryName: model.showEditHistoryName,

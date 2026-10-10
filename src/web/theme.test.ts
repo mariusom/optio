@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore";
+import * as KeyValueStore from "effect/persistence/KeyValueStore";
 import {
   accentForeground,
   accents,

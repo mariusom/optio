@@ -41,10 +41,10 @@ let opener: HTMLElement | null = null;
 
 const ShowedSheet = Schema.TaggedStruct("ShowedSheet", {});
 
+// Mounted on the sheet's <dialog>, whose id the Dialog view sets.
 export const ShowSheet = Mount.define("ShowSheet", {
-  args: { id: Schema.String },
   messages: [ShowedSheet],
-  execute: ({ id }) =>
+  execute: ({ element: { id } }) =>
     Effect.acquireRelease(
       Effect.gen(function* () {
         const active = document.activeElement;
@@ -89,7 +89,8 @@ export const sheet = <M>(
 ): Html =>
   h.submodel({
     slotId: config.id,
-    model: Dialog.init({ id: config.id, isOpen: true, isAnimated: false }),
+    // Open while rendered: the Mount below shows it, so no open Commands run.
+    model: { ...Dialog.init({ id: config.id, isAnimated: false }), isOpen: true },
     view: Dialog.view,
     toParentMessage: (message) =>
       message._tag === "RequestedClose" ? config.onDismiss : config.onSettled,
@@ -107,19 +108,16 @@ export const sheet = <M>(
             h.Class(
               "m-0 items-end justify-center overflow-hidden bg-transparent p-0 text-foreground open:flex sm:items-center",
             ),
-            h.OnMount(Mount.mapMessage(ShowSheet({ id: config.id }), () => config.onSettled)),
+            h.OnMount(Mount.mapMessage(ShowSheet(), () => config.onSettled)),
           ],
           [
-            h.div(
-              [
-                ...render.backdrop,
-                h.DataAttribute("slot", "sheet-overlay"),
-                h.Class(
-                  "modal-backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150",
-                ),
-              ],
-              [],
-            ),
+            h.div([
+              ...render.backdrop,
+              h.DataAttribute("slot", "sheet-overlay"),
+              h.Class(
+                "modal-backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150",
+              ),
+            ]),
             h.div(
               [
                 ...render.panel,
@@ -135,13 +133,10 @@ export const sheet = <M>(
                 ),
               ],
               [
-                h.div(
-                  [
-                    h.Class("mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden"),
-                    h.AriaHidden(true),
-                  ],
-                  [],
-                ),
+                h.div([
+                  h.Class("mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden"),
+                  h.AriaHidden(true),
+                ]),
                 h.div(
                   [h.Class("flex flex-col gap-2 p-6 text-left")],
                   [
@@ -173,7 +168,7 @@ export const sheet = <M>(
                       ),
                     ]),
                 ...(config.footer === undefined
-                  ? [h.div([h.Class("h-6")], [])]
+                  ? [h.div([h.Class("h-6")])]
                   : [
                       h.div(
                         [h.Class(children.length === 0 ? "px-6 pt-2 pb-6" : "p-6")],

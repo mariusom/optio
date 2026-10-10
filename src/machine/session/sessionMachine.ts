@@ -1,6 +1,6 @@
 // Plans transitions without storage or DOM effects; app/commands.ts executes emissions.
 
-import { Schema } from "effect";
+import { Match, Schema } from "effect";
 
 import {
   RunnerDataSchema,
@@ -236,35 +236,34 @@ const flushesFirst = new Set<SessionEvent["_tag"]>([
 ]);
 
 /** Events accepted in either live phase. */
-const planLive = (runner: RunnerState, event: SessionEvent, now: number): SessionPlan | null => {
-  switch (event._tag) {
-    case "DataSynced":
-      if (event.data === null) return next(null);
-      if (event.data.sessionId !== runner.sessionId) return next(freshRunner(event.data, now));
-      return next({ ...runner, ...syncPending(runner, event.data), now });
-    case "SectionFocused":
-      return runner.focusedSectionId === event.fieldId
+const planLive = (runner: RunnerState, event: SessionEvent, now: number): SessionPlan | null =>
+  Match.value(event).pipe(
+    Match.tag("DataSynced", ({ data }) => {
+      if (data === null) return next(null);
+      if (data.sessionId !== runner.sessionId) return next(freshRunner(data, now));
+      return next({ ...runner, ...syncPending(runner, data), now });
+    }),
+    Match.tag("SectionFocused", ({ fieldId }) =>
+      runner.focusedSectionId === fieldId
         ? stay(runner)
-        : next({ ...runner, focusedSectionId: event.fieldId });
-    case "TaskListToggled":
-      return next({ ...runner, showTaskList: !runner.showTaskList });
-    case "RecordAcked":
-      return next({ ...runner, focusedSectionId: null, showTaskList: false, lastError: null });
-    case "EditAcked":
-      return next({
+        : next({ ...runner, focusedSectionId: fieldId }),
+    ),
+    Match.tag("TaskListToggled", () => next({ ...runner, showTaskList: !runner.showTaskList })),
+    Match.tag("RecordAcked", () =>
+      next({ ...runner, focusedSectionId: null, showTaskList: false, lastError: null }),
+    ),
+    Match.tag("EditAcked", () =>
+      next({
         ...withCurrentTask(runner, fallbackTaskId(runner)),
         focusedSectionId: null,
         showTaskList: false,
         lastError: null,
-      });
-    case "EndAcked":
-      return next(null);
-    case "FlushRequested":
-      return stay(runner);
-    default:
-      return null;
-  }
-};
+      }),
+    ),
+    Match.tag("EndAcked", () => next(null)),
+    Match.tag("FlushRequested", () => stay(runner)),
+    Match.orElse(() => null),
+  );
 
 type EventOf<Tag extends SessionEvent["_tag"]> = Extract<SessionEvent, { _tag: Tag }>;
 type PhaseHandlers = {
@@ -367,21 +366,19 @@ const planPhase = (handlers: PhaseHandlers, runner: RunnerState, event: SessionE
 const planCollecting = (runner: RunnerState, event: SessionEvent): SessionPlan =>
   planPhase(collecting, runner, event);
 
-const planConfirming = (runner: RunnerState, event: SessionEvent): SessionPlan => {
-  switch (event._tag) {
-    case "EndCancelled":
-      return next({ ...runner, showEndConfirm: false });
+const planConfirming = (runner: RunnerState, event: SessionEvent): SessionPlan =>
+  Match.value(event).pipe(
+    Match.tag("EndCancelled", () => next({ ...runner, showEndConfirm: false })),
     // Confirmed: commit the end, return to collecting while the store
     // processes the archive (EndAcked → Idle afterwards).
-    case "EndConfirmed":
-      return next(
+    Match.tag("EndConfirmed", () =>
+      next(
         { ...runner, showEndConfirm: false },
         { _tag: "CommitEndSession", sessionId: runner.sessionId },
-      );
-    default:
-      return stay(runner);
-  }
-};
+      ),
+    ),
+    Match.orElse(() => stay(runner)),
+  );
 
 /**
  * Pure session reducer. Returns the input runner unchanged (same reference)

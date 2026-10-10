@@ -40,6 +40,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
         iconLibrary: "hugeicons",
         accent: "default",
         now: Date.now(),
+        idSeed: "agent-test",
       } as const),
     },
   );

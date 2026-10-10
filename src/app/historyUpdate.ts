@@ -6,11 +6,12 @@ import {
 import { historyRouter, sessionDetailRouter } from "../web/routes";
 import { NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
-import { Message } from "../messages";
-import type { Model } from "./model";
+import { Message, type MessageHandlers } from "../messages";
+import { AsyncData } from "foldkit";
+import { historyOf, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
-type AllHandlers = Parameters<typeof Message.match<Result>>[1];
+type AllHandlers = MessageHandlers<Result>;
 
 type HistoryHandlers = Pick<
   AllHandlers,
@@ -37,7 +38,7 @@ type HistoryHandlers = Pick<
   | "DismissedHistoryError"
 >;
 export const historyHandlers = (model: Model): HistoryHandlers => ({
-  GotHistory: ({ history }) => ({ model: { ...model, history } }),
+  GotHistory: ({ history }) => ({ model: { ...model, history: AsyncData.succeed(history) } }),
   GotHistoryDetail: ({ detail }) => {
     if (detail === null)
       return {
@@ -69,7 +70,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
   }),
   RequestedHistoryDelete: ({ id, displayName }) => {
-    const session = model.history.find((candidate) => candidate.id === id);
+    const session = historyOf(model).find((candidate) => candidate.id === id);
     return {
       model: {
         ...model,

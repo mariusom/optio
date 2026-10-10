@@ -14,53 +14,16 @@ import {
 } from "./web/browserTheme";
 import { getStore } from "./livestore/client";
 import type { ModelContext } from "./agents/webmcp";
+import { signalUpdateReady } from "./web/updateSignal";
 
-// ── PWA update toast ─────────────────────────────────────────────────────────
-// Never reload the page out from under the user. When a new
-// service worker takes control (or is `waiting`, prompt-style), show an
-// unobtrusive toast; the user taps it to apply the update — no mid-session
-// surprise reloads while recording a study.
-// Built imperatively (no framework churn) with the `pwa-update-toast` id so it
-// can never be duplicated.
-
-const TOAST_ID = "pwa-update-toast";
-const TOAST_CLASS =
-  "fixed top-[calc(0.75rem+env(safe-area-inset-top))] left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-medium text-background shadow-lg animate-[toast-in_0.25s_ease-out]";
-
-const showUpdateToast = (onTap: () => void) => {
-  if (document.getElementById(TOAST_ID) !== null) return;
-  const toast = document.createElement("button");
-  toast.id = TOAST_ID;
-  toast.type = "button";
-  toast.className = TOAST_CLASS;
-  toast.setAttribute("role", "status");
-  toast.textContent = "Update ready. Tap to refresh.";
-  toast.addEventListener("click", () => {
-    // Guard against double taps firing the reload twice.
-    toast.disabled = true;
-    toast.textContent = "Loading update…";
-    onTap();
-  });
-  document.body.appendChild(toast);
-};
-
-const updateSW = registerSW({
-  immediate: true,
-  // autoUpdate mode: the plugin fires this once the new SW has taken control —
-  // exactly where it would otherwise reload the page immediately. Deferring to
-  // an explicit tap is the Safari-friendly "Update available" flow.
-  onNeedReload() {
-    showUpdateToast(() => window.location.reload());
-  },
-  // Prompt-style hook (used when registerType is "prompt"): updateSW(true)
-  // posts SKIP_WAITING to the waiting registration and reloads on confirm.
-  onNeedRefresh() {
-    showUpdateToast(() => void updateSW(true));
-  },
-});
+// Register the service worker first, independent of the app: even a release
+// that fails to boot still installs offline support and receives the fix. The
+// app shows "Update ready" and reloads only when tapped (web/appUpdate.ts).
+registerSW({ immediate: true, onNeedReload: signalUpdateReady });
 
 // Startup Flags: saved preferences (applied to the document as they load) and
-// the Model's first time, from Effect's Clock, never Date.now().
+// the Model's first time, from Effect's Clock, never Date.now(), and the
+// random seed for IDs created in update.
 const flags = Effect.all({
   theme: initializeTheme,
   style: initializeStyle,
@@ -68,6 +31,7 @@ const flags = Effect.all({
   iconLibrary: initializeIconLibrary,
   accent: initializeAccent,
   now: Clock.currentTimeMillis,
+  idSeed: Effect.sync(() => crypto.randomUUID()),
 });
 
 const main = Effect.gen(function* () {

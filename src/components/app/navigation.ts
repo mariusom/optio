@@ -1,7 +1,7 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode } from "lucide";
 
-import { hrefFor, type Route } from "../../web/routes";
+import { RouteSchema, hrefFor, type Route } from "../../web/routes";
 import { cn } from "@/lib/utils";
 import { Clock, FileText, Play, Settings2, icon } from "./icons";
 
@@ -25,23 +25,18 @@ export const navigationTabs: ReadonlyArray<TabDef> = [
 ];
 
 /** The tab a route belongs to, so detail routes keep their parent highlighted. */
-const activeTab = (route: Route): TabTag => {
-  switch (route._tag) {
-    case "TemplatesTab":
-    case "TemplateEditor":
-      return "TemplatesTab";
-    case "HistoryTab":
-    case "SessionDetail":
-      return "HistoryTab";
-    case "SettingsTab":
-    case "AgentHelp":
-    case "About":
-      return "SettingsTab";
-    case "StartTab":
-    case "SessionRunner":
-      return "StartTab";
-  }
-};
+const activeTab = (route: Route): TabTag =>
+  RouteSchema.match(route, {
+    TemplatesTab: () => "TemplatesTab" as const,
+    TemplateEditor: () => "TemplatesTab" as const,
+    HistoryTab: () => "HistoryTab" as const,
+    SessionDetail: () => "HistoryTab" as const,
+    SettingsTab: () => "SettingsTab" as const,
+    AgentHelp: () => "SettingsTab" as const,
+    About: () => "SettingsTab" as const,
+    StartTab: () => "StartTab" as const,
+    SessionRunner: () => "StartTab" as const,
+  });
 
 // ── Phone: bottom tab bar ─────────────────────────────────────────────────
 

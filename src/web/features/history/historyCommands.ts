@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema as S } from "effect";
+import { Clock, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -54,7 +54,7 @@ const failedExport = (error: string) => Message.FailedCsvExport({ error });
 
 // DeleteHistorySession → sessionDeleted
 export const DeleteHistorySession = Command.define("DeleteHistorySession", {
-  args: { id: S.String },
+  args: { id: Schema.String },
   messages: [Message.HistoryDeleted, Message.FailedHistoryOp],
   execute: ({ id }) =>
     withStore(({ store, events }) =>
@@ -67,7 +67,7 @@ export const DeleteHistorySession = Command.define("DeleteHistorySession", {
 
 // RenameHistorySession → sessionRenamed
 export const RenameHistorySession = Command.define("RenameHistorySession", {
-  args: { id: S.String, sessionName: S.String },
+  args: { id: Schema.String, sessionName: Schema.String },
   messages: [Message.HistoryNameUpdated, Message.FailedHistoryOp],
   execute: ({ id, sessionName }) =>
     withStore(({ store, events }) =>
@@ -80,7 +80,7 @@ export const RenameHistorySession = Command.define("RenameHistorySession", {
 
 // ExportSessionCsv — archive format only (history is archive)
 export const ExportSessionCsv = Command.define("ExportSessionCsv", {
-  args: { sessionId: S.String, spreadsheetSafe: S.optionalKey(S.Boolean) },
+  args: { sessionId: Schema.String, spreadsheetSafe: Schema.optionalKey(Schema.Boolean) },
   messages: [Message.CsvExported, Message.FailedCsvExport],
   execute: ({ sessionId, spreadsheetSafe = false }) =>
     withStore(({ store, queries }) =>

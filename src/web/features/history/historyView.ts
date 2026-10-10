@@ -32,6 +32,8 @@ type HistorySession = {
 
 type HistoryModel = {
   readonly history: ReadonlyArray<HistorySession>;
+  /** Ticked Model time; day labels ("Today") are relative to it. */
+  readonly now: number;
   readonly pendingHistoryDelete: { readonly id: string; readonly displayName: string } | null;
   readonly historyActionsFor: string | null;
   readonly historyError: string | null;
@@ -155,7 +157,7 @@ const noSessionsView = (h: HtmlBuilder<Message>) =>
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
-  const groups = groupByDay(model.history);
+  const groups = groupByDay(model.history, model.now);
   const openActions =
     model.historyActionsFor === null
       ? null

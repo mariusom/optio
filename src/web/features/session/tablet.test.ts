@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vitest";
 import { Effect, Stream } from "effect";
+import { AsyncData } from "foldkit";
 
 import { Message } from "../../../messages";
 import { subscriptions, update } from "../../../main";
@@ -44,9 +45,12 @@ const makeRunner = (
 
 const makeModel = (runner: Model["runner"]): Model => ({
   agentConfirmationVersion: 0,
+  idSeed: "tablet-test",
+  idCounter: 0,
   route: SessionRunner({ sessionId: "s1" }),
   now: Date.now(),
   theme: "auto",
+  systemPrefersDark: false,
   themeSaveFailed: false,
   style: "nova",
   styleSaveFailed: false,
@@ -58,7 +62,9 @@ const makeModel = (runner: Model["runner"]): Model => ({
   accent: "default",
   accentSaveFailed: false,
   accentDraft: null,
-  templates: [],
+  templates: AsyncData.succeed([]),
+  templatesSeedChecked: true,
+  listReadAttempt: 0,
   showCreate: false,
   newName: "",
   pendingDelete: null,
@@ -68,10 +74,10 @@ const makeModel = (runner: Model["runner"]): Model => ({
   selectedTemplateId: null,
   sessionNameInput: "",
   placeholderName: "Amber Canyon",
-  activeSession: null,
+  activeSession: AsyncData.succeed(null),
   pendingDiscardSession: false,
   runner,
-  history: [],
+  history: AsyncData.succeed([]),
   selectedHistorySession: null,
   detailLoadFailed: false,
   pendingHistoryDelete: null,
@@ -84,6 +90,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   storage: "persisted",
   memoryStorageAcknowledged: false,
   promptCopyStatus: "idle",
+  appUpdate: "none",
 });
 
 describe("runner dead links", () => {
