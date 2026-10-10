@@ -7,6 +7,8 @@ type Action<M> = Readonly<{
   onClick: M;
   ariaLabel?: string;
   isDisabled?: boolean;
+  /** `aria-keyshortcuts` value when a keyboard shortcut triggers the action. */
+  keyShortcuts?: string;
 }>;
 
 export type ActionGroupConfig<M> = Readonly<{
@@ -24,7 +26,10 @@ export const actionGroup = <M>(config: ActionGroupConfig<M>, h: HtmlBuilder<M>) 
         size: "lg",
         onClick: value.onClick,
         isDisabled: value.isDisabled,
-        attributes: [h.AriaLabel(value.ariaLabel ?? value.label)],
+        attributes: [
+          h.AriaLabel(value.ariaLabel ?? value.label),
+          ...(value.keyShortcuts === undefined ? [] : [h.AriaKeyshortcuts(value.keyShortcuts)]),
+        ],
       },
       value.label,
       h,

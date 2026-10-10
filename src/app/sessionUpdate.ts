@@ -2,6 +2,7 @@ import { DiscardLiveSession, StartSession } from "../web/features/session/startC
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
 import { RequestPersistentStorage } from "../web/storagePersistence";
 import { sessionRunnerRouter } from "../web/routes";
+import { currentTask } from "../web/features/session/runner";
 import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
 import type { Update } from "foldkit";
 import { Message, type MessageHandlers } from "../messages";
@@ -33,6 +34,7 @@ type SessionHandlers = Pick<
   | "BlurredField"
   | "AdjustedCounter"
   | "ClickedRecord"
+  | "PressedPrimaryShortcut"
   | "TaskRecorded"
   | "GaveRecordFeedback"
   | "ClickedRepeatLastAnswers"
@@ -151,6 +153,14 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   AdjustedCounter: ({ taskFieldId, delta }) =>
     applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta }),
   ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
+  // Same plan as the visible primary button: Save while editing, else Record.
+  PressedPrimaryShortcut: () =>
+    applyPlan(model, {
+      _tag:
+        model.runner !== null && currentTask(model.runner)?.isBeingEdited === true
+          ? "EditSaved"
+          : "RecordRequested",
+    }),
   TaskRecorded: ({ taskId }) => applyPlan(model, { _tag: "RecordAcked", taskId }),
   GaveRecordFeedback: () => ({ model }),
   ClickedRepeatLastAnswers: () => applyPlan(model, { _tag: "RepeatRequested" }),

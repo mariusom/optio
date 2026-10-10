@@ -20,6 +20,7 @@ import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
 import { isBooleanTrue, isScalarAnswerValid } from "../../fields";
 import { formSectionsView } from "./questionControls";
+import { primaryShortcut, primaryShortcutHint } from "./runnerShortcuts";
 import {
   canRecordTask,
   currentTask,
@@ -158,11 +159,12 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
               onClick: Message.ClickedSaveEdit(),
               isDisabled: !canSave,
               ariaLabel: "Save changes",
+              keyShortcuts: primaryShortcut,
             },
           },
           h,
         ),
-        ...(canSave ? [] : [hint(recordHint(task), h)]),
+        canSave ? primaryShortcutHint("Save", h) : hint(recordHint(task), h),
       ]
     : [
         button(
@@ -171,12 +173,12 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
             className: "w-full",
             isDisabled: !canRecord,
             onClick: Message.ClickedRecord(),
-            attributes: [h.AriaLabel("Record task")],
+            attributes: [h.AriaLabel("Record task"), h.AriaKeyshortcuts(primaryShortcut)],
           },
           [icon(h, Check, "size-5"), "Record task"],
           h,
         ),
-        ...(canRecord ? [] : [hint(recordHint(task), h)]),
+        canRecord ? primaryShortcutHint("Record", h) : hint(recordHint(task), h),
       ];
   const progressBar = requiredProgress(task, h);
 

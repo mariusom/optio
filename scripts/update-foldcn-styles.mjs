@@ -26,6 +26,7 @@ const components = [
   "empty",
   "input",
   "item",
+  "kbd",
   "native-select",
   "progress",
   "sheet",

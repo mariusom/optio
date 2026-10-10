@@ -14,6 +14,7 @@ import {
   scrollToCurrentTask,
   scrollToSection,
 } from "./domStreams";
+import { primaryShortcutPresses } from "../web/features/session/runnerShortcuts";
 
 const isDocumentVisible = () =>
   typeof document === "undefined" || document.visibilityState !== "hidden";
@@ -121,6 +122,10 @@ const loggingFailure = (stream: Stream.Stream<Message>): Stream.Stream<Message> 
     ),
   );
 
+/** Desktop Ctrl/⌘+Enter works on the runner, except while ending the session. */
+const runnerShortcutsActive = (model: Model): boolean =>
+  model.route._tag === "SessionRunner" && model.runner !== null && !model.runner.showEndConfirm;
+
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   agentRequest: Port.subscriptionEntry(agentPorts.inbound.agentRequest, Message.AgentRequest),
   storage: Subscription.persistentEntry(storageStatusStream),
@@ -186,6 +191,13 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
       }),
       dependenciesToStream: ({ sessionId }) =>
         sessionId === null ? Stream.empty : loggingFailure(runnerStream(sessionId)),
+    },
+  ),
+  runnerShortcuts: entry(
+    { active: Schema.Boolean },
+    {
+      modelToDependencies: (model) => ({ active: runnerShortcutsActive(model) }),
+      dependenciesToStream: ({ active }) => (active ? primaryShortcutPresses : Stream.empty),
     },
   ),
   fieldWriteFlush: entry(

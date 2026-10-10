@@ -163,6 +163,8 @@ export const Message = defineMessageUnion({
   AdjustedCounter: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   UpdatedFieldValue: {},
   ClickedRecord: {},
+  /** Ctrl/⌘+Enter on the runner: record the open task, or save the one being edited. */
+  PressedPrimaryShortcut: {},
   TaskRecorded: { taskId: Schema.String },
   /** The recorded-task vibration ran, or was skipped where unsupported. */
   GaveRecordFeedback: {},
