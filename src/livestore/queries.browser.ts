@@ -211,3 +211,46 @@ it("reads a template's report from its finished sessions only", async () => {
     totalMs: 0,
   });
 });
+
+it("restores a backup once, keeping what is already present and the default", async () => {
+  const store = await openStore();
+  store.commit(
+    events.templateCreated({ id: "mine", name: "Mine", isDefault: true, now: new Date(1) }),
+    events.fieldsReplaced({ templateId: "mine", fields }),
+  );
+  const backup = events.backupRestored({
+    now: new Date(5),
+    templates: [
+      { id: "restored", name: "Restored", fields: fields.map((f) => ({ ...f, id: `r-${f.id}` })) },
+      // Same ID as an existing template: kept as it is.
+      { id: "mine", name: "Renamed", fields: [] },
+    ],
+    sessions: [
+      {
+        id: "old",
+        templateId: "restored",
+        templateName: "Restored",
+        sessionName: "Morning",
+        startedAt: new Date(1000),
+        endedAt: new Date(4000),
+        records: [archivedTask(1), archivedTask(2)],
+      },
+    ],
+  });
+  store.commit(backup);
+  store.commit(backup);
+
+  const templates = store.query(queries.templateSummaries);
+  expect(templates.map((row) => [row.id, row.name, row.isDefault, row.fieldCount])).toEqual(
+    expect.arrayContaining([
+      ["mine", "Mine", 1, 2],
+      ["restored", "Restored", 0, 2],
+    ]),
+  );
+  expect(templates).toHaveLength(2);
+  expect(store.query(queries.archivedSessions)).toEqual([
+    expect.objectContaining({ id: "old", taskCount: 2, startedAt: 1000, endedAt: 4000 }),
+  ]);
+  expect(store.query(queries.archiveRows("old")).sections).toHaveLength(6);
+  expect(store.query(queries.templateReportRows("restored")).summary.sessionCount).toBe(1);
+});

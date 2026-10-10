@@ -2,6 +2,7 @@ import { Events, State, makeSchema } from "@livestore/livestore";
 import { Schema } from "effect";
 
 import { FieldDef } from "../domain/fields";
+import { ArchiveRecord } from "../domain/archive";
 
 // ── Tables ────────────────────────────────────────────────────────────────
 
@@ -185,21 +186,26 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       endedAt: Schema.DateFromMillis,
-      records: Schema.Array(
+      records: Schema.Array(ArchiveRecord),
+    }),
+  }),
+  /** Adds a backup's templates and finished sessions; anything already present is kept. */
+  backupRestored: Events.synced({
+    name: "v3.BackupRestored",
+    schema: Schema.Struct({
+      now: Schema.DateFromMillis,
+      templates: Schema.Array(
+        Schema.Struct({ id: Schema.String, name: Schema.String, fields: Schema.Array(FieldDef) }),
+      ),
+      sessions: Schema.Array(
         Schema.Struct({
-          taskIdNumber: Schema.Number,
-          taskType: Schema.String,
-          startedAt: Schema.Union([Schema.Null, Schema.DateFromMillis]),
-          endedAt: Schema.Union([Schema.Null, Schema.DateFromMillis]),
-          sections: Schema.Array(
-            Schema.Struct({
-              sectionName: Schema.String,
-              value: Schema.String,
-              sectionType: Schema.String,
-              isRequired: Schema.Boolean,
-              startedAt: Schema.Union([Schema.Null, Schema.DateFromMillis]),
-            }),
-          ),
+          id: Schema.String,
+          templateId: Schema.NullOr(Schema.String),
+          templateName: Schema.String,
+          sessionName: Schema.String,
+          startedAt: Schema.DateFromMillis,
+          endedAt: Schema.DateFromMillis,
+          records: Schema.Array(ArchiveRecord),
         }),
       ),
     }),
@@ -289,6 +295,37 @@ const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>
       startDate: null,
     }),
   );
+
+/** Archived task rows: `<session>:<task>` records with positioned answers. */
+const insertArchiveRecords = (
+  sessionId: string,
+  records: ReadonlyArray<typeof ArchiveRecord.Type>,
+) =>
+  records.flatMap((record) => {
+    const recordId = `${sessionId}:${record.taskIdNumber}`;
+    return [
+      tables.taskRecords.insert({
+        id: recordId,
+        sessionId,
+        taskId: record.taskIdNumber,
+        taskType: record.taskType,
+        startedAt: record.startedAt,
+        endedAt: record.endedAt,
+      }),
+      ...record.sections.map((section, index) =>
+        tables.taskSectionRecords.insert({
+          id: `${recordId}:${index}`,
+          taskRecordId: recordId,
+          sectionName: section.sectionName,
+          value: section.value,
+          sectionType: section.sectionType,
+          isRequired: section.isRequired ? 1 : 0,
+          startedAt: section.startedAt,
+          position: index,
+        }),
+      ),
+    ];
+  });
 
 type MaterializerQuery = (input: {
   query: string;
@@ -386,31 +423,44 @@ const materializers = State.SQLite.materializers(events, {
     if ((rows[0]?.count ?? 0) < 1) return [];
     return [
       tables.sessions.update({ endedAt: new Date(endedAt) }).where({ id }),
-      ...records.flatMap((record) => {
-        const recordId = `${id}:${record.taskIdNumber}`;
-        return [
-          tables.taskRecords.insert({
-            id: recordId,
-            sessionId: id,
-            taskId: record.taskIdNumber,
-            taskType: record.taskType,
-            startedAt: record.startedAt === null ? null : new Date(record.startedAt),
-            endedAt: record.endedAt === null ? null : new Date(record.endedAt),
+      ...insertArchiveRecords(id, records),
+    ];
+  },
+  // Restores only what is missing, so a repeated or overlapping restore is
+  // harmless: a template is skipped when its ID or any question ID exists, a
+  // session when its ID exists. Restored templates never take the default.
+  "v3.BackupRestored": ({ now, templates, sessions }, { query }) => {
+    const exists = (table: string, ids: ReadonlyArray<string>) =>
+      ids.some(
+        (id) =>
+          query({ query: `select 1 from ${table} where id = $id`, bindValues: { id } }).length > 0,
+      );
+    return [
+      ...templates
+        .filter(
+          (t) =>
+            !exists("templates", [t.id]) &&
+            !exists(
+              "templateFields",
+              t.fields.map((f) => f.id),
+            ),
+        )
+        .flatMap((t) => [
+          tables.templates.insert({
+            id: t.id,
+            name: t.name,
+            isDefault: 0,
+            createdAt: now,
+            updatedAt: now,
           }),
-          ...record.sections.map((section, index) =>
-            tables.taskSectionRecords.insert({
-              id: `${recordId}:${index}`,
-              taskRecordId: recordId,
-              sectionName: section.sectionName,
-              value: section.value,
-              sectionType: section.sectionType,
-              isRequired: section.isRequired ? 1 : 0,
-              startedAt: section.startedAt === null ? null : new Date(section.startedAt),
-              position: index,
-            }),
-          ),
-        ];
-      }),
+          ...insertTemplateFields(t.id, t.fields),
+        ]),
+      ...sessions
+        .filter((s) => !exists("sessions", [s.id]))
+        .flatMap(({ records, ...session }) => [
+          tables.sessions.insert(session),
+          ...insertArchiveRecords(session.id, records),
+        ]),
     ];
   },
   "v2.SessionLiveGraphCleared": ({ sessionId }) => [
