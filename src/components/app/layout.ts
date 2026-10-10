@@ -30,9 +30,13 @@ export const rowAction = <M>(
     h,
   );
 
+/** Content column width; `"xl"` widens it only on wide desktops. */
+export const contentWidth = (wide: boolean | "xl" | undefined): string =>
+  wide === "xl" ? "max-w-3xl xl:max-w-5xl" : wide ? "max-w-5xl" : "max-w-3xl";
+
 /** Content column: centered, readable width, bottom padding clears the tab bar. */
 export const page = <M>(
-  config: Readonly<{ className?: string; wide?: boolean }>,
+  config: Readonly<{ className?: string; wide?: boolean | "xl" }>,
   children: ReadonlyArray<Child>,
   h: HtmlBuilder<M>,
 ): Html =>
@@ -41,7 +45,7 @@ export const page = <M>(
       h.Class(
         cn(
           "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
-          config.wide ? "max-w-5xl" : "max-w-3xl",
+          contentWidth(config.wide),
           config.className,
         ),
       ),
@@ -52,10 +56,16 @@ export const page = <M>(
 
 /** Section heading above a grouped list (iOS section header). */
 export const sectionHeader = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
-  h.h2([h.Class(cn("pb-2 text-sm font-medium text-foreground", className))], [text]);
+  h.h2(
+    [
+      h.Class(cn("pb-2 text-sm font-medium text-foreground", className)),
+      h.DataAttribute("slot", "section-header"),
+    ],
+    [text],
+  );
 
 /** Explanatory text under a grouped list (iOS section footer). */
-const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
+export const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
   h.p([h.Class("pt-2 text-sm leading-relaxed text-muted-foreground")], [text]);
 
 /**
@@ -93,6 +103,7 @@ export const groupedList = <M>(
           ...(config.role !== undefined ? [h.Role(config.role)] : []),
           ...(config.listAttributes ?? []),
           h.DataAttribute("slot", "grouped-list"),
+          h.DataAttribute("surface", config.surface ?? "card"),
         ],
         rows,
       ),

@@ -1,18 +1,25 @@
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import * as BrowserKeyValueStore from "@effect/platform-browser/BrowserKeyValueStore";
 import iconSvg from "../../public/icon.svg?raw";
 import {
   accentForeground,
   isDarkTheme,
+  Look,
+  lookThemeColors,
   readAccent,
+  readControlSize,
   readFont,
   readIconLibrary,
+  readLook,
   readTheme,
   saveAccent,
+  saveControlSize,
   saveFont,
   saveIconLibrary,
+  saveLook,
   saveTheme,
   type Accent,
+  type ControlSize,
   type Font,
   type IconLibrary,
   type Theme,
@@ -37,9 +44,17 @@ const updateFavicon = () => {
   link.href = `data:image/svg+xml,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
 };
 
-// sRGB equivalents of --background in src/index.css; browser chrome does not
-// reliably accept oklch() in theme-color.
-const themeColors = { light: "#ffffff", dark: "#0a0a0a" } as const;
+/** Matches browser chrome and the favicon to the document's look and scheme. */
+const updateBrowserChrome = () => {
+  const root = document.documentElement;
+  const look = Schema.is(Look)(root.dataset.look) ? root.dataset.look : "classic";
+  const colors = lookThemeColors[look];
+  // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    meta.content = root.classList.contains("dark") ? colors.dark : colors.light;
+  }
+  updateFavicon();
+};
 
 /**
  * Shows the light or dark scheme in the page, browser chrome and favicon.
@@ -49,12 +64,47 @@ const themeColors = { light: "#ffffff", dark: "#0a0a0a" } as const;
 export const applyColorScheme = (dark: boolean) =>
   Effect.sync(() => {
     document.documentElement.classList.toggle("dark", dark);
-    // Both media-scoped tags follow the in-app choice, which overrides the OS scheme.
-    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
-      meta.content = dark ? themeColors.dark : themeColors.light;
-    }
-    updateFavicon();
+    updateBrowserChrome();
   });
+
+const applyLook = (look: Look) => {
+  document.documentElement.dataset.look = look;
+  updateBrowserChrome();
+};
+
+export const initializeLook = Effect.gen(function* () {
+  const look = yield* readLook.pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.catchCause(() => Effect.succeed("classic" as const)),
+  );
+  applyLook(look);
+  return look;
+});
+
+export const changeLook = Effect.fn("changeLook")(function* (look: Look) {
+  applyLook(look);
+  return yield* saveLook(look).pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
+  );
+});
+
+export const initializeControlSize = Effect.gen(function* () {
+  const size = yield* readControlSize.pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.catchCause(() => Effect.succeed("standard" as const)),
+  );
+  document.documentElement.dataset.controlSize = size;
+  return size;
+});
+
+export const changeControlSize = Effect.fn("changeControlSize")(function* (size: ControlSize) {
+  document.documentElement.dataset.controlSize = size;
+  return yield* saveControlSize(size).pipe(
+    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
+  );
+});
 
 export const initializeTheme = Effect.gen(function* () {
   const theme = yield* readTheme.pipe(

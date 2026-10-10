@@ -7,8 +7,10 @@ import "./index.css";
 import { applicationConfig } from "./application.ts";
 import {
   initializeAccent,
+  initializeControlSize,
   initializeFont,
   initializeIconLibrary,
+  initializeLook,
   initializeStyle,
   initializeTheme,
 } from "./web/browserTheme";
@@ -30,6 +32,8 @@ const flags = Effect.all({
   font: initializeFont,
   iconLibrary: initializeIconLibrary,
   accent: initializeAccent,
+  look: initializeLook,
+  controlSize: initializeControlSize,
   now: Clock.currentTimeMillis,
   idSeed: Effect.sync(() => crypto.randomUUID()),
 });

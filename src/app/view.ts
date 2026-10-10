@@ -179,7 +179,7 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
         ),
       StartTab: titled,
       HistoryTab: titled,
-      SettingsTab: titled,
+      SettingsTab: () => pageHeader({ title: pageTitle(model.route), wide: "xl" }, h),
     },
     () => null,
   );

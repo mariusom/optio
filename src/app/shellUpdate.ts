@@ -18,8 +18,10 @@ import {
   ReplyToAgent,
   ResetTemplatePromptCopy,
   SaveAccent,
+  SaveControlSize,
   SaveFont,
   SaveIconLibrary,
+  SaveLook,
   SaveStyle,
   SaveTheme,
 } from "./commands";
@@ -87,6 +89,27 @@ export const agentHandlers = (
   },
 });
 
+type LookMessage =
+  | "SelectedLook"
+  | "LookSaveFinished"
+  | "SelectedControlSize"
+  | "ControlSizeSaveFinished";
+
+/** Look and control size: applied by their save commands, like font. */
+const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
+  SelectedLook: ({ look }) => ({ model: { ...model, look }, commands: [SaveLook({ look })] }),
+  LookSaveFinished: ({ look, saved }) => ({
+    model: look === model.look ? { ...model, lookSaveFailed: !saved } : model,
+  }),
+  SelectedControlSize: ({ controlSize }) => ({
+    model: { ...model, controlSize },
+    commands: [SaveControlSize({ controlSize })],
+  }),
+  ControlSizeSaveFinished: ({ controlSize, saved }) => ({
+    model: controlSize === model.controlSize ? { ...model, controlSizeSaveFailed: !saved } : model,
+  }),
+});
+
 type ShellHandlers = Pick<
   AllHandlers,
   | "SelectedTheme"
@@ -107,6 +130,7 @@ type ShellHandlers = Pick<
   | "CanceledAccentPicker"
   | "ConfirmedAccentPicker"
   | "AccentSaveFinished"
+  | LookMessage
   | "GotRoute"
   | "FailedDetailLoad"
   | "ClickedLink"
@@ -193,6 +217,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   AccentSaveFinished: ({ accent, saved }) => ({
     model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
   }),
+  ...lookHandlers(model),
   // ── Routing ────────────────────────────────────────────────────────────
   GotRoute: ({ route }) => {
     let base =

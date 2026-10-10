@@ -1,20 +1,19 @@
 import type { HtmlBuilder } from "foldkit/html";
-import { Schema } from "effect";
 
 import { choiceRows, groupedList, notice, page, row } from "@/components/app";
-import { sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
-import { input } from "@/components/ui/input";
 import { Message } from "../../../messages";
-import { HexColour, type Accent, type Font, type IconLibrary, type Theme } from "../../theme";
+import type { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../../theme";
 import type { FoldcnStyle } from "../../style";
 import { hrefFor } from "../../routes";
-
-const THEMES: ReadonlyArray<{ value: Theme; label: string }> = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "auto", label: "Automatic" },
-];
+import {
+  accentPicker,
+  accentRows,
+  controlSizeRow,
+  iconLibraryControl,
+  lookRows,
+  themeControl,
+} from "./appearance";
 
 const STYLES: ReadonlyArray<{ value: FoldcnStyle; label: string }> = [
   { value: "nova", label: "Nova" },
@@ -33,87 +32,6 @@ const FONTS: ReadonlyArray<{ value: Font; label: string }> = [
   { value: "mono", label: "System mono" },
 ];
 
-const ICON_LIBRARIES: ReadonlyArray<{ value: IconLibrary; label: string }> = [
-  { value: "hugeicons", label: "Hugeicons" },
-  { value: "lucide", label: "Lucide" },
-];
-
-const ACCENTS: ReadonlyArray<{ value: Accent; label: string }> = [
-  { value: "default", label: "Default" },
-  { value: "blue", label: "Blue" },
-  { value: "violet", label: "Violet" },
-  { value: "green", label: "Green" },
-  { value: "rose", label: "Rose" },
-];
-
-const accentLabel = (label: string, accent: Accent, h: HtmlBuilder<Message>) =>
-  h.span(
-    [h.Class("flex items-center gap-3")],
-    [
-      h.span([
-        h.Class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20"),
-        h.DataAttribute("accent", accent),
-        h.AriaHidden(true),
-        ...(accent.startsWith("#") ? [h.Style({ backgroundColor: accent })] : []),
-      ]),
-      label,
-    ],
-  );
-
-const accentPicker = (accentDraft: string | null, h: HtmlBuilder<Message>) =>
-  accentDraft === null
-    ? []
-    : [
-        sheet(
-          {
-            id: "accent-picker",
-            title: "Custom accent colour",
-            description:
-              "Choose a colour or enter its hex code. Changes apply only when confirmed.",
-            onDismiss: Message.CanceledAccentPicker(),
-            footer: {
-              cancel: { label: "Cancel", onClick: Message.CanceledAccentPicker() },
-              confirm: {
-                label: "Use colour",
-                onClick: Message.ConfirmedAccentPicker(),
-                isDisabled: !Schema.is(HexColour)(accentDraft),
-              },
-            },
-          },
-          [
-            h.div(
-              [h.Class("flex flex-col gap-4")],
-              [
-                input(
-                  {
-                    id: "accent-colour",
-                    label: "Colour",
-                    type: "color",
-                    value: Schema.is(HexColour)(accentDraft) ? accentDraft : "#2563eb",
-                    onInput: (colour) => Message.ChangedAccentDraft({ colour }),
-                    className: "h-16 p-1 cursor-pointer",
-                  },
-                  h,
-                ),
-                input(
-                  {
-                    id: "accent-hex",
-                    label: "Hex colour",
-                    value: accentDraft,
-                    placeholder: "#2563eb",
-                    isInvalid: !Schema.is(HexColour)(accentDraft),
-                    description: "Six hexadecimal digits, for example #2563eb.",
-                    onInput: (colour) => Message.ChangedAccentDraft({ colour }),
-                  },
-                  h,
-                ),
-              ],
-            ),
-          ],
-          h,
-        ),
-      ];
-
 type FailureOptions = Readonly<{
   theme: Theme;
   themeSaveFailed: boolean;
@@ -121,8 +39,22 @@ type FailureOptions = Readonly<{
   fontSaveFailed: boolean;
   accentSaveFailed: boolean;
   iconLibrarySaveFailed: boolean;
+  lookSaveFailed: boolean;
+  controlSizeSaveFailed: boolean;
   styleLoadFailed: boolean;
 }>;
+
+/** Preferences that apply at once but may fail to save, and what to say. */
+const unsavedNotices = (options: FailureOptions): ReadonlyArray<string> =>
+  [
+    [options.styleLoadFailed, "Couldn't load that style. Reload the app before trying again."],
+    [options.styleSaveFailed, "The component style was applied but couldn’t be saved."],
+    [options.lookSaveFailed, "The look was applied but couldn’t be saved."],
+    [options.controlSizeSaveFailed, "The control size was applied but couldn’t be saved."],
+    [options.fontSaveFailed, "The font was applied but couldn’t be saved."],
+    [options.iconLibrarySaveFailed, "The icon style was applied but couldn’t be saved."],
+    [options.accentSaveFailed, "The accent colour was applied but couldn’t be saved."],
+  ].flatMap(([failed, text]) => (failed ? [text as string] : []));
 
 const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
   ...(options.themeSaveFailed
@@ -145,35 +77,50 @@ const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
         ),
       ]
     : []),
-  ...(options.styleLoadFailed
-    ? [
-        notice(
-          {
-            tone: "warning",
-            text: "Couldn't load that style. Reload the app before trying again.",
-          },
-          h,
-        ),
-      ]
-    : []),
-  ...(options.styleSaveFailed
-    ? [
-        notice(
-          { tone: "warning", text: "The component style was applied but couldn’t be saved." },
-          h,
-        ),
-      ]
-    : []),
-  ...(options.fontSaveFailed
-    ? [notice({ tone: "warning", text: "The font was applied but couldn’t be saved." }, h)]
-    : []),
-  ...(options.iconLibrarySaveFailed
-    ? [notice({ tone: "warning", text: "The icon style was applied but couldn’t be saved." }, h)]
-    : []),
-  ...(options.accentSaveFailed
-    ? [notice({ tone: "warning", text: "The accent colour was applied but couldn’t be saved." }, h)]
-    : []),
+  ...unsavedNotices(options).map((text) => notice({ tone: "warning", text }, h)),
 ];
+
+const helpAndAbout = (h: HtmlBuilder<Message>) =>
+  h.details(
+    [h.Class("rounded-lg border border-border")],
+    [
+      h.summary(
+        [
+          h.Class(
+            "min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+          ),
+        ],
+        ["Help & about"],
+      ),
+      h.div(
+        [h.Class("border-t border-border divide-y divide-border")],
+        [
+          row({ title: "Use with AI", href: hrefFor({ _tag: "AgentHelp" }) }, h),
+          row({ title: "About Optio", href: hrefFor({ _tag: "About" }) }, h),
+        ],
+      ),
+    ],
+  );
+
+const privacy = (h: HtmlBuilder<Message>) =>
+  groupedList(
+    {
+      header: "Privacy",
+      footer:
+        "No account is needed. After the first load, studies work offline. Export important results; browser storage is not a backup.",
+    },
+    [
+      row(
+        {
+          title: "Stored in this browser",
+          wrap: true,
+          value: "Optional assistant access can share study data with your assistant provider.",
+        },
+        h,
+      ),
+    ],
+    h,
+  );
 
 type SettingsModel = FailureOptions &
   Readonly<{
@@ -182,152 +129,74 @@ type SettingsModel = FailureOptions &
     accent: Accent;
     accentDraft: string | null;
     iconLibrary: IconLibrary;
+    look: Look;
+    controlSize: ControlSize;
   }>;
 
-export const settingsPage = (
-  {
-    theme,
-    style,
-    font,
-    accent,
-    themeSaveFailed,
-    styleSaveFailed,
-    fontSaveFailed,
-    accentSaveFailed,
-    accentDraft,
-    iconLibrary,
-    iconLibrarySaveFailed,
-    styleLoadFailed,
-  }: SettingsModel,
-  h: HtmlBuilder<Message>,
-) =>
+/** One settings column; columns sit side by side from 1280px (xl). */
+const column = (children: Parameters<typeof page>[1], h: HtmlBuilder<Message>) =>
+  h.div([h.Class("flex min-w-0 flex-col gap-6")], children);
+
+/**
+ * Settings reads top to bottom on phones; from 1280px the same order flows
+ * into two columns (look and colour, then type, symbols, shape and info), so
+ * reading and tab order still finish one column before starting the next.
+ */
+export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
   page(
-    {},
+    { wide: "xl" },
     [
-      choiceRows(
-        {
-          label: "Appearance",
-          header: "Appearance",
-          footer: "Automatic follows your device’s light and dark setting.",
-          choices: THEMES.map((option) => ({
-            label: option.label,
-            selected: theme === option.value,
-            onSelect: Message.SelectedTheme({ theme: option.value }),
-          })),
-        },
-        h,
-      ),
-      choiceRows(
-        {
-          label: "Icon style",
-          header: "Icon style",
-          footer: "Changes symbols throughout Optio independently of font and component style.",
-          choices: ICON_LIBRARIES.map((option) => ({
-            label: option.label,
-            selected: iconLibrary === option.value,
-            onSelect: Message.SelectedIconLibrary({ library: option.value }),
-          })),
-        },
-        h,
-      ),
-      choiceRows(
-        {
-          label: "Font",
-          header: "Font",
-          footer: "Uses fonts already available on your device.",
-          choices: FONTS.map((option) => ({
-            label: option.label,
-            selected: font === option.value,
-            onSelect: Message.SelectedFont({ font: option.value }),
-          })),
-        },
-        h,
-      ),
-      choiceRows(
-        {
-          label: "Accent colour",
-          header: "Accent colour",
-          footer: "Changes controls and focus indicators independently of appearance and style.",
-          choices: [
-            ...ACCENTS.map((option) => ({
-              label: accentLabel(option.label, option.value, h),
-              selected: accent === option.value,
-              onSelect: Message.SelectedAccent({ accent: option.value }),
-            })),
-            {
-              label: accentLabel("Other…", accent.startsWith("#") ? accent : "default", h),
-              subtitle: accent.startsWith("#") ? accent.toUpperCase() : "Choose a custom colour",
-              selected: accent.startsWith("#"),
-              onSelect: Message.OpenedAccentPicker(),
-            },
-          ],
-        },
-        h,
-      ),
-      ...accentPicker(accentDraft, h),
-      choiceRows(
-        {
-          label: "Component style",
-          header: "Component style",
-          footer: "Changes component shape, spacing and typography independently of appearance.",
-          choices: STYLES.map((option) => ({
-            label: option.label,
-            selected: style === option.value,
-            onSelect: Message.SelectedStyle({ style: option.value }),
-          })),
-        },
-        h,
-      ),
-      ...failureNotices(
-        {
-          theme,
-          themeSaveFailed,
-          styleSaveFailed,
-          fontSaveFailed,
-          accentSaveFailed,
-          iconLibrarySaveFailed,
-          styleLoadFailed,
-        },
-        h,
-      ),
-      groupedList(
-        {
-          header: "Privacy",
-          footer:
-            "No account is needed. After the first load, studies work offline. Export important results; browser storage is not a backup.",
-        },
+      h.div(
+        [h.Class("grid gap-6 xl:grid-cols-2 xl:items-start xl:gap-8")],
         [
-          row(
-            {
-              title: "Stored in this browser",
-              wrap: true,
-              value: "Optional assistant access can share study data with your assistant provider.",
-            },
+          column(
+            [
+              lookRows(model.look, h),
+              themeControl(model.theme, h),
+              accentRows(model.accent, h),
+              controlSizeRow(model.controlSize, h),
+            ],
+            h,
+          ),
+          column(
+            [
+              choiceRows(
+                {
+                  label: "Font",
+                  header: "Font",
+                  footer: "Uses fonts already available on your device.",
+                  choices: FONTS.map((option) => ({
+                    label: option.label,
+                    selected: model.font === option.value,
+                    onSelect: Message.SelectedFont({ font: option.value }),
+                  })),
+                },
+                h,
+              ),
+              iconLibraryControl(model.iconLibrary, h),
+              choiceRows(
+                {
+                  label: "Component style",
+                  header: "Component style",
+                  footer:
+                    "Changes component shape, spacing and typography independently of appearance.",
+                  choices: STYLES.map((option) => ({
+                    label: option.label,
+                    selected: model.style === option.value,
+                    onSelect: Message.SelectedStyle({ style: option.value }),
+                  })),
+                },
+                h,
+              ),
+              ...failureNotices(model, h),
+              privacy(h),
+              helpAndAbout(h),
+            ],
             h,
           ),
         ],
-        h,
       ),
-      h.details(
-        [h.Class("rounded-lg border border-border")],
-        [
-          h.summary(
-            [
-              h.Class(
-                "min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
-              ),
-            ],
-            ["Help & about"],
-          ),
-          h.div(
-            [h.Class("border-t border-border divide-y divide-border")],
-            [
-              row({ title: "Use with AI", href: hrefFor({ _tag: "AgentHelp" }) }, h),
-              row({ title: "About Optio", href: hrefFor({ _tag: "About" }) }, h),
-            ],
-          ),
-        ],
-      ),
+      ...accentPicker(model.accentDraft, h),
     ],
     h,
   );

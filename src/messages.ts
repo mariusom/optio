@@ -5,7 +5,7 @@ import { UrlRequest } from "foldkit/navigation";
 import { FieldDef } from "./domain/fields";
 import { RouteSchema } from "./web/routes";
 import { TemplateSummary } from "./web/types";
-import { Accent, Font, IconLibrary, Theme } from "./web/theme";
+import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 import { RunnerDataSchema } from "./web/features/session/runner";
 import {
@@ -62,6 +62,10 @@ export const Message = defineMessageUnion({
   ChangedAccentDraft: { colour: Schema.String },
   ConfirmedAccentPicker: {},
   CanceledAccentPicker: {},
+  SelectedLook: { look: Look },
+  LookSaveFinished: { look: Look, saved: Schema.Boolean },
+  SelectedControlSize: { controlSize: ControlSize },
+  ControlSizeSaveFinished: { controlSize: ControlSize, saved: Schema.Boolean },
   ClickedCopyTemplatePrompt: {},
   TemplatePromptCopyFinished: { copied: Schema.Boolean },
   ResetTemplatePromptCopy: {},

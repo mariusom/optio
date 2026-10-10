@@ -409,9 +409,10 @@ describe("persistent presentation regressions", () => {
     await expect.element(page.getByRole("link", { name: "Templates", exact: true })).toBeVisible();
     const original = navigationIcon();
     const picker = page.getByRole("radiogroup", { name: "Icon style" });
-    expect(
-      [...picker.element().querySelectorAll('[role="radio"]')].map((e) => e.textContent),
-    ).toEqual(["Hugeicons", "Lucide"]);
+    expect([...picker.element().querySelectorAll("label")].map((e) => e.textContent)).toEqual([
+      "Hugeicons",
+      "Lucide",
+    ]);
     await picker.getByRole("radio", { name: "Lucide", exact: true }).click();
     await expect.poll(navigationIcon).not.toBe(original);
     await expect.poll(() => localStorage.getItem("optio-icon-library")).toBe("lucide");

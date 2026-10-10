@@ -3,7 +3,7 @@ import { AsyncData } from "foldkit";
 import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
-import { Accent, Font, IconLibrary, Theme } from "../web/theme";
+import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
 import { TemplateSummary } from "../web/types";
 
@@ -102,6 +102,10 @@ export const Model = Schema.Struct({
   accent: Accent,
   accentSaveFailed: Schema.Boolean,
   accentDraft: Schema.NullOr(Schema.String),
+  look: Look,
+  lookSaveFailed: Schema.Boolean,
+  controlSize: ControlSize,
+  controlSizeSaveFailed: Schema.Boolean,
   // Templates tab slice
   templates: fromStore(Schema.Array(TemplateSummary)),
   /**
@@ -213,6 +217,10 @@ const initialModel = (route: Route): Model => ({
   accent: "default",
   accentSaveFailed: false,
   accentDraft: null,
+  look: "classic",
+  lookSaveFailed: false,
+  controlSize: "standard",
+  controlSizeSaveFailed: false,
   templates: AsyncData.Loading(),
   templatesSeedChecked: false,
   listReadAttempt: 0,
