@@ -52,7 +52,10 @@ export const backupFilename = (exportedAt: Date): string => {
   return `optio-backup-${exportedAt.getFullYear()}-${pad(exportedAt.getMonth() + 1)}-${pad(exportedAt.getDate())}.json`;
 };
 
-/** "Restored 2 templates and 5 sessions." with skipped items noted. */
+/**
+ * "Restored 2 templates and 5 sessions." Skipped items are either already
+ * here or repeated within the file, so the note names both.
+ */
 export const restoreSummary = (counts: {
   readonly templates: number;
   readonly sessions: number;
@@ -64,7 +67,7 @@ export const restoreSummary = (counts: {
       : `Restored ${plural(counts.templates, "template")} and ${plural(counts.sessions, "session")}`;
   return counts.skipped === 0
     ? `${added}.`
-    : `${added}; ${plural(counts.skipped, "item")} already here ${counts.skipped === 1 ? "was" : "were"} kept.`;
+    : `${added}; skipped ${plural(counts.skipped, "item")} already here or repeated in the file.`;
 };
 
 type BackupTemplate = BackupFile["templates"][number];

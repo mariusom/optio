@@ -88,10 +88,10 @@ describe("backup file", () => {
       "Restored 2 templates and 5 sessions.",
     );
     expect(restoreSummary({ templates: 1, sessions: 1, skipped: 1 })).toBe(
-      "Restored 1 template and 1 session; 1 item already here was kept.",
+      "Restored 1 template and 1 session; skipped 1 item already here or repeated in the file.",
     );
     expect(restoreSummary({ templates: 0, sessions: 0, skipped: 3 })).toBe(
-      "Nothing new to restore; 3 items already here were kept.",
+      "Nothing new to restore; skipped 3 items already here or repeated in the file.",
     );
   });
 });

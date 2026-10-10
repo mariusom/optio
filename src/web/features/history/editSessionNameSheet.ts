@@ -40,9 +40,10 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
       h.div(
         [h.Class(cn(inlineFieldClass, "py-1"))],
         [
-          h.label([h.For("edit-session-name"), h.Class(cn(inputLabelClass))], ["Name"]),
+          // The sheet itself is #edit-session-name, so the field needs its own ID.
+          h.label([h.For("edit-session-name-input"), h.Class(cn(inputLabelClass))], ["Name"]),
           h.input([
-            h.Id("edit-session-name"),
+            h.Id("edit-session-name-input"),
             h.Type("text"),
             h.Class(cn(inputClass)),
             h.Value(model.editHistoryNameInput),

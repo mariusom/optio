@@ -316,9 +316,7 @@ describe("persistent presentation regressions", () => {
         h,
       ),
     );
-    await expect
-      .element(page.getByRole("button", { name: "View details for Task 2" }))
-      .toBeVisible();
+    await expect.element(page.getByRole("button", { name: /^Task 2(?!\d)/ })).toBeVisible();
     for (const group of document.querySelectorAll('[data-slot="grouped-list"]')) {
       const rows = [...group.children];
       for (const row of rows.slice(0, -1)) {
@@ -326,9 +324,7 @@ describe("persistent presentation regressions", () => {
       }
       expect(getComputedStyle(rows.at(-1)!).borderBottomWidth).toBe("0px");
     }
-    const task = page
-      .getByRole("button", { name: "View details for Task 1" })
-      .element() as HTMLButtonElement;
+    const task = page.getByRole("button", { name: /^Task 1(?!\d)/ }).element() as HTMLButtonElement;
     const borderColor = getComputedStyle(task).borderBottomColor;
     task.focus();
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -623,7 +619,7 @@ describe("persistent presentation regressions", () => {
     await expect.element(form).toBeVisible();
     expect(document.querySelector('[data-slot="sheet"]')).toBeNull();
     await page.getByRole("textbox", { name: "Question", exact: true }).fill("Activity");
-    const done = page.getByRole("button", { name: "Save question" });
+    const done = page.getByRole("button", { name: "Add to template", exact: true });
     await expect.element(done).toBeEnabled();
     expect(document.querySelector('[aria-label="Save template"]')).toBeNull();
     expect(document.querySelector("#template-name")).toBeNull();
@@ -1018,9 +1014,11 @@ describe("persistent presentation regressions", () => {
     (trigger.element() as HTMLButtonElement).focus();
     await expect.element(trigger).toHaveFocus();
     await userEvent.click(trigger);
-    const exportAction = page.getByRole("button", { name: "Export Morning observation" });
+    const exportAction = page.getByRole("button", { name: "Export CSV", exact: true });
     await expect.element(exportAction).toBeVisible();
-    expect(document.querySelectorAll('dialog button[aria-label^="Export "]')).toHaveLength(1);
+    expect(
+      [...document.querySelectorAll("dialog button")].filter((b) => b.textContent === "Export CSV"),
+    ).toHaveLength(1);
     await expect
       .element(page.getByRole("button", { name: "Delete Morning observation" }))
       .toBeVisible();

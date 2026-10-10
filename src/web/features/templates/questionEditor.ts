@@ -307,7 +307,7 @@ export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
         label: isEditing ? "Done editing" : "Add to template",
         onClick: Message.ConfirmedSaveField(),
         isDisabled: !valid,
-        ariaLabel: "Save question",
+        // Named by its visible label ("Add to template" / "Done editing").
       },
     },
     h,

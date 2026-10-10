@@ -139,7 +139,7 @@ test(
       await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
       await page.getByRole("button", { name: /^Assembly observation\b/ }).click();
-      await page.getByRole("button", { name: "View details for Task 2", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 2(?!\d)/ }).waitFor();
       await screenshot("results");
 
       const exported = await download("Export Assembly observation");
@@ -184,9 +184,7 @@ test(
         await page.setViewportSize({ width, height });
         await page.emulateMedia({ colorScheme });
         await page.goto(archiveUrl);
-        await page
-          .getByRole("button", { name: "Delete Assembly observation", exact: true })
-          .waitFor();
+        await page.getByRole("button", { name: "Delete session", exact: true }).waitFor();
         const downloaded = await download("Export Assembly observation");
         assert.equal(downloaded.csv, exported.csv);
         assert.equal(await page.getByRole("dialog").count(), 0);

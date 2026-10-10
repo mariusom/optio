@@ -136,7 +136,7 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
                 sessionId: session.id,
                 spreadsheetSafe: true,
               }),
-              ariaLabel: `Export ${session.displayName}`,
+              // Named by its visible label, "Export CSV"; the sheet title names the session.
             },
             h,
           ),

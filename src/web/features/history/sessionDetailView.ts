@@ -77,7 +77,7 @@ const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
       onClick: Message.ClickedHistoryTask({ taskId: task.id }),
       chevron: true,
       lazy: true,
-      attributes: [h.AriaLabel(`View details for Task ${task.taskId}`)],
+      // Named by its visible text ("Task 2 …"), so voice control matches it.
     },
     h,
   );
@@ -225,7 +225,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                     displayName,
                   }),
                   chevron: false,
-                  attributes: [h.AriaLabel(`Delete ${displayName}`)],
+                  // Named by its visible title, "Delete session".
                 },
                 h,
               ),

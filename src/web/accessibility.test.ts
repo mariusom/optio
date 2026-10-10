@@ -218,7 +218,7 @@ describe("audited view accessibility", () => {
   it("associates the visible name label with the edit-session textbox", () => {
     const all = nodes(editSheet());
     const input = all.find((n) => n.sel === "input");
-    expect(input?.data?.props?.id).toBe("edit-session-name");
+    expect(input?.data?.props?.id).toBe("edit-session-name-input");
     expect(all.find((n) => n.sel === "label")?.data?.props?.htmlFor).toBe(input?.data?.props?.id);
   });
 
