@@ -37,6 +37,13 @@ export const formatDurationHm = (ms: number): string => {
     .join(" ");
 };
 
+/**
+ * Compact list duration: seconds under a minute ("6s", matching
+ * `formatDurationHms` in session detail), else hours and minutes ("1h 12m").
+ */
+export const formatDurationShort = (ms: number): string =>
+  Math.max(0, ms) < 60_000 ? formatDurationHms(ms) : formatDurationHm(ms);
+
 /** Live clock text: "05:42" under an hour, else "1:03:27". */
 export const formatClock = (ms: number): string => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

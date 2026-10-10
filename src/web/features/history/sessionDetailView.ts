@@ -18,6 +18,7 @@ import { hrefFor } from "../../routes";
 import { editSessionNameSheet } from "./editSessionNameSheet";
 import { formatAnswer, formatDay, taskCountLabel } from "./helpers";
 import { taskDetailView } from "./taskDetailView";
+import { timeBreakdownSection } from "./timeBreakdownView";
 
 type SessionDetailTask = {
   readonly id: string;
@@ -137,6 +138,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
       ? (detail.tasks.find((task) => task.id === model.selectedHistoryTaskId) ?? null)
       : null;
   const canExport = detail.endedAt !== null && detail.taskCount > 0;
+  const breakdown = timeBreakdownSection(detail.tasks, h);
 
   return h.div(
     [h.Class("flex min-h-full flex-col")],
@@ -200,6 +202,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
             ],
             h,
           ),
+          ...(breakdown === null ? [] : [breakdown]),
           groupedList(
             {
               header: "Tasks",

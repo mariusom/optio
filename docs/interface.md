@@ -37,6 +37,14 @@ component APIs; review local customizations before refreshing a registry item.
   until the data is read (`whenLoaded` in `app/view.ts`), never an empty state.
   It appears only after 400 ms (`loading-reveal`), so quick reads show no
   placeholder; its blocks are hidden from screen readers behind one status.
+- Charts are plain HTML/CSS. Their marks are decorative (`aria-hidden`); a
+  visible list beside them names every value, so meaning never rests on colour.
+  Data colours are the only non-semantic colours: the fixed categorical slots
+  in `history/timeBreakdownView.ts`, with their own dark-mode steps, assigned
+  in order and never cycled (fold extra categories into “Other”). Missing data
+  uses a muted neutral. Re-validate any slot change in light and dark mode.
+- Durations in lists use `formatDurationShort` (seconds under a minute, then
+  hours and minutes); detail screens use `formatDurationHms`.
 - Key rows in lists that insert or reorder items (`row({ key })` or
   `h.keyed`), so focus stays with the same item.
 

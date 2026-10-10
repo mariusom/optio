@@ -16,9 +16,9 @@ import {
 import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
-import { formatDurationHm, formatTimeOnly } from "../../format";
+import { formatDurationShort, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
-import { groupByDay, taskCountLabel } from "./helpers";
+import { daySummaryLabel, groupByDay, taskCountLabel } from "./helpers";
 
 type HistorySession = {
   readonly id: string;
@@ -45,7 +45,7 @@ const summaryFor = (session: HistorySession): string =>
   [
     session.templateName,
     taskCountLabel(session.taskCount),
-    formatDurationHm(session.endedAt - session.startedAt),
+    formatDurationShort(session.endedAt - session.startedAt),
   ].join(" · ");
 
 /**
@@ -77,6 +77,22 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
         },
         [icon(h, Ellipsis, "size-5")],
         h,
+      ),
+    ],
+  );
+
+/** "Today · 3 sessions · 1h 12m", with the totals quieter than the day. */
+const dayHeader = (
+  group: { readonly label: string; readonly sessions: ReadonlyArray<HistorySession> },
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.span(
+    [],
+    [
+      group.label,
+      h.span(
+        [h.Class("font-normal text-muted-foreground")],
+        [` · ${daySummaryLabel(group.sessions)}`],
       ),
     ],
   );
@@ -183,7 +199,7 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
         ? [noSessionsView(h)]
         : groups.map((group) =>
             groupedList(
-              { header: group.label },
+              { header: dayHeader(group, h) },
               group.sessions.map((session) => sessionRow(session, h)),
               h,
             ),

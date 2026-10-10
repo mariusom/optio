@@ -4,6 +4,7 @@ import {
   buildArchiveCsv,
   csvEscaped,
   dayGroupLabel,
+  daySummaryLabel,
   displayNameFor,
   filenameForArchive,
   filenameSafe,
@@ -369,6 +370,21 @@ describe("formatAnswer", () => {
   });
   it("passes text through unchanged", () => {
     expect(formatAnswer("textArea", "Line one")).toBe("Line one");
+  });
+});
+
+describe("daySummaryLabel", () => {
+  it("counts sessions and totals their recorded time", () => {
+    expect(
+      daySummaryLabel([
+        { startedAt: 0, endedAt: 3_600_000 },
+        { startedAt: 0, endedAt: 600_000 },
+        { startedAt: 0, endedAt: 120_000 },
+      ]),
+    ).toBe("3 sessions · 1h 12m");
+  });
+  it("uses the singular and shows seconds for short days", () => {
+    expect(daySummaryLabel([{ startedAt: 1_000, endedAt: 7_000 }])).toBe("1 session · 6s");
   });
 });
 

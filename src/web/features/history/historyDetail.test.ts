@@ -10,6 +10,7 @@ import { init, subscriptions, update } from "../../../main";
 import { Message } from "../../../messages";
 import { ExportSessionCsv } from "./historyCommands";
 import * as historyHelpers from "./helpers";
+import { historyPage } from "./historyView";
 import { sessionDetailPage } from "./sessionDetailView";
 import { taskDetailView } from "./taskDetailView";
 
@@ -68,6 +69,16 @@ const model = () => ({
     hash: Option.some("#/history/s1"),
   }).model,
   selectedHistorySession: detail,
+});
+
+const listSession = (id: string, startedAt: number, durationMs: number) => ({
+  id,
+  displayName: id,
+  templateName: "Template",
+  sessionName: "",
+  startedAt,
+  endedAt: startedAt + durationMs,
+  taskCount: 1,
 });
 
 beforeEach(() => vi.resetAllMocks());
@@ -250,6 +261,72 @@ describe("history detail regressions", () => {
       }
     },
   );
+
+  it("breaks task time down by answer, after the summary", () => {
+    const answered = (taskId: number, durationMs: number, value: string) => ({
+      ...task(taskId, 0),
+      endedAt: durationMs,
+      sections: [
+        { sectionName: "Activity", value, sectionType: "radio", isRequired: false, startedAt: 0 },
+        {
+          sectionName: "Notes",
+          value: "x",
+          sectionType: "textInput",
+          isRequired: false,
+          startedAt: 0,
+        },
+      ],
+    });
+    const rendered = text(
+      render((h) =>
+        sessionDetailPage(
+          {
+            ...model(),
+            selectedHistorySession: {
+              ...detail,
+              tasks: [answered(1, 30_000, "Walk"), answered(2, 10_000, "")],
+            },
+          },
+          h,
+        ),
+      ),
+    );
+    expect(rendered).toContain("Time breakdown");
+    expect(rendered).toContain("30s · 75%");
+    expect(rendered).toContain("Unanswered");
+    expect(rendered).toContain("10s · 25%");
+    expect(rendered).not.toContain("Notes 40s");
+    expect(rendered.indexOf("Summary")).toBeLessThan(rendered.indexOf("Time breakdown"));
+  });
+
+  it("omits the breakdown when no choice question was answered", () => {
+    expect(text(render((h) => sessionDetailPage(model(), h)))).not.toContain("Time breakdown");
+  });
+
+  it("shows seconds for short sessions in the list, with day totals", () => {
+    const now = new Date(2026, 5, 15, 12, 0, 0).getTime();
+    const rendered = text(
+      render((h) =>
+        historyPage(
+          {
+            history: [
+              listSession("a", now - 60_000, 6_000),
+              listSession("b", now - 7_200_000, 4_200_000),
+            ],
+            now,
+            pendingHistoryDelete: null,
+            historyActionsFor: null,
+            historyError: null,
+          },
+          h,
+        ),
+      ),
+    );
+    expect(rendered).toContain("1 task · 6s");
+    expect(rendered).not.toContain("· 0m");
+    expect(rendered).toContain("Today");
+    expect(rendered).toContain("· 2 sessions · 1h 10m");
+  });
 
   it("renders taskId order even when earlier tasks have no start time", () => {
     const rendered = text(render((h) => sessionDetailPage(model(), h)));
