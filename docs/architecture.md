@@ -152,10 +152,10 @@ question names in separate columns. UI exports protect formula-like cells
 without modifying stored observations; the raw programmatic format stays exact.
 
 Optio adds no runtime network dependency for studies. Browser storage can still
-be cleared or evicted; persistence is not a backup guarantee. After a session starts
-on disk, `RequestPersistentStorage` asks the browser to exempt the site from
-eviction under storage pressure (`navigator.storage.persist()`); the answer is
-informational, and users can still clear site data. Settings downloads a JSON
+be cleared or evicted; persistence is not a backup guarantee. Opening the store
+on disk asks the browser to exempt the site from eviction under storage pressure
+(`navigator.storage.persist()` in `livestore/openStore.ts`); the answer is not
+checked, and users can still clear site data. Settings downloads a JSON
 backup of every template and finished session (`web/backup.ts`); restoring
 commits one `v3.BackupRestored` event that adds only what is missing. The
 command plans the restore first: templates whose ID exists, or with the same
