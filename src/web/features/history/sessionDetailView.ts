@@ -16,7 +16,7 @@ import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
 import { editSessionNameSheet } from "./editSessionNameSheet";
-import { formatAnswer, formatDay, taskCountLabel } from "./helpers";
+import { formatAnswer, formatDay, formatEndTime, taskCountLabel } from "./helpers";
 import { taskDetailView } from "./taskDetailView";
 import { timeBreakdownSection } from "./timeBreakdownView";
 
@@ -196,7 +196,15 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
               row({ title: "Started", value: formatTimeOnly(detail.startedAt) }, h),
               ...(detail.endedAt === null
                 ? []
-                : [row({ title: "Ended", value: formatTimeOnly(detail.endedAt) }, h)]),
+                : [
+                    row(
+                      {
+                        title: "Ended",
+                        value: formatEndTime(detail.startedAt, detail.endedAt, formatTimeOnly),
+                      },
+                      h,
+                    ),
+                  ]),
               ...(duration === null ? [] : [row({ title: "Duration", value: duration }, h)]),
               row({ title: "Tasks", value: taskCountLabel(detail.taskCount) }, h),
             ],

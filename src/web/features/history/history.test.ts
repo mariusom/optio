@@ -9,6 +9,8 @@ import {
   filenameForArchive,
   filenameSafe,
   formatAnswer,
+  formatDay,
+  formatEndTime,
   formatFilenameDate,
   groupByDay,
   taskCountLabel,
@@ -393,5 +395,17 @@ describe("taskCountLabel", () => {
     expect(taskCountLabel(1)).toBe("1 task");
     expect(taskCountLabel(0)).toBe("0 tasks");
     expect(taskCountLabel(12)).toBe("12 tasks");
+  });
+});
+
+const hourOnly = (ms: number) => `T${new Date(ms).getHours()}`;
+
+describe("formatEndTime", () => {
+  it("adds the day only when a session ends on a later day", () => {
+    const start = new Date(2026, 9, 10, 23, 50).getTime();
+    expect(formatEndTime(start, new Date(2026, 9, 10, 23, 59).getTime(), hourOnly)).toBe("T23");
+    expect(formatEndTime(start, new Date(2026, 9, 11, 0, 2).getTime(), hourOnly)).toBe(
+      `T0, ${formatDay(new Date(2026, 9, 11, 0, 2).getTime())}`,
+    );
   });
 });

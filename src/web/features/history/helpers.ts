@@ -195,3 +195,16 @@ export const daySummaryLabel = (
   const count = `${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
   return `${count} · ${formatDurationShort(totalMs)}`;
 };
+
+/**
+ * End time for session detail: "4:12 PM", or with the day ("12:02 AM, Sun, Oct
+ * 11, 2026") when the session ended on a later calendar day than it started.
+ */
+export const formatEndTime = (
+  startedAt: number,
+  endedAt: number,
+  formatTime: (ms: number) => string,
+): string =>
+  new Date(startedAt).toDateString() === new Date(endedAt).toDateString()
+    ? formatTime(endedAt)
+    : `${formatTime(endedAt)}, ${formatDay(endedAt)}`;
