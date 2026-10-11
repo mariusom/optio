@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema, Semaphore } from "effect";
+import { Clock, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -6,6 +6,7 @@ import { withStore, type StoreAccess } from "../../../livestore/access";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
+import { serialized } from "./writeLock";
 import { isAnswerComplete, isTaskEditable } from "./runner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -24,7 +25,6 @@ const failed = (error: string) => Message.FailedRunnerOp({ error });
  * order an update returns them, so batched answers commit before the record,
  * edit or end command that reads them.
  */
-const serialized = Semaphore.makeUnsafe(1).withPermits(1);
 
 /** Store-side counterpart of the planner's editable-section guard. */
 const isPersistedFieldEditable = (

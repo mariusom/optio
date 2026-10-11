@@ -3,6 +3,9 @@ import { Command } from "foldkit";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../messages";
+import { withStore } from "../livestore/access";
+import { serialized } from "./features/session/writeLock";
+import { confirmedOnDisk } from "./storeDurability";
 import { onUpdateReady } from "./updateSignal";
 
 // Optio never reloads the page out from under the user: a new version waits
@@ -22,9 +25,23 @@ export const appUpdates: Stream.Stream<Message> = Stream.callback<Message>((queu
 );
 
 /** Loads the new version. Pending answers flush on `beforeunload`, as on any reload. */
+/** Longest wait for pending answers to reach disk before reloading anyway. */
+const flushWait = "3 seconds";
+
+/**
+ * Reloads into the new version once pending answers are on disk. It queues
+ * behind runner writes (the flush update issued just before it), then waits
+ * for the leader to confirm them; a store that is unavailable or slow never
+ * blocks the update beyond the short wait.
+ */
 export const ReloadForUpdate = Command.define("ReloadForUpdate", {
   messages: [Message.Navigated],
-  execute: Effect.sync(() => window.location.reload()).pipe(Effect.as(Message.Navigated())),
+  execute: withStore(({ store }) => confirmedOnDisk(store, flushWait)).pipe(
+    serialized,
+    Effect.catchCause(() => Effect.void),
+    Effect.andThen(Effect.sync(() => window.location.reload())),
+    Effect.as(Message.Navigated()),
+  ),
 });
 
 /**

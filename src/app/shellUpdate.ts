@@ -11,6 +11,7 @@ import { ReloadForUpdate } from "../web/appUpdate";
 import { hasChanges } from "../web/features/templates/editor";
 import {
   ApplyColorScheme,
+  applyPlan,
   GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
@@ -110,14 +111,30 @@ const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
   }),
 });
 
+type AppUpdateMessage = "AppUpdateReady" | "ClickedApplyUpdate";
+
+/** The "Update ready" prompt: shown once, then applied after pending answers are saved. */
+const appUpdateHandlers = (model: Model): Pick<AllHandlers, AppUpdateMessage> => ({
+  AppUpdateReady: () =>
+    model.appUpdate === "none" ? { model: { ...model, appUpdate: "ready" } } : { model },
+  // Typed answers still waiting for the idle write are flushed first; the
+  // reload then waits for them to reach disk.
+  ClickedApplyUpdate: () => {
+    if (model.appUpdate !== "ready") return { model };
+    const flushed = applyPlan(model, { _tag: "FlushRequested" });
+    return {
+      model: { ...flushed.model, appUpdate: "applying" },
+      commands: [...(flushed.commands ?? []), ReloadForUpdate()],
+    };
+  },
+});
+
 type ShellHandlers = Pick<
   AllHandlers,
   | "SelectedTheme"
   | "ThemeSaveFinished"
   | "ChangedSystemColorScheme"
   | "AppliedColorScheme"
-  | "AppUpdateReady"
-  | "ClickedApplyUpdate"
   | "SelectedStyle"
   | "StyleSaveFinished"
   | "SelectedFont"
@@ -131,6 +148,7 @@ type ShellHandlers = Pick<
   | "ConfirmedAccentPicker"
   | "AccentSaveFinished"
   | LookMessage
+  | AppUpdateMessage
   | "GotRoute"
   | "FailedDetailLoad"
   | "ClickedLink"
@@ -157,12 +175,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     return { model: next, commands: [ApplyColorScheme({ dark: prefersDark })] };
   },
   AppliedColorScheme: () => ({ model }),
-  AppUpdateReady: () =>
-    model.appUpdate === "none" ? { model: { ...model, appUpdate: "ready" } } : { model },
-  ClickedApplyUpdate: () =>
-    model.appUpdate === "ready"
-      ? { model: { ...model, appUpdate: "applying" }, commands: [ReloadForUpdate()] }
-      : { model },
+  ...appUpdateHandlers(model),
   ThemeSaveFinished: ({ theme, saved }) => ({
     model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
   }),

@@ -1,4 +1,4 @@
-import { Clock, Duration, Effect, Option, Schedule, Schema } from "effect";
+import { Clock, Duration, Effect, Option, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -13,6 +13,7 @@ import {
 } from "../../backup";
 import { saveTextFile } from "../../download";
 import { friendlyFailure, reportFailure } from "../../errors";
+import { confirmedOnDisk } from "../../storeDurability";
 import { fieldRowsToDefs } from "../../fieldRows";
 
 // Download every template and finished session as one JSON file, and restore
@@ -112,23 +113,6 @@ const readChosenFile = (inputId: string) =>
 /** Longest wait for a restore to reach disk before reporting it as still saving. */
 const saveTimeout = Duration.seconds(60);
 
-/** The global event number of a LiveStore head such as "e12" or "e12.3". */
-const headNumber = (head: string): number => Number(/^e(\d+)/.exec(head)?.[1] ?? Number.NaN);
-
-/**
- * True once the leader (which writes to disk) has confirmed every event this
- * session had committed when called; false if that takes longer than the wait.
- * Commit updates `localHead` synchronously; `upstreamHead` follows the leader.
- */
-const savedToDisk = (store: Access["store"]) => {
-  const target = headNumber(store.syncStatus().localHead);
-  return Effect.sync(() => headNumber(store.syncStatus().upstreamHead) >= target).pipe(
-    Effect.repeat({ until: (confirmed) => confirmed, schedule: Schedule.spaced("100 millis") }),
-    Effect.timeoutOption(saveTimeout),
-    Effect.map(Option.isSome),
-  );
-};
-
 const restore = (access: Access, file: BackupFile) =>
   Effect.gen(function* () {
     const { store, tables, events } = access;
@@ -142,7 +126,7 @@ const restore = (access: Access, file: BackupFile) =>
     );
     // Only report success once the restore has reached disk: a reload before
     // that (seconds for a large backup) would silently lose it.
-    const saved = yield* savedToDisk(store);
+    const saved = yield* confirmedOnDisk(store, saveTimeout);
     return Message.BackupRestored({
       templates: plan.templates.length,
       sessions: plan.sessions.length,
