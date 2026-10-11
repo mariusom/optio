@@ -67,6 +67,7 @@ const makeModel = (runner: Model["runner"]): Model => ({
   backupBusy: false,
   saveStalled: false,
   pendingStorageReset: false,
+  joinedExistingSession: false,
   backupNotice: null,
   lookSaveFailed: false,
   controlSize: "standard",

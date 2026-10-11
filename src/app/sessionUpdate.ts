@@ -19,6 +19,7 @@ type SessionHandlers = Pick<
   | "SelectedTemplate"
   | "ClickedStartSession"
   | "SessionStarted"
+  | "DismissedJoinedSession"
   | "ClickedResumeSession"
   | "ClickedDiscardSession"
   | "CanceledDiscardSession"
@@ -79,17 +80,21 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       ],
     };
   },
-  SessionStarted: ({ sessionId }) => ({
+  // A session already live in another tab is joined instead, and the runner
+  // says so; the name typed for the new session is kept for later.
+  SessionStarted: ({ sessionId, joinedExisting }) => ({
     model: {
       ...model,
-      sessionNameInput: "",
+      sessionNameInput: joinedExisting ? model.sessionNameInput : "",
       lastError: null,
+      joinedExistingSession: joinedExisting,
     },
     commands: [
       GeneratePlaceholderName(),
       NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
     ],
   }),
+  DismissedJoinedSession: () => ({ model: { ...model, joinedExistingSession: false } }),
   ClickedResumeSession: () => {
     const active = activeSessionOf(model);
     if (active === null) return { model };

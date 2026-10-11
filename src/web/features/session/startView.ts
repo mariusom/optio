@@ -51,7 +51,7 @@ const resumeView = (
           header: "In progress",
           footer: missing
             ? "This session’s template was deleted. You can still finish and keep what you recorded, or discard it."
-            : "Optio kept this session when the app closed. Pick up where you left off.",
+            : "This session is still open. Pick up where you left off.",
         },
         [
           row(

@@ -129,6 +129,95 @@ const appUpdateHandlers = (model: Model): Pick<AllHandlers, AppUpdateMessage> =>
   },
 });
 
+type RouteMessage = "GotRoute" | "ClickedLink";
+
+/** Route changes close page sheets; internal links go through the navigation guard. */
+const routeHandlers = (model: Model): Pick<AllHandlers, RouteMessage> => ({
+  GotRoute: ({ route }) => {
+    let base =
+      route._tag === "TemplateEditor"
+        ? model.editor !== null && model.editor.id === route.templateId
+          ? {
+              ...model,
+              route,
+              templateActionsFor: null,
+              templateReportFor: null,
+              joinedExistingSession: false,
+            }
+          : {
+              ...model,
+              route,
+              editor: null,
+              templateActionsFor: null,
+              templateReportFor: null,
+              joinedExistingSession: false,
+            }
+        : {
+            ...model,
+            route,
+            editor: null,
+            templateActionsFor: null,
+            templateReportFor: null,
+            joinedExistingSession: false,
+          };
+    base = {
+      ...base,
+      historyActionsFor: null,
+      showCreate: false,
+      accentDraft: null,
+      detailLoadFailed: false,
+    };
+    // Clear history detail when leaving SessionDetail
+    if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
+      base = {
+        ...base,
+        selectedHistorySession: null,
+        selectedHistoryTaskId: null,
+        showEditHistoryName: false,
+      };
+    }
+    // Clear stale task selection when switching detail session
+    if (
+      route._tag === "SessionDetail" &&
+      base.selectedHistorySession !== null &&
+      base.selectedHistorySession.id !== route.sessionId
+    ) {
+      base = {
+        ...base,
+        selectedHistorySession: null,
+        selectedHistoryTaskId: null,
+        showEditHistoryName: false,
+      };
+    }
+    // Offer a fresh suggested name on entry; preserve any explicitly typed name.
+    if (route._tag === "StartTab" && activeSessionOf(base) === null) {
+      return { model: base, commands: [GeneratePlaceholderName()] };
+    }
+    return { model: base };
+  },
+  ClickedLink: ({ request }) => {
+    if (request._tag !== "Internal")
+      return { model, commands: [NavigateExternal({ href: request.href })] };
+    const url = urlToString(request.url);
+    // Leaving the template editor with unsaved changes asks first; the
+    // requested destination is kept and used once the discard is confirmed.
+    if (
+      (model.route._tag === "TemplateEditor" || model.showCreate) &&
+      model.editor !== null &&
+      (hasChanges(model.editor) || model.editor.draft !== null)
+    ) {
+      return {
+        model: {
+          ...model,
+          pendingNavigationUrl: url,
+          editor: { ...model.editor, pendingDiscard: true },
+        },
+      };
+    }
+    return { model, commands: [NavigateInternal({ url })] };
+  },
+});
+
 type ShellHandlers = Pick<
   AllHandlers,
   | "SelectedTheme"
@@ -149,9 +238,8 @@ type ShellHandlers = Pick<
   | "AccentSaveFinished"
   | LookMessage
   | AppUpdateMessage
-  | "GotRoute"
+  | RouteMessage
   | "FailedDetailLoad"
-  | "ClickedLink"
   | "Navigated"
   | "CompletedReplyToAgent"
   | "SettledSheet"
@@ -231,70 +319,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
   }),
   ...lookHandlers(model),
-  // ── Routing ────────────────────────────────────────────────────────────
-  GotRoute: ({ route }) => {
-    let base =
-      route._tag === "TemplateEditor"
-        ? model.editor !== null && model.editor.id === route.templateId
-          ? { ...model, route, templateActionsFor: null, templateReportFor: null }
-          : { ...model, route, editor: null, templateActionsFor: null, templateReportFor: null }
-        : { ...model, route, editor: null, templateActionsFor: null, templateReportFor: null };
-    base = {
-      ...base,
-      historyActionsFor: null,
-      showCreate: false,
-      accentDraft: null,
-      detailLoadFailed: false,
-    };
-    // Clear history detail when leaving SessionDetail
-    if (route._tag !== "SessionDetail" && base.selectedHistorySession !== null) {
-      base = {
-        ...base,
-        selectedHistorySession: null,
-        selectedHistoryTaskId: null,
-        showEditHistoryName: false,
-      };
-    }
-    // Clear stale task selection when switching detail session
-    if (
-      route._tag === "SessionDetail" &&
-      base.selectedHistorySession !== null &&
-      base.selectedHistorySession.id !== route.sessionId
-    ) {
-      base = {
-        ...base,
-        selectedHistorySession: null,
-        selectedHistoryTaskId: null,
-        showEditHistoryName: false,
-      };
-    }
-    // Offer a fresh suggested name on entry; preserve any explicitly typed name.
-    if (route._tag === "StartTab" && activeSessionOf(base) === null) {
-      return { model: base, commands: [GeneratePlaceholderName()] };
-    }
-    return { model: base };
-  },
-  ClickedLink: ({ request }) => {
-    if (request._tag !== "Internal")
-      return { model, commands: [NavigateExternal({ href: request.href })] };
-    const url = urlToString(request.url);
-    // Leaving the template editor with unsaved changes asks first; the
-    // requested destination is kept and used once the discard is confirmed.
-    if (
-      (model.route._tag === "TemplateEditor" || model.showCreate) &&
-      model.editor !== null &&
-      (hasChanges(model.editor) || model.editor.draft !== null)
-    ) {
-      return {
-        model: {
-          ...model,
-          pendingNavigationUrl: url,
-          editor: { ...model.editor, pendingDiscard: true },
-        },
-      };
-    }
-    return { model, commands: [NavigateInternal({ url })] };
-  },
+  ...routeHandlers(model),
   Navigated: () => ({ model }),
   FailedDetailLoad: () => ({ model: { ...model, detailLoadFailed: true } }),
   CompletedReplyToAgent: () => ({ model }),

@@ -109,6 +109,8 @@ export const Model = Schema.Struct({
   saveStalled: Schema.Boolean,
   /** The "erase this browser's studies" confirmation is open. */
   pendingStorageReset: Schema.Boolean,
+  /** Starting found another tab's live session; the runner explains it until dismissed. */
+  joinedExistingSession: Schema.Boolean,
   backupNotice: Schema.NullOr(
     Schema.Struct({ tone: Schema.Literals(["success", "error"]), text: Schema.String }),
   ),
@@ -234,6 +236,7 @@ const initialModel = (route: Route): Model => ({
   backupBusy: false,
   saveStalled: false,
   pendingStorageReset: false,
+  joinedExistingSession: false,
   backupNotice: null,
   lookSaveFailed: false,
   controlSize: "standard",

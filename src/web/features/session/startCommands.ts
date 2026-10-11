@@ -63,7 +63,7 @@ export const StartSession = Command.define("StartSession", {
         const now = new Date(yield* Clock.currentTimeMillis);
         const activeSession = store.query(tables.sessions.select().where({ endedAt: null }))[0];
         if (activeSession !== undefined) {
-          return Message.SessionStarted({ sessionId: activeSession.id });
+          return Message.SessionStarted({ sessionId: activeSession.id, joinedExisting: true });
         }
 
         const template = resolveStartTemplate(store, tables, { templateId, templateName, fields });
@@ -82,7 +82,12 @@ export const StartSession = Command.define("StartSession", {
             fields: [...template.fields],
           }),
         );
-        return Message.SessionStarted({ sessionId: id });
+        // Two tabs can commit at once; the store keeps only the first live
+        // session, so report the one that is actually live.
+        const live = store.query(tables.sessions.select().where({ endedAt: null }))[0];
+        return live === undefined || live.id === id
+          ? Message.SessionStarted({ sessionId: id, joinedExisting: false })
+          : Message.SessionStarted({ sessionId: live.id, joinedExisting: true });
       }),
     ).pipe(reportFailure("start", failed)),
 });

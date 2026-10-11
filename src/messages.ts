@@ -161,7 +161,9 @@ export const Message = defineMessageUnion({
   GotPlaceholderName: { name: Schema.String },
   SelectedTemplate: { id: Schema.String },
   ClickedStartSession: {},
-  SessionStarted: { sessionId: Schema.String },
+  /** `joinedExisting`: another tab's session was already live, so this one was not started. */
+  SessionStarted: { sessionId: Schema.String, joinedExisting: Schema.Boolean },
+  DismissedJoinedSession: {},
   ClickedResumeSession: {},
   ClickedDiscardSession: {},
   ConfirmedDiscardSession: {},
