@@ -3,6 +3,10 @@ import { Command } from "foldkit";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../messages";
+import { withStore } from "../livestore/access";
+import { serialized } from "./features/session/writeLock";
+import { confirmedOnDisk } from "./storeDurability";
+import { cn } from "@/lib/utils";
 import { onUpdateReady } from "./updateSignal";
 
 // Optio never reloads the page out from under the user: a new version waits
@@ -22,18 +26,34 @@ export const appUpdates: Stream.Stream<Message> = Stream.callback<Message>((queu
 );
 
 /** Loads the new version. Pending answers flush on `beforeunload`, as on any reload. */
+/** Longest wait for pending answers to reach disk before reloading anyway. */
+const flushWait = "3 seconds";
+
+/**
+ * Reloads into the new version once pending answers are on disk. It queues
+ * behind runner writes (the flush update issued just before it), then waits
+ * for the leader to confirm them; a store that is unavailable or slow never
+ * blocks the update beyond the short wait.
+ */
 export const ReloadForUpdate = Command.define("ReloadForUpdate", {
   messages: [Message.Navigated],
-  execute: Effect.sync(() => window.location.reload()).pipe(Effect.as(Message.Navigated())),
+  execute: withStore(({ store }) => confirmedOnDisk(store, flushWait)).pipe(
+    serialized,
+    Effect.catchCause(() => Effect.void),
+    Effect.andThen(Effect.sync(() => window.location.reload())),
+    Effect.as(Message.Navigated()),
+  ),
 });
 
 /**
  * The "Update ready" prompt, pinned above the page until it is tapped. A status
- * region announces it; the button inside keeps its button role.
+ * region announces it; the button inside keeps its button role. Full-screen
+ * pages centre their title in a 4rem nav bar, so there it sits just below it.
  */
 export const appUpdatePrompt = (
   status: "none" | "ready" | "applying",
   h: HtmlBuilder<Message>,
+  options: Readonly<{ belowNavBar: boolean }> = { belowNavBar: false },
 ): Html | null =>
   status === "none"
     ? null
@@ -41,7 +61,12 @@ export const appUpdatePrompt = (
         [
           h.Role("status"),
           h.Class(
-            "fixed top-[calc(0.75rem+env(safe-area-inset-top))] left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
+            cn(
+              "fixed left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
+              options.belowNavBar
+                ? "top-[calc(4.75rem+env(safe-area-inset-top))]"
+                : "top-[calc(0.75rem+env(safe-area-inset-top))]",
+            ),
           ),
         ],
         [

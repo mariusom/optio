@@ -29,6 +29,7 @@ const runnerFixture = (value: string, override: Partial<RunnerState> = {}): Runn
   showEndConfirm: false,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
   tasks: [
     {
       id: "task",
@@ -96,6 +97,9 @@ const findFrame = (tree: FrameTree): string | undefined =>
   tree.frame.url === window.location.href
     ? tree.frame.id
     : tree.childFrames?.map(findFrame).find(Boolean);
+
+/** The open task's row, named by its visible text ("Task 1 … Recording"). */
+const isTaskOneRecording = (name: string | undefined) => /^Task 1\b.*Recording$/.test(name ?? "");
 
 const accessibleTaskNames = async () => {
   const client = cdp() as unknown as CdpClient;
@@ -370,10 +374,21 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
         name: width < 768 ? "Show task list" : "Collapse sidebar",
       });
       await expect.element(toggle).toBeVisible();
-      expect(toggle.element().textContent).toBe(String(completedCount));
+      // The visible label is part of the accessible name (WCAG 2.5.3).
+      const visible = `${completedCount} ${completedCount === 1 ? "task" : "tasks"}`;
+      expect(toggle.element().textContent).toBe(visible);
+      expect(toggle.element().getAttribute("aria-label")).toContain(visible);
       const header = toggle.element().closest("header")!;
-      expect(header.textContent).toContain(`Task ${completedCount + 1} · 00:59`);
-      expect(header.textContent).not.toContain("recorded");
+      const timer = header.querySelector<HTMLElement>('[data-slot="timer"]')!;
+      // The open task has no answer yet, so its clock has not started (not session time).
+      expect(timer.textContent).toBe(`Task ${completedCount + 1}00:00`);
+      expect(timer.closest("[aria-live]")).toBeNull();
+      expect(timer.textContent).not.toContain("recorded");
+      // The clock is large enough to read at a glance; the label stays small.
+      const clock = [...timer.children].at(-1)!;
+      expect(Number.parseFloat(getComputedStyle(clock).fontSize)).toBeGreaterThanOrEqual(24);
+      const title = page.getByRole("heading", { name: "Keyboard accessibility" }).element();
+      expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
     },
   );
 
@@ -433,9 +448,13 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await expect.element(sidebar).toBeVisible();
     expect(
       [...sidebar.element().querySelectorAll("button")].map((button) =>
-        button.getAttribute("aria-label"),
+        button.getAttribute("aria-label") === null ? button.textContent : null,
       ),
-    ).toEqual(["Task 3 in progress", "Task 2 completed", "Task 1 completed"]);
+    ).toEqual([
+      expect.stringMatching(/^Task 3.*Recording$/),
+      expect.stringMatching(/^Task 2.*Done$/),
+      expect.stringMatching(/^Task 1.*Done$/),
+    ]);
   });
 
   it("removes collapsed descendants from focus and accessibility, then restores them", async () => {
@@ -450,7 +469,7 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     expect(
       page.getByRole("button", { name: "Expand sidebar" }).element().getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(await accessibleTaskNames()).not.toContain("Task 1 in progress");
+    expect((await accessibleTaskNames()).some(isTaskOneRecording)).toBe(false);
     expect(await accessibleTaskNames()).not.toContain("Task navigation sidebar");
     task.focus();
     expect(document.activeElement).not.toBe(task);
@@ -459,10 +478,16 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
       .element(page.getByRole("button", { name: "End session", exact: true }))
       .toHaveFocus();
     await userEvent.tab();
+    // Disabled (aria-disabled) on the first task, but focusable with its reason.
+    await expect.element(page.getByRole("button", { name: "Repeat last answers" })).toHaveFocus();
+    await userEvent.tab();
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
     await page.getByRole("button", { name: "Expand sidebar" }).click();
     await expect.poll(() => sidebar.inert).toBe(false);
-    expect(await accessibleTaskNames()).toContain("Task 1 in progress");
+    // Chrome names the row from its content once the sidebar is laid out again.
+    await expect
+      .poll(async () => (await accessibleTaskNames()).some(isTaskOneRecording))
+      .toBe(true);
     await expect
       .element(page.getByRole("complementary", { name: "Task navigation sidebar" }))
       .toBeVisible();

@@ -14,7 +14,9 @@ export type FailedAction =
   | "delete"
   | "export"
   | "create"
-  | "duplicate";
+  | "duplicate"
+  | "backup"
+  | "restore";
 
 const phrases: Record<FailedAction, string> = {
   save: "Couldn't save that. Please try again.",
@@ -26,6 +28,8 @@ const phrases: Record<FailedAction, string> = {
   export: "Couldn't create the export. Please try again.",
   create: "Couldn't create that. Please try again.",
   duplicate: "Couldn't make a copy. Please try again.",
+  backup: "Couldn't create the backup. Please try again.",
+  restore: "Couldn't restore that backup. Please try again.",
 };
 
 /** Plain-language message for a failed action; logs the technical cause. */

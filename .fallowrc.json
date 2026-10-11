@@ -9,10 +9,7 @@
     "scripts/**/*.{mjs,ts}",
     "vite.config.ts"
   ],
-  "ignorePatterns": [
-    "src/web/componentStyles.generated.ts",
-    "src/components/ui/{label,progress}.ts"
-  ],
+  "ignorePatterns": ["src/web/componentStyles.generated.ts", "src/components/ui/label.ts"],
   "ignoreExports": [
     {
       "file": "src/components/ui/**",

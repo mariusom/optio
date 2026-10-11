@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
 import { cn } from "@/lib/utils";
 
 type Child = Html | string;
@@ -10,6 +10,9 @@ type Child = Html | string;
  * indeterminate needs primitive support. The label/value builders render
  * static content the consumer owns.
  *
+ * Local customization: `children` (label/value) render before the track, as
+ * in upstream's anatomy, and `attributes` let the consumer name the bar
+ * (`aria-label`, `aria-valuetext`); a progressbar needs an accessible name.
  */
 
 export const progressClass = "flex flex-wrap gap-3";
@@ -25,7 +28,12 @@ export const progressValueClass = "text-muted-foreground ml-auto text-sm tabular
 
 type StyleConfig = Readonly<{ className?: string }>;
 
-type ProgressConfig = Readonly<{ value?: number; className?: string }>;
+type ProgressConfig<M> = Readonly<{
+  value?: number;
+  className?: string;
+  children?: ReadonlyArray<Child>;
+  attributes?: ReadonlyArray<Attribute<M>>;
+}>;
 
 const clampValue = (value: number): number => Math.min(100, Math.max(0, value));
 
@@ -40,7 +48,7 @@ const progressIndicator = <M>(value: number | undefined, h: HtmlBuilder<M>): Htm
   ]);
 
 /** Styled progress bar with an accessible track. */
-export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>
+export const progress = <M>(config: ProgressConfig<M>, h: HtmlBuilder<M>): Html =>
   h.div(
     [
       h.Class(cn(progressClass, config.className)),
@@ -49,8 +57,10 @@ export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>
       h.AriaValuemax(100),
       ...(config.value === undefined ? [] : [h.AriaValuenow(clampValue(config.value))]),
       h.DataAttribute("slot", "progress"),
+      ...(config.attributes ?? []),
     ],
     [
+      ...(config.children ?? []),
       h.div(
         [h.Class(cn(progressTrackClass)), h.DataAttribute("slot", "progress-track")],
         [progressIndicator(config.value, h)],

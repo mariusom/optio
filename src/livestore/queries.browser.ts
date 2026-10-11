@@ -166,3 +166,121 @@ it("updates archived and active sessions as a session ends", async () => {
     for (const unsubscribe of unsubscribes) unsubscribe();
   }
 });
+
+const reportSession = (id: string, templateId: string, startedAt: number) =>
+  events.sessionStarted({
+    id,
+    templateId,
+    templateName: "Study",
+    sessionName: "",
+    now: new Date(startedAt),
+  });
+// Ending archives finished tasks, so each task is spawned and finished first.
+const endWithTasks = (id: string, endedAt: number, tasks: number) => [
+  ...Array.from({ length: tasks }, (_, index) => [
+    events.taskSpawned({
+      sessionId: id,
+      id: `${id}-${index + 1}`,
+      orderIndex: index + 1,
+      fields,
+    }),
+    events.taskFinished({ id: `${id}-${index + 1}`, endedAt: new Date(endedAt) }),
+  ]).flat(),
+  events.sessionEnded({
+    id,
+    endedAt: new Date(endedAt),
+    records: Array.from({ length: tasks }, (_, index) => archivedTask(index + 1)),
+  }),
+  events.sessionLiveGraphCleared({ sessionId: id }),
+];
+
+it("reads a template's report from its finished sessions only", async () => {
+  const store = await openStore();
+  // Sessions end one at a time: only one can be live.
+  store.commit(reportSession("a", "t", 1000), ...endWithTasks("a", 4000, 2));
+  store.commit(reportSession("other", "x", 5000), ...endWithTasks("other", 6000, 1));
+  store.commit(reportSession("b", "t", 7000), ...endWithTasks("b", 9000, 1));
+  store.commit(reportSession("live", "t", 10_000));
+
+  const { summary, records, sections } = store.query(queries.templateReportRows("t"));
+  expect(summary).toEqual({ sessionCount: 2, totalMs: 5000 });
+  expect(records.map((row) => `${row.sessionId}:${row.taskId}`)).toEqual(["a:1", "a:2", "b:1"]);
+  expect(sections).toHaveLength(9);
+  expect(store.query(queries.templateReportRows("none")).summary).toEqual({
+    sessionCount: 0,
+    totalMs: 0,
+  });
+});
+
+it("restores a backup once, keeping what is already present and the default", async () => {
+  const store = await openStore();
+  store.commit(
+    events.templateCreated({ id: "mine", name: "Mine", isDefault: true, now: new Date(1) }),
+    events.fieldsReplaced({ templateId: "mine", fields }),
+  );
+  const backup = events.backupRestored({
+    now: new Date(5),
+    templates: [
+      { id: "restored", name: "Restored", fields: fields.map((f) => ({ ...f, id: `r-${f.id}` })) },
+      // Same ID as an existing template: kept as it is.
+      { id: "mine", name: "Renamed", fields: [] },
+    ],
+    sessions: [
+      {
+        id: "old",
+        templateId: "restored",
+        templateName: "Restored",
+        sessionName: "Morning",
+        startedAt: new Date(1000),
+        endedAt: new Date(4000),
+        records: [archivedTask(1), archivedTask(2)],
+      },
+    ],
+  });
+  store.commit(backup);
+  store.commit(backup);
+
+  const templates = store.query(queries.templateSummaries);
+  expect(templates.map((row) => [row.id, row.name, row.isDefault, row.fieldCount])).toEqual(
+    expect.arrayContaining([
+      ["mine", "Mine", 1, 2],
+      ["restored", "Restored", 0, 2],
+    ]),
+  );
+  expect(templates).toHaveLength(2);
+  expect(store.query(queries.archivedSessions)).toEqual([
+    expect.objectContaining({ id: "old", taskCount: 2, startedAt: 1000, endedAt: 4000 }),
+  ]);
+  expect(store.query(queries.archiveRows("old")).sections).toHaveLength(6);
+  expect(store.query(queries.templateReportRows("restored")).summary.sessionCount).toBe(1);
+});
+
+it("survives a restore that repeats IDs, inserting each once", async () => {
+  const store = await openStore();
+  const template = { id: "t", name: "T", fields };
+  const session = {
+    id: "dup",
+    templateId: "t",
+    templateName: "T",
+    sessionName: "",
+    startedAt: new Date(1000),
+    endedAt: new Date(2000),
+    records: [archivedTask(1), archivedTask(1)],
+  };
+  store.commit(
+    events.backupRestored({
+      now: new Date(3),
+      // Same template twice, a second template reusing its question IDs, and
+      // the same session twice: each would otherwise hit a UNIQUE constraint.
+      templates: [template, template, { ...template, id: "t2" }],
+      sessions: [session, { ...session, sessionName: "copy" }],
+    }),
+  );
+  expect(store.query(queries.templateSummaries).map((row) => row.id)).toEqual(["t"]);
+  expect(store.query(queries.archivedSessions)).toEqual([
+    expect.objectContaining({ id: "dup", taskCount: 1 }),
+  ]);
+  // The store keeps working afterwards.
+  store.commit(events.templateCreated({ id: "x", name: "X", isDefault: false, now: new Date(4) }));
+  expect(store.query(queries.templateSummaries)).toHaveLength(2);
+});

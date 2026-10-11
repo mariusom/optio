@@ -3,6 +3,7 @@ import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html"
 import { button, buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, icon } from "./icons";
+import { contentWidth } from "./layout";
 
 type Child = Html | string;
 
@@ -75,6 +76,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
                   h.Class(
                     "min-w-0 max-w-full truncate text-base font-semibold tracking-tight focus-visible:outline-none",
                   ),
+                  h.Dir("auto"),
                 ],
                 [config.title],
               ),
@@ -167,6 +169,8 @@ export type PageHeaderConfig = Readonly<{
   subtitle?: Child;
   /** One trailing control, usually an icon button or short text button. */
   trailing?: Html;
+  /** Match a page that widens on desktops (`page({ wide: "xl" })`). */
+  wide?: "xl";
 }>;
 
 /**
@@ -182,7 +186,10 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
       h.div(
         [
           h.Class(
-            "mx-auto flex min-h-[4.25rem] w-full max-w-3xl items-center justify-between gap-4 px-safe py-3 md:min-h-[5.25rem] md:py-5",
+            cn(
+              "mx-auto flex min-h-[4.25rem] w-full items-center justify-between gap-4 px-safe py-3 md:min-h-[5.25rem] md:py-5",
+              contentWidth(config.wide),
+            ),
           ),
         ],
         [
@@ -194,6 +201,7 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
                   h.Class(
                     "truncate text-2xl font-semibold tracking-tight text-foreground focus-visible:outline-none md:text-3xl",
                   ),
+                  h.Dir("auto"),
                 ],
                 [config.title],
               ),

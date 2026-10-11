@@ -38,9 +38,12 @@ describe("application wiring", () => {
         "history",
         "historyDetail",
         "runner",
+        "runnerShortcuts",
+        "saveStall",
         "storage",
         "systemColorScheme",
         "templateDetail",
+        "templateReport",
         "templates",
         "ticker",
       ].toSorted(),
@@ -67,6 +70,8 @@ describe("application wiring", () => {
       font: "serif",
       iconLibrary: "lucide",
       accent: "rose",
+      look: "blueprint",
+      controlSize: "large",
       now: 1_700_000_000_000,
       idSeed: "boot-seed",
     });
@@ -79,6 +84,8 @@ describe("application wiring", () => {
       font: "serif",
       iconLibrary: "lucide",
       accent: "rose",
+      look: "blueprint",
+      controlSize: "large",
       now: 1_700_000_000_000,
       idSeed: "boot-seed",
       idCounter: 0,
@@ -86,5 +93,10 @@ describe("application wiring", () => {
     expect(() =>
       Schema.decodeUnknownSync(applicationConfig.Flags)({ ...flags, theme: "neon" }),
     ).toThrow();
+    for (const invalid of [{ look: "neon" }, { controlSize: "huge" }, { look: undefined }]) {
+      expect(() =>
+        Schema.decodeUnknownSync(applicationConfig.Flags)({ ...flags, ...invalid }),
+      ).toThrow();
+    }
   });
 });

@@ -14,7 +14,7 @@ type Attrs<M> = ReadonlyArray<Attribute<M> | ChildAttribute>;
 
 /** Edge-to-edge action cell beside a grouped-list row. */
 export const rowAction = <M>(
-  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes">,
+  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes" | "className">,
   label: ButtonLabel,
   h: HtmlBuilder<M>,
 ): Html =>
@@ -23,16 +23,22 @@ export const rowAction = <M>(
       ...config,
       variant: "ghost",
       size: "icon",
-      className:
+      className: cn(
         "h-auto min-h-11 w-11 self-stretch rounded-none border-0 bg-clip-border focus-visible:-outline-offset-3 focus-visible:outline-2 focus-visible:outline-ring active:translate-y-0",
+        config.className,
+      ),
     },
     label,
     h,
   );
 
+/** Content column width; `"xl"` widens it only on wide desktops. */
+export const contentWidth = (wide: boolean | "xl" | undefined): string =>
+  wide === "xl" ? "max-w-3xl xl:max-w-5xl" : wide ? "max-w-5xl" : "max-w-3xl";
+
 /** Content column: centered, readable width, bottom padding clears the tab bar. */
 export const page = <M>(
-  config: Readonly<{ className?: string; wide?: boolean }>,
+  config: Readonly<{ className?: string; wide?: boolean | "xl" }>,
   children: ReadonlyArray<Child>,
   h: HtmlBuilder<M>,
 ): Html =>
@@ -41,7 +47,7 @@ export const page = <M>(
       h.Class(
         cn(
           "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
-          config.wide ? "max-w-5xl" : "max-w-3xl",
+          contentWidth(config.wide),
           config.className,
         ),
       ),
@@ -52,10 +58,16 @@ export const page = <M>(
 
 /** Section heading above a grouped list (iOS section header). */
 export const sectionHeader = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
-  h.h2([h.Class(cn("pb-2 text-sm font-medium text-foreground", className))], [text]);
+  h.h2(
+    [
+      h.Class(cn("pb-2 text-sm font-medium text-foreground", className)),
+      h.DataAttribute("slot", "section-header"),
+    ],
+    [text],
+  );
 
 /** Explanatory text under a grouped list (iOS section footer). */
-const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
+export const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
   h.p([h.Class("pt-2 text-sm leading-relaxed text-muted-foreground")], [text]);
 
 /**
@@ -93,6 +105,7 @@ export const groupedList = <M>(
           ...(config.role !== undefined ? [h.Role(config.role)] : []),
           ...(config.listAttributes ?? []),
           h.DataAttribute("slot", "grouped-list"),
+          h.DataAttribute("surface", config.surface ?? "card"),
         ],
         rows,
       ),
@@ -130,10 +143,19 @@ const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>
   h.span(
     [h.Class("flex min-w-0 flex-1 flex-col")],
     [
-      h.span([h.Class(cn(itemTitleClass, "block max-w-full truncate"))], [config.title]),
+      // dir="auto" so right-to-left names truncate at their end, not their start.
+      h.span(
+        [h.Class(cn(itemTitleClass, "block max-w-full truncate")), h.Dir("auto")],
+        [config.title],
+      ),
       ...(config.subtitle === undefined
         ? []
-        : [h.span([h.Class(cn(itemDescriptionClass, "truncate"))], [config.subtitle])]),
+        : [
+            h.span(
+              [h.Class(cn(itemDescriptionClass, "truncate")), h.Dir("auto")],
+              [config.subtitle],
+            ),
+          ]),
     ],
   ),
   ...(config.value === undefined
@@ -264,7 +286,10 @@ export const choiceRows = <M>(
           ...(choice.subtitle === undefined ? {} : { subtitle: choice.subtitle }),
           onClick: choice.onSelect,
           chevron: false,
-          className: "py-3",
+          // Muted subtitles fall below 4.5:1 on the selected row's background.
+          className: choice.selected
+            ? "py-3 [&_.text-muted-foreground]:text-foreground/75"
+            : "py-3",
           trailing: choice.selected
             ? icon(h, Check, "size-5 shrink-0 text-primary")
             : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)]),

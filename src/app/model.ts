@@ -3,9 +3,9 @@ import { AsyncData } from "foldkit";
 import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
-import { Accent, Font, IconLibrary, Theme } from "../web/theme";
+import { Accent, ControlSize, defaultLook, Font, IconLibrary, Look, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
-import { TemplateSummary } from "../web/types";
+import { TemplateReport, TemplateSummary } from "../web/types";
 
 // Payload shapes shared by the Model and the Messages that deliver them.
 
@@ -102,6 +102,21 @@ export const Model = Schema.Struct({
   accent: Accent,
   accentSaveFailed: Schema.Boolean,
   accentDraft: Schema.NullOr(Schema.String),
+  look: Look,
+  /** Settings' backup feedback; `backupBusy` disables both actions meanwhile. */
+  backupBusy: Schema.Boolean,
+  /** Recent changes have not reached disk for a while (see saveStallStreams). */
+  saveStalled: Schema.Boolean,
+  /** The "erase this browser's studies" confirmation is open. */
+  pendingStorageReset: Schema.Boolean,
+  /** Starting found another tab's live session; the runner explains it until dismissed. */
+  joinedExistingSession: Schema.Boolean,
+  backupNotice: Schema.NullOr(
+    Schema.Struct({ tone: Schema.Literals(["success", "error"]), text: Schema.String }),
+  ),
+  lookSaveFailed: Schema.Boolean,
+  controlSize: ControlSize,
+  controlSizeSaveFailed: Schema.Boolean,
   // Templates tab slice
   templates: fromStore(Schema.Array(TemplateSummary)),
   /**
@@ -120,6 +135,10 @@ export const Model = Schema.Struct({
   ]),
   /** Template whose "⋯" action sheet is open, if any. */
   templateActionsFor: Schema.Union([Schema.Null, Schema.String]),
+  /** Template whose time report sheet is open; its data arrives as `templateReport`. */
+  templateReportFor: Schema.Union([Schema.Null, Schema.String]),
+  templateReport: Schema.NullOr(TemplateReport),
+  templateReportFailed: Schema.Boolean,
   lastError: Schema.Union([Schema.Null, Schema.String]),
   editor: Schema.Union([
     Schema.Null,
@@ -213,6 +232,15 @@ const initialModel = (route: Route): Model => ({
   accent: "default",
   accentSaveFailed: false,
   accentDraft: null,
+  look: defaultLook,
+  backupBusy: false,
+  saveStalled: false,
+  pendingStorageReset: false,
+  joinedExistingSession: false,
+  backupNotice: null,
+  lookSaveFailed: false,
+  controlSize: "standard",
+  controlSizeSaveFailed: false,
   templates: AsyncData.Loading(),
   templatesSeedChecked: false,
   listReadAttempt: 0,
@@ -220,6 +248,9 @@ const initialModel = (route: Route): Model => ({
   newName: "",
   pendingDelete: null,
   templateActionsFor: null,
+  templateReportFor: null,
+  templateReport: null,
+  templateReportFailed: false,
   lastError: null,
   editor: null,
   selectedTemplateId: null,

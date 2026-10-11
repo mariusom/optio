@@ -326,7 +326,7 @@ const recordTasks = async (page) => {
     const started = performance.now();
     await page.getByRole("button", { name: "Record task", exact: true }).click();
     await page
-      .getByRole("button", { name: `Task ${index + 1} in progress`, exact: true })
+      .getByRole("button", { name: new RegExp(`^Task ${index + 1}\\b.*Recording$`) })
       .waitFor();
     recordMs.push(round(performance.now() - started));
   }
@@ -340,7 +340,7 @@ const measurePopulatedReload = async (page, runnerUrl) => {
   const started = performance.now();
   await page.reload();
   await page
-    .getByRole("button", { name: `Task ${taskCount + 1} in progress`, exact: true })
+    .getByRole("button", { name: new RegExp(`^Task ${taskCount + 1}\\b.*Recording$`) })
     .waitFor();
   const populatedReloadMs = round(performance.now() - started);
   assert.equal(page.url(), runnerUrl);
@@ -350,7 +350,7 @@ const measurePopulatedReload = async (page, runnerUrl) => {
 const measureEdit = async (page) => {
   const editTask = Math.ceil(taskCount / 2);
   let started = performance.now();
-  await page.getByRole("button", { name: `Task ${editTask} completed`, exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(`^Task ${editTask}\\b.*Done$`) }).click();
   await page.waitForFunction(
     (value) => document.querySelector('input[aria-label="Operation"]')?.value === value,
     `Synthetic operation ${editTask}`,
@@ -366,7 +366,7 @@ const measureEdit = async (page) => {
   const saveEditMs = round(performance.now() - started);
   await page.waitForTimeout(500);
   await page.reload();
-  await page.getByRole("button", { name: `Task ${editTask} completed`, exact: true }).click();
+  await page.getByRole("button", { name: new RegExp(`^Task ${editTask}\\b.*Done$`) }).click();
   await page.waitForFunction(
     (value) => document.querySelector('input[aria-label="Operation"]')?.value === value,
     `Edited synthetic operation ${editTask}`,

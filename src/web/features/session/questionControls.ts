@@ -13,7 +13,7 @@ const selectedChoiceClass =
   "border-primary bg-primary/8 text-primary dark:border-primary dark:bg-primary/15";
 
 const choiceGridClass =
-  "grid auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,calc(12ch+3rem)),1fr))] gap-2 text-sm";
+  "grid grid-cols-[repeat(auto-fit,minmax(min(100%,calc(12ch+3rem)),1fr))] gap-2 text-sm";
 
 const choiceBody = (
   options: Readonly<{ label: string; isExclusive: boolean; indicator: Html }>,
@@ -25,7 +25,8 @@ const choiceBody = (
     [
       indicator,
       h.span(
-        [h.Class("min-w-0 flex-1 text-left")],
+        // dir="auto": a right-to-left label lays out (and wraps) from its own start.
+        [h.Class("min-w-0 flex-1 text-start"), h.Dir("auto")],
         [
           ...label
             .split(/(\s+)/)
@@ -333,7 +334,7 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
               h.Class(cn(inputLabelClass, "flex-wrap max-md:font-semibold")),
             ],
             [
-              h.span([h.Class("min-w-0 max-w-full break-words")], [section.name]),
+              h.span([h.Class("min-w-0 max-w-full break-words"), h.Dir("auto")], [section.name]),
               ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
             ],
           ),
@@ -346,7 +347,10 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
           header: h.span(
             [h.Class("flex flex-wrap items-center gap-2 normal-case")],
             [
-              h.span([h.Class("min-w-0 text-sm font-semibold tracking-normal")], [section.name]),
+              h.span(
+                [h.Class("min-w-0 text-sm font-semibold tracking-normal"), h.Dir("auto")],
+                [section.name],
+              ),
               ...(section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : []),
               ...(section.kind === "radio" || section.kind === "checkbox"
                 ? [
@@ -364,12 +368,19 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
         h,
       );
 
-export const formSectionsView = (task: RunnerTask, h: HtmlBuilder<Message>, scope = "mobile") => {
+/** `leading` renders above the first question, below the scroll target. */
+export const formSectionsView = (
+  task: RunnerTask,
+  h: HtmlBuilder<Message>,
+  options: Readonly<{ scope?: string; leading?: ReadonlyArray<Html> }> = {},
+) => {
+  const scope = options.scope ?? "mobile";
   const sections = task.sections.toSorted((a, b) => a.sortOrder - b.sortOrder);
   return h.div(
     [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-6 px-safe pt-4 pb-8")],
     [
       h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)]),
+      ...(options.leading ?? []),
       ...sections.map((section) => questionView(section, scope, h)),
     ],
   );

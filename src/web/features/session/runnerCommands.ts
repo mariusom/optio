@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema, Semaphore } from "effect";
+import { Clock, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -6,6 +6,8 @@ import { withStore, type StoreAccess } from "../../../livestore/access";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
+import { serialized } from "./writeLock";
+import { archiveRecord } from "./archiveRecord";
 import { isAnswerComplete, isTaskEditable } from "./runner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -24,7 +26,6 @@ const failed = (error: string) => Message.FailedRunnerOp({ error });
  * order an update returns them, so batched answers commit before the record,
  * edit or end command that reads them.
  */
-const serialized = Semaphore.makeUnsafe(1).withPermits(1);
 
 /** Store-side counterpart of the planner's editable-section guard. */
 const isPersistedFieldEditable = (
@@ -106,7 +107,8 @@ export const RecordTask = Command.define("RecordTask", {
         const currentRow = taskRows.find((r) => r.id === currentTaskId);
         if (currentRow === undefined) return failed("That task isn’t available any more.");
         // Guard: if task already finished, no-op
-        if (currentRow.endDate !== null) return Message.TaskRecorded();
+        if (currentRow.endDate !== null)
+          return Message.TaskRecorded({ taskId: currentTaskId, fresh: false });
 
         const fieldRows = store.query(
           tables.sessionTaskFields
@@ -133,7 +135,7 @@ export const RecordTask = Command.define("RecordTask", {
             fields: nextFields,
           }),
         );
-        return Message.TaskRecorded();
+        return Message.TaskRecorded({ taskId: currentTaskId, fresh: true });
       }),
     ).pipe(serialized, reportFailure("record", failed)),
 });
@@ -176,22 +178,7 @@ export const EndSession = Command.define("EndSession", {
               `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
             );
           }
-          // Task start = earliest first answer (null if untouched).
-          const starts = fieldRows.flatMap((r) => (r.startDate === null ? [] : [r.startDate]));
-          records.push({
-            taskIdNumber: task.orderIndex,
-            taskType: task.taskType,
-            startedAt:
-              starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null,
-            endedAt: task.endDate,
-            sections: fieldRows.map((r) => ({
-              sectionName: r.name,
-              value: r.value,
-              sectionType: r.kind,
-              isRequired: r.isRequired === 1,
-              startedAt: r.startDate,
-            })),
-          });
+          records.push(archiveRecord(task, fieldRows));
         }
 
         // Archive order follows the live task list (queried by orderIndex).
@@ -234,7 +221,7 @@ export const SelectTask = Command.define("SelectTask", {
         }
         // Selecting current (unfinished) → clear any editing
         if (edited !== undefined) store.commit(events.taskEditFinished({ id: edited.id }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("load", failed)),
 });
@@ -246,7 +233,7 @@ export const CancelEdit = Command.define("CancelEdit", {
     withStore(({ store, events }) =>
       Effect.sync(() => {
         store.commit(events.taskEditCancelled({ id: taskId }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 });
@@ -261,7 +248,7 @@ export const SaveEdit = Command.define("SaveEdit", {
         if (fieldRows.some(isIncomplete))
           return failed("Complete required questions and correct invalid answers first.");
         store.commit(events.taskEditFinished({ id: taskId }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: taskId });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 });

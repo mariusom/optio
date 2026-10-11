@@ -4,10 +4,13 @@ import {
   buildArchiveCsv,
   csvEscaped,
   dayGroupLabel,
+  daySummaryLabel,
   displayNameFor,
   filenameForArchive,
   filenameSafe,
   formatAnswer,
+  formatDay,
+  formatEndTime,
   formatFilenameDate,
   groupByDay,
   taskCountLabel,
@@ -372,10 +375,37 @@ describe("formatAnswer", () => {
   });
 });
 
+describe("daySummaryLabel", () => {
+  it("counts sessions and totals their recorded time", () => {
+    expect(
+      daySummaryLabel([
+        { startedAt: 0, endedAt: 3_600_000 },
+        { startedAt: 0, endedAt: 600_000 },
+        { startedAt: 0, endedAt: 120_000 },
+      ]),
+    ).toBe("3 sessions · 1h 12m");
+  });
+  it("uses the singular and shows seconds for short days", () => {
+    expect(daySummaryLabel([{ startedAt: 1_000, endedAt: 7_000 }])).toBe("1 session · 6s");
+  });
+});
+
 describe("taskCountLabel", () => {
   it("uses the singular for one task", () => {
     expect(taskCountLabel(1)).toBe("1 task");
     expect(taskCountLabel(0)).toBe("0 tasks");
     expect(taskCountLabel(12)).toBe("12 tasks");
+  });
+});
+
+const hourOnly = (ms: number) => `T${new Date(ms).getHours()}`;
+
+describe("formatEndTime", () => {
+  it("adds the day only when a session ends on a later day", () => {
+    const start = new Date(2026, 9, 10, 23, 50).getTime();
+    expect(formatEndTime(start, new Date(2026, 9, 10, 23, 59).getTime(), hourOnly)).toBe("T23");
+    expect(formatEndTime(start, new Date(2026, 9, 11, 0, 2).getTime(), hourOnly)).toBe(
+      `T0, ${formatDay(new Date(2026, 9, 11, 0, 2).getTime())}`,
+    );
   });
 });

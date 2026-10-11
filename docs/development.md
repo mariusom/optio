@@ -81,7 +81,7 @@ registry-component exclusions are used.
 dependencies, and duplicate export names. The config lists the real entry points
 (the app entry, the LiveStore worker, tests and scripts). It exempts exports of
 the Foldcn registry copies in `src/components/ui`, and ignores the generated style table
-and the retained registry items without consumers (label, progress;
+and the retained registry item without a consumer (label;
 see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
@@ -104,7 +104,9 @@ warnings print whole Models and are dominated by test-machine load.
 a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
 ends the session and checks the downloaded CSV. It also refuses OPFS in a
-fresh context to check the in-memory storage warning. No stored user data or
+fresh context, in the page and in LiveStore's workers (their scripts are
+prefixed on the way in), checks the in-memory storage warning, and confirms
+nothing reached OPFS. No stored user data or
 deployed service is used. Before restarting during an edit, it waits for the
 answer and rollback backup in SQLite and for worker persistence to finish;
 an input's DOM value alone does not prove durability. Page-leaving flushes
@@ -117,7 +119,8 @@ need separate verification.
 For interface changes, inspect affected states on phone, tablet and desktop,
 including keyboard navigation and light/dark appearance. The screenshot helper
 `node scripts/screenshots/tour.mjs /tmp/optio-tour` expects a production preview
-on port 60002; set `OPTIO_URL` to override its base URL. Screenshots need inspection
+on port 60002; set `OPTIO_URL` to override its base URL and `OPTIO_INIT_STORAGE`
+(JSON, e.g. `{"optio-look":"studio"}`) to start with saved preferences. Screenshots need inspection
 and are not substitutes for assertions.
 
 Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,

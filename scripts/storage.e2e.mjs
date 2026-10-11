@@ -68,11 +68,11 @@ test(
       await page.getByRole("radio", { name: "Value-added", exact: true }).press("Space");
       await page.getByRole("checkbox", { name: "Torque driver", exact: true }).press("Space");
       await page.getByRole("button", { name: "Record task", exact: true }).click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).waitFor();
 
       // Begin a completed-task edit, confirm it reached persistent state, then
       // restart the entire browser, not just the view/model test harness.
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Torque bolts");
       await operation().fill("Unsaved correction");
       // fill() updates the DOM before the debounced answer reaches SQLite.
@@ -99,7 +99,7 @@ test(
       await page.goto(runnerUrl);
       await waitValue("Unsaved correction");
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Torque bolts");
       assert.equal(
         await page.getByRole("radio", { name: "Station 2", exact: true }).isChecked(),
@@ -110,7 +110,7 @@ test(
         true,
       );
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();
 
       await page.getByRole("radio", { name: "Station 3", exact: true }).press("Space");
       await operation().fill("Inspect alignment");
@@ -120,7 +120,7 @@ test(
         await page.locator("#tablet-formTop").scrollIntoViewIfNeeded();
       await screenshot("recording");
       await page.getByRole("button", { name: "Record task", exact: true }).click();
-      await page.getByRole("button", { name: "Task 3 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 3\b.*Recording$/ }).waitFor();
 
       // Wait for installed precache before simulating network loss. Actual
       // offline reload must reopen the real local database and its workers.
@@ -129,7 +129,7 @@ test(
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
       await context.setOffline(true);
       await page.reload();
-      await page.getByRole("button", { name: "Task 3 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 3\b.*Recording$/ }).waitFor();
       await page.getByRole("button", { name: "End session", exact: true }).click();
       await page
         .getByRole("dialog")
@@ -138,10 +138,8 @@ test(
       // Ending returns to Start; navigating earlier would be overridden.
       await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
-      await page
-        .getByRole("button", { name: "Open session Assembly observation", exact: true })
-        .click();
-      await page.getByRole("button", { name: "View details for Task 2", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Assembly observation\b/ }).click();
+      await page.getByRole("button", { name: /^Task 2(?!\d)/ }).waitFor();
       await screenshot("results");
 
       const exported = await download("Export Assembly observation");
@@ -186,9 +184,7 @@ test(
         await page.setViewportSize({ width, height });
         await page.emulateMedia({ colorScheme });
         await page.goto(archiveUrl);
-        await page
-          .getByRole("button", { name: "Delete Assembly observation", exact: true })
-          .waitFor();
+        await page.getByRole("button", { name: "Delete session", exact: true }).waitFor();
         const downloaded = await download("Export Assembly observation");
         assert.equal(downloaded.csv, exported.csv);
         assert.equal(await page.getByRole("dialog").count(), 0);
@@ -333,20 +329,20 @@ test(
       assert.equal(await record.isDisabled(), true);
       await page.getByRole("radio", { name: "4", exact: true }).press("Space");
       await record.click();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).waitFor();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).waitFor();
       await waitValue("Items packed", "");
       assert.equal(
         await page.getByRole("radio", { name: "Unanswered", exact: true }).isChecked(),
         true,
       );
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Items packed", "12");
       await input("Items packed").fill("-1");
       await page
         .getByText("Correct invalid answers before continuing.")
         .filter({ visible: true })
         .waitFor();
-      await page.getByRole("button", { name: "Task 2 in progress", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();
       await page
         .getByText(
           "Complete required questions and correct invalid answers, or cancel the edit first.",
@@ -376,7 +372,7 @@ test(
       await page.reload();
       await input("Items packed").waitFor();
       await page.getByRole("button", { name: "Cancel editing", exact: true }).click();
-      await page.getByRole("button", { name: "Task 1 completed", exact: true }).click();
+      await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Items packed", "12");
       await input("Items packed").fill("0");
       await waitValue("Items packed", "0");
@@ -391,9 +387,7 @@ test(
       // Ending returns to Start; navigating earlier would be overridden.
       await page.waitForURL((url) => url.hash === "#/start");
       await page.goto(`${base}#/history`);
-      await page
-        .getByRole("button", { name: "Open session Quantitative check", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Quantitative check\b/ }).click();
       await page.getByRole("button", { name: "Export Quantitative check", exact: true }).waitFor();
       const ready = page.waitForEvent("download");
       await page.getByRole("button", { name: "Export Quantitative check", exact: true }).click();
@@ -421,9 +415,19 @@ test("warns when the browser keeps studies only in memory", { timeout: 60_000 },
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
     // Some private windows refuse OPFS; LiveStore then keeps data in memory.
+    // The page keeps the real API only to check, at the end, that nothing was
+    // written; the app and LiveStore's workers all see the refusal.
     await context.addInitScript(() => {
+      globalThis.optioRealGetDirectory = navigator.storage.getDirectory.bind(navigator.storage);
       navigator.storage.getDirectory = () =>
         Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));
+    });
+    // Init scripts do not reach workers, so refuse OPFS at the top of each
+    // LiveStore worker script too; otherwise the workers still persist.
+    const refuse = `navigator.storage.getDirectory = () => Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));\n`;
+    await context.route(/(livestore\.worker|make-shared-worker)-[^/]*\.js$/, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: refuse + (await response.text()) });
     });
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
@@ -435,6 +439,20 @@ test("warns when the browser keeps studies only in memory", { timeout: 60_000 },
     );
     // Where sessions start, the warning stays in view and cannot be dismissed.
     assert.equal(await page.getByRole("button", { name: "Dismiss storage warning" }).count(), 0);
+    // Record into the in-memory store, then confirm nothing reached OPFS.
+    await page.getByRole("button", { name: "Start Session" }).click();
+    await page.getByRole("button", { name: "Record task" }).first().waitFor();
+    const opfsEntries = await page.evaluate(async () => {
+      const root = await globalThis.optioRealGetDirectory();
+      const names = [];
+      for await (const [name] of root.entries()) names.push(name);
+      return names;
+    });
+    assert.deepEqual(
+      opfsEntries.filter((name) => name.includes("livestore")),
+      [],
+      `LiveStore wrote to OPFS despite the refusal: ${opfsEntries.join(", ")}`,
+    );
   } finally {
     await browser.close();
     await new Promise((resolve, reject) =>

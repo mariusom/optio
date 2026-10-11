@@ -54,6 +54,7 @@ const runner: RunnerState = {
   showSidebar: true,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
   tasks: [
     {
       id: "t1",

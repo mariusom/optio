@@ -5,6 +5,7 @@ import { Message } from "../../../messages";
 import { friendlyFailure, reportFailure } from "../../errors";
 import { isBooleanTrue } from "../../fields";
 import { withStore } from "../../../livestore/access";
+import { saveTextFile } from "../../download";
 import {
   buildArchiveCsv,
   displayNameFor,
@@ -13,25 +14,12 @@ import {
   type ArchiveTask,
 } from "./helpers";
 
-// Safari-compatible Blob URL + a[download]. Non-browser callers still get the filename.
+// Non-browser callers still get the filename.
 const downloadCsv = (csv: string, filename: string) => {
-  if (typeof document !== "undefined" && typeof URL !== "undefined") {
-    try {
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 0);
-    } catch (error) {
-      return Message.FailedCsvExport({ error: friendlyFailure("export", error) });
-    }
+  try {
+    saveTextFile(csv, filename, "text/csv;charset=utf-8;");
+  } catch (error) {
+    return Message.FailedCsvExport({ error: friendlyFailure("export", error) });
   }
   return Message.CsvExported({ filename });
 };

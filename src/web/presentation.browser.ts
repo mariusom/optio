@@ -316,9 +316,7 @@ describe("persistent presentation regressions", () => {
         h,
       ),
     );
-    await expect
-      .element(page.getByRole("button", { name: "View details for Task 2" }))
-      .toBeVisible();
+    await expect.element(page.getByRole("button", { name: /^Task 2(?!\d)/ })).toBeVisible();
     for (const group of document.querySelectorAll('[data-slot="grouped-list"]')) {
       const rows = [...group.children];
       for (const row of rows.slice(0, -1)) {
@@ -326,9 +324,7 @@ describe("persistent presentation regressions", () => {
       }
       expect(getComputedStyle(rows.at(-1)!).borderBottomWidth).toBe("0px");
     }
-    const task = page
-      .getByRole("button", { name: "View details for Task 1" })
-      .element() as HTMLButtonElement;
+    const task = page.getByRole("button", { name: /^Task 1(?!\d)/ }).element() as HTMLButtonElement;
     const borderColor = getComputedStyle(task).borderBottomColor;
     task.focus();
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -377,7 +373,9 @@ describe("persistent presentation regressions", () => {
     expect(getComputedStyle(document.querySelector("#template-name")!.parentElement!).padding).toBe(
       itemPadding,
     );
-    expect(css('[aria-label="Edit question Outcome"]').padding).toBe(itemPadding);
+    expect(
+      getComputedStyle(page.getByRole("button", { name: /^Outcome / }).element()).padding,
+    ).toBe(itemPadding);
   });
 
   it.each(foldcnStyles)(
@@ -409,9 +407,10 @@ describe("persistent presentation regressions", () => {
     await expect.element(page.getByRole("link", { name: "Templates", exact: true })).toBeVisible();
     const original = navigationIcon();
     const picker = page.getByRole("radiogroup", { name: "Icon style" });
-    expect(
-      [...picker.element().querySelectorAll('[role="radio"]')].map((e) => e.textContent),
-    ).toEqual(["Hugeicons", "Lucide"]);
+    expect([...picker.element().querySelectorAll("label")].map((e) => e.textContent)).toEqual([
+      "Hugeicons",
+      "Lucide",
+    ]);
     await picker.getByRole("radio", { name: "Lucide", exact: true }).click();
     await expect.poll(navigationIcon).not.toBe(original);
     await expect.poll(() => localStorage.getItem("optio-icon-library")).toBe("lucide");
@@ -430,16 +429,16 @@ describe("persistent presentation regressions", () => {
     await page.viewport(width, 1224);
     const dialog = page.getByRole("dialog", { name: template.name });
     await expect.element(dialog).toBeVisible();
-    const actions = ["Set as default", "Duplicate", "Delete"].map((name) =>
+    const actions = ["Start session", "Set as default", "Duplicate", "Delete"].map((name) =>
       dialog.getByRole("button", { name, exact: true }).element(),
     );
     for (const action of actions) expect(action.querySelector("svg")).not.toBeNull();
     const boxes = actions.map((action) => action.getBoundingClientRect());
-    expect(boxes[0]!.bottom).toBeLessThanOrEqual(boxes[1]!.top);
-    expect(boxes[1]!.bottom).toBeLessThanOrEqual(boxes[2]!.top);
+    for (let index = 1; index < boxes.length; index += 1)
+      expect(boxes[index - 1]!.bottom).toBeLessThanOrEqual(boxes[index]!.top);
     expect(new Set(boxes.map((box) => box.left)).size).toBe(1);
     expect(new Set(boxes.map((box) => box.width)).size).toBe(1);
-    expect(actions[2]!.closest('[data-slot="action-group"]')).toBeNull();
+    expect(actions[3]!.closest('[data-slot="action-group"]')).toBeNull();
   });
 
   it("matches the favicon mark to the sidebar and updates saved/custom/theme colours", async () => {
@@ -620,13 +619,13 @@ describe("persistent presentation regressions", () => {
     await expect.element(form).toBeVisible();
     expect(document.querySelector('[data-slot="sheet"]')).toBeNull();
     await page.getByRole("textbox", { name: "Question", exact: true }).fill("Activity");
-    const done = page.getByRole("button", { name: "Save question" });
+    const done = page.getByRole("button", { name: "Add to template", exact: true });
     await expect.element(done).toBeEnabled();
     expect(document.querySelector('[aria-label="Save template"]')).toBeNull();
     expect(document.querySelector("#template-name")).toBeNull();
     await expect.element(page.getByText("Morning study", { exact: true })).toBeVisible();
     await done.click();
-    const edit = page.getByRole("button", { name: "Edit question Activity" });
+    const edit = page.getByRole("button", { name: /^Activity / });
     await expect.element(edit).toBeVisible();
     await expect.element(page.getByRole("button", { name: "Save template" })).toBeEnabled();
     await edit.click();
@@ -651,7 +650,7 @@ describe("persistent presentation regressions", () => {
     expect(remove!.left).toBe(group.getBoundingClientRect().left);
     expect(confirm!.right).toBe(group.getBoundingClientRect().right);
     if (width === 1280) expect(remove!.top).toBe(confirm!.top);
-    expect(document.querySelector('[aria-label="Edit question Activity"]')).toBeNull();
+    expect(page.getByRole("button", { name: /^Activity / }).query()).toBeNull();
     await page.getByRole("textbox", { name: "Question", exact: true }).fill("Canceled change");
     await page.getByRole("button", { name: "Cancel editing question" }).click();
     await expect.element(edit).toBeVisible();
@@ -1015,9 +1014,11 @@ describe("persistent presentation regressions", () => {
     (trigger.element() as HTMLButtonElement).focus();
     await expect.element(trigger).toHaveFocus();
     await userEvent.click(trigger);
-    const exportAction = page.getByRole("button", { name: "Export Morning observation" });
+    const exportAction = page.getByRole("button", { name: "Export CSV", exact: true });
     await expect.element(exportAction).toBeVisible();
-    expect(document.querySelectorAll('dialog button[aria-label^="Export "]')).toHaveLength(1);
+    expect(
+      [...document.querySelectorAll("dialog button")].filter((b) => b.textContent === "Export CSV"),
+    ).toHaveLength(1);
     await expect
       .element(page.getByRole("button", { name: "Delete Morning observation" }))
       .toBeVisible();

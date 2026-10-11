@@ -1,7 +1,7 @@
 import { AsyncData } from "foldkit";
 import type { Document, Html, HtmlBuilder } from "foldkit/html";
 import { Message } from "../messages";
-import { templatesOf, type Model } from "./model";
+import { activeSessionOf, templatesOf, type Model } from "./model";
 import { RouteSchema, isFullScreenRoute, type Route } from "../web/routes";
 import { settingsPage } from "../web/features/settings/view";
 import { infoPage } from "../web/features/settings/infoView";
@@ -130,7 +130,17 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
         {
           data: model.templates,
           skeleton: listSkeleton,
-          page: (templates) => templatesPage({ ...model, templates }, h),
+          page: (templates) =>
+            templatesPage(
+              {
+                ...model,
+                templates,
+                liveSession: activeSessionOf(model),
+                // While storage is unavailable the report cannot load either.
+                templateReportFailed: model.templateReportFailed || model.storage === "unavailable",
+              },
+              h,
+            ),
         },
         h,
       ),
@@ -179,7 +189,7 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
         ),
       StartTab: titled,
       HistoryTab: titled,
-      SettingsTab: titled,
+      SettingsTab: () => pageHeader({ title: pageTitle(model.route), wide: "xl" }, h),
     },
     () => null,
   );
@@ -192,7 +202,9 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const storage = isRunner
     ? null
     : storageNotice(model, h, { recording: model.route._tag === "StartTab" });
-  const updatePrompt = appUpdatePrompt(model.appUpdate, h);
+  const updatePrompt = appUpdatePrompt(model.appUpdate, h, {
+    belowNavBar: isFullScreenRoute(model.route),
+  });
   return {
     title: documentTitle(model),
     body: h.div(
@@ -207,7 +219,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           [
             h.Class(
               `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 has-[[data-slot=sheet]]:overflow-hidden ${
-                isRunner ? "" : "md:pl-[4.5rem] xl:pl-60"
+                isRunner ? "runner-main" : "md:pl-[4.5rem] xl:pl-60"
               }`,
             ),
           ],

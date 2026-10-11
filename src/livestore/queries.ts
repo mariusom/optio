@@ -153,3 +153,48 @@ export const templateRows = (templateId: string) => {
     deps: [templateId],
   });
 };
+
+const ReportSummaryRow = Schema.Struct({ sessionCount: Schema.Number, totalMs: Schema.Number });
+
+/** Finished sessions of one template, with their task records and answers. */
+const finishedOf = `join sessions s on s.id = r.sessionId
+    where s.templateId = $templateId and s.endedAt is not null`;
+
+export const templateReportRows = (templateId: string) => {
+  const summary$ = queryDb(
+    {
+      query: `select count(*) as sessionCount, coalesce(sum(endedAt - startedAt), 0) as totalMs
+        from sessions where templateId = $templateId and endedAt is not null`,
+      bindValues: { templateId },
+      schema: Schema.Array(ReportSummaryRow),
+    },
+    { label: `reportSummary:${templateId}`, deps: [templateId] },
+  );
+  const records$ = queryDb(
+    {
+      query: `select r.* from taskRecords r ${finishedOf}
+        order by s.startedAt asc, r.taskId asc`,
+      bindValues: { templateId },
+      schema: Schema.Array(tables.taskRecords.rowSchema),
+    },
+    { label: `reportRecords:${templateId}`, deps: [templateId] },
+  );
+  const sections$ = queryDb(
+    {
+      query: `select sr.* from taskSectionRecords sr
+        join taskRecords r on r.id = sr.taskRecordId ${finishedOf}
+        order by sr.taskRecordId asc, sr.position asc`,
+      bindValues: { templateId },
+      schema: Schema.Array(tables.taskSectionRecords.rowSchema),
+    },
+    { label: `reportSections:${templateId}`, deps: [templateId] },
+  );
+  return computed(
+    (get) => ({
+      summary: get(summary$)[0] ?? { sessionCount: 0, totalMs: 0 },
+      records: get(records$),
+      sections: get(sections$),
+    }),
+    { label: `templateReport:${templateId}`, deps: [templateId] },
+  );
+};

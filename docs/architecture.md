@@ -124,6 +124,11 @@ flushes are best effort: browsers do not wait for asynchronous worker writes
 before discarding a page. An immediate reload, crash or killed tab can lose
 pending answers, including the last 500 ms of typing and writes still reaching
 the worker. Assistant answers are written without the typing delay.
+"Repeat last answers" is planned by the session reducer: it copies the previous
+recorded task's answers into questions the open task has never answered (no
+`startDate`), as one `UpdateFieldValues` batch through the same lock, so each
+copy is that field's first write. A recorded task's vibration is a command
+(`VibrateRecorded`), feature-detected and skipped silently where unsupported.
 
 Wall-clock time reaches the UI through the Model. The runtime boot and the
 ticker subscription read Effect's Clock; `Tick` stamps `model.now` and
@@ -147,5 +152,31 @@ question names in separate columns. UI exports protect formula-like cells
 without modifying stored observations; the raw programmatic format stays exact.
 
 Optio adds no runtime network dependency for studies. Browser storage can still
-be cleared or evicted; persistence is not a backup guarantee. Service-worker
+be cleared or evicted; persistence is not a backup guarantee. Opening the store
+on disk asks the browser to exempt the site from eviction under storage pressure
+(`navigator.storage.persist()` in `livestore/openStore.ts`); the answer is not
+checked, and users can still clear site data. Settings downloads a JSON
+backup of every template and finished session (`web/backup.ts`); restoring
+commits one `v3.BackupRestored` event that adds only what is missing. The
+command plans the restore first: templates whose ID exists, or with the same
+name and questions (each browser seeds its own samples), are kept, and their
+sessions are repointed to the existing template. The materializer still
+skips any existing ID, so replays and repeated restores stay harmless.
+Before committing, `backupProblem` refuses files with values Optio never
+writes (fractional or negative question order, task numbers below 1, unnamed
+templates or questions, impossible times), which would otherwise break the
+store. Restore reports success only once the leader has confirmed the event
+(`upstreamHead` reaches the `localHead` seen after commit), because a reload
+before then loses it; large backups can take several seconds.
+
+A browser crash in the middle of a commit can leave LiveStore's state and event
+log out of step; afterwards new work shows on screen but never reaches disk
+(an upstream issue, reproduced on `main` too). `app/saveStallStreams.ts` warns
+when writes stay unconfirmed for 20 s (not during a backup or restore) and
+offers a backup. While saving is stalled the backup also includes the open
+session as if ended now, and restoring a session whose ID is still live here
+adds it as a separate "-restored" copy. If reloading does not clear the
+warning, Settings' "Reset storage in this browser" sets a one-time flag
+(`livestore/resetFlag.ts`) so the next open uses LiveStore's
+`resetPersistence`, after which the backup can be restored. Service-worker
 updates must wait for the user's refresh action rather than interrupt recording.

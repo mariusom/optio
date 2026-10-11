@@ -4,13 +4,15 @@ import { Message } from "../messages";
 import { AgentPortReply, agentPorts } from "../agents/actions";
 import {
   changeAccent,
+  changeControlSize,
   changeFont,
   changeIconLibrary,
+  changeLook,
   applyColorScheme,
   changeStyle,
   saveThemeChoice,
 } from "../web/browserTheme";
-import { Accent, Font, IconLibrary, Theme } from "../web/theme";
+import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../web/theme";
 import { FoldcnStyle } from "../web/style";
 import {
   CancelEdit,
@@ -21,6 +23,7 @@ import {
   SelectTask,
   UpdateFieldValues,
 } from "../web/features/session/runnerCommands";
+import { VibrateRecorded } from "../web/features/session/recordFeedback";
 import { templatePrompt } from "../web/features/settings/infoView";
 import { randomSessionName } from "../web/random-name";
 import {
@@ -83,6 +86,22 @@ const SaveAccent = Command.define("SaveAccent", {
     Effect.map(changeAccent(accent), (saved) => Message.AccentSaveFinished({ accent, saved })),
 });
 
+const SaveLook = Command.define("SaveLook", {
+  args: { look: Look },
+  messages: [Message.LookSaveFinished],
+  execute: ({ look }) =>
+    Effect.map(changeLook(look), (saved) => Message.LookSaveFinished({ look, saved })),
+});
+
+const SaveControlSize = Command.define("SaveControlSize", {
+  args: { controlSize: ControlSize },
+  messages: [Message.ControlSizeSaveFinished],
+  execute: ({ controlSize }) =>
+    Effect.map(changeControlSize(controlSize), (saved) =>
+      Message.ControlSizeSaveFinished({ controlSize, saved }),
+    ),
+});
+
 const NavigateExternal = Command.define("NavigateExternal", {
   args: { href: Schema.String },
   messages: [Message.Navigated],
@@ -125,6 +144,7 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
     CommitFieldValues: ({ writes }) => [UpdateFieldValues({ writes })],
     CommitCounterAdjustment: ({ taskFieldId, delta }) => [AdjustCounter({ taskFieldId, delta })],
     CommitRecord: ({ sessionId, taskId }) => [RecordTask({ sessionId, currentTaskId: taskId })],
+    ConfirmRecorded: () => [VibrateRecorded()],
     CommitSelectTask: ({ sessionId, taskId }) => [SelectTask({ sessionId, taskId })],
     CommitCancelEdit: ({ taskId }) => [CancelEdit({ taskId })],
     CommitSaveEdit: ({ taskId }) => [SaveEdit({ taskId })],
@@ -151,8 +171,10 @@ export {
   ReplyToAgent,
   ResetTemplatePromptCopy,
   SaveAccent,
+  SaveControlSize,
   SaveFont,
   SaveIconLibrary,
+  SaveLook,
   SaveStyle,
   SaveTheme,
   applyPlan,

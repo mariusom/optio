@@ -1,6 +1,7 @@
 import type { HtmlBuilder } from "foldkit/html";
 
-import type { Message } from "../../../messages";
+import { notice } from "@/components/app";
+import { Message } from "../../../messages";
 import { storageNotice } from "../../storageNotice";
 import type { RunnerState } from "./runner";
 import { runnerSheets, runnerView } from "./runnerView";
@@ -10,12 +11,31 @@ type SessionModel = {
   readonly runner: RunnerState | null;
   readonly storage: "opening" | "persisted" | "in-memory" | "unavailable";
   readonly memoryStorageAcknowledged: boolean;
+  readonly saveStalled: boolean;
+  readonly backupBusy: boolean;
+  readonly joinedExistingSession: boolean;
 };
 
+/** Starting found another tab's live session; only one can record at a time. */
+const joinedNotice = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
+  notice(
+    {
+      tone: "info",
+      text: `Another tab had already started “${
+        runner === null ? "a session" : runner.sessionName || runner.templateName
+      }”. Only one session can record at a time, so you’re in that one.`,
+      onDismiss: Message.DismissedJoinedSession(),
+      dismissLabel: "Dismiss",
+    },
+    h,
+  );
+
 export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {
-  const storage = storageNotice(model, h, { recording: true });
+  const storage =
+    storageNotice(model, h, { recording: true }) ??
+    (model.joinedExistingSession ? joinedNotice(model.runner, h) : null);
   return h.div(
-    [h.Class("flex w-full h-full flex-col")],
+    [h.Class("flex w-full h-full flex-col"), h.DataAttribute("runner-layout", "")],
     [
       ...(storage === null
         ? []
@@ -26,11 +46,17 @@ export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {
             ),
           ]),
       h.div(
-        [h.Class("flex md:hidden w-full min-h-0 flex-1 flex-col")],
+        [
+          h.Class("flex md:hidden w-full min-h-0 flex-1 flex-col"),
+          h.DataAttribute("runner-layout", ""),
+        ],
         [runnerView(model as Parameters<typeof runnerView>[0], h)],
       ),
       h.div(
-        [h.Class("hidden md:flex w-full min-h-0 flex-1 flex-col")],
+        [
+          h.Class("hidden md:flex w-full min-h-0 flex-1 flex-col"),
+          h.DataAttribute("runner-layout", ""),
+        ],
         [sessionTabletView(model.runner, h)],
       ),
       ...runnerSheets(model.runner, h),

@@ -13,23 +13,23 @@ try {
   page.setDefaultTimeout(10_000);
   await page.goto(`${url}#/templates`);
   const names = ["Assembly line", "Ward round", "Warehouse pick"];
+  // Template rows are named by their visible text: title, question counts and badge.
+  const templateRow = (name) => page.getByRole("button", { name: new RegExp(`^${name} \\d`) });
   for (const name of names) {
-    await page.getByRole("button", { name: `Open ${name}`, exact: true }).waitFor();
+    await templateRow(name).waitFor();
   }
 
   // Remove one seeded template so this tests a real Add operation, not its no-op path.
   await page.getByRole("button", { name: 'Actions for "Ward round"', exact: true }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.getByRole("button", { name: "Confirm delete", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Open Ward round", exact: true })
-    .waitFor({ state: "detached" });
+  await templateRow("Ward round").waitFor({ state: "detached" });
   await page.getByRole("button", { name: "Add sample templates", exact: true }).click();
-  await page.getByRole("button", { name: "Open Ward round", exact: true }).waitFor();
+  await templateRow("Ward round").waitFor();
   await page.getByRole("button", { name: "Add sample templates", exact: true }).click();
   await page.reload();
   for (const name of names) {
-    const row = page.getByRole("button", { name: `Open ${name}`, exact: true });
+    const row = templateRow(name);
     await row.waitFor();
     assert.equal(await row.count(), 1, `${name} must persist without duplicates`);
   }

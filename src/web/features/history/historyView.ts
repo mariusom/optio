@@ -16,9 +16,9 @@ import {
 import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
-import { formatDurationHm, formatTimeOnly } from "../../format";
+import { formatDurationShort, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
-import { groupByDay, taskCountLabel } from "./helpers";
+import { daySummaryLabel, groupByDay, taskCountLabel } from "./helpers";
 
 type HistorySession = {
   readonly id: string;
@@ -41,12 +41,22 @@ type HistoryModel = {
 
 // ── One session ───────────────────────────────────────────────────────────
 
-const summaryFor = (session: HistorySession): string =>
-  [
-    session.templateName,
-    taskCountLabel(session.taskCount),
-    formatDurationHm(session.endedAt - session.startedAt),
-  ].join(" · ");
+/** "<template> · 4 tasks"; the template name is isolated so right-to-left names keep the order. */
+const summaryFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+  h.span([], [h.bdi([], [session.templateName]), ` · ${taskCountLabel(session.taskCount)}`]);
+
+/** Start time over duration, right-aligned, so neither is cut off on phones. */
+const timesFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+  h.span(
+    [h.Class("flex flex-col items-end text-sm leading-tight")],
+    [
+      h.span([], [formatTimeOnly(session.startedAt)]),
+      h.span(
+        [h.Class("text-xs text-muted-foreground tabular")],
+        [formatDurationShort(session.endedAt - session.startedAt)],
+      ),
+    ],
+  );
 
 /**
  * A tappable row plus its own "⋯" button. The two controls sit side by side
@@ -60,13 +70,13 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
       row(
         {
           title: session.displayName,
-          subtitle: summaryFor(session),
-          value: h.span([h.Class("text-sm")], [formatTimeOnly(session.startedAt)]),
+          subtitle: summaryFor(session, h),
+          value: timesFor(session, h),
           onClick: Message.ClickedHistoryRow({ id: session.id }),
           chevron: true,
           lazy: true,
           className: "min-w-0 flex-1",
-          attributes: [h.AriaLabel(`Open session ${session.displayName}`)],
+          // Named by its visible text, so voice control matches it.
         },
         h,
       ),
@@ -81,6 +91,22 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
     ],
   );
 
+/** "Today · 3 sessions · 1h 12m", with the totals quieter than the day. */
+const dayHeader = (
+  group: { readonly label: string; readonly sessions: ReadonlyArray<HistorySession> },
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.span(
+    [],
+    [
+      group.label,
+      h.span(
+        [h.Class("font-normal text-muted-foreground")],
+        [` · ${daySummaryLabel(group.sessions)}`],
+      ),
+    ],
+  );
+
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
 
 const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
@@ -88,7 +114,7 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
     {
       id: "history-actions",
       title: session.displayName,
-      description: summaryFor(session),
+      description: summaryFor(session, h),
       onDismiss: Message.ClosedHistoryActions(),
       footer: {
         cancel: {
@@ -111,7 +137,7 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
                 sessionId: session.id,
                 spreadsheetSafe: true,
               }),
-              ariaLabel: `Export ${session.displayName}`,
+              // Named by its visible label, "Export CSV"; the sheet title names the session.
             },
             h,
           ),
@@ -183,7 +209,7 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
         ? [noSessionsView(h)]
         : groups.map((group) =>
             groupedList(
-              { header: group.label },
+              { header: dayHeader(group, h) },
               group.sessions.map((session) => sessionRow(session, h)),
               h,
             ),

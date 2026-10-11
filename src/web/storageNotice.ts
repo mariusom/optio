@@ -19,7 +19,43 @@ export const RetryStore = Command.define("RetryStore", {
 type StorageModel = {
   readonly storage: "opening" | "persisted" | "in-memory" | "unavailable";
   readonly memoryStorageAcknowledged: boolean;
+  readonly saveStalled: boolean;
+  readonly backupBusy: boolean;
 };
+
+/**
+ * Saving has stalled (see saveStallStreams): what is on screen may never reach
+ * disk, but a backup still captures it. Hidden while a backup or restore runs,
+ * because a large restore is legitimately slow to confirm.
+ */
+const saveStallNotice = (h: HtmlBuilder<Message>) =>
+  notice(
+    {
+      tone: "error",
+      text: h.div(
+        [h.Class("flex flex-wrap items-center gap-x-3 gap-y-2")],
+        [
+          h.span(
+            [h.Class("min-w-0 flex-1 basis-48")],
+            [
+              "Optio hasn’t been able to save your latest changes. Download a backup now to keep them, then reload Optio. If this appears again, reset storage in Settings and restore the backup.",
+            ],
+          ),
+          button(
+            {
+              type: "button",
+              variant: "outline",
+              className: "h-11 text-foreground",
+              onClick: Message.ClickedDownloadBackup(),
+            },
+            "Download backup",
+            h,
+          ),
+        ],
+      ),
+    },
+    h,
+  );
 
 /**
  * Storage problems the user must know about. In-memory storage stays visible
@@ -56,12 +92,13 @@ export const storageNotice = (
       },
       h,
     );
+  if (model.saveStalled && !model.backupBusy) return saveStallNotice(h);
   if (model.storage === "in-memory" && (recording || !model.memoryStorageAcknowledged))
     return notice(
       {
         tone: "warning",
         role: "alert",
-        text: "This browser isn’t saving studies, for example in a private window. Anything recorded here is lost when the tab closes. Export sessions you want to keep.",
+        text: "This browser isn’t saving studies, for example in a private window. Anything recorded here can be lost when the page reloads or the tab closes. Export sessions or download a backup to keep them.",
         ...(recording
           ? {}
           : {

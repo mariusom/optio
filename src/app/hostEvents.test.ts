@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { init, update, view, type Model } from "../main";
 import { Message } from "../messages";
 import { appUpdates } from "../web/appUpdate";
+import { planSession } from "../machine/session/sessionMachine";
 import { signalUpdateReady } from "../web/updateSignal";
 
 const start = init(Option.getOrThrow(fromString("https://optio.test/#/settings"))).model;
@@ -60,6 +61,62 @@ const showing = (model: Model, ...steps: ReadonlyArray<Scene.SceneStep<Model, Me
 describe("app update prompt", () => {
   it("stays hidden until a new version is ready", () =>
     showing(start, Scene.expect(Scene.text("Update ready. Tap to refresh.")).toBeAbsent()));
+
+  it("writes typed answers still waiting for the idle write before reloading", () => {
+    const runner = planSession(
+      { runner: null, now: 1 },
+      {
+        _tag: "DataSynced",
+        data: {
+          sessionId: "s",
+          templateName: "Study",
+          sessionName: "",
+          startedAt: 0,
+          tasks: [
+            {
+              id: "t",
+              orderIndex: 1,
+              endDate: null,
+              isBeingEdited: false,
+              sections: [
+                {
+                  id: "f",
+                  taskId: "t",
+                  name: "Operation",
+                  kind: "textInput",
+                  isRequired: false,
+                  defaultValue: "",
+                  sortOrder: 0,
+                  options: [],
+                  exclusiveOptions: [],
+                  value: "Base",
+                  startDate: 1,
+                },
+              ],
+            },
+          ],
+          currentTaskId: "t",
+          completedCount: 0,
+        },
+      },
+    ).runner!;
+    const typing = {
+      ...start,
+      appUpdate: "ready" as const,
+      runner: {
+        ...runner,
+        fieldWrites: {
+          revision: 1,
+          pending: [{ taskFieldId: "f", value: "Base extra", committed: false }],
+        },
+      },
+    };
+    // The answer batch is dispatched first; the reload queues behind it.
+    expect(commandsOf(typing, Message.ClickedApplyUpdate())).toEqual([
+      { name: "UpdateFieldValues", args: { writes: [{ taskFieldId: "f", value: "Base extra" }] } },
+      { name: "ReloadForUpdate", args: undefined },
+    ]);
+  });
 
   it("reloads once on tap and ignores further taps", () => {
     const ready = update(start, Message.AppUpdateReady()).model;

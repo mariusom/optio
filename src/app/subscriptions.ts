@@ -7,13 +7,15 @@ import { historyDetailStream, historyStream } from "./historyStreams";
 import { activeSessionStream, runnerStream } from "./sessionStreams";
 import { storageStatusStream } from "./storageStreams";
 import { appUpdates } from "../web/appUpdate";
-import { templateDetailStream, templatesStream } from "./templateStreams";
+import { templateDetailStream, templateReportStream, templatesStream } from "./templateStreams";
 import {
   focusEditorDraft,
   focusHelpPage,
   scrollToCurrentTask,
   scrollToSection,
 } from "./domStreams";
+import { saveStallStream } from "./saveStallStreams";
+import { primaryShortcutPresses } from "../web/features/session/runnerShortcuts";
 
 const isDocumentVisible = () =>
   typeof document === "undefined" || document.visibilityState !== "hidden";
@@ -90,6 +92,20 @@ const reportingDetailFailure = (stream: Stream.Stream<Message>): Stream.Stream<M
     ),
   );
 
+/** A template's report, or a failure message its sheet shows instead of loading forever. */
+const reportingReportFailure = (templateId: string): Stream.Stream<Message> =>
+  templateReportStream(templateId).pipe(
+    Stream.catchCause((cause) =>
+      Cause.hasInterruptsOnly(cause)
+        ? Stream.empty
+        : Stream.fromEffect(
+            Effect.logError("Optio could not read this template's report.", cause).pipe(
+              Effect.as(Message.FailedTemplateReport({ templateId })),
+            ),
+          ),
+    ),
+  );
+
 /**
  * Reports a failed list read, so its page shows a retry rather than loading
  * forever. The stream ends; "Try again" restarts it via `listReadAttempt`.
@@ -121,9 +137,27 @@ const loggingFailure = (stream: Stream.Stream<Message>): Stream.Stream<Message> 
     ),
   );
 
+/**
+ * The runner screen shows a live timer; the Start tab shows elapsed time for a
+ * session that is still open. History labels days ("Today"), which only needs
+ * the time on entry and each minute.
+ */
+const tickRate = (model: Model): "off" | "second" | "minute" =>
+  (model.route._tag === "SessionRunner" && model.runner !== null) ||
+  (model.route._tag === "StartTab" && activeSessionOf(model) !== null)
+    ? "second"
+    : model.route._tag === "HistoryTab"
+      ? "minute"
+      : "off";
+
+/** Desktop Ctrl/⌘+Enter works on the runner, except while ending the session. */
+const runnerShortcutsActive = (model: Model): boolean =>
+  model.route._tag === "SessionRunner" && model.runner !== null && !model.runner.showEndConfirm;
+
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   agentRequest: Port.subscriptionEntry(agentPorts.inbound.agentRequest, Message.AgentRequest),
   storage: Subscription.persistentEntry(storageStatusStream),
+  saveStall: Subscription.persistentEntry(saveStallStream),
   appUpdates: Subscription.persistentEntry(appUpdates),
   systemColorScheme: Subscription.persistentEntry(
     Dom.streamFromMediaQuery({
@@ -171,6 +205,14 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
           : reportingDetailFailure(templateDetailStream(templateId)),
     },
   ),
+  templateReport: entry(
+    { templateId: Schema.Union([Schema.Null, Schema.String]) },
+    {
+      modelToDependencies: (model) => ({ templateId: model.templateReportFor }),
+      dependenciesToStream: ({ templateId }) =>
+        templateId === null ? Stream.empty : reportingReportFailure(templateId),
+    },
+  ),
   activeSession: entry(
     { attempt: Schema.Number },
     {
@@ -186,6 +228,13 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
       }),
       dependenciesToStream: ({ sessionId }) =>
         sessionId === null ? Stream.empty : loggingFailure(runnerStream(sessionId)),
+    },
+  ),
+  runnerShortcuts: entry(
+    { active: Schema.Boolean },
+    {
+      modelToDependencies: (model) => ({ active: runnerShortcutsActive(model) }),
+      dependenciesToStream: ({ active }) => (active ? primaryShortcutPresses : Stream.empty),
     },
   ),
   fieldWriteFlush: entry(
@@ -210,18 +259,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   ticker: entry(
     { rate: Schema.Literals(["off", "second", "minute"]) },
     {
-      modelToDependencies: (model) => ({
-        // The runner screen shows a live timer; the Start tab shows elapsed
-        // time for a session that is still open. History labels days
-        // ("Today"), which only needs the time on entry and each minute.
-        rate:
-          (model.route._tag === "SessionRunner" && model.runner !== null) ||
-          (model.route._tag === "StartTab" && activeSessionOf(model) !== null)
-            ? ("second" as const)
-            : model.route._tag === "HistoryTab"
-              ? ("minute" as const)
-              : ("off" as const),
-      }),
+      modelToDependencies: (model) => ({ rate: tickRate(model) }),
       dependenciesToStream: ({ rate }) =>
         rate === "off"
           ? Stream.empty

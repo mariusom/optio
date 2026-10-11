@@ -98,6 +98,7 @@ export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: HtmlBu
             ...attributes.button,
             h.Class(buttonClass(config)),
             h.DataAttribute("slot", "button"),
+            h.DataAttribute("variant", config.variant ?? "default"),
             h.DataAttribute("size", config.size ?? "default"),
             ...(config.attributes ?? []),
           ],

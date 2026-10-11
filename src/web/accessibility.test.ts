@@ -97,6 +97,7 @@ const runner: RunnerState = {
   showEndConfirm: true,
   lastError: null,
   fieldWrites: { revision: 0, pending: [] },
+  announcement: null,
 };
 const editSheet = () =>
   render((frame) =>
@@ -217,7 +218,7 @@ describe("audited view accessibility", () => {
   it("associates the visible name label with the edit-session textbox", () => {
     const all = nodes(editSheet());
     const input = all.find((n) => n.sel === "input");
-    expect(input?.data?.props?.id).toBe("edit-session-name");
+    expect(input?.data?.props?.id).toBe("edit-session-name-input");
     expect(all.find((n) => n.sel === "label")?.data?.props?.htmlFor).toBe(input?.data?.props?.id);
   });
 
@@ -230,12 +231,15 @@ describe("audited view accessibility", () => {
         ),
       ),
     ];
-    for (const label of [
-      "Edit question Observed",
-      "Move Observed up",
-      "Move Observed down",
-      "Delete question Observed",
-    ]) {
+    // The edit row is named by its visible text, not an aria-label (WCAG 2.5.3).
+    expect(
+      all.some(
+        (n) =>
+          n.sel === "button" &&
+          String(n.data?.attrs?.["aria-label"] ?? "").startsWith("Edit question"),
+      ),
+    ).toBe(false);
+    for (const label of ["Move Observed up", "Move Observed down", "Delete question Observed"]) {
       const controls = all.filter(
         (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === label,
       );

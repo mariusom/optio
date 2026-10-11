@@ -126,6 +126,8 @@ describe("StartSession template resolution", () => {
             { id: "other", name: "Shared name" },
             { id: "empty", name: "Shared name" },
           ])
+          // After committing, the command checks which session is live.
+          .mockReturnValueOnce([{ id: "session" }])
           .mockReturnValueOnce([
             {
               id: "other-field",
@@ -149,8 +151,8 @@ describe("StartSession template resolution", () => {
             sessionName: "Session",
             fields: [],
           }).effect,
-        ).toEqual(Message.SessionStarted({ sessionId: "session" }));
-        expect(query).toHaveBeenCalledTimes(3);
+        ).toEqual(Message.SessionStarted({ sessionId: "session", joinedExisting: false }));
+        expect(query).toHaveBeenCalledTimes(4);
         expect(commit).toHaveBeenCalledWith(
           {
             name: "v3.SessionStarted",
@@ -208,8 +210,8 @@ describe("StartSession active-session guard", () => {
         { concurrency: "unbounded" },
       );
 
-      expect(first).toEqual(Message.SessionStarted({ sessionId: "first" }));
-      expect(second).toEqual(Message.SessionStarted({ sessionId: "first" }));
+      expect(first).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: false }));
+      expect(second).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: true }));
       expect(commit).toHaveBeenCalledTimes(1);
     }),
   );
@@ -224,7 +226,7 @@ describe("StartSession active-session guard", () => {
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       expect(yield* StartSession(args("new")).effect).toEqual(
-        Message.SessionStarted({ sessionId: "new" }),
+        Message.SessionStarted({ sessionId: "new", joinedExisting: false }),
       );
       expect(commit).toHaveBeenCalledTimes(1);
     }),
@@ -237,7 +239,7 @@ describe("StartSession active-session guard", () => {
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       expect(yield* StartSession(args("new")).effect).toEqual(
-        Message.SessionStarted({ sessionId: "active" }),
+        Message.SessionStarted({ sessionId: "active", joinedExisting: true }),
       );
       expect(commit).not.toHaveBeenCalled();
     }),

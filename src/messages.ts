@@ -4,8 +4,8 @@ import { UrlRequest } from "foldkit/navigation";
 
 import { FieldDef } from "./domain/fields";
 import { RouteSchema } from "./web/routes";
-import { TemplateSummary } from "./web/types";
-import { Accent, Font, IconLibrary, Theme } from "./web/theme";
+import { TemplateReport, TemplateSummary } from "./web/types";
+import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 import { RunnerDataSchema } from "./web/features/session/runner";
 import {
@@ -62,9 +62,30 @@ export const Message = defineMessageUnion({
   ChangedAccentDraft: { colour: Schema.String },
   ConfirmedAccentPicker: {},
   CanceledAccentPicker: {},
+  SelectedLook: { look: Look },
+  LookSaveFinished: { look: Look, saved: Schema.Boolean },
+  SelectedControlSize: { controlSize: ControlSize },
+  ControlSizeSaveFinished: { controlSize: ControlSize, saved: Schema.Boolean },
   ClickedCopyTemplatePrompt: {},
   TemplatePromptCopyFinished: { copied: Schema.Boolean },
   ResetTemplatePromptCopy: {},
+  /** Writes have stayed unconfirmed long enough that saving looks stuck (or recovered). */
+  SaveStalled: { stalled: Schema.Boolean },
+  ClickedDownloadBackup: {},
+  ClickedResetStorage: {},
+  CanceledResetStorage: {},
+  ConfirmedResetStorage: {},
+  BackupDownloaded: { filename: Schema.String },
+  /** A backup file was chosen in Settings; its text is read by RestoreBackup. */
+  ChoseBackupFile: {},
+  BackupRestored: {
+    templates: Schema.Number,
+    sessions: Schema.Number,
+    skipped: Schema.Number,
+    /** False when it had not reached disk within the wait; it may still be saving. */
+    saved: Schema.Boolean,
+  },
+  FailedBackup: { error: Schema.String },
 
   // ── Templates ──────────────────────────────────────────────────────────
   GotTemplates: { templates: Schema.Array(TemplateSummary) },
@@ -85,6 +106,12 @@ export const Message = defineMessageUnion({
   TemplatesSeededCheck: {},
   OpenedTemplateActions: { id: Schema.String },
   ClosedTemplateActions: {},
+  ClickedStartTemplateSession: { id: Schema.String },
+  OpenedTemplateReport: { id: Schema.String },
+  ClosedTemplateReport: {},
+  GotTemplateReport: { report: TemplateReport },
+  /** Reading a template's report failed; its sheet shows the failure. */
+  FailedTemplateReport: { templateId: Schema.String },
   ClickedAddSampleTemplates: {},
   SampleTemplatesAdded: {},
 
@@ -113,6 +140,8 @@ export const Message = defineMessageUnion({
   ToggledFieldDefaultBoolean: {},
   ChangedNewOptionText: { text: Schema.String },
   ConfirmedAddOption: {},
+  /** The "New choice" field was emptied after its text was added. */
+  ClearedNewChoice: {},
   ClickedDeleteOption: { index: Schema.Number },
   ClickedMoveOption: { index: Schema.Int, direction: Schema.Literals([-1, 1]) },
   ToggledExclusiveOption: { index: Schema.Number },
@@ -132,7 +161,9 @@ export const Message = defineMessageUnion({
   GotPlaceholderName: { name: Schema.String },
   SelectedTemplate: { id: Schema.String },
   ClickedStartSession: {},
-  SessionStarted: { sessionId: Schema.String },
+  /** `joinedExisting`: another tab's session was already live, so this one was not started. */
+  SessionStarted: { sessionId: Schema.String, joinedExisting: Schema.Boolean },
+  DismissedJoinedSession: {},
   ClickedResumeSession: {},
   ClickedDiscardSession: {},
   ConfirmedDiscardSession: {},
@@ -156,7 +187,13 @@ export const Message = defineMessageUnion({
   AdjustedCounter: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
   UpdatedFieldValue: {},
   ClickedRecord: {},
-  TaskRecorded: {},
+  /** Ctrl/⌘+Enter on the runner: record the open task, or save the one being edited. */
+  PressedPrimaryShortcut: {},
+  /** `fresh` is false when the task was already recorded (a repeated trigger). */
+  TaskRecorded: { taskId: Schema.String, fresh: Schema.Boolean },
+  /** The recorded-task vibration ran, or was skipped where unsupported. */
+  GaveRecordFeedback: {},
+  ClickedRepeatLastAnswers: {},
   ClickedEndSession: {},
   ConfirmedEndSession: {},
   CanceledEndSession: {},
@@ -167,7 +204,8 @@ export const Message = defineMessageUnion({
   ClickedCancelEdit: {},
   ClickedSaveEdit: {},
   TaskEditStarted: { taskId: Schema.String },
-  TaskEditFinished: {},
+  /** `savedTaskId` names the task whose edit was saved; null after cancel or switching. */
+  TaskEditFinished: { savedTaskId: Schema.NullOr(Schema.String) },
   FailedRunnerOp: { error: Schema.String },
   DismissedRunnerError: {},
   ToggledSidebar: {},

@@ -11,6 +11,7 @@ import { ReloadForUpdate } from "../web/appUpdate";
 import { hasChanges } from "../web/features/templates/editor";
 import {
   ApplyColorScheme,
+  applyPlan,
   GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
@@ -18,8 +19,10 @@ import {
   ReplyToAgent,
   ResetTemplatePromptCopy,
   SaveAccent,
+  SaveControlSize,
   SaveFont,
   SaveIconLibrary,
+  SaveLook,
   SaveStyle,
   SaveTheme,
 } from "./commands";
@@ -87,120 +90,76 @@ export const agentHandlers = (
   },
 });
 
-type ShellHandlers = Pick<
-  AllHandlers,
-  | "SelectedTheme"
-  | "ThemeSaveFinished"
-  | "ChangedSystemColorScheme"
-  | "AppliedColorScheme"
-  | "AppUpdateReady"
-  | "ClickedApplyUpdate"
-  | "SelectedStyle"
-  | "StyleSaveFinished"
-  | "SelectedFont"
-  | "FontSaveFinished"
-  | "SelectedIconLibrary"
-  | "IconLibrarySaveFinished"
-  | "SelectedAccent"
-  | "OpenedAccentPicker"
-  | "ChangedAccentDraft"
-  | "CanceledAccentPicker"
-  | "ConfirmedAccentPicker"
-  | "AccentSaveFinished"
-  | "GotRoute"
-  | "FailedDetailLoad"
-  | "ClickedLink"
-  | "Navigated"
-  | "CompletedReplyToAgent"
-  | "SettledSheet"
-  | "SupersededStyleSave"
-  | "ClickedCopyTemplatePrompt"
-  | "TemplatePromptCopyFinished"
-  | "ResetTemplatePromptCopy"
->;
-export const shellHandlers = (model: Model): ShellHandlers => ({
-  SelectedTheme: ({ theme }) => ({
-    model: { ...model, theme },
-    commands: [
-      ApplyColorScheme({ dark: isDarkTheme(theme, model.systemPrefersDark) }),
-      SaveTheme({ theme }),
-    ],
+type LookMessage =
+  | "SelectedLook"
+  | "LookSaveFinished"
+  | "SelectedControlSize"
+  | "ControlSizeSaveFinished";
+
+/** Look and control size: applied by their save commands, like font. */
+const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
+  SelectedLook: ({ look }) => ({ model: { ...model, look }, commands: [SaveLook({ look })] }),
+  LookSaveFinished: ({ look, saved }) => ({
+    model: look === model.look ? { ...model, lookSaveFailed: !saved } : model,
   }),
-  ChangedSystemColorScheme: ({ prefersDark }) => {
-    const next = { ...model, systemPrefersDark: prefersDark };
-    // A fixed light or dark choice ignores the system scheme.
-    if (model.theme !== "auto") return { model: next };
-    return { model: next, commands: [ApplyColorScheme({ dark: prefersDark })] };
-  },
-  AppliedColorScheme: () => ({ model }),
+  SelectedControlSize: ({ controlSize }) => ({
+    model: { ...model, controlSize },
+    commands: [SaveControlSize({ controlSize })],
+  }),
+  ControlSizeSaveFinished: ({ controlSize, saved }) => ({
+    model: controlSize === model.controlSize ? { ...model, controlSizeSaveFailed: !saved } : model,
+  }),
+});
+
+type AppUpdateMessage = "AppUpdateReady" | "ClickedApplyUpdate";
+
+/** The "Update ready" prompt: shown once, then applied after pending answers are saved. */
+const appUpdateHandlers = (model: Model): Pick<AllHandlers, AppUpdateMessage> => ({
   AppUpdateReady: () =>
     model.appUpdate === "none" ? { model: { ...model, appUpdate: "ready" } } : { model },
-  ClickedApplyUpdate: () =>
-    model.appUpdate === "ready"
-      ? { model: { ...model, appUpdate: "applying" }, commands: [ReloadForUpdate()] }
-      : { model },
-  ThemeSaveFinished: ({ theme, saved }) => ({
-    model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
-  }),
-  SelectedStyle: ({ style }) => ({
-    model: { ...model, style },
-    commands: [SaveStyle({ style })],
-  }),
-  StyleSaveFinished: ({ style, appliedStyle, saved, loadFailed }) => ({
-    model:
-      style === model.style
-        ? {
-            ...model,
-            style: appliedStyle,
-            styleSaveFailed: !saved && !loadFailed,
-            styleLoadFailed: loadFailed,
-          }
-        : model,
-  }),
-  SelectedFont: ({ font }) => ({
-    model: { ...model, font },
-    commands: [SaveFont({ font })],
-  }),
-  FontSaveFinished: ({ font, saved }) => ({
-    model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
-  }),
-  SelectedIconLibrary: ({ library }) => ({
-    model: { ...model, iconLibrary: library },
-    commands: [SaveIconLibrary({ library })],
-  }),
-  IconLibrarySaveFinished: ({ library, saved }) => ({
-    model: library === model.iconLibrary ? { ...model, iconLibrarySaveFailed: !saved } : model,
-  }),
-  SelectedAccent: ({ accent }) => ({
-    model: { ...model, accent, accentDraft: null },
-    commands: [SaveAccent({ accent })],
-  }),
-  OpenedAccentPicker: () => ({
-    model: { ...model, accentDraft: model.accent.startsWith("#") ? model.accent : "#2563eb" },
-  }),
-  ChangedAccentDraft: ({ colour }) => ({
-    model: model.accentDraft === null ? model : { ...model, accentDraft: colour },
-  }),
-  CanceledAccentPicker: () => ({ model: { ...model, accentDraft: null } }),
-  ConfirmedAccentPicker: () => {
-    if (!Schema.is(HexColour)(model.accentDraft)) return { model };
-    const accent = model.accentDraft.toLowerCase();
+  // Typed answers still waiting for the idle write are flushed first; the
+  // reload then waits for them to reach disk.
+  ClickedApplyUpdate: () => {
+    if (model.appUpdate !== "ready") return { model };
+    const flushed = applyPlan(model, { _tag: "FlushRequested" });
     return {
-      model: { ...model, accent, accentDraft: null },
-      commands: [SaveAccent({ accent })],
+      model: { ...flushed.model, appUpdate: "applying" },
+      commands: [...(flushed.commands ?? []), ReloadForUpdate()],
     };
   },
-  AccentSaveFinished: ({ accent, saved }) => ({
-    model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
-  }),
-  // ── Routing ────────────────────────────────────────────────────────────
+});
+
+type RouteMessage = "GotRoute" | "ClickedLink";
+
+/** Route changes close page sheets; internal links go through the navigation guard. */
+const routeHandlers = (model: Model): Pick<AllHandlers, RouteMessage> => ({
   GotRoute: ({ route }) => {
     let base =
       route._tag === "TemplateEditor"
         ? model.editor !== null && model.editor.id === route.templateId
-          ? { ...model, route, templateActionsFor: null }
-          : { ...model, route, editor: null, templateActionsFor: null }
-        : { ...model, route, editor: null, templateActionsFor: null };
+          ? {
+              ...model,
+              route,
+              templateActionsFor: null,
+              templateReportFor: null,
+              joinedExistingSession: false,
+            }
+          : {
+              ...model,
+              route,
+              editor: null,
+              templateActionsFor: null,
+              templateReportFor: null,
+              joinedExistingSession: false,
+            }
+        : {
+            ...model,
+            route,
+            editor: null,
+            templateActionsFor: null,
+            templateReportFor: null,
+            joinedExistingSession: false,
+          };
     base = {
       ...base,
       historyActionsFor: null,
@@ -257,6 +216,110 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     }
     return { model, commands: [NavigateInternal({ url })] };
   },
+});
+
+type ShellHandlers = Pick<
+  AllHandlers,
+  | "SelectedTheme"
+  | "ThemeSaveFinished"
+  | "ChangedSystemColorScheme"
+  | "AppliedColorScheme"
+  | "SelectedStyle"
+  | "StyleSaveFinished"
+  | "SelectedFont"
+  | "FontSaveFinished"
+  | "SelectedIconLibrary"
+  | "IconLibrarySaveFinished"
+  | "SelectedAccent"
+  | "OpenedAccentPicker"
+  | "ChangedAccentDraft"
+  | "CanceledAccentPicker"
+  | "ConfirmedAccentPicker"
+  | "AccentSaveFinished"
+  | LookMessage
+  | AppUpdateMessage
+  | RouteMessage
+  | "FailedDetailLoad"
+  | "Navigated"
+  | "CompletedReplyToAgent"
+  | "SettledSheet"
+  | "SupersededStyleSave"
+  | "ClickedCopyTemplatePrompt"
+  | "TemplatePromptCopyFinished"
+  | "ResetTemplatePromptCopy"
+>;
+export const shellHandlers = (model: Model): ShellHandlers => ({
+  SelectedTheme: ({ theme }) => ({
+    model: { ...model, theme },
+    commands: [
+      ApplyColorScheme({ dark: isDarkTheme(theme, model.systemPrefersDark) }),
+      SaveTheme({ theme }),
+    ],
+  }),
+  ChangedSystemColorScheme: ({ prefersDark }) => {
+    const next = { ...model, systemPrefersDark: prefersDark };
+    // A fixed light or dark choice ignores the system scheme.
+    if (model.theme !== "auto") return { model: next };
+    return { model: next, commands: [ApplyColorScheme({ dark: prefersDark })] };
+  },
+  AppliedColorScheme: () => ({ model }),
+  ...appUpdateHandlers(model),
+  ThemeSaveFinished: ({ theme, saved }) => ({
+    model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
+  }),
+  SelectedStyle: ({ style }) => ({
+    model: { ...model, style },
+    commands: [SaveStyle({ style })],
+  }),
+  StyleSaveFinished: ({ style, appliedStyle, saved, loadFailed }) => ({
+    model:
+      style === model.style
+        ? {
+            ...model,
+            style: appliedStyle,
+            styleSaveFailed: !saved && !loadFailed,
+            styleLoadFailed: loadFailed,
+          }
+        : model,
+  }),
+  SelectedFont: ({ font }) => ({
+    model: { ...model, font },
+    commands: [SaveFont({ font })],
+  }),
+  FontSaveFinished: ({ font, saved }) => ({
+    model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
+  }),
+  SelectedIconLibrary: ({ library }) => ({
+    model: { ...model, iconLibrary: library },
+    commands: [SaveIconLibrary({ library })],
+  }),
+  IconLibrarySaveFinished: ({ library, saved }) => ({
+    model: library === model.iconLibrary ? { ...model, iconLibrarySaveFailed: !saved } : model,
+  }),
+  SelectedAccent: ({ accent }) => ({
+    model: { ...model, accent, accentDraft: null },
+    commands: [SaveAccent({ accent })],
+  }),
+  OpenedAccentPicker: () => ({
+    model: { ...model, accentDraft: model.accent.startsWith("#") ? model.accent : "#2563eb" },
+  }),
+  ChangedAccentDraft: ({ colour }) => ({
+    model: model.accentDraft === null ? model : { ...model, accentDraft: colour },
+  }),
+  CanceledAccentPicker: () => ({ model: { ...model, accentDraft: null } }),
+  ConfirmedAccentPicker: () => {
+    if (!Schema.is(HexColour)(model.accentDraft)) return { model };
+    const accent = model.accentDraft.toLowerCase();
+    return {
+      model: { ...model, accent, accentDraft: null },
+      commands: [SaveAccent({ accent })],
+    };
+  },
+  AccentSaveFinished: ({ accent, saved }) => ({
+    model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
+  }),
+  ...lookHandlers(model),
+  ...routeHandlers(model),
   Navigated: () => ({ model }),
   FailedDetailLoad: () => ({ model: { ...model, detailLoadFailed: true } }),
   CompletedReplyToAgent: () => ({ model }),

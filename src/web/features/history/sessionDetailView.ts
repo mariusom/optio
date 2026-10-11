@@ -16,8 +16,9 @@ import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
 import { editSessionNameSheet } from "./editSessionNameSheet";
-import { formatAnswer, formatDay, taskCountLabel } from "./helpers";
+import { formatAnswer, formatDay, formatEndTime, taskCountLabel } from "./helpers";
 import { taskDetailView } from "./taskDetailView";
+import { timeBreakdownSection } from "./timeBreakdownView";
 
 type SessionDetailTask = {
   readonly id: string;
@@ -76,7 +77,7 @@ const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
       onClick: Message.ClickedHistoryTask({ taskId: task.id }),
       chevron: true,
       lazy: true,
-      attributes: [h.AriaLabel(`View details for Task ${task.taskId}`)],
+      // Named by its visible text ("Task 2 …"), so voice control matches it.
     },
     h,
   );
@@ -137,6 +138,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
       ? (detail.tasks.find((task) => task.id === model.selectedHistoryTaskId) ?? null)
       : null;
   const canExport = detail.endedAt !== null && detail.taskCount > 0;
+  const breakdown = timeBreakdownSection(detail.tasks, h);
 
   return h.div(
     [h.Class("flex min-h-full flex-col")],
@@ -194,12 +196,21 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
               row({ title: "Started", value: formatTimeOnly(detail.startedAt) }, h),
               ...(detail.endedAt === null
                 ? []
-                : [row({ title: "Ended", value: formatTimeOnly(detail.endedAt) }, h)]),
+                : [
+                    row(
+                      {
+                        title: "Ended",
+                        value: formatEndTime(detail.startedAt, detail.endedAt, formatTimeOnly),
+                      },
+                      h,
+                    ),
+                  ]),
               ...(duration === null ? [] : [row({ title: "Duration", value: duration }, h)]),
               row({ title: "Tasks", value: taskCountLabel(detail.taskCount) }, h),
             ],
             h,
           ),
+          ...(breakdown === null ? [] : [breakdown]),
           groupedList(
             {
               header: "Tasks",
@@ -222,7 +233,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
                     displayName,
                   }),
                   chevron: false,
-                  attributes: [h.AriaLabel(`Delete ${displayName}`)],
+                  // Named by its visible title, "Delete session".
                 },
                 h,
               ),

@@ -1,6 +1,7 @@
 import { DiscardLiveSession, StartSession } from "../web/features/session/startCommands";
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
 import { sessionRunnerRouter } from "../web/routes";
+import { currentTask } from "../web/features/session/runner";
 import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
 import type { Update } from "foldkit";
 import { Message, type MessageHandlers } from "../messages";
@@ -18,6 +19,7 @@ type SessionHandlers = Pick<
   | "SelectedTemplate"
   | "ClickedStartSession"
   | "SessionStarted"
+  | "DismissedJoinedSession"
   | "ClickedResumeSession"
   | "ClickedDiscardSession"
   | "CanceledDiscardSession"
@@ -31,7 +33,10 @@ type SessionHandlers = Pick<
   | "BlurredField"
   | "AdjustedCounter"
   | "ClickedRecord"
+  | "PressedPrimaryShortcut"
   | "TaskRecorded"
+  | "GaveRecordFeedback"
+  | "ClickedRepeatLastAnswers"
   | "ClickedEndSession"
   | "CanceledEndSession"
   | "ConfirmedEndSession"
@@ -75,17 +80,21 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       ],
     };
   },
-  SessionStarted: ({ sessionId }) => ({
+  // A session already live in another tab is joined instead, and the runner
+  // says so; the name typed for the new session is kept for later.
+  SessionStarted: ({ sessionId, joinedExisting }) => ({
     model: {
       ...model,
-      sessionNameInput: "",
+      sessionNameInput: joinedExisting ? model.sessionNameInput : "",
       lastError: null,
+      joinedExistingSession: joinedExisting,
     },
     commands: [
       GeneratePlaceholderName(),
       NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
     ],
   }),
+  DismissedJoinedSession: () => ({ model: { ...model, joinedExistingSession: false } }),
   ClickedResumeSession: () => {
     const active = activeSessionOf(model);
     if (active === null) return { model };
@@ -144,7 +153,17 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   AdjustedCounter: ({ taskFieldId, delta }) =>
     applyPlan(model, { _tag: "CounterAdjusted", taskFieldId, delta }),
   ClickedRecord: () => applyPlan(model, { _tag: "RecordRequested" }),
-  TaskRecorded: () => applyPlan(model, { _tag: "RecordAcked" }),
+  // Same plan as the visible primary button: Save while editing, else Record.
+  PressedPrimaryShortcut: () =>
+    applyPlan(model, {
+      _tag:
+        model.runner !== null && currentTask(model.runner)?.isBeingEdited === true
+          ? "EditSaved"
+          : "RecordRequested",
+    }),
+  TaskRecorded: ({ taskId, fresh }) => applyPlan(model, { _tag: "RecordAcked", taskId, fresh }),
+  GaveRecordFeedback: () => ({ model }),
+  ClickedRepeatLastAnswers: () => applyPlan(model, { _tag: "RepeatRequested" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
   CanceledEndSession: () => applyPlan(model, { _tag: "EndCancelled" }),
   ConfirmedEndSession: () => applyPlan(model, { _tag: "EndConfirmed" }),
@@ -166,7 +185,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   ClickedSaveEdit: () => applyPlan(model, { _tag: "EditSaved" }),
   TaskEditStarted: () => ({ model }),
   UpdatedFieldValue: () => ({ model }),
-  TaskEditFinished: () => applyPlan(model, { _tag: "EditAcked" }),
+  TaskEditFinished: ({ savedTaskId }) => applyPlan(model, { _tag: "EditAcked", savedTaskId }),
   FailedRunnerOp: ({ error }) => {
     if (model.runner === null) return { model: { ...model, lastError: error } };
     return { model: { ...model, runner: { ...model.runner, lastError: error } } };

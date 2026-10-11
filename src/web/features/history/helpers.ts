@@ -1,7 +1,7 @@
 // Pure helpers for History slice — tested in isolation
 
 import { isBooleanTrue } from "../../fields";
-import { formatCsvDate } from "../../format";
+import { formatCsvDate, formatDurationShort } from "../../format";
 
 const padTwoDigits = (value: number): string => String(value).padStart(2, "0");
 
@@ -183,3 +183,28 @@ export const formatAnswer = (sectionType: string, value: string): string => {
 
 /** "12 tasks" / "1 task". */
 export const taskCountLabel = (count: number): string => `${count} task${count === 1 ? "" : "s"}`;
+
+/** "3 sessions · 1h 12m" — a day's session count and total recorded time. */
+export const daySummaryLabel = (
+  sessions: ReadonlyArray<{ readonly startedAt: number; readonly endedAt: number }>,
+): string => {
+  const totalMs = sessions.reduce(
+    (sum, session) => sum + Math.max(0, session.endedAt - session.startedAt),
+    0,
+  );
+  const count = `${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
+  return `${count} · ${formatDurationShort(totalMs)}`;
+};
+
+/**
+ * End time for session detail: "4:12 PM", or with the day ("12:02 AM, Sun, Oct
+ * 11, 2026") when the session ended on a later calendar day than it started.
+ */
+export const formatEndTime = (
+  startedAt: number,
+  endedAt: number,
+  formatTime: (ms: number) => string,
+): string =>
+  new Date(startedAt).toDateString() === new Date(endedAt).toDateString()
+    ? formatTime(endedAt)
+    : `${formatTime(endedAt)}, ${formatDay(endedAt)}`;

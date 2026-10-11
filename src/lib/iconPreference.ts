@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  ChartBar,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -32,6 +33,7 @@ import Alert01Icon from "@hugeicons/core-free-icons/Alert01Icon";
 import AlertCircleIcon from "@hugeicons/core-free-icons/AlertCircleIcon";
 import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon";
 import ArrowUp01Icon from "@hugeicons/core-free-icons/ArrowUp01Icon";
+import BarChartHorizontalIcon from "@hugeicons/core-free-icons/BarChartHorizontalIcon";
 import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon";
 import ChevronDownIcon from "@hugeicons/core-free-icons/ChevronDownIcon";
 import ChevronLeftIcon from "@hugeicons/core-free-icons/ChevronLeftIcon";
@@ -70,6 +72,7 @@ let currentIconLibrary: "lucide" | "hugeicons" = "hugeicons";
 const hugeiconsByLucideNode = new Map<IconNode, HugeIconNode>([
   [ArrowDown, ArrowDown01Icon],
   [ArrowUp, ArrowUp01Icon],
+  [ChartBar, BarChartHorizontalIcon],
   [Check, Tick02Icon],
   [ChevronDown, ChevronDownIcon],
   [ChevronLeft, ChevronLeftIcon],
