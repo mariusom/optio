@@ -217,7 +217,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           [
             h.Class(
               `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 has-[[data-slot=sheet]]:overflow-hidden ${
-                isRunner ? "" : "md:pl-[4.5rem] xl:pl-60"
+                isRunner ? "runner-main" : "md:pl-[4.5rem] xl:pl-60"
               }`,
             ),
           ],

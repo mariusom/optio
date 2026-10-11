@@ -48,7 +48,10 @@ export const runnerCanvas = (
 ) => {
   const repeat = repeatAnswersRow(options.runner, options.scope, h);
   return h.div(
-    [h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain")],
+    [
+      h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain"),
+      h.DataAttribute("runner-layout", ""),
+    ],
     [
       formSectionsView(options.task, h, {
         scope: options.scope,
@@ -375,7 +378,10 @@ export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
   if (task === null) return runnerEmptyTaskView(h);
 
   return h.div(
-    [h.Class("flex h-full min-h-0 w-full flex-col bg-background text-foreground")],
+    [
+      h.Class("flex h-full min-h-0 w-full flex-col bg-background text-foreground"),
+      h.DataAttribute("runner-layout", ""),
+    ],
     [
       phoneNavBar(runner, h),
       runnerCanvas({ runner, task, scope: "mobile" }, h),

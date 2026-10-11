@@ -45,7 +45,10 @@ const taskSidebar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
         [sectionHeader(`Tasks · ${runner.completedCount} recorded`, h, "pt-4 pb-0")],
       ),
       h.div(
-        [h.Class("min-h-0 w-72 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-6")],
+        [
+          h.Class("min-h-0 w-72 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-6"),
+          h.DataAttribute("runner-layout", ""),
+        ],
         [groupedList({}, [...taskRows(runner, h, { showValue: false })], h)],
       ),
     ],
@@ -57,15 +60,22 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
   if (task === null) return runnerEmptyTaskView(h);
 
   return h.div(
-    [h.Class("flex h-full min-h-0 w-full bg-background text-foreground")],
+    [
+      h.Class("flex h-full min-h-0 w-full bg-background text-foreground"),
+      h.DataAttribute("runner-layout", ""),
+    ],
     [
       taskSidebar(runner, h),
       h.div(
-        [h.Class("flex min-h-0 min-w-0 flex-1 flex-col")],
+        [h.Class("flex min-h-0 min-w-0 flex-1 flex-col"), h.DataAttribute("runner-layout", "")],
         [
           runnerNavBar(runner, [sidebarToggle(runner, h)], h),
           h.section(
-            [h.Class("flex min-h-0 min-w-0 flex-1 flex-col"), h.AriaLabel("Task answers")],
+            [
+              h.Class("flex min-h-0 min-w-0 flex-1 flex-col"),
+              h.AriaLabel("Task answers"),
+              h.DataAttribute("runner-layout", ""),
+            ],
             [runnerCanvas({ runner, task, scope: "tablet" }, h), runnerActionBar(runner, task, h)],
           ),
         ],

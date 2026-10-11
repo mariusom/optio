@@ -74,6 +74,30 @@ main,
   }
 }
 
+/* ── Runner scrolling ──────────────────────────────────────────────────────
+ * The runner scrolls its answers itself between a fixed header and action
+ * bar, so the page must not scroll under it: focusing an answer would shift
+ * the whole screen. On short viewports (200% zoom, landscape phones, the WCAG
+ * 320×256 reflow case) that layout leaves almost no room for answers, so the
+ * runner becomes one ordinary page that scrolls as a whole. */
+.runner-main {
+  overflow: hidden;
+}
+
+@media (max-height: 30rem) {
+  .runner-main {
+    overflow-y: auto;
+  }
+  .runner-main [data-runner-layout] {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+  }
+  .runner-main [data-slot="nav-bar"] {
+    position: static;
+  }
+}
+
 /* ── App utilities (used by src/components/app primitives) ─────────────── */
 
 @utility pt-safe {

@@ -15,7 +15,7 @@ type SessionModel = {
 export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {
   const storage = storageNotice(model, h, { recording: true });
   return h.div(
-    [h.Class("flex w-full h-full flex-col")],
+    [h.Class("flex w-full h-full flex-col"), h.DataAttribute("runner-layout", "")],
     [
       ...(storage === null
         ? []
@@ -26,11 +26,17 @@ export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {
             ),
           ]),
       h.div(
-        [h.Class("flex md:hidden w-full min-h-0 flex-1 flex-col")],
+        [
+          h.Class("flex md:hidden w-full min-h-0 flex-1 flex-col"),
+          h.DataAttribute("runner-layout", ""),
+        ],
         [runnerView(model as Parameters<typeof runnerView>[0], h)],
       ),
       h.div(
-        [h.Class("hidden md:flex w-full min-h-0 flex-1 flex-col")],
+        [
+          h.Class("hidden md:flex w-full min-h-0 flex-1 flex-col"),
+          h.DataAttribute("runner-layout", ""),
+        ],
         [sessionTabletView(model.runner, h)],
       ),
       ...runnerSheets(model.runner, h),
