@@ -104,7 +104,9 @@ warnings print whole Models and are dominated by test-machine load.
 a disposable Chromium profile with real OPFS storage and workers. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
 ends the session and checks the downloaded CSV. It also refuses OPFS in a
-fresh context to check the in-memory storage warning. No stored user data or
+fresh context, in the page and in LiveStore's workers (their scripts are
+prefixed on the way in), checks the in-memory storage warning, and confirms
+nothing reached OPFS. No stored user data or
 deployed service is used. Before restarting during an edit, it waits for the
 answer and rollback backup in SQLite and for worker persistence to finish;
 an input's DOM value alone does not prove durability. Page-leaving flushes

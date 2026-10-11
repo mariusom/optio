@@ -415,9 +415,19 @@ test("warns when the browser keeps studies only in memory", { timeout: 60_000 },
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
     // Some private windows refuse OPFS; LiveStore then keeps data in memory.
+    // The page keeps the real API only to check, at the end, that nothing was
+    // written; the app and LiveStore's workers all see the refusal.
     await context.addInitScript(() => {
+      globalThis.optioRealGetDirectory = navigator.storage.getDirectory.bind(navigator.storage);
       navigator.storage.getDirectory = () =>
         Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));
+    });
+    // Init scripts do not reach workers, so refuse OPFS at the top of each
+    // LiveStore worker script too; otherwise the workers still persist.
+    const refuse = `navigator.storage.getDirectory = () => Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));\n`;
+    await context.route(/(livestore\.worker|make-shared-worker)-[^/]*\.js$/, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({ response, body: refuse + (await response.text()) });
     });
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
@@ -429,6 +439,20 @@ test("warns when the browser keeps studies only in memory", { timeout: 60_000 },
     );
     // Where sessions start, the warning stays in view and cannot be dismissed.
     assert.equal(await page.getByRole("button", { name: "Dismiss storage warning" }).count(), 0);
+    // Record into the in-memory store, then confirm nothing reached OPFS.
+    await page.getByRole("button", { name: "Start Session" }).click();
+    await page.getByRole("button", { name: "Record task" }).first().waitFor();
+    const opfsEntries = await page.evaluate(async () => {
+      const root = await globalThis.optioRealGetDirectory();
+      const names = [];
+      for await (const [name] of root.entries()) names.push(name);
+      return names;
+    });
+    assert.deepEqual(
+      opfsEntries.filter((name) => name.includes("livestore")),
+      [],
+      `LiveStore wrote to OPFS despite the refusal: ${opfsEntries.join(", ")}`,
+    );
   } finally {
     await browser.close();
     await new Promise((resolve, reject) =>
