@@ -21,6 +21,7 @@ import { templatesRouter } from "../web/routes";
 import { NavigateInternal } from "./commands";
 import type { Update } from "foldkit";
 import { Message, type MessageHandlers } from "../messages";
+import { ClearNewChoice } from "../web/features/templates/choiceInput";
 import { takeId, type Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
@@ -178,6 +179,7 @@ type EditorFieldHandlers = Pick<
   | "ToggledFieldDefaultBoolean"
   | "ChangedNewOptionText"
   | "ConfirmedAddOption"
+  | "ClearedNewChoice"
   | "ClickedMoveOption"
   | "ClickedDeleteOption"
   | "ToggledExclusiveOption"
@@ -273,8 +275,12 @@ export const editorFieldHandlers = (model: Model): EditorFieldHandlers => ({
     if (model.editor === null || model.editor.draft === null) return { model };
     const nextDraft = addOptionToDraft(model.editor.draft);
     if (nextDraft === model.editor.draft) return { model };
-    return { model: { ...model, editor: { ...model.editor, draft: nextDraft } } };
+    return {
+      model: { ...model, editor: { ...model.editor, draft: nextDraft } },
+      commands: [ClearNewChoice({ added: model.editor.draft.newOptionText.trim() })],
+    };
   },
+  ClearedNewChoice: () => ({ model }),
   ClickedMoveOption: ({ index, direction }) => {
     if (model.editor === null || model.editor.draft === null) return { model };
     return {

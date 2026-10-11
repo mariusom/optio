@@ -169,8 +169,10 @@ describe("sessionMachine topology", () => {
     ]);
     expect(recorded.runner?.lastError).toBeNull();
     const withError = { ...recorded.runner!, lastError: "write failed" };
-    expect(plan(withError, { _tag: "RecordAcked", taskId: "task-1" }).runner?.lastError).toBeNull();
-    expect(plan(withError, { _tag: "EditAcked" }).runner?.lastError).toBeNull();
+    expect(
+      plan(withError, { _tag: "RecordAcked", taskId: "task-1", fresh: true }).runner?.lastError,
+    ).toBeNull();
+    expect(plan(withError, { _tag: "EditAcked", savedTaskId: null }).runner?.lastError).toBeNull();
   });
 
   it("enters Live.Collecting with fresh controls on first DataSynced", () => {
@@ -296,10 +298,27 @@ describe("sessionMachine recording", () => {
     expect(recorded.runner!.lastError).toBeNull();
   });
 
+  it("confirms a fresh recording once, and not a repeated trigger", () => {
+    const fresh = plan(liveRunner(), { _tag: "RecordAcked", taskId: "task-2", fresh: true });
+    expect(fresh.runner!.announcement).toEqual({ kind: "recorded", text: "Task 1 recorded" });
+    expect(fresh.emissions.map((emission) => emission._tag)).toEqual(["ConfirmRecorded"]);
+    const repeat = plan(liveRunner(), { _tag: "RecordAcked", taskId: "task-2", fresh: false });
+    expect(repeat.runner!.announcement).toBeNull();
+    expect(repeat.emissions).toEqual([]);
+  });
+
+  it("announces a saved edit, but not a cancelled one", () => {
+    const saved = plan(liveRunner(), { _tag: "EditAcked", savedTaskId: "task-2" });
+    expect(saved.runner!.announcement).toEqual({ kind: "saved", text: "Task 1 saved" });
+    const cancelled = plan(liveRunner(), { _tag: "EditAcked", savedTaskId: null });
+    expect(cancelled.runner!.announcement).toBeNull();
+  });
+
   it("RecordAcked clears focus and task list", () => {
     const { runner } = plan(liveRunner({ focusedSectionId: "f-activity", showTaskList: true }), {
       _tag: "RecordAcked",
       taskId: "task-1",
+      fresh: true,
     });
     expect(runner!.focusedSectionId).toBeNull();
     expect(runner!.showTaskList).toBe(false);
@@ -351,7 +370,7 @@ describe("sessionMachine task selection + edit", () => {
       _tag: "DataSynced",
       data: data({ currentTaskId: "task-1" }),
     });
-    const acked = plan(restored.runner, { _tag: "EditAcked" });
+    const acked = plan(restored.runner, { _tag: "EditAcked", savedTaskId: null });
     expect(acked.runner!.tasks[1]!.sections[0]!.value).toBe("Old note");
     expect(acked.runner!.currentTaskId).toBe("task-1");
   });

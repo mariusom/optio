@@ -156,7 +156,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
           ? "EditSaved"
           : "RecordRequested",
     }),
-  TaskRecorded: ({ taskId }) => applyPlan(model, { _tag: "RecordAcked", taskId }),
+  TaskRecorded: ({ taskId, fresh }) => applyPlan(model, { _tag: "RecordAcked", taskId, fresh }),
   GaveRecordFeedback: () => ({ model }),
   ClickedRepeatLastAnswers: () => applyPlan(model, { _tag: "RepeatRequested" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
@@ -180,7 +180,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   ClickedSaveEdit: () => applyPlan(model, { _tag: "EditSaved" }),
   TaskEditStarted: () => ({ model }),
   UpdatedFieldValue: () => ({ model }),
-  TaskEditFinished: () => applyPlan(model, { _tag: "EditAcked" }),
+  TaskEditFinished: ({ savedTaskId }) => applyPlan(model, { _tag: "EditAcked", savedTaskId }),
   FailedRunnerOp: ({ error }) => {
     if (model.runner === null) return { model: { ...model, lastError: error } };
     return { model: { ...model, runner: { ...model.runner, lastError: error } } };

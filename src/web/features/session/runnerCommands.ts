@@ -106,7 +106,8 @@ export const RecordTask = Command.define("RecordTask", {
         const currentRow = taskRows.find((r) => r.id === currentTaskId);
         if (currentRow === undefined) return failed("That task isn’t available any more.");
         // Guard: if task already finished, no-op
-        if (currentRow.endDate !== null) return Message.TaskRecorded({ taskId: currentTaskId });
+        if (currentRow.endDate !== null)
+          return Message.TaskRecorded({ taskId: currentTaskId, fresh: false });
 
         const fieldRows = store.query(
           tables.sessionTaskFields
@@ -133,7 +134,7 @@ export const RecordTask = Command.define("RecordTask", {
             fields: nextFields,
           }),
         );
-        return Message.TaskRecorded({ taskId: currentTaskId });
+        return Message.TaskRecorded({ taskId: currentTaskId, fresh: true });
       }),
     ).pipe(serialized, reportFailure("record", failed)),
 });
@@ -234,7 +235,7 @@ export const SelectTask = Command.define("SelectTask", {
         }
         // Selecting current (unfinished) → clear any editing
         if (edited !== undefined) store.commit(events.taskEditFinished({ id: edited.id }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("load", failed)),
 });
@@ -246,7 +247,7 @@ export const CancelEdit = Command.define("CancelEdit", {
     withStore(({ store, events }) =>
       Effect.sync(() => {
         store.commit(events.taskEditCancelled({ id: taskId }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 });
@@ -261,7 +262,7 @@ export const SaveEdit = Command.define("SaveEdit", {
         if (fieldRows.some(isIncomplete))
           return failed("Complete required questions and correct invalid answers first.");
         store.commit(events.taskEditFinished({ id: taskId }));
-        return Message.TaskEditFinished();
+        return Message.TaskEditFinished({ savedTaskId: taskId });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 });

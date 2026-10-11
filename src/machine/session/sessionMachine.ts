@@ -46,8 +46,8 @@ const SessionEvent = Schema.TaggedUnion({
   EndConfirmed: {},
   EditCancelled: {},
   EditSaved: {},
-  RecordAcked: { taskId: Schema.String },
-  EditAcked: {},
+  RecordAcked: { taskId: Schema.String, fresh: Schema.Boolean },
+  EditAcked: { savedTaskId: Schema.NullOr(Schema.String) },
   EndAcked: {},
   /** Typing paused, a field lost focus, or the page is being hidden or left. */
   FlushRequested: {},
@@ -255,9 +255,13 @@ const clearsAnnouncement = new Set<SessionEvent["_tag"]>([
   "EndConfirmed",
 ]);
 
-const recordedAnnouncement = (runner: RunnerState, taskId: string): RunnerAnnouncement => {
+const taskAnnouncement = (
+  runner: RunnerState,
+  taskId: string,
+  kind: "recorded" | "saved",
+): RunnerAnnouncement => {
   const task = runner.tasks.find((t) => t.id === taskId);
-  return { kind: "recorded", text: task ? `Task ${task.orderIndex} recorded` : "Task recorded" };
+  return { kind, text: task ? `Task ${task.orderIndex} ${kind}` : `Task ${kind}` };
 };
 
 /**
@@ -308,24 +312,27 @@ const planLive = (runner: RunnerState, event: SessionEvent, now: number): Sessio
         : next({ ...runner, focusedSectionId: fieldId }),
     ),
     Match.tag("TaskListToggled", () => next({ ...runner, showTaskList: !runner.showTaskList })),
-    Match.tag("RecordAcked", ({ taskId }) =>
-      next(
-        {
-          ...runner,
-          focusedSectionId: null,
-          showTaskList: false,
-          lastError: null,
-          announcement: recordedAnnouncement(runner, taskId),
-        },
-        { _tag: "ConfirmRecorded" },
-      ),
-    ),
-    Match.tag("EditAcked", () =>
+    // A repeated trigger (button and shortcut, or another tab) finds the task
+    // already recorded: no second confirmation or vibration.
+    Match.tag("RecordAcked", ({ taskId, fresh }) => {
+      const acked = { ...runner, focusedSectionId: null, showTaskList: false, lastError: null };
+      return fresh
+        ? next(
+            { ...acked, announcement: taskAnnouncement(runner, taskId, "recorded") },
+            { _tag: "ConfirmRecorded" },
+          )
+        : next(acked);
+    }),
+    Match.tag("EditAcked", ({ savedTaskId }) =>
       next({
         ...withCurrentTask(runner, fallbackTaskId(runner)),
         focusedSectionId: null,
         showTaskList: false,
         lastError: null,
+        announcement:
+          savedTaskId === null
+            ? runner.announcement
+            : taskAnnouncement(runner, savedTaskId, "saved"),
       }),
     ),
     Match.tag("EndAcked", () => next(null)),

@@ -41,8 +41,9 @@ type HistoryModel = {
 
 // ── One session ───────────────────────────────────────────────────────────
 
-const summaryFor = (session: HistorySession): string =>
-  [session.templateName, taskCountLabel(session.taskCount)].join(" · ");
+/** "<template> · 4 tasks"; the template name is isolated so right-to-left names keep the order. */
+const summaryFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+  h.span([], [h.bdi([], [session.templateName]), ` · ${taskCountLabel(session.taskCount)}`]);
 
 /** Start time over duration, right-aligned, so neither is cut off on phones. */
 const timesFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
@@ -69,7 +70,7 @@ const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
       row(
         {
           title: session.displayName,
-          subtitle: summaryFor(session),
+          subtitle: summaryFor(session, h),
           value: timesFor(session, h),
           onClick: Message.ClickedHistoryRow({ id: session.id }),
           chevron: true,
@@ -113,7 +114,7 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
     {
       id: "history-actions",
       title: session.displayName,
-      description: summaryFor(session),
+      description: summaryFor(session, h),
       onDismiss: Message.ClosedHistoryActions(),
       footer: {
         cancel: {

@@ -29,7 +29,14 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
   const isEditing = task !== null && task.isBeingEdited;
   const taskStart = task === null ? null : taskStartDate(task);
   const isRecording = !isEditing && taskStart !== null;
-  const elapsed = Math.max(0, runner.now - (taskStart ?? runner.startedAt));
+  // A task's time starts at its first answer, so an untouched task reads 00:00
+  // rather than the session's time; with no task, the clock shows the session.
+  const elapsed =
+    task === null
+      ? Math.max(0, runner.now - runner.startedAt)
+      : taskStart === null
+        ? 0
+        : Math.max(0, runner.now - taskStart);
   const label =
     task === null
       ? "Session"

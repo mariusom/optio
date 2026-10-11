@@ -48,3 +48,12 @@ describe("formatClock", () => {
     expect(formatClock(3_807_000)).toBe("1:03:27");
   });
 });
+
+describe("sub-second durations", () => {
+  it("read <1s rather than 0s, in detail and list formats", () => {
+    expect(formatDurationHms(450)).toBe("<1s");
+    expect(formatDurationShort(999)).toBe("<1s");
+    expect(formatDurationHms(0)).toBe("0s");
+    expect(formatDurationHms(1000)).toBe("1s");
+  });
+});

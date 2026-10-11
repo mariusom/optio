@@ -13,6 +13,7 @@ import type { FieldKind } from "../../../domain/fields";
 import { hasOptions, isScalarAnswerValid } from "../../fields";
 import { isDraftValid } from "./editor";
 import { ANSWER_TYPES, answerTypeName, type Editor } from "./editorTypes";
+import { newChoiceInputId } from "./choiceInput";
 import { reorderButtons } from "./reorderButtons";
 
 /** Why the question can't be saved yet, in the order a person would fix it. */
@@ -148,9 +149,9 @@ const choicesSection = (
           h.div(
             [h.Class("flex items-center gap-2")],
             [
-              h.label([h.For("new-choice"), h.Class("sr-only")], ["New choice"]),
+              h.label([h.For(newChoiceInputId), h.Class("sr-only")], ["New choice"]),
               h.input([
-                h.Id("new-choice"),
+                h.Id(newChoiceInputId),
                 h.Type("text"),
                 h.Class(cn(inputClass)),
                 h.Value(draft.newOptionText),
@@ -161,10 +162,10 @@ const choicesSection = (
                 h.EnterKeyHint("done"),
                 h.Attribute("aria-invalid", String(hasComma)),
                 h.OnInput((value) => Message.ChangedNewOptionText({ text: value })),
+                // Enter always goes to update, which validates the latest text:
+                // `canAdd` here is from the last render and lags fast typing or paste.
                 h.OnKeyDownPreventDefault((key) =>
-                  key === "Enter" && canAdd
-                    ? Option.some(Message.ConfirmedAddOption())
-                    : Option.none(),
+                  key === "Enter" ? Option.some(Message.ConfirmedAddOption()) : Option.none(),
                 ),
               ]),
               button(
@@ -181,7 +182,6 @@ const choicesSection = (
             ],
           ),
           ...(hasComma ? [hint("Choices can’t contain commas.", h)] : []),
-          ...(draft.options.length < 2 ? [hint("Add at least two choices.", h)] : []),
         ],
         h,
       ),

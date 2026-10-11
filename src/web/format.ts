@@ -15,6 +15,8 @@ export const formatCsvDate = (date: Date): string => {
 
 /** "1h 5m 30s" / "42s" — DateComponentsFormatter abbreviated hour/min/sec. */
 export const formatDurationHms = (ms: number): string => {
+  // A real but sub-second duration reads "<1s", never a misleading "0s".
+  if (ms > 0 && ms < 1000) return "<1s";
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);

@@ -107,7 +107,10 @@ export const runnerNavBar = (
             [h.Class("min-w-0 text-center")],
             [
               h.h1(
-                [h.Class("truncate text-sm font-semibold tracking-tight sm:text-base")],
+                [
+                  h.Class("truncate text-sm font-semibold tracking-tight sm:text-base"),
+                  h.Dir("auto"),
+                ],
                 [runner.sessionName === "" ? runner.templateName : runner.sessionName],
               ),
               sessionTimerView(runner, h),
@@ -288,7 +291,7 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
         confirm: {
           label: "Done",
           onClick: Message.ToggledTaskList(),
-          ariaLabel: "Close task list",
+          ariaLabel: "Done, close task list",
         },
       },
     },

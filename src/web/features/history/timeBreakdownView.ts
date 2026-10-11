@@ -62,6 +62,7 @@ const legendItem = (segment: BreakdownSegment, h: HtmlBuilder<Message>): Html =>
           h.Class(
             `min-w-0 flex-1 break-words ${segment.kind === "answer" ? "text-foreground" : "text-muted-foreground"}`,
           ),
+          h.Dir("auto"),
         ],
         [segment.label],
       ),
@@ -80,7 +81,7 @@ const questionBlock = (question: QuestionBreakdown, h: HtmlBuilder<Message>): Ht
       h.h3(
         [h.Class("flex items-baseline gap-2 text-sm font-medium text-foreground")],
         [
-          h.span([h.Class("min-w-0 flex-1 break-words")], [question.question]),
+          h.span([h.Class("min-w-0 flex-1 break-words"), h.Dir("auto")], [question.question]),
           h.span(
             [h.Class("shrink-0 font-normal tabular text-muted-foreground")],
             [formatDurationHms(question.totalMs)],

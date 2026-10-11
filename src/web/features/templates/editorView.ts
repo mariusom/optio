@@ -242,7 +242,7 @@ const discardConfirmation = (editor: Editor, h: HtmlBuilder<Message>) =>
             confirmLabel: "Discard",
             cancelLabel: "Keep editing",
             confirmAriaLabel: "Confirm discard changes",
-            cancelAriaLabel: "Continue editing",
+            cancelAriaLabel: "Keep editing",
             destructive: true,
             onConfirm: Message.ConfirmedDiscard(),
             onCancel: Message.CanceledDiscard(),

@@ -198,7 +198,10 @@ describe("RepeatRequested through the session planner", () => {
 describe("recording confirmation", () => {
   it("announces the recorded task and asks for device feedback", () => {
     const runner = runnerWith([recorded("t1", 1, { Station: "A" }), task("t2", 2)], "t2");
-    const result = planSession({ runner, now: runner.now }, { _tag: "RecordAcked", taskId: "t1" });
+    const result = planSession(
+      { runner, now: runner.now },
+      { _tag: "RecordAcked", taskId: "t1", fresh: true },
+    );
     expect(result.runner!.announcement).toEqual({ kind: "recorded", text: "Task 1 recorded" });
     expect(result.emissions).toEqual([{ _tag: "ConfirmRecorded" }]);
   });
@@ -247,7 +250,7 @@ describe("repeat and record feedback through the update loop", () => {
 
   it("vibrates through a command after a task is recorded", () => {
     const model = onRunner(runnerWith([recorded("t1", 1, {}), task("t2", 2)], "t2"));
-    const result = update(model, Message.TaskRecorded({ taskId: "t1" }));
+    const result = update(model, Message.TaskRecorded({ taskId: "t1", fresh: true }));
     expect((result.commands ?? []).map((command) => command.name)).toEqual(["VibrateRecorded"]);
   });
 });

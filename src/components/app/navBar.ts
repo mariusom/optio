@@ -76,6 +76,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
                   h.Class(
                     "min-w-0 max-w-full truncate text-base font-semibold tracking-tight focus-visible:outline-none",
                   ),
+                  h.Dir("auto"),
                 ],
                 [config.title],
               ),
@@ -200,6 +201,7 @@ export const pageHeader = <M>(config: PageHeaderConfig, h: HtmlBuilder<M>): Html
                   h.Class(
                     "truncate text-2xl font-semibold tracking-tight text-foreground focus-visible:outline-none md:text-3xl",
                   ),
+                  h.Dir("auto"),
                 ],
                 [config.title],
               ),

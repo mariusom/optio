@@ -380,7 +380,8 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
       expect(toggle.element().getAttribute("aria-label")).toContain(visible);
       const header = toggle.element().closest("header")!;
       const timer = header.querySelector<HTMLElement>('[data-slot="timer"]')!;
-      expect(timer.textContent).toBe(`Task ${completedCount + 1}00:59`);
+      // The open task has no answer yet, so its clock has not started (not session time).
+      expect(timer.textContent).toBe(`Task ${completedCount + 1}00:00`);
       expect(timer.closest("[aria-live]")).toBeNull();
       expect(timer.textContent).not.toContain("recorded");
       // The clock is large enough to read at a glance; the label stays small.

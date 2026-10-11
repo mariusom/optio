@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { Option } from "effect";
 import { Runtime } from "foldkit";
 import type { Html, HtmlBuilder } from "foldkit/html";
@@ -190,5 +190,25 @@ describe("template list layout", () => {
     expect(second!.left).toBeGreaterThan(first!.right);
     expect(third!.top).toBeGreaterThan(first!.bottom);
     expect(third!.left).toBe(first!.left);
+  });
+});
+
+describe("adding choices with Enter", () => {
+  it("adds every choice when typing fast, without merging or dropping any", async () => {
+    await mount((model, h) => templateEditorPage(model, h), {
+      width: 390,
+      initial: { editor: choiceEditor([]) },
+    });
+    const input = page.getByRole("textbox", { name: "New choice", exact: true });
+    await input.click();
+    // No delay between keys: Enter follows each word's last input event at once.
+    await userEvent.keyboard("Alpha{Enter}Beta{Enter}Gamma{Enter}Delta{Enter}");
+    for (const option of ["Alpha", "Beta", "Gamma", "Delta"]) {
+      await expect
+        .element(page.getByRole("button", { name: `Remove choice ${option}`, exact: true }))
+        .toBeVisible();
+    }
+    expect(document.querySelectorAll('button[aria-label^="Remove choice "]')).toHaveLength(4);
+    await expect.element(input).toHaveValue("");
   });
 });

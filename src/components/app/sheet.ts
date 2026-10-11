@@ -141,7 +141,11 @@ export const sheet = <M>(
                   [h.Class("flex flex-col gap-2 p-6 text-left")],
                   [
                     h.h2(
-                      [...render.title, h.Class("text-lg font-semibold tracking-tight")],
+                      [
+                        ...render.title,
+                        h.Class("text-lg font-semibold tracking-tight"),
+                        h.Dir("auto"),
+                      ],
                       [config.title],
                     ),
                     ...(config.description === undefined

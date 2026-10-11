@@ -135,6 +135,8 @@ export const Message = defineMessageUnion({
   ToggledFieldDefaultBoolean: {},
   ChangedNewOptionText: { text: Schema.String },
   ConfirmedAddOption: {},
+  /** The "New choice" field was emptied after its text was added. */
+  ClearedNewChoice: {},
   ClickedDeleteOption: { index: Schema.Number },
   ClickedMoveOption: { index: Schema.Int, direction: Schema.Literals([-1, 1]) },
   ToggledExclusiveOption: { index: Schema.Number },
@@ -180,7 +182,8 @@ export const Message = defineMessageUnion({
   ClickedRecord: {},
   /** Ctrl/⌘+Enter on the runner: record the open task, or save the one being edited. */
   PressedPrimaryShortcut: {},
-  TaskRecorded: { taskId: Schema.String },
+  /** `fresh` is false when the task was already recorded (a repeated trigger). */
+  TaskRecorded: { taskId: Schema.String, fresh: Schema.Boolean },
   /** The recorded-task vibration ran, or was skipped where unsupported. */
   GaveRecordFeedback: {},
   ClickedRepeatLastAnswers: {},
@@ -194,7 +197,8 @@ export const Message = defineMessageUnion({
   ClickedCancelEdit: {},
   ClickedSaveEdit: {},
   TaskEditStarted: { taskId: Schema.String },
-  TaskEditFinished: {},
+  /** `savedTaskId` names the task whose edit was saved; null after cancel or switching. */
+  TaskEditFinished: { savedTaskId: Schema.NullOr(Schema.String) },
   FailedRunnerOp: { error: Schema.String },
   DismissedRunnerError: {},
   ToggledSidebar: {},

@@ -143,10 +143,19 @@ const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>
   h.span(
     [h.Class("flex min-w-0 flex-1 flex-col")],
     [
-      h.span([h.Class(cn(itemTitleClass, "block max-w-full truncate"))], [config.title]),
+      // dir="auto" so right-to-left names truncate at their end, not their start.
+      h.span(
+        [h.Class(cn(itemTitleClass, "block max-w-full truncate")), h.Dir("auto")],
+        [config.title],
+      ),
       ...(config.subtitle === undefined
         ? []
-        : [h.span([h.Class(cn(itemDescriptionClass, "truncate"))], [config.subtitle])]),
+        : [
+            h.span(
+              [h.Class(cn(itemDescriptionClass, "truncate")), h.Dir("auto")],
+              [config.subtitle],
+            ),
+          ]),
     ],
   ),
   ...(config.value === undefined
