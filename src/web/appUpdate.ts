@@ -6,6 +6,7 @@ import { Message } from "../messages";
 import { withStore } from "../livestore/access";
 import { serialized } from "./features/session/writeLock";
 import { confirmedOnDisk } from "./storeDurability";
+import { cn } from "@/lib/utils";
 import { onUpdateReady } from "./updateSignal";
 
 // Optio never reloads the page out from under the user: a new version waits
@@ -46,11 +47,13 @@ export const ReloadForUpdate = Command.define("ReloadForUpdate", {
 
 /**
  * The "Update ready" prompt, pinned above the page until it is tapped. A status
- * region announces it; the button inside keeps its button role.
+ * region announces it; the button inside keeps its button role. Full-screen
+ * pages centre their title in a 4rem nav bar, so there it sits just below it.
  */
 export const appUpdatePrompt = (
   status: "none" | "ready" | "applying",
   h: HtmlBuilder<Message>,
+  options: Readonly<{ belowNavBar: boolean }> = { belowNavBar: false },
 ): Html | null =>
   status === "none"
     ? null
@@ -58,7 +61,12 @@ export const appUpdatePrompt = (
         [
           h.Role("status"),
           h.Class(
-            "fixed top-[calc(0.75rem+env(safe-area-inset-top))] left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
+            cn(
+              "fixed left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
+              options.belowNavBar
+                ? "top-[calc(4.75rem+env(safe-area-inset-top))]"
+                : "top-[calc(0.75rem+env(safe-area-inset-top))]",
+            ),
           ),
         ],
         [

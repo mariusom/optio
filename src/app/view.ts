@@ -202,7 +202,9 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const storage = isRunner
     ? null
     : storageNotice(model, h, { recording: model.route._tag === "StartTab" });
-  const updatePrompt = appUpdatePrompt(model.appUpdate, h);
+  const updatePrompt = appUpdatePrompt(model.appUpdate, h, {
+    belowNavBar: isFullScreenRoute(model.route),
+  });
   return {
     title: documentTitle(model),
     body: h.div(
