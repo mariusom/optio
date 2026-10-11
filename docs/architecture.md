@@ -167,5 +167,16 @@ writes (fractional or negative question order, task numbers below 1, unnamed
 templates or questions, impossible times), which would otherwise break the
 store. Restore reports success only once the leader has confirmed the event
 (`upstreamHead` reaches the `localHead` seen after commit), because a reload
-before then loses it; large backups can take several seconds. Service-worker
+before then loses it; large backups can take several seconds.
+
+A browser crash in the middle of a commit can leave LiveStore's state and event
+log out of step; afterwards new work shows on screen but never reaches disk
+(an upstream issue, reproduced on `main` too). `app/saveStallStreams.ts` warns
+when writes stay unconfirmed for 20 s (not during a backup or restore) and
+offers a backup. While saving is stalled the backup also includes the open
+session as if ended now, and restoring a session whose ID is still live here
+adds it as a separate "-restored" copy. If reloading does not clear the
+warning, Settings' "Reset storage in this browser" sets a one-time flag
+(`livestore/resetFlag.ts`) so the next open uses LiveStore's
+`resetPersistence`, after which the backup can be restored. Service-worker
 updates must wait for the user's refresh action rather than interrupt recording.

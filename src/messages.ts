@@ -69,7 +69,12 @@ export const Message = defineMessageUnion({
   ClickedCopyTemplatePrompt: {},
   TemplatePromptCopyFinished: { copied: Schema.Boolean },
   ResetTemplatePromptCopy: {},
+  /** Writes have stayed unconfirmed long enough that saving looks stuck (or recovered). */
+  SaveStalled: { stalled: Schema.Boolean },
   ClickedDownloadBackup: {},
+  ClickedResetStorage: {},
+  CanceledResetStorage: {},
+  ConfirmedResetStorage: {},
   BackupDownloaded: { filename: Schema.String },
   /** A backup file was chosen in Settings; its text is read by RestoreBackup. */
   ChoseBackupFile: {},

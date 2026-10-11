@@ -14,6 +14,7 @@ import {
 import { saveTextFile } from "../../download";
 import { friendlyFailure, reportFailure } from "../../errors";
 import { confirmedOnDisk } from "../../storeDurability";
+import { archiveRecord } from "../session/archiveRecord";
 import { fieldRowsToDefs } from "../../fieldRows";
 
 // Download every template and finished session as one JSON file, and restore
@@ -77,27 +78,64 @@ const backupSessions = ({ store, tables }: Access): BackupFile["sessions"] => {
     );
 };
 
+/**
+ * The open session as if it ended at `endedAt`, with every recorded task.
+ * Only used while saving has stalled: then the open work may never reach disk,
+ * and a backup is the only way to keep it.
+ */
+const openSessions = ({ store, tables }: Access, endedAt: Date): BackupFile["sessions"] =>
+  store
+    .query(tables.sessions.select())
+    .filter((session) => session.endedAt === null)
+    .flatMap(({ endedAt: _open, ...session }) => {
+      const records = store
+        .query(
+          tables.sessionTasks
+            .select()
+            .where({ sessionId: session.id })
+            .orderBy("orderIndex", "asc"),
+        )
+        .filter((task) => task.endDate !== null)
+        .map((task) =>
+          archiveRecord(
+            task,
+            store.query(
+              tables.sessionTaskFields
+                .select()
+                .where({ taskId: task.id })
+                .orderBy("sortOrder", "asc"),
+            ),
+          ),
+        );
+      return records.length === 0 ? [] : [{ ...session, endedAt, records }];
+    });
+
 export const DownloadBackup = Command.define("DownloadBackup", {
+  args: { includeOpenSession: Schema.Boolean },
   messages: [Message.BackupDownloaded, Message.FailedBackup],
-  execute: withStore((access) =>
-    Effect.gen(function* () {
-      const exportedAt = new Date(yield* Clock.currentTimeMillis);
-      const file: BackupFile = {
-        format: "optio-backup",
-        version: 1,
-        exportedAt,
-        templates: backupTemplates(access),
-        sessions: backupSessions(access),
-      };
-      const filename = backupFilename(exportedAt);
-      try {
-        saveTextFile(encodeBackup(file), filename, "application/json");
-      } catch (error) {
-        return failed(friendlyFailure("backup", error));
-      }
-      return Message.BackupDownloaded({ filename });
-    }),
-  ).pipe(reportFailure("backup", failed)),
+  execute: ({ includeOpenSession }) =>
+    withStore((access) =>
+      Effect.gen(function* () {
+        const exportedAt = new Date(yield* Clock.currentTimeMillis);
+        const file: BackupFile = {
+          format: "optio-backup",
+          version: 1,
+          exportedAt,
+          templates: backupTemplates(access),
+          sessions: [
+            ...backupSessions(access),
+            ...(includeOpenSession ? openSessions(access, exportedAt) : []),
+          ],
+        };
+        const filename = backupFilename(exportedAt);
+        try {
+          saveTextFile(encodeBackup(file), filename, "application/json");
+        } catch (error) {
+          return failed(friendlyFailure("backup", error));
+        }
+        return Message.BackupDownloaded({ filename });
+      }),
+    ).pipe(reportFailure("backup", failed)),
 });
 
 /** The chosen file's text, clearing the input so the same file can be chosen again. */
@@ -116,9 +154,13 @@ const saveTimeout = Duration.seconds(60);
 const restore = (access: Access, file: BackupFile) =>
   Effect.gen(function* () {
     const { store, tables, events } = access;
+    const sessionRows = store.query(tables.sessions.select());
     const plan = planRestore(file, {
       templates: backupTemplates(access),
-      sessionIds: new Set(store.query(tables.sessions.select()).map((row) => row.id)),
+      sessionIds: new Set(sessionRows.map((row) => row.id)),
+      liveSessionIds: new Set(
+        sessionRows.filter((row) => row.endedAt === null).map((row) => row.id),
+      ),
     });
     const now = new Date(yield* Clock.currentTimeMillis);
     store.commit(

@@ -39,6 +39,7 @@ describe("application wiring", () => {
         "historyDetail",
         "runner",
         "runnerShortcuts",
+        "saveStall",
         "storage",
         "systemColorScheme",
         "templateDetail",

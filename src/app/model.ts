@@ -105,6 +105,10 @@ export const Model = Schema.Struct({
   look: Look,
   /** Settings' backup feedback; `backupBusy` disables both actions meanwhile. */
   backupBusy: Schema.Boolean,
+  /** Recent changes have not reached disk for a while (see saveStallStreams). */
+  saveStalled: Schema.Boolean,
+  /** The "erase this browser's studies" confirmation is open. */
+  pendingStorageReset: Schema.Boolean,
   backupNotice: Schema.NullOr(
     Schema.Struct({ tone: Schema.Literals(["success", "error"]), text: Schema.String }),
   ),
@@ -228,6 +232,8 @@ const initialModel = (route: Route): Model => ({
   accentDraft: null,
   look: defaultLook,
   backupBusy: false,
+  saveStalled: false,
+  pendingStorageReset: false,
   backupNotice: null,
   lookSaveFailed: false,
   controlSize: "standard",

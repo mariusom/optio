@@ -4,6 +4,7 @@ import { Download, FileText, groupedList, icon, notice } from "@/components/app"
 import { button, buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
+import { confirmSheet } from "../../sheets";
 
 // Settings → Backup: download every template and finished session as a file,
 // or restore such a file. Restoring only adds what is missing.
@@ -13,6 +14,7 @@ export const backupInputId = "settings-backup-file";
 
 type BackupModel = Readonly<{
   backupBusy: boolean;
+  pendingStorageReset: boolean;
   backupNotice: { readonly tone: "success" | "error"; readonly text: string } | null;
 }>;
 
@@ -69,6 +71,16 @@ export const backupSection = (model: BackupModel, h: HtmlBuilder<Message>): Html
               restoreControl(model.backupBusy, h),
             ],
           ),
+          button(
+            {
+              variant: "ghost",
+              className: "w-full justify-start text-destructive sm:w-auto",
+              isDisabled: model.backupBusy,
+              onClick: Message.ClickedResetStorage(),
+            },
+            "Reset storage in this browser",
+            h,
+          ),
           ...(model.backupNotice === null
             ? []
             : [
@@ -85,3 +97,30 @@ export const backupSection = (model: BackupModel, h: HtmlBuilder<Message>): Html
     ],
     h,
   );
+
+/**
+ * Last resort when saving keeps failing after a reload: erase this browser's
+ * store, then restore a backup. Rendered once, outside the settings columns.
+ */
+export const resetStorageSheet = (
+  model: BackupModel,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> =>
+  model.pendingStorageReset
+    ? [
+        confirmSheet(
+          {
+            id: "reset-storage",
+            title: "Erase studies in this browser?",
+            message:
+              "Every template and session stored here is deleted and Optio reloads. Download a backup first, then restore it afterwards. Close other Optio tabs before continuing.",
+            confirmLabel: "Erase and reload",
+            cancelLabel: "Keep my studies",
+            destructive: true,
+            onConfirm: Message.ConfirmedResetStorage(),
+            onCancel: Message.CanceledResetStorage(),
+          },
+          h,
+        ),
+      ]
+    : [];

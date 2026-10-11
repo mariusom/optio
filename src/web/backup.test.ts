@@ -212,3 +212,21 @@ describe("backupProblem", () => {
     expect(backupProblem(withSession({ startedAt: new Date(-1) }), now)).not.toBeNull();
   });
 });
+
+describe("planRestore with a stuck live session", () => {
+  it("restores a finished copy of a session that is still live here", () => {
+    const plan = planRestore(file, {
+      templates: [],
+      sessionIds: new Set(["s"]),
+      liveSessionIds: new Set(["s"]),
+    });
+    expect(plan.sessions.map((session) => session.id)).toEqual(["s-restored"]);
+    expect(plan.skipped).toBe(0);
+    const again = planRestore(file, {
+      templates: [],
+      sessionIds: new Set(["s", "s-restored"]),
+      liveSessionIds: new Set(["s"]),
+    });
+    expect(again.sessions).toEqual([]);
+  });
+});

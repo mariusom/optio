@@ -65,6 +65,8 @@ const makeModel = (runner: Model["runner"]): Model => ({
   accentDraft: null,
   look: "classic",
   backupBusy: false,
+  saveStalled: false,
+  pendingStorageReset: false,
   backupNotice: null,
   lookSaveFailed: false,
   controlSize: "standard",

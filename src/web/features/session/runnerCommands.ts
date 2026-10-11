@@ -7,6 +7,7 @@ import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
 import { serialized } from "./writeLock";
+import { archiveRecord } from "./archiveRecord";
 import { isAnswerComplete, isTaskEditable } from "./runner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -177,22 +178,7 @@ export const EndSession = Command.define("EndSession", {
               `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
             );
           }
-          // Task start = earliest first answer (null if untouched).
-          const starts = fieldRows.flatMap((r) => (r.startDate === null ? [] : [r.startDate]));
-          records.push({
-            taskIdNumber: task.orderIndex,
-            taskType: task.taskType,
-            startedAt:
-              starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null,
-            endedAt: task.endDate,
-            sections: fieldRows.map((r) => ({
-              sectionName: r.name,
-              value: r.value,
-              sectionType: r.kind,
-              isRequired: r.isRequired === 1,
-              startedAt: r.startDate,
-            })),
-          });
+          records.push(archiveRecord(task, fieldRows));
         }
 
         // Archive order follows the live task list (queried by orderIndex).

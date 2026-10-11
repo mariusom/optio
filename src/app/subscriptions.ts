@@ -14,6 +14,7 @@ import {
   scrollToCurrentTask,
   scrollToSection,
 } from "./domStreams";
+import { saveStallStream } from "./saveStallStreams";
 import { primaryShortcutPresses } from "../web/features/session/runnerShortcuts";
 
 const isDocumentVisible = () =>
@@ -156,6 +157,7 @@ const runnerShortcutsActive = (model: Model): boolean =>
 export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   agentRequest: Port.subscriptionEntry(agentPorts.inbound.agentRequest, Message.AgentRequest),
   storage: Subscription.persistentEntry(storageStatusStream),
+  saveStall: Subscription.persistentEntry(saveStallStream),
   appUpdates: Subscription.persistentEntry(appUpdates),
   systemColorScheme: Subscription.persistentEntry(
     Dom.streamFromMediaQuery({

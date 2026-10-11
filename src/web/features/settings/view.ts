@@ -6,7 +6,7 @@ import { Message } from "../../../messages";
 import type { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "../../theme";
 import type { FoldcnStyle } from "../../style";
 import { hrefFor } from "../../routes";
-import { backupSection } from "./backupView";
+import { backupSection, resetStorageSheet } from "./backupView";
 import {
   accentPicker,
   accentRows,
@@ -133,6 +133,7 @@ type SettingsModel = FailureOptions &
     look: Look;
     controlSize: ControlSize;
     backupBusy: boolean;
+    pendingStorageReset: boolean;
     backupNotice: { readonly tone: "success" | "error"; readonly text: string } | null;
   }>;
 
@@ -201,6 +202,7 @@ export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
         ],
       ),
       ...accentPicker(model.accentDraft, h),
+      ...resetStorageSheet(model, h),
     ],
     h,
   );

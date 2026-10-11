@@ -10,6 +10,8 @@ type SessionModel = {
   readonly runner: RunnerState | null;
   readonly storage: "opening" | "persisted" | "in-memory" | "unavailable";
   readonly memoryStorageAcknowledged: boolean;
+  readonly saveStalled: boolean;
+  readonly backupBusy: boolean;
 };
 
 export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {

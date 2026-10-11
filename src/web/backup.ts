@@ -87,13 +87,17 @@ const templateSignature = (template: Pick<BackupTemplate, "name" | "fields">): s
  * its own copies of the samples); its sessions then point at that template.
  * Like the store's own guard, a template whose question IDs are taken, a
  * session whose ID exists, and any ID repeated within the file are skipped,
- * so the summary counts exactly what the restore adds.
+ * so the summary counts exactly what the restore adds. A finished session whose
+ * ID is still a live (unfinished) session here comes back as a separate copy
+ * ("<id>-restored"): that happens when a crash stopped saving after the backup
+ * was taken, and the backup is then the only complete record.
  */
 export const planRestore = (
   file: BackupFile,
   existing: Readonly<{
     templates: ReadonlyArray<Pick<BackupTemplate, "id" | "name" | "fields">>;
     sessionIds: ReadonlySet<string>;
+    liveSessionIds?: ReadonlySet<string>;
   }>,
 ) => {
   const templateIds = new Set(existing.templates.map((t) => t.id));
@@ -115,11 +119,13 @@ export const planRestore = (
   });
   const sessionIds = new Set(existing.sessionIds);
   const sessions = file.sessions.flatMap((session) => {
-    if (sessionIds.has(session.id)) return [];
-    sessionIds.add(session.id);
+    const id =
+      existing.liveSessionIds?.has(session.id) === true ? `${session.id}-restored` : session.id;
+    if (sessionIds.has(id)) return [];
+    sessionIds.add(id);
     const templateId =
       session.templateId === null ? null : (remap.get(session.templateId) ?? session.templateId);
-    return [{ ...session, templateId, records: uniqueTasks(session.records) }];
+    return [{ ...session, id, templateId, records: uniqueTasks(session.records) }];
   });
   const skipped = file.templates.length - templates.length + file.sessions.length - sessions.length;
   return { templates, sessions, skipped };

@@ -13,6 +13,7 @@ type StorageHandlers = Pick<
   | "StoreUnavailable"
   | "ClickedRetryStore"
   | "AcknowledgedMemoryStorage"
+  | "SaveStalled"
   | "FailedListRead"
   | "ClickedRetryListRead"
 >;
@@ -48,6 +49,7 @@ const reloadFailedLists = (model: Model): Model => ({
 });
 
 export const storageHandlers = (model: Model): StorageHandlers => ({
+  SaveStalled: ({ stalled }) => ({ model: { ...model, saveStalled: stalled } }),
   StoreOpened: ({ storageMode }) => ({ model: { ...model, storage: storageMode } }),
   StoreUnavailable: () => ({ model: { ...model, storage: "unavailable" } }),
   ClickedRetryStore: () => ({

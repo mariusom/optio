@@ -4,6 +4,7 @@ import { restoreSummary } from "../web/backup";
 import { DownloadBackup, RestoreBackup } from "../web/features/settings/backupCommands";
 import { backupInputId } from "../web/features/settings/backupView";
 import type { Message, MessageHandlers } from "../messages";
+import { ResetLocalStorage } from "../web/storageReset";
 import type { Model } from "./model";
 
 type Result = Update.Return<Model, Message>;
@@ -14,6 +15,9 @@ type BackupHandlers = Pick<
   | "ChoseBackupFile"
   | "BackupRestored"
   | "FailedBackup"
+  | "ClickedResetStorage"
+  | "CanceledResetStorage"
+  | "ConfirmedResetStorage"
 >;
 
 const done = (model: Model, tone: "success" | "error", text: string): Result => ({
@@ -28,7 +32,8 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
       ? { model }
       : {
           model: { ...model, backupBusy: true, backupNotice: null },
-          commands: [DownloadBackup()],
+          // While saving is stalled the open session is included: it may never reach disk.
+          commands: [DownloadBackup({ includeOpenSession: model.saveStalled })],
         },
   BackupDownloaded: ({ filename }) => done(model, "success", `Saved ${filename}.`),
   ChoseBackupFile: () =>
@@ -54,4 +59,10 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
         : `${restoreSummary(counts)} It's still saving: keep Optio open for a moment before closing it.`,
     ),
   FailedBackup: ({ error }) => done(model, "error", error),
+  ClickedResetStorage: () => ({ model: { ...model, pendingStorageReset: true } }),
+  CanceledResetStorage: () => ({ model: { ...model, pendingStorageReset: false } }),
+  ConfirmedResetStorage: () => ({
+    model: { ...model, pendingStorageReset: false },
+    commands: [ResetLocalStorage()],
+  }),
 });

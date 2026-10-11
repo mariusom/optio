@@ -13,6 +13,11 @@ const start = init(Option.getOrThrow(fromString("https://optio.test/#/settings")
 const names = (result: ReturnType<typeof update>) =>
   (result.commands ?? []).map((command) => command.name);
 
+const argsOf = (model: typeof start) =>
+  update(model, Message.ClickedDownloadBackup()).commands?.map((command) =>
+    "args" in command ? command.args : undefined,
+  );
+
 describe("backup actions", () => {
   it("ignores a second download or restore while one is running", () => {
     const busy = update(start, Message.ClickedDownloadBackup());
@@ -33,5 +38,28 @@ describe("backup actions", () => {
     expect(saved.model.backupBusy).toBe(false);
     const slow = update(restoring.model, Message.BackupRestored({ ...counts, saved: false }));
     expect(slow.model.backupNotice?.text).toContain("still saving");
+  });
+
+  it("includes the open session in a backup only while saving has stalled", () => {
+    expect(argsOf(start)).toEqual([{ includeOpenSession: false }]);
+    expect(argsOf({ ...start, saveStalled: true })).toEqual([{ includeOpenSession: true }]);
+  });
+
+  it("erases storage only after confirmation", () => {
+    const asking = update(start, Message.ClickedResetStorage());
+    expect(asking.model.pendingStorageReset).toBe(true);
+    expect(names(asking)).toEqual([]);
+    expect(update(asking.model, Message.CanceledResetStorage()).model.pendingStorageReset).toBe(
+      false,
+    );
+    expect(names(update(asking.model, Message.ConfirmedResetStorage()))).toEqual([
+      "ResetLocalStorage",
+    ]);
+  });
+
+  it("records when saving stalls and recovers", () => {
+    const stalled = update(start, Message.SaveStalled({ stalled: true })).model;
+    expect(stalled.saveStalled).toBe(true);
+    expect(update(stalled, Message.SaveStalled({ stalled: false })).model.saveStalled).toBe(false);
   });
 });
