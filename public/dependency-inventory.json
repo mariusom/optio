@@ -797,7 +797,7 @@
     },
     {
       "name": "lucide",
-      "version": "1.52.0",
+      "version": "1.55.0",
       "license": "ISC",
       "role": "production dependency graph",
       "homepage": "https://lucide.dev",

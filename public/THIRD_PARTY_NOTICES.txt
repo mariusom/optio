@@ -4991,7 +4991,7 @@ This Source Code Form is "Incompatible With Secondary Licenses", as
 defined by the Mozilla Public License, v. 2.0.
 
 
-lucide@1.52.0
+lucide@1.55.0
 -------------
 Declared license: ISC
 Role: production dependency graph
