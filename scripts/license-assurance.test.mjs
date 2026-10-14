@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { buildInventory, collectLicenseTexts, renderArtifacts } from "./license-assurance.mjs";
+import {
+  buildInventory,
+  collectLicenseTexts,
+  renderArtifacts,
+  summarizeChanges,
+} from "./license-assurance.mjs";
 
 const pkg = (name, version = "1.0.0", path = `/fixture/${name}`) => ({
   name,
@@ -150,4 +155,47 @@ test("ships the whole provenance file, including any former section delimiter", 
   const rendered = renderArtifacts(report, report, options);
   assert.match(rendered.notices, /kept preamble/);
   assert.match(rendered.notices, /unique tail/);
+});
+
+const inventoryEntry = (name, version, license = "MIT", hash = `${name}-text`) => ({
+  name,
+  version,
+  license,
+  licenseTexts: [{ provenance: "installed package file LICENSE", sha256: hash }],
+});
+
+test("summarizes version-only bumps apart from license changes to review", () => {
+  const previous = {
+    packages: [
+      inventoryEntry("bumped", "1.0.0"),
+      inventoryEntry("relicensed", "1.0.0"),
+      inventoryEntry("reworded", "1.0.0"),
+      inventoryEntry("removed", "1.0.0"),
+    ],
+  };
+  const current = {
+    packages: [
+      inventoryEntry("added", "1.0.0", "ISC"),
+      inventoryEntry("bumped", "1.1.0"),
+      inventoryEntry("relicensed", "1.0.0", "Apache-2.0"),
+      inventoryEntry("reworded", "1.0.0", "MIT", "new-text"),
+    ],
+  };
+  const summary = summarizeChanges(previous, current);
+  const [review, other] = summary.split("### Versions and removals");
+  assert.match(review, /Added `added` 1\.0\.0 \(ISC\)/);
+  assert.match(review, /`relicensed` license MIT → Apache-2\.0/);
+  assert.match(review, /`reworded` license or notice text changed/);
+  assert.doesNotMatch(review, /bumped/);
+  assert.match(other, /`bumped` 1\.0\.0 → 1\.1\.0/);
+  assert.match(other, /Removed `removed` 1\.0\.0/);
+
+  const unchanged = summarizeChanges(previous, previous);
+  assert.match(unchanged, /No changes from the deployed inventory/);
+  assert.doesNotMatch(
+    summarizeChanges(previous, {
+      packages: [inventoryEntry("bumped", "2.0.0"), ...previous.packages.slice(1)],
+    }),
+    /### Review/,
+  );
 });

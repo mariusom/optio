@@ -5,8 +5,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "node scripts/license-assurance.mjs --check && vp build",
+    "dev": "node scripts/license-assurance.mjs && vp dev",
+    "build": "node scripts/license-assurance.mjs && vp build",
     "preview": "vp preview",
     "check": "vp check",
     "lint:dead": "fallow dead-code",

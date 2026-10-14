@@ -27,5 +27,5 @@ the old build before updating.
 For contributors: [contributing](CONTRIBUTING.md), [development](docs/development.md),
 [architecture](docs/architecture.md), and [interface conventions](docs/interface.md).
 
-[MIT license](LICENSE) · [Third-party notices](public/THIRD_PARTY_NOTICES.txt) ·
+[MIT license](LICENSE) · [Third-party notices](https://mariusom.github.io/optio/THIRD_PARTY_NOTICES.txt) ·
 [Security](SECURITY.md).
