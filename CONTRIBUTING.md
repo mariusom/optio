@@ -18,8 +18,8 @@ Use made-up study data in reports, tests and screenshots. When changing recordin
 or storage, check that offline use and existing records still work. UI changes
 should remain keyboard-accessible and ask before deleting data.
 
-For dependency changes, run `pnpm licenses:generate`, review the notices and run
-`pnpm licenses:check`. See [dependency guidance](docs/development.md#dependencies-and-generated-assets)
+For dependency changes, run `pnpm licenses:check` and review the license changes
+it reports in the pull request's checks. See [dependency guidance](docs/development.md#dependencies-and-generated-assets)
 for version constraints and generated files.
 
 ## Sharing code and reporting problems

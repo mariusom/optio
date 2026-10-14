@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import process from "node:process";
 
@@ -233,32 +233,97 @@ export function renderArtifacts(prodReport, allReport, options = {}) {
   };
 }
 
-function main() {
-  const check = process.argv.includes("--check");
-  const output = renderArtifacts(readLicenseReport(true), readLicenseReport(false));
-  const files = [
-    [inventoryPath, output.inventory],
-    [noticesPath, output.notices],
+function groupByName(packages) {
+  const grouped = new Map();
+  for (const pkg of packages) {
+    const entry = grouped.get(pkg.name) ?? {
+      versions: new Set(),
+      licenses: new Set(),
+      hashes: new Set(),
+    };
+    entry.versions.add(pkg.version);
+    entry.licenses.add(pkg.license);
+    for (const { sha256: hash } of pkg.licenseTexts) entry.hashes.add(hash);
+    grouped.set(pkg.name, entry);
+  }
+  return grouped;
+}
+
+const listed = (values) => [...values].toSorted((a, b) => a.localeCompare(b)).join(", ");
+
+function describeChange(name, before, after) {
+  if (!before)
+    return { review: [`Added \`${name}\` ${listed(after.versions)} (${listed(after.licenses)})`] };
+  if (!after) return { other: [`Removed \`${name}\` ${listed(before.versions)}`] };
+  const review = [];
+  if (listed(before.licenses) !== listed(after.licenses))
+    review.push(`\`${name}\` license ${listed(before.licenses)} → ${listed(after.licenses)}`);
+  else if (listed(before.hashes) !== listed(after.hashes))
+    review.push(`\`${name}\` license or notice text changed`);
+  const other =
+    listed(before.versions) === listed(after.versions)
+      ? []
+      : [`\`${name}\` ${listed(before.versions)} → ${listed(after.versions)}`];
+  return { review, other };
+}
+
+const summarySection = (title, lines) =>
+  lines.length ? [`### ${title}`, "", ...lines.map((line) => `- ${line}`), ""] : [];
+
+// Compares inventories by package name, so a version bump that keeps the same
+// license and text is reported apart from changes a reviewer should read.
+export function summarizeChanges(previous, current) {
+  const before = groupByName(previous.packages);
+  const after = groupByName(current.packages);
+  const names = [...new Set([...before.keys(), ...after.keys()])].toSorted((a, b) =>
+    a.localeCompare(b),
+  );
+  const review = [];
+  const other = [];
+  for (const name of names) {
+    const change = describeChange(name, before.get(name), after.get(name));
+    review.push(...(change.review ?? []));
+    other.push(...(change.other ?? []));
+  }
+  const lines = [
+    "## Dependency licenses",
+    "",
+    ...summarySection("Review", review),
+    ...summarySection("Versions and removals", other),
   ];
-  if (check) {
-    const drift = files.filter(([path, content]) => {
-      try {
-        return readFileSync(path, "utf8") !== content;
-      } catch {
-        return true;
-      }
-    });
-    if (drift.length)
-      throw new Error(
-        `License artifacts are stale: ${drift.map(([p]) => p.slice(root.length + 1)).join(", ")}`,
-      );
-    console.log(
-      `License assurance check passed (${JSON.parse(output.inventory).packages.length} packages).`,
-    );
+  if (!review.length && !other.length) lines.push("No changes from the deployed inventory.", "");
+  return lines.join("\n");
+}
+
+// Reports against the deployed inventory without failing: the validation in
+// --check is the gate, this only makes license changes visible in the PR run.
+async function reportChanges(baselineUrl, inventory) {
+  let summary;
+  try {
+    const response = await fetch(baselineUrl);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    summary = summarizeChanges(await response.json(), inventory);
+  } catch (error) {
+    summary = `## Dependency licenses\n\nCould not compare with ${baselineUrl}: ${error.message}\n`;
+  }
+  console.log(summary);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const output = renderArtifacts(readLicenseReport(true), readLicenseReport(false));
+  const inventory = JSON.parse(output.inventory);
+  const compareAt = args.indexOf("--compare");
+  if (compareAt !== -1) {
+    await reportChanges(args[compareAt + 1], inventory);
+  } else if (args.includes("--check")) {
+    console.log(`License assurance check passed (${inventory.packages.length} packages).`);
   } else {
-    for (const [path, content] of files) writeFileSync(path, content);
-    console.log("Updated public dependency inventory and third-party notices.");
+    writeFileSync(inventoryPath, output.inventory);
+    writeFileSync(noticesPath, output.notices);
+    console.log("Generated public dependency inventory and third-party notices.");
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) main();
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) await main();

@@ -2,9 +2,8 @@ name: Validate optio
 description: Lint, type-check, find unused code, test, audit, build and run the production E2E journey. Expects the setup action with Playwright.
 
 # Independent checks keep running after an earlier failure so one run reports
-# every problem, e.g. stale license artifacts on a Dependabot update no longer
-# hide lint and test results. The build rejects stale license artifacts too;
-# E2E needs a successful build.
+# every problem, e.g. an unknown license on a dependency update does not hide
+# lint and test results. E2E needs a successful build.
 runs:
   using: composite
   steps:
@@ -27,6 +26,12 @@ runs:
       if: ${{ !cancelled() }}
       shell: bash
       run: pnpm licenses:check
+    # Informational: lists license changes against the deployed inventory in
+    # the job summary. It never fails; the step above is the gate.
+    - name: License changes
+      if: ${{ !cancelled() }}
+      shell: bash
+      run: node scripts/license-assurance.mjs --compare https://mariusom.github.io/optio/dependency-inventory.json
     # Build-time dependencies can alter the published application too.
     - name: Dependency audit
       if: ${{ !cancelled() }}
