@@ -206,10 +206,10 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 - Dependabot proposes grouped lockfile and GitHub Actions updates, waiting a
   day after each release to match pnpm's release-age guard. Exact manifest pins
   and workspace overrides need deliberate coordinated updates.
-- Dependabot cannot regenerate license artifacts, so its npm PRs fail the
-  `License artifacts` step when licenses or notices change. Check out the bot
-  branch, run `pnpm install --frozen-lockfile && pnpm licenses:generate`, review
-  the diff, and push the regenerated files to that branch.
+- License artifacts are generated, not committed, so Dependabot PRs need no
+  regenerated files. Read the `License changes` job summary before merging; a
+  failing `License artifacts` step (unknown license, missing text, or a reviewed
+  fallback whose version moved) needs a maintainer.
   Audit includes development dependencies because they can affect shipped code.
 - Registry components are project-owned copies. Review upstream changes before
   replacing them; preserve the [interface conventions](interface.md).
@@ -304,17 +304,24 @@ For tool usage, consult [Vite+](https://vite.plus),
 
 The [architecture](architecture.md) describes the runtime libraries; the
 [interface conventions](interface.md) describe the copied registry components.
-[Third-party notices](../public/THIRD_PARTY_NOTICES.txt) preserve their applicable
-license text and attribution and are copied into the production build. Keep
-those notices when updating vendored code.
+[Third-party notices](https://mariusom.github.io/optio/THIRD_PARTY_NOTICES.txt)
+preserve their applicable license text and attribution and ship with the
+production build. Keep those notices when updating vendored code.
 
-`pnpm licenses:generate` collects installed production dependency licenses and
-notices, plus PWA/Workbox/Rollup distribution contributors, into that file and
-[`dependency-inventory.json`](../public/dependency-inventory.json). Run it after
-dependency updates and review the resulting diff. `pnpm licenses:check` tests
-the collector and rejects unknown licenses, missing texts and artifact drift;
-`pnpm build` also rejects drift. The service worker precaches both artifacts,
-and the production E2E journey checks that they remain available offline.
+`scripts/license-assurance.mjs` collects installed production dependency
+licenses and notices, plus PWA/Workbox/Rollup distribution contributors, into
+`public/THIRD_PARTY_NOTICES.txt` and
+[`dependency-inventory.json`](https://mariusom.github.io/optio/dependency-inventory.json).
+Both are gitignored: `pnpm dev` and `pnpm build` regenerate them from the
+installed packages, and `pnpm licenses:generate` does so on its own. Generation
+fails on unknown licenses and missing texts, so the build does too.
+`pnpm licenses:check` tests the collector and runs the same validation without
+writing. In CI, the `License changes` step compares the inventory with the
+deployed one and writes added packages, license changes and changed license or
+notice texts to the job summary, separately from version-only bumps. It is
+informational; review it on dependency PRs. The service worker precaches both
+artifacts, and the production E2E journey checks that they remain available
+offline.
 
 The inventory includes installed production packages, even those absent from
 the browser bundle, and it is a conservative superset: upstream manifests can
