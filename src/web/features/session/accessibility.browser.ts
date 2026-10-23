@@ -283,8 +283,15 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
         expect(document.querySelectorAll(`input[name="${scope}-activity"]:checked`)).toHaveLength(
           1,
         );
-        // The hidden responsive copy must not uncheck the visible copy.
-        expect(document.querySelectorAll('input[name$="-activity"]:checked')).toHaveLength(2);
+        // Native selection happens immediately; the hidden copy follows the next render.
+        // Both responsive groups must keep the same checked answer after it commits.
+        await expect
+          .poll(() =>
+            [
+              ...document.querySelectorAll<HTMLInputElement>('input[name$="-activity"]:checked'),
+            ].map((input) => input.value),
+          )
+          .toEqual([value, value]);
       }
       await userEvent.tab();
       await expect.element(page.getByRole("textbox", { name: "Notes" })).toHaveFocus();
