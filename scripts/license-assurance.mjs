@@ -32,7 +32,63 @@ const redisFallback = {
   source:
     "https://github.com/redis/node-redis/blob/c3e8b53b0d9c97d05ca674f92a24a9ee91a50a0e/LICENSE",
 };
+const yukuFallback = {
+  file: "yuku-0.19.0-LICENSE",
+  source:
+    "https://github.com/yuku-toolchain/yuku/blob/f8496bd8dfd52ae528ade3bfe4c1ea57d1bde635/LICENSE",
+};
 const reviewedFallbacks = new Map([
+  ...[
+    "win32-x64",
+    "darwin-x64",
+    "freebsd-x64",
+    "win32-arm64",
+    "darwin-arm64",
+    "android-arm64",
+    "linux-arm-gnu",
+    "linux-x64-gnu",
+    "linux-arm-musl",
+    "linux-x64-musl",
+    "linux-arm64-gnu",
+    "linux-arm64-musl",
+  ].map((platform) => [`@yuku-core/binding-${platform}@0.19.0`, yukuFallback]),
+  ["@yuku-toolchain/types@0.19.0", yukuFallback],
+  ["yuku-core@0.19.0", yukuFallback],
+  ["yuku-parser@0.19.0", yukuFallback],
+  // Native packages omit LICENSE; each entry is scoped to the reviewed release.
+  ...[
+    "darwin-x64",
+    "darwin-arm64",
+    "linux-x64-gnu",
+    "linux-x64-musl",
+    "win32-x64-msvc",
+    "linux-arm64-gnu",
+    "linux-arm64-musl",
+    "win32-arm64-msvc",
+  ].map((platform) => [
+    `@voidzero-dev/vite-plus-${platform}@1.3.0`,
+    {
+      file: "vite-plus-1.3.0-LICENSE",
+      source:
+        "https://github.com/voidzero-dev/vite-plus/blob/afbe4a285b4ac6ffac498eae71b10ff63069a029/LICENSE",
+    },
+  ]),
+  [
+    "sirv@3.0.2",
+    {
+      file: "sirv-3.0.2-LICENSE",
+      source:
+        "https://github.com/lukeed/sirv/blob/1135207e92c40354543cbd15c763c7a61d79d432/license",
+    },
+  ],
+  [
+    "@polka/url@1.0.0-next.29",
+    {
+      file: "polka-url-1.0.0-next.29-LICENSE",
+      source:
+        "https://github.com/lukeed/polka/blob/02cbdb529ddca0a9f3d225e2abb2931924219cc3/license",
+    },
+  ],
   [
     "@cloudflare/workers-types@4.20251118.0",
     {

@@ -571,10 +571,10 @@ describe("nextFocusForField", () => {
 const writesOf = (emissions: ReadonlyArray<{ _tag: string }>) =>
   emissions.filter((emission) => emission._tag === "CommitFieldValues");
 
-describe("sessionMachine field writes", () => {
-  const type = (runner: RunnerState | null, taskFieldId: string, value: string) =>
-    plan(runner, { _tag: "FieldChanged", taskFieldId, value });
+const type = (runner: RunnerState | null, taskFieldId: string, value: string) =>
+  plan(runner, { _tag: "FieldChanged", taskFieldId, value });
 
+describe("sessionMachine field writes", () => {
   it("writes a typed answer's first keystroke at once, then batches until a pause", () => {
     const first = type(liveRunner(), "f-activity", "O");
     // Dispatched now so the store's COALESCE start time is the first keystroke.

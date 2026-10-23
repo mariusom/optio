@@ -1,6 +1,6 @@
 import { Option } from "effect";
 import { fromString } from "foldkit/url";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { init, update, type Model } from "../main";
 import { Message } from "../messages";

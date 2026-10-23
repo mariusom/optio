@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it } from "vite-plus/test";
 import { Schema } from "effect";
 import { Port, Runtime, Subscription } from "foldkit";
 

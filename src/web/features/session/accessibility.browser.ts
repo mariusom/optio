@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cdp, page, userEvent } from "vitest/browser";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { cdp, page, userEvent } from "vite-plus/test/browser";
 import { Runtime } from "foldkit";
 import { Option } from "effect";
 import { fromString } from "foldkit/url";
@@ -283,8 +283,15 @@ describe.each([390, 820, 1440])("runner keyboard at %ipx", (width) => {
         expect(document.querySelectorAll(`input[name="${scope}-activity"]:checked`)).toHaveLength(
           1,
         );
-        // The hidden responsive copy must not uncheck the visible copy.
-        expect(document.querySelectorAll('input[name$="-activity"]:checked')).toHaveLength(2);
+        // Native selection happens immediately; the hidden copy follows the next render.
+        // Both responsive groups must keep the same checked answer after it commits.
+        await expect
+          .poll(() =>
+            [
+              ...document.querySelectorAll<HTMLInputElement>('input[name$="-activity"]:checked'),
+            ].map((input) => input.value),
+          )
+          .toEqual([value, value]);
       }
       await userEvent.tab();
       await expect.element(page.getByRole("textbox", { name: "Notes" })).toHaveFocus();
@@ -371,7 +378,7 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
         ],
       });
       const toggle = page.getByRole("button", {
-        name: width < 768 ? "Show task list" : "Collapse sidebar",
+        name: width < 768 ? /show task list$/ : /collapse sidebar$/,
       });
       await expect.element(toggle).toBeVisible();
       // The visible label is part of the accessible name (WCAG 2.5.3).
@@ -395,7 +402,7 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
   it("centers the header controls with task navigation left and End right", async () => {
     await mount(width);
     const toggle = page
-      .getByRole("button", { name: width < 768 ? "Show task list" : "Collapse sidebar" })
+      .getByRole("button", { name: width < 768 ? /show task list$/ : /collapse sidebar$/ })
       .element()
       .getBoundingClientRect();
     const end = page
@@ -412,11 +419,6 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
     expect(end.right).toBeLessThanOrEqual(width);
   });
 
-  const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
-    const task = runnerFixture(value).tasks[0]!;
-    return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
-  };
-
   it("disables Record for a completed task that is not being edited", async () => {
     await mount(width, "Observe", taskOverride("Observe", 1_000, false));
     await expect.element(page.getByRole("button", { name: "Record task" })).toBeDisabled();
@@ -432,6 +434,11 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
     await expect.element(page.getByRole("button", { name: /Save/ })).toBeDisabled();
   });
 });
+
+const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
+  const task = runnerFixture(value).tasks[0]!;
+  return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
+};
 
 describe.each([820, 1440])("task sidebar at %ipx", (width) => {
   it("renders tasks newest-first regardless of store order", async () => {
@@ -461,13 +468,16 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await mount(width);
     const sidebar = document.querySelector<HTMLElement>("#runner-task-sidebar")!;
     const task = sidebar.querySelector<HTMLButtonElement>("button")!;
-    const toggle = page.getByRole("button", { name: "Collapse sidebar" });
+    const toggle = page.getByRole("button", { name: /collapse sidebar$/ });
     expect(toggle.element().getAttribute("aria-expanded")).toBe("true");
     expect(toggle.element().getAttribute("aria-controls")).toBe("runner-task-sidebar");
     await toggle.click();
     await expect.poll(() => sidebar.inert).toBe(true);
     expect(
-      page.getByRole("button", { name: "Expand sidebar" }).element().getAttribute("aria-expanded"),
+      page
+        .getByRole("button", { name: /expand sidebar$/ })
+        .element()
+        .getAttribute("aria-expanded"),
     ).toBe("false");
     expect((await accessibleTaskNames()).some(isTaskOneRecording)).toBe(false);
     expect(await accessibleTaskNames()).not.toContain("Task navigation sidebar");
@@ -482,7 +492,7 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await expect.element(page.getByRole("button", { name: "Repeat last answers" })).toHaveFocus();
     await userEvent.tab();
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
-    await page.getByRole("button", { name: "Expand sidebar" }).click();
+    await page.getByRole("button", { name: /expand sidebar$/ }).click();
     await expect.poll(() => sidebar.inert).toBe(false);
     // Chrome names the row from its content once the sidebar is laid out again.
     await expect
@@ -495,6 +505,6 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     // what matters is that its rows take focus again.
     task.focus();
     expect(document.activeElement).toBe(task);
-    await expect.element(page.getByRole("button", { name: "Collapse sidebar" })).toBeVisible();
+    await expect.element(page.getByRole("button", { name: /collapse sidebar$/ })).toBeVisible();
   });
 });

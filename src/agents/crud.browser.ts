@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi } from "vite-plus/test";
 import { Runtime } from "foldkit";
 import { Effect, Exit, Schema, Scope } from "effect";
 import { createStorePromise } from "@livestore/livestore";

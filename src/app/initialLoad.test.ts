@@ -1,7 +1,7 @@
 import { Option } from "effect";
 import { Scene } from "foldkit/test";
 import { fromString } from "foldkit/url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { init, subscriptions, update, view, type Model } from "../main";
 import { Message } from "../messages";

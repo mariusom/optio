@@ -1,6 +1,6 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { planSession } from "../../../machine/session/sessionMachine";
 import { Message } from "../../../messages";

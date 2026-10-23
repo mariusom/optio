@@ -1,6 +1,6 @@
 import { Effect, Option, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 import { getStore } from "../../../livestore/client";
 import type { FieldDef } from "../../../domain/fields";
@@ -34,6 +34,27 @@ const templateEditorModel = () =>
     search: Option.none(),
     hash: Option.some("#/templates/missing"),
   }).model;
+
+const openField = () => {
+  const existing = field({ id: "f1", name: "Activity", sortOrder: 0 });
+  const loaded = update(
+    templateEditorModel(),
+    Message.GotTemplateDetail({
+      template: { id: "t1", name: "Template", isDefault: false, fields: [existing] },
+    }),
+  ).model;
+  return update(loaded, Message.ClickedEditField({ id: existing.id })).model;
+};
+
+const openNewField = () => {
+  const loaded = update(
+    templateEditorModel(),
+    Message.GotTemplateDetail({
+      template: { id: "t1", name: "Template", isDefault: false, fields: [] },
+    }),
+  ).model;
+  return update(loaded, Message.ClickedAddField()).model;
+};
 
 describe("template detail regressions", () => {
   it("builds a new template locally and saves its questions in one command", () => {
@@ -277,17 +298,6 @@ describe("cancel existing field", () => {
     },
   );
 
-  const openField = () => {
-    const existing = field({ id: "f1", name: "Activity", sortOrder: 0 });
-    const loaded = update(
-      templateEditorModel(),
-      Message.GotTemplateDetail({
-        template: { id: "t1", name: "Template", isDefault: false, fields: [existing] },
-      }),
-    ).model;
-    return update(loaded, Message.ClickedEditField({ id: existing.id })).model;
-  };
-
   it("closes immediately without a prompt when unchanged", () => {
     const result = update(openField(), Message.CanceledAddField());
 
@@ -326,18 +336,8 @@ describe("cancel existing field", () => {
 });
 
 describe("cancel new field", () => {
-  const openField = () => {
-    const loaded = update(
-      templateEditorModel(),
-      Message.GotTemplateDetail({
-        template: { id: "t1", name: "Template", isDefault: false, fields: [] },
-      }),
-    ).model;
-    return update(loaded, Message.ClickedAddField()).model;
-  };
-
   it("closes immediately without a prompt when unchanged", () => {
-    const result = update(openField(), Message.CanceledAddField());
+    const result = update(openNewField(), Message.CanceledAddField());
 
     expect(result.model.editor).toMatchObject({
       showAddField: false,
@@ -354,7 +354,7 @@ describe("cancel new field", () => {
     ["options", { options: ["Option"] }],
     ["unadded option text", { newOptionText: "Option" }],
   ])("prompts after changing %s", (_attribute, changedDraft) => {
-    const opened = openField();
+    const opened = openNewField();
     const changed = {
       ...opened,
       editor:

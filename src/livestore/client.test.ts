@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi } from "vite-plus/test";
 
 it("defers SQLite loading and shares one store across concurrent and later callers", async () => {
   const loaded = vi.fn();

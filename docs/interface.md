@@ -123,10 +123,9 @@ authored component had no upstream change since the September 9 snapshot.
 | switch          | Forward description presence; retain settings toggles and local label layout.                                                                                                            |
 | textarea        | Forward description presence; retain editor sizing.                                                                                                                                      |
 
-The upstream `Dialog.boot` re-export is deferred: the compatible installed
-FoldKit lacks it. It also affects alert-dialog and sheet. The newer dependency
-group is blocked by LiveStore's Effect imports; see [development](development.md).
-The description APIs used here are already supported by the installed FoldKit.
+The app keeps its explicit native-dialog Mount lifecycle; adopting upstream
+`Dialog.boot` would require a separate review of focus restoration and consecutive
+sheets. The installed FoldKit supports the description APIs used here.
 
 The remaining catalog items were evaluated against existing use cases, rather
 than copied without consumers. “New” identifies additions since September 9.

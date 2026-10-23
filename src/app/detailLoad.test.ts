@@ -1,7 +1,7 @@
 import { Effect, Option, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import { fromString } from "foldkit/url";
-import { beforeEach, vi } from "vitest";
+import { beforeEach, vi } from "vite-plus/test";
 
 import { getStore, type AppStore } from "../livestore/client";
 import { init, subscriptions, update } from "../main";

@@ -2,7 +2,7 @@ import { AsyncData } from "foldkit";
 import { Scene } from "foldkit/test";
 import { Option } from "effect";
 import { fromString } from "foldkit/url";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { ShowSheet } from "../../../components/app/sheet";
 import { init, update, type Model } from "../../../main";

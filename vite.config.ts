@@ -203,7 +203,8 @@ export default defineConfig(({ command, mode }) => {
       exclude: ["@livestore/wa-sqlite"],
       // The shared-worker entry bypasses dependency scanning. Keep its RPC/schema
       // runtime in the same optimized graph instead of mixing raw and bundled Effect.
-      include: ["@livestore/adapter-web > @livestore/utils/effect"],
+      // Include the telemetry peer so optimized browser imports resolve it.
+      include: ["@livestore/adapter-web > @livestore/utils/effect", "@opentelemetry/api"],
       // Avoid a waterfall of small shared dependency chunks over remote dev connections.
       // Also used by tests, which keep Vite's unbundled module/mocking pipeline.
       rolldownOptions: {
@@ -213,7 +214,9 @@ export default defineConfig(({ command, mode }) => {
             // companions (UI, DevTools overlay) import it. Grouping them with
             // Effect would make the vendor chunk import raw FoldKit, which
             // imports Effect back from the still-initializing vendor chunk.
-            groups: [{ name: "vendor", test: /node_modules\/(?!.*@foldkit\/)/ }],
+            // OpenTelemetry must also stay out: Vitest externalizes its API,
+            // otherwise that external entry imports this initializing chunk.
+            groups: [{ name: "vendor", test: /node_modules\/(?!.*(?:@foldkit|@opentelemetry)\/)/ }],
           },
         },
       },

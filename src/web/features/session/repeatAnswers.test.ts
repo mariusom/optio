@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { Option } from "effect";
 import { fromString } from "foldkit/url";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 import { init, update, type Model } from "../../../main";
 import { Message } from "../../../messages";

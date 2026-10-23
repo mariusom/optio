@@ -1,16 +1,22 @@
 packages:
   - "."
 
-# Worker RPC protocols must match FoldKit's Effect release exactly.
+# Keep one Effect patch version across app, worker and LiveStore RPC runtimes.
+# FoldKit's 4.0.0 pins are overridden together for LiveStore 0.5 compatibility.
 overrides:
-  effect: 4.0.0
-  "@effect/opentelemetry": 4.0.0
-  "@effect/platform-browser": 4.0.0
-  "@effect/platform-bun": 4.0.0
-  "@effect/platform-node": 4.0.0
-  "@effect/platform-node-shared": 4.0.0
-  # LiveStore pins 5.0.9; 5.1.16 fixes its three known nanoid advisories.
+  effect: 4.0.5
+  "@effect/vitest": 4.0.5
+  "@effect/opentelemetry": 4.0.5
+  "@effect/platform-browser": 4.0.5
+  "@effect/platform-bun": 4.0.5
+  "@effect/platform-node": 4.0.5
+  "@effect/platform-node-shared": 4.0.5
+  # LiveStore still pins vulnerable Nano ID 5.0.9.
   "@livestore/utils>nanoid": 5.1.16
+  # OpenTelemetry SDK 2.12 requires the API below 1.10.
+  "@opentelemetry/api": 1.9.1
+  vite@*: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vitest@*: "catalog:"
 
 allowBuilds:
   msgpackr-extract: false
@@ -23,3 +29,11 @@ onlyBuiltDependencies:
   - esbuild
   - rolldown
   - sqlite-wasm
+catalog:
+  vitest: 5.0.5
+  vite-plus: 1.3.0
+  "@vitest/browser-playwright": 5.0.5
+# Vite peers see the core alias package version, rather than its bundled Vite 8.
+peerDependencyRules:
+  allowedVersions:
+    vite: "1.3.0"

@@ -1,5 +1,5 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { page, userEvent } from "vitest/browser";
+import { afterEach, expect, it, vi } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 import { Runtime } from "foldkit";
 import { Effect } from "effect";
 import { createStorePromise } from "@livestore/livestore";

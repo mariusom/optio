@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { inertHtml, type Html, type HtmlBuilder } from "foldkit/html";
 import { input } from "./input";
 import { textarea } from "./textarea";

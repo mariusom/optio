@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it } from "vite-plus/test";
 import { createStorePromise } from "@livestore/livestore";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";
 
@@ -61,18 +61,20 @@ it("keeps the first finish time when a task is recorded twice", async () => {
   expect(store.query(queries.activeSession)?.completedCount).toBe(1);
 });
 
+const seed = (suffix: string) =>
+  events.templatesSeeded({
+    now: new Date(1000),
+    templates: ["Assembly line", "Ward round"].map((name, index) => ({
+      id: `${name}-${suffix}`,
+      name,
+      isDefault: index === 0,
+      fields: fields.map((field) => ({ ...field, id: `${name}-${suffix}-${field.id}` })),
+    })),
+  });
+
 it("seeds sample templates once with one default when two tabs seed an empty store", async () => {
   const store = await openStore();
-  const seed = (suffix: string) =>
-    events.templatesSeeded({
-      now: new Date(1000),
-      templates: ["Assembly line", "Ward round"].map((name, index) => ({
-        id: `${name}-${suffix}`,
-        name,
-        isDefault: index === 0,
-        fields: fields.map((field) => ({ ...field, id: `${name}-${suffix}-${field.id}` })),
-      })),
-    });
+
   store.commit(seed("a"), seed("b"));
   const templates = store.query(queries.templateSummaries);
   expect(templates.map((row) => row.id).toSorted()).toEqual(["Assembly line-a", "Ward round-a"]);

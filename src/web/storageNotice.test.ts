@@ -1,6 +1,6 @@
 import type { Html } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { describe, it } from "vitest";
+import { describe, it } from "vite-plus/test";
 
 import { Message } from "../messages";
 import { storageNotice } from "./storageNotice";
