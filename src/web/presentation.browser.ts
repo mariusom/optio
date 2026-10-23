@@ -218,7 +218,11 @@ describe("persistent presentation regressions", () => {
     await expect
       .element(page.getByRole("heading", { name: "Create a template with AI" }))
       .toBeVisible();
-    const guide = page.getByRole("link", { name: "Agent guide", includeHidden: true });
+    const guide = page.getByRole("link", {
+      name: "Agent guide",
+      includeHidden: true,
+      exact: false,
+    });
     await expect.element(guide).not.toBeVisible();
     document.querySelector("summary")!.focus();
     await userEvent.keyboard("{Enter}");

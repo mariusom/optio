@@ -201,7 +201,9 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   dependency, exempted from fallow until upstream fixes the runtime lookup.
   Use `vite-plus/test` and `vite-plus/test/browser` imports. The migration's
   asynchronous assertions were already awaited (including saved assertion
-  promises); polling assertions retain their existing timeouts. Vite+ 1.4.0 was
+  promises); polling assertions retain their existing timeouts. Browser locators
+  use explicit suffix patterns for task-count-prefixed sidebar buttons and an
+  explicit partial match for the guide link with its subtitle. Vite+ 1.4.0 was
   inside the release-age guard on October 23. Keep the guard without exemptions.
 - LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
   it from optimized browser modules. Exclude it from the shared vendor group to
