@@ -2,7 +2,7 @@ import { Effect, Option, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import type { Html, HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { beforeEach, vi } from "vitest";
+import { beforeEach, vi } from "vite-plus/test";
 
 import { ShowSheet } from "../../../components/app/sheet";
 import { getStore } from "../../../livestore/client";
@@ -114,6 +114,21 @@ const archiveSection = (taskRecordId: string, sectionName: string) => ({
   sectionType: "textInput",
   isRequired: 0,
   startedAt: null,
+});
+
+const answered = (taskId: number, durationMs: number, value: string) => ({
+  ...task(taskId, 0),
+  endedAt: durationMs,
+  sections: [
+    { sectionName: "Activity", value, sectionType: "radio", isRequired: false, startedAt: 0 },
+    {
+      sectionName: "Notes",
+      value: "x",
+      sectionType: "textInput",
+      isRequired: false,
+      startedAt: 0,
+    },
+  ],
 });
 
 describe("history detail regressions", () => {
@@ -263,20 +278,6 @@ describe("history detail regressions", () => {
   );
 
   it("breaks task time down by answer, after the summary", () => {
-    const answered = (taskId: number, durationMs: number, value: string) => ({
-      ...task(taskId, 0),
-      endedAt: durationMs,
-      sections: [
-        { sectionName: "Activity", value, sectionType: "radio", isRequired: false, startedAt: 0 },
-        {
-          sectionName: "Notes",
-          value: "x",
-          sectionType: "textInput",
-          isRequired: false,
-          startedAt: 0,
-        },
-      ],
-    });
     const rendered = text(
       render((h) =>
         sessionDetailPage(

@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { expect, it, vi } from "vite-plus/test";
 import { Effect } from "effect";
 import { createStorePromise } from "@livestore/livestore";
 import { makeInMemoryAdapter } from "@livestore/adapter-web";

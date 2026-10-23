@@ -13,12 +13,13 @@ export const primaryShortcut = "Control+Enter Meta+Enter";
 
 /**
  * Ctrl/⌘+Enter without other modifiers, not auto-repeated, not mid-IME
- * composition, and not while a sheet (a modal `<dialog>`) is open.
+ * composition (including browsers reporting only keyCode 229), and not while
+ * a sheet (a modal `<dialog>`) is open.
  */
 export const isPrimaryShortcut = (
   event: Pick<
     KeyboardEvent,
-    "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey" | "repeat" | "isComposing"
+    "key" | "ctrlKey" | "metaKey" | "shiftKey" | "altKey" | "repeat" | "isComposing" | "keyCode"
   >,
   dialogOpen: boolean,
 ): boolean =>
@@ -28,6 +29,7 @@ export const isPrimaryShortcut = (
   !event.altKey &&
   !event.repeat &&
   !event.isComposing &&
+  event.keyCode !== 229 &&
   !dialogOpen;
 
 /** Active only while the runner shows (see `runnerShortcuts` in subscriptions). */

@@ -27,6 +27,11 @@ export interface AgentApplication {
   ) => Effect.Effect<AgentResult, AgentConnectionError>;
 }
 
+const decodeModel = (reply: AgentPortReply) =>
+  Schema.decodeUnknownEffect(Model)(reply.state).pipe(
+    Effect.mapError(() => new AgentConnectionError({ message: "Invalid app state." })),
+  );
+
 /** Each request owns its reply subscription; Effect handles interruption and timeout cleanup. */
 export const connectAgentApplication = (
   ports: Runtime.PortHandles<typeof agentPorts>,
@@ -61,11 +66,6 @@ export const connectAgentApplication = (
         ),
     }),
   );
-
-  const decodeModel = (reply: AgentPortReply) =>
-    Schema.decodeUnknownEffect(Model)(reply.state).pipe(
-      Effect.mapError(() => new AgentConnectionError({ message: "Invalid app state." })),
-    );
 
   const request: AgentApplication["request"] = Effect.fn("agents.request")(function* (
     action: AgentAction | null,

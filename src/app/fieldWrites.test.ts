@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect, Fiber, Option, Stream } from "effect";
 import { TestClock } from "effect/testing";
 import { fromString } from "foldkit/url";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 import { init, subscriptions, update } from "../main";
 import type { Model } from "../main";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 import { Effect, Stream } from "effect";
 import { AsyncData } from "foldkit";
 

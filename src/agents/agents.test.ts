@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { Effect, Exit, Scope } from "effect";
 
 import type { AppStore } from "../livestore/client";

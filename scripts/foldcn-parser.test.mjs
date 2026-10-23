@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "vite-plus/test";
 import { declarationStrings } from "./foldcn-parser.mjs";
 
 test("extracts named class families without treating keys or dynamic layouts as classes", () => {

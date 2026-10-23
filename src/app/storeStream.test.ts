@@ -1,6 +1,6 @@
 import { Effect, Option, Stream } from "effect";
 import { expect, it } from "@effect/vitest";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 
 import { getStore, type AppStore } from "../livestore/client";
 import { subscriptions, update, init } from "../main";

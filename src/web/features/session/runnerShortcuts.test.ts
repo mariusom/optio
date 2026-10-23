@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { isPrimaryShortcut } from "./runnerShortcuts";
 
@@ -10,6 +10,7 @@ const press = (overrides: Partial<Parameters<typeof isPrimaryShortcut>[0]> = {})
   altKey: false,
   repeat: false,
   isComposing: false,
+  keyCode: 13,
   ...overrides,
 });
 
@@ -29,6 +30,11 @@ describe("runner primary shortcut", () => {
   it("ignores held keys, IME composition and open sheets", () => {
     expect(isPrimaryShortcut(press({ repeat: true }), false)).toBe(false);
     expect(isPrimaryShortcut(press({ isComposing: true }), false)).toBe(false);
+    // Some IMEs clear isComposing before the conversion-confirming keydown.
+    expect(isPrimaryShortcut(press({ keyCode: 229 }), false)).toBe(false);
+    expect(isPrimaryShortcut(press({ ctrlKey: false, metaKey: true, keyCode: 229 }), false)).toBe(
+      false,
+    );
     expect(isPrimaryShortcut(press(), true)).toBe(false);
   });
 });

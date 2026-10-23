@@ -1,7 +1,7 @@
 import { Effect, Option } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import * as Scene from "foldkit/scene";
-import { beforeEach, vi } from "vitest";
+import { beforeEach, vi } from "vite-plus/test";
 
 import { getStore, type AppStore } from "../livestore/client";
 import { init, update, type Model } from "../main";

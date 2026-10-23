@@ -178,31 +178,40 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- Keep Effect aligned with FoldKit's exact peer requirement (FoldKit 0.167.0,
-  its UI/DevTools packages and Vite plugin 0.27.0 require Effect 4.0.0).
-  Effect 4.0.0 promoted the `effect/unstable/*` modules to `effect/*` (for
-  example `effect/persistence/KeyValueStore`, `effect/ai`).
-- LiveStore is pinned to an exact main-branch snapshot
-  (`0.0.0-snapshot-3cb74e6…`, 2026-10-05): its newest release, 0.5.0-dev.0,
-  imports Effect rc.112 APIs that every later Effect release removes, while the
-  snapshots target Effect 4.0.0. Snapshots carry no semver guarantee; move to
-  the first LiveStore release that supports Effect 4.0.0, and on any LiveStore
-  change rerun `pnpm test:e2e` and `scripts/test-dev-store.mjs`, which prove
-  that writes reach OPFS and survive reloads. (Patching 0.5.0-dev.0 instead
-  loaded and type-checked but silently never persisted: `syncStatus()` kept
-  every event pending.) No LiveStore patches are needed.
-- `@effect/vitest` 4.0.0 declares Vitest 5, but Vite+ 0.3.3 bundles Vitest
-  4.1.11; the test suites pass with it. Keep Vitest and its browser provider
-  aligned with the version bundled by Vite+. Vite+ 1.1.0 bundles Vitest 5.0.3;
-  that upgrade also needs its documented `vite` alias to
-  `@voidzero-dev/vite-plus-core` and exact `vitest` override to avoid duplicate
-  test-runner state.
-- The Nano ID override (`@livestore/utils>nanoid`) removes known advisories in
-  LiveStore's pinned version. Reassess it when updating LiveStore. Keep the
-  24-hour release-age guard; do not bypass it for routine dependency updates.
-- pnpm 12.10.1 is pinned. Use the pinned version for its two-document lockfile.
-  Verify external scanners and
-  Dependabot parse the app graph, not only the package-manager document.
+- FoldKit, UI and DevTools are aligned at 0.169.0; the Vite plugin is 0.28.0.
+  This release fixes controlled inputs losing characters during queued updates,
+  IME Enter handling and portal teardown. The app's custom Record/Save shortcut
+  also ignores `keyCode` 229 when an IME clears `isComposing` too early.
+- LiveStore packages now use stable 0.5.0 instead of the October 5 snapshot.
+  It fixes interrupted state rebuild recovery, restores snapshot heads and drains
+  admitted events on orderly shutdown. Its first open rematerializes derived
+  state from the existing event log; retain `optio-v3` and the event schemas.
+  Hard crashes can still lose unacknowledged writes. On any LiveStore change,
+  run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
+- The Effect cohort is pinned to 4.0.5 across the app and workers. FoldKit's
+  published peers still pin 4.0.0; the coordinated overrides use the later stable
+  patch eligible under the release-age guard (LiveStore needs at least 4.0.3).
+  Verify runtime, browser and persistence tests
+  before changing them. Effect 4.0.6 was inside the 24-hour release-age guard on
+  October 23; its companion packages must not advance independently.
+- Vite+ 1.3.0 bundles Vitest 5.0.5. The workspace catalog aligns the browser
+  provider and runner, and overrides `vite` to the matching Vite+ core alias.
+  Bundled dev also needs direct `rolldown` 1.2.14: this Vite+ release resolves
+  its matching browser HMR runtime through that package name. It is a tooling
+  dependency, exempted from fallow until upstream fixes the runtime lookup.
+  Use `vite-plus/test` and `vite-plus/test/browser` imports. The migration's
+  asynchronous assertions were already awaited (including saved assertion
+  promises); polling assertions retain their existing timeouts. Vite+ 1.4.0 was
+  inside the release-age guard on October 23. Keep the guard without exemptions.
+- LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
+  it from optimized browser modules. Exclude it from the shared vendor group to
+  avoid a circular import between its external entry and that group. Version
+  1.9.1 satisfies the installed SDK's `<1.10` peer range.
+- The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
+  LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
+- pnpm 12.15.0 is pinned. Use it for the two-document lockfile and verify a
+  frozen install. External scanners must read the app graph, not only the
+  package-manager document.
 - Dependabot proposes grouped lockfile and GitHub Actions updates, waiting a
   day after each release to match pnpm's release-age guard. Exact manifest pins
   and workspace overrides need deliberate coordinated updates.
@@ -334,7 +343,8 @@ embedded assets manually. The check cannot detect copied source, so update
 provenance when refreshing registry components or adding adapted code and
 assets. `licenses/copied-source-and-runtime-notices.txt` is included in full in
 the generated notices: keep it free of version pins and generated data, and
-record every patched dependency there. Missing package license files require a
+record every patched dependency there. The reviewed fallbacks also cover the exact Vite+ and Yuku native package
+versions on their advertised platforms, plus sirv and @polka/url. Missing package license files require a
 version-scoped, reviewed fallback in `licenses/reviewed-fallbacks` with
 provenance in the collector. Do not extend a fallback to a new version without
 checking upstream. Do not edit generated notices by hand. Keep the LiveStore

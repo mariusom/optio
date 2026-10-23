@@ -1,5 +1,5 @@
-import { afterEach, expect, it } from "vitest";
-import { page, userEvent } from "vitest/browser";
+import { afterEach, expect, it } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 import { Option, Schema } from "effect";
 import { Runtime } from "foldkit";
 import type { Html, HtmlBuilder } from "foldkit/html";

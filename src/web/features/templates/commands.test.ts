@@ -1,6 +1,6 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "@effect/vitest";
-import { afterEach, beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vite-plus/test";
 
 import { getStore, type AppStore } from "../../../livestore/client";
 import { events } from "../../../livestore/schema";

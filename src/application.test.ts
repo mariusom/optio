@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { Option, Schema } from "effect";
 import { fromString } from "foldkit/url";
 import { applicationConfig } from "./application.ts";

@@ -1,5 +1,5 @@
-import { afterEach, expect, it, vi } from "vitest";
-import { page, userEvent } from "vitest/browser";
+import { afterEach, expect, it, vi } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 import { Runtime } from "foldkit";
 import { Effect } from "effect";
 import { createStorePromise } from "@livestore/livestore";
@@ -124,11 +124,11 @@ it.each([390, 1184])(
     await record.click();
 
     const status = page.getByRole("status").filter({ hasText: "recorded" });
-    await expect.element(status).toHaveTextContent("Task 1 recorded");
+    await expect.element(status).toMatchTextContent("Task 1 recorded");
     expect(status.element().getAttribute("aria-live")).toBe("polite");
     await expect.poll(() => vibrate.mock.calls).toEqual([[30]]);
     const toggle = page.getByRole("button", { name: /^1 task recorded/ });
-    await expect.element(toggle).toHaveTextContent("1 task");
+    await expect.element(toggle).toMatchTextContent("1 task");
     const count = toggle.element().querySelector('[data-slot="task-count"]')!;
     expect(count.className).toContain("motion-safe:animate-in");
 
@@ -140,7 +140,7 @@ it.each([390, 1184])(
     await repeat.click();
     await expect
       .element(page.getByRole("status").filter({ hasText: "Filled" }))
-      .toHaveTextContent("Filled 2 answers from task 1");
+      .toMatchTextContent("Filled 2 answers from task 1");
     // The confirmation replaced the recording one, and the counter settled.
     expect(count.isConnected && count.className.includes("animate-in")).toBe(false);
 

@@ -1,6 +1,6 @@
 import { inertHtml, type Html, type HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 import { ShowSheet } from "../components/app/sheet";
 import { Message } from "../messages";

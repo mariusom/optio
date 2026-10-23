@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cdp, page, userEvent } from "vitest/browser";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { cdp, page, userEvent } from "vite-plus/test/browser";
 import { Runtime } from "foldkit";
 import { Option } from "effect";
 import { fromString } from "foldkit/url";
@@ -412,11 +412,6 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
     expect(end.right).toBeLessThanOrEqual(width);
   });
 
-  const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
-    const task = runnerFixture(value).tasks[0]!;
-    return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
-  };
-
   it("disables Record for a completed task that is not being edited", async () => {
     await mount(width, "Observe", taskOverride("Observe", 1_000, false));
     await expect.element(page.getByRole("button", { name: "Record task" })).toBeDisabled();
@@ -432,6 +427,11 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
     await expect.element(page.getByRole("button", { name: /Save/ })).toBeDisabled();
   });
 });
+
+const taskOverride = (value: string, endDate: number, isBeingEdited: boolean) => {
+  const task = runnerFixture(value).tasks[0]!;
+  return { tasks: [{ ...task, endDate, isBeingEdited }] } satisfies Partial<RunnerState>;
+};
 
 describe.each([820, 1440])("task sidebar at %ipx", (width) => {
   it("renders tasks newest-first regardless of store order", async () => {

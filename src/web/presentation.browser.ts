@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { page, userEvent } from "vitest/browser";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { page, userEvent } from "vite-plus/test/browser";
 import { Effect, Option } from "effect";
 import { AsyncData, Runtime } from "foldkit";
 import { fromString } from "foldkit/url";
@@ -171,7 +171,9 @@ describe("persistent presentation regressions", () => {
     expect(write).toHaveBeenCalledExactlyOnceWith(
       "Help me create a template for Optio: https://mariusom.github.io/optio/\nRead its guide: https://mariusom.github.io/optio/agent-guide.md\n\nI want to study [describe the work]. Suggest questions and choices, then review the template with me. If you have an authorized WebMCP connection to my Optio tab, create it after I approve; otherwise, give me the questions to add manually.",
     );
-    await expect.element(page.getByRole("status")).toHaveTextContent("Prompt copied to clipboard.");
+    await expect
+      .element(page.getByRole("status"))
+      .toMatchTextContent("Prompt copied to clipboard.");
     await expect
       .element(page.getByRole("button", { name: "Copy prompt", exact: true }))
       .toBeEnabled();
@@ -185,7 +187,7 @@ describe("persistent presentation regressions", () => {
     await page.getByRole("button", { name: "Copy prompt", exact: true }).click();
     await expect
       .element(page.getByRole("status"))
-      .toHaveTextContent(
+      .toMatchTextContent(
         "Couldn’t copy. Select the prompt above and copy it manually, or try again.",
       );
     await expect
