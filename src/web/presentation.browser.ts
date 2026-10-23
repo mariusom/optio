@@ -1087,7 +1087,8 @@ describe("persistent presentation regressions", () => {
     expect(document.documentElement.style.overflow).toBe("hidden");
     // Choosing an action clears the page state; unmounting the sheet is its close.
     await page.getByRole("button", { name: "Duplicate" }).click();
-    expect(document.querySelector("dialog")).toBeNull();
+    // A click dispatches the message; FoldKit commits the render on its next frame.
+    await expect.poll(() => document.querySelector("dialog")).toBeNull();
     await expect.poll(() => document.documentElement.style.overflow).toBe("");
     await expect.element(trigger).toHaveFocus();
   });
