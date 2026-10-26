@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema } from "effect";
+import { Array, DateTime, Effect, Schema, String } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -18,14 +18,14 @@ export const SaveTemplate = Command.define("SaveTemplate", {
   execute: ({ id, name, isDefault, fields, isNew }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
-        const now = new Date(yield* Clock.currentTimeMillis);
-        const trimmedName = name.trim();
-        const dense = fields.map((field, index) => ({
+        const now = yield* DateTime.nowAsDate;
+        const trimmedName = String.trim(name);
+        const dense = Array.map(fields, (field, index) => ({
           ...field,
-          name: field.name.trim(),
+          name: String.trim(field.name),
           sortOrder: index,
         }));
-        if (isNew) {
+        if (isNew === true) {
           const first = store.query(tables.templates.select()).length === 0;
           // Creation does not clear other defaults; TemplateDefaultSet does.
           store.commit(

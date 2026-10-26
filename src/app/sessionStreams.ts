@@ -1,4 +1,4 @@
-import type { Stream } from "effect";
+import { Array, Option, pipe, type Stream } from "effect";
 import { storeStream } from "./managedStream";
 import { Message } from "../messages";
 import type { SessionTaskFieldRow, SessionTaskRow } from "../livestore/queries";
@@ -29,7 +29,7 @@ const toRunnerSection = (row: SessionTaskFieldRow) => ({
 
 /** Groups fields by task; `fields` arrive ordered by sortOrder. */
 const groupByTask = (fields: ReadonlyArray<SessionTaskFieldRow>) => {
-  const byTask = new Map<string, Array<SessionTaskFieldRow>>();
+  const byTask = new Map<string, globalThis.Array<SessionTaskFieldRow>>();
   for (const field of fields) {
     const group = byTask.get(field.taskId);
     if (group === undefined) byTask.set(field.taskId, [field]);
@@ -42,22 +42,25 @@ const groupByTask = (fields: ReadonlyArray<SessionTaskFieldRow>) => {
 const currentTaskIdOf = (
   tasks: ReadonlyArray<{ id: string; endDate: number | null; isBeingEdited: boolean }>,
 ): string | null =>
-  tasks.find((task) => task.isBeingEdited)?.id ??
-  tasks.findLast((task) => task.endDate === null)?.id ??
-  tasks.at(-1)?.id ??
-  null;
+  pipe(
+    Array.findFirst(tasks, (task) => task.isBeingEdited),
+    Option.orElse(() => Array.findLast(tasks, (task) => task.endDate === null)),
+    Option.orElse(() => Array.last(tasks)),
+    Option.map((task) => task.id),
+    Option.getOrNull,
+  );
 
 const toRunnerTasks = (
   taskRows: ReadonlyArray<SessionTaskRow>,
   fields: ReadonlyArray<SessionTaskFieldRow>,
 ) => {
   const fieldsByTask = groupByTask(fields);
-  return taskRows.map((task) => ({
+  return Array.map(taskRows, (task) => ({
     id: task.id,
     orderIndex: task.orderIndex,
     endDate: task.endDate?.getTime() ?? null,
     isBeingEdited: task.isBeingEdited === 1,
-    sections: (fieldsByTask.get(task.id) ?? []).map(toRunnerSection),
+    sections: Array.map(fieldsByTask.get(task.id) ?? [], toRunnerSection),
   }));
 };
 
@@ -79,7 +82,7 @@ export const runnerStream = (sessionId: string): Stream.Stream<Message> =>
             startedAt: session.startedAt.getTime(),
             tasks,
             currentTaskId: currentTaskIdOf(tasks),
-            completedCount: tasks.filter((task) => task.endDate !== null).length,
+            completedCount: Array.filter(tasks, (task) => task.endDate !== null).length,
           },
         }),
       );

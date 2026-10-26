@@ -1,3 +1,5 @@
+import type { AppServices } from "./services";
+import { Array, Option, String } from "effect";
 import {
   AddSampleTemplates,
   CreateTemplate,
@@ -14,7 +16,7 @@ import { Message, type MessageHandlers } from "../messages";
 import { AsyncData } from "foldkit";
 import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type TemplateHandlers = Pick<
@@ -81,7 +83,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     let nextSelected = model.selectedTemplateId;
     if (templates.length === 0) {
       nextSelected = null;
-    } else if (nextSelected === null || !templates.some((t) => t.id === nextSelected)) {
+    } else if (nextSelected === null || !Array.some(templates, (t) => t.id === nextSelected)) {
       const prioritized = effectiveTemplateId(templates, nextSelected);
       nextSelected = prioritized;
     }
@@ -121,9 +123,10 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
   },
   ChangedNewName: ({ text }) => ({ model: { ...model, newName: text } }),
   ConfirmedCreateTemplate: () => {
-    if (model.newName.trim() === "") return { model };
+    const name = String.trim(model.newName);
+    if (name === "") return { model };
     const [id, next] = takeId(model);
-    return { model: next, commands: [CreateTemplate({ id, name: model.newName.trim() })] };
+    return { model: next, commands: [CreateTemplate({ id, name })] };
   },
   TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "", editor: null } }),
   CanceledCreateTemplate: () => ({
@@ -138,12 +141,15 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
   }),
   RequestedDeleteTemplate: ({ id }) => {
-    const template = templatesOf(model).find((candidate) => candidate.id === id);
+    const template = Array.findFirst(templatesOf(model), (candidate) => candidate.id === id);
     return {
       model: {
         ...model,
         templateActionsFor: null,
-        pendingDelete: template ? { id, name: template.name } : null,
+        pendingDelete: Option.match(template, {
+          onNone: () => null,
+          onSome: ({ name }) => ({ id, name }),
+        }),
       },
     };
   },
@@ -172,8 +178,9 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
   ...reportHandlers(model),
   ClickedStartTemplateSession: ({ id }) => {
     const closed = { ...model, templateActionsFor: null };
-    const template = templatesOf(model).find((candidate) => candidate.id === id);
-    if (template === undefined) return { model: closed };
+    const found = Array.findFirst(templatesOf(model), (candidate) => candidate.id === id);
+    if (Option.isNone(found)) return { model: closed };
+    const template = found.value;
     // One live session at a time: like the Session tab, offer to resume it instead.
     const active = activeSessionOf(model);
     if (active !== null) {

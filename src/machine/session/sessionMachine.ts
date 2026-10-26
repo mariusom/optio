@@ -1,6 +1,6 @@
 // Plans transitions without storage or DOM effects; app/commands.ts executes emissions.
 
-import { Match, Schema } from "effect";
+import { Array, Match, Option, Order, Schema, pipe } from "effect";
 
 import {
   RunnerDataSchema,
@@ -84,12 +84,16 @@ export type SessionPlanInput = Readonly<{
 }>;
 
 /** Newest unfinished task id — the target after finishing/cancelling an edit. */
-const fallbackTaskId = (data: RunnerData): string | null => {
-  const unfinished = data.tasks
-    .filter((t) => t.endDate === null)
-    .toSorted((a, b) => b.orderIndex - a.orderIndex);
-  return unfinished[0]?.id ?? null;
-};
+const fallbackTaskId = (data: RunnerData): string | null =>
+  pipe(
+    Array.sort(
+      Array.filter(data.tasks, (t) => t.endDate === null),
+      Order.flip(Order.mapInput(Order.Number, (t: RunnerTask) => t.orderIndex)),
+    ),
+    Array.head,
+    Option.map((t) => t.id),
+    Option.getOrNull,
+  );
 
 /** `changed: false` preserves focus; `changed: true, next: null` clears it. */
 export const nextFocusForField = (
@@ -100,9 +104,9 @@ export const nextFocusForField = (
   let targetSection: RunnerSection | null = null;
   let targetTask: RunnerTask | null = null;
   for (const t of data.tasks) {
-    const s = t.sections.find((sec) => sec.id === taskFieldId);
-    if (s !== undefined) {
-      targetSection = s;
+    const s = Array.findFirst(t.sections, (sec) => sec.id === taskFieldId);
+    if (Option.isSome(s)) {
+      targetSection = s.value;
       targetTask = t;
       break;
     }
@@ -112,8 +116,11 @@ export const nextFocusForField = (
   const updated: RunnerSection = { ...targetSection, value };
   if (!isSectionDone(updated)) return { changed: false, next: null };
   const base = (currentTask(data) ?? targetTask).sections;
-  const sorted = base.toSorted((a, b) => a.sortOrder - b.sortOrder);
-  const updatedSorted = sorted.map((s) => (s.id === taskFieldId ? { ...s, value } : s));
+  const sorted = Array.sort(
+    base,
+    Order.mapInput(Order.Number, (s: RunnerSection) => s.sortOrder),
+  );
+  const updatedSorted = Array.map(sorted, (s) => (s.id === taskFieldId ? { ...s, value } : s));
   return { changed: true, next: findNextUnfulfilledSectionId(updatedSorted, taskFieldId) };
 };
 
@@ -160,11 +167,11 @@ const withSectionValue = (
   value: string,
 ): RunnerState => ({
   ...runner,
-  tasks: runner.tasks.map((task) =>
-    task.sections.some((section) => section.id === taskFieldId)
+  tasks: Array.map(runner.tasks, (task) =>
+    Array.some(task.sections, (section) => section.id === taskFieldId)
       ? {
           ...task,
-          sections: task.sections.map((section) =>
+          sections: Array.map(task.sections, (section) =>
             section.id === taskFieldId
               ? { ...section, value, startDate: section.startDate ?? runner.now }
               : section,
@@ -181,11 +188,13 @@ const withSectionValue = (
  */
 const takeWrites = (runner: RunnerState): SessionPlan => {
   const { pending, revision } = runner.fieldWrites;
-  const writes = pending
-    .filter((write) => !write.committed)
-    .map(({ taskFieldId, value }) => ({ taskFieldId, value }));
+  const writes = pipe(
+    pending,
+    Array.filter((write) => !write.committed),
+    Array.map(({ taskFieldId, value }) => ({ taskFieldId, value })),
+  );
   if (writes.length === 0) return stay(runner);
-  const dispatched = pending.map((write) => ({ ...write, committed: true }));
+  const dispatched = Array.map(pending, (write) => ({ ...write, committed: true }));
   return next(
     { ...runner, fieldWrites: { revision, pending: dispatched } },
     { _tag: "CommitFieldValues", writes },
@@ -205,13 +214,13 @@ const syncPending = (
   const local = new Map<string, RunnerSection>();
   for (const task of runner.tasks)
     for (const section of task.sections) local.set(section.id, section);
-  const byId = new Map(pending.map((write) => [write.taskFieldId, write]));
+  const byId = new Map(Array.map(pending, (write) => [write.taskFieldId, write] as const));
   // Stored value per field whose task still accepts answers; the store rejects
   // writes to other tasks, so their overlay is dropped.
   const stored = new Map<string, string>();
-  const tasks = data.tasks.map((task) => ({
+  const tasks = Array.map(data.tasks, (task) => ({
     ...task,
-    sections: task.sections.map((section) => {
+    sections: Array.map(task.sections, (section) => {
       if (isTaskEditable(task)) stored.set(section.id, section.value);
       const write = byId.get(section.id);
       if (write === undefined) return section;
@@ -223,7 +232,8 @@ const syncPending = (
     }),
   }));
   // A dispatched write the store now reflects needs no further overlay.
-  const remaining = pending.filter(
+  const remaining = Array.filter(
+    pending,
     (write) =>
       stored.has(write.taskFieldId) &&
       !(write.committed && stored.get(write.taskFieldId) === write.value),
@@ -260,8 +270,14 @@ const taskAnnouncement = (
   taskId: string,
   kind: "recorded" | "saved",
 ): RunnerAnnouncement => {
-  const task = runner.tasks.find((t) => t.id === taskId);
-  return { kind, text: task ? `Task ${task.orderIndex} ${kind}` : `Task ${kind}` };
+  const task = Array.findFirst(runner.tasks, (t) => t.id === taskId);
+  return {
+    kind,
+    text: Option.match(task, {
+      onNone: () => `Task ${kind}`,
+      onSome: ({ orderIndex }) => `Task ${orderIndex} ${kind}`,
+    }),
+  };
 };
 
 /**
@@ -273,10 +289,9 @@ const repeatAnswers = (runner: RunnerState): SessionPlan => {
   const plan = repeatPlan(runner);
   if (plan === null || plan.source === null || plan.writes.length === 0) return stay(runner);
   const { writes, source } = plan;
-  const ids = new Set(writes.map((write) => write.taskFieldId));
-  const filled = writes.reduce(
-    (state, { taskFieldId, value }) => withSectionValue(state, taskFieldId, value),
-    runner,
+  const ids = new Set(Array.map(writes, (write) => write.taskFieldId));
+  const filled = Array.reduce(writes, runner, (state, { taskFieldId, value }) =>
+    withSectionValue(state, taskFieldId, value),
   );
   const count = writes.length;
   return next(
@@ -285,8 +300,8 @@ const repeatAnswers = (runner: RunnerState): SessionPlan => {
       fieldWrites: {
         revision: runner.fieldWrites.revision + 1,
         pending: [
-          ...runner.fieldWrites.pending.filter((write) => !ids.has(write.taskFieldId)),
-          ...writes.map((write) => ({ ...write, committed: true })),
+          ...Array.filter(runner.fieldWrites.pending, (write) => !ids.has(write.taskFieldId)),
+          ...Array.map(writes, (write) => ({ ...write, committed: true })),
         ],
       },
       announcement: {
@@ -294,7 +309,7 @@ const repeatAnswers = (runner: RunnerState): SessionPlan => {
         text: `Filled ${count} answer${count === 1 ? "" : "s"} from task ${source.orderIndex}`,
       },
     },
-    { _tag: "CommitFieldValues", writes: writes.map((write) => ({ ...write })) },
+    { _tag: "CommitFieldValues", writes: Array.map(writes, (write) => ({ ...write })) },
   );
 };
 
@@ -377,7 +392,7 @@ const collecting: PhaseHandlers = {
       fieldWrites: {
         revision: revision + 1,
         pending: [
-          ...pending.filter((write) => write.taskFieldId !== taskFieldId),
+          ...Array.filter(pending, (write) => write.taskFieldId !== taskFieldId),
           { taskFieldId, value, committed: dispatchNow },
         ],
       },
@@ -401,9 +416,9 @@ const collecting: PhaseHandlers = {
     );
   },
   TaskSelected: (runner, { taskId }) => {
-    if (!runner.tasks.some((t) => t.id === taskId)) return stay(runner);
-    const editing = runner.tasks.find((t) => t.isBeingEdited);
-    if (editing && editing.id !== taskId && !isTaskDone(editing)) {
+    if (!Array.some(runner.tasks, (t) => t.id === taskId)) return stay(runner);
+    const editing = Array.findFirst(runner.tasks, (t) => t.isBeingEdited);
+    if (Option.isSome(editing) && editing.value.id !== taskId && !isTaskDone(editing.value)) {
       return next({
         ...runner,
         lastError:
@@ -416,14 +431,15 @@ const collecting: PhaseHandlers = {
     );
   },
   EditCancelled: (runner) => {
-    const editing = runner.tasks.find((t) => t.isBeingEdited);
-    return editing === undefined
+    const editing = Array.findFirst(runner.tasks, (t) => t.isBeingEdited);
+    return Option.isNone(editing)
       ? stay(runner)
-      : leaveEdit(runner, { _tag: "CommitCancelEdit", taskId: editing.id });
+      : leaveEdit(runner, { _tag: "CommitCancelEdit", taskId: editing.value.id });
   },
   EditSaved: (runner) => {
-    const editing = runner.tasks.find((t) => t.isBeingEdited);
-    if (editing === undefined) return stay(runner);
+    const found = Array.findFirst(runner.tasks, (t) => t.isBeingEdited);
+    if (Option.isNone(found)) return stay(runner);
+    const editing = found.value;
     if (!isTaskDone(editing)) {
       return next({ ...runner, lastError: "Answer the required questions before saving." });
     }

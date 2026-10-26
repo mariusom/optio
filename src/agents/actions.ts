@@ -1,4 +1,4 @@
-import { Match, Schema } from "effect";
+import { Array, Match, Option, Schema, String } from "effect";
 import { Port } from "foldkit";
 
 import { Message } from "../messages";
@@ -89,11 +89,11 @@ const routeError = (model: Model, route: Route): string | null =>
           ? null
           : "Only the active session can be opened in the runner.",
       TemplateEditor: ({ templateId }) =>
-        templatesOf(model).some((template) => template.id === templateId)
+        Array.some(templatesOf(model), (template) => template.id === templateId)
           ? null
           : "Template not found.",
       SessionDetail: ({ sessionId }) =>
-        historyOf(model).some((session) => session.id === sessionId)
+        Array.some(historyOf(model), (session) => session.id === sessionId)
           ? null
           : "Archived session not found.",
     },
@@ -109,13 +109,17 @@ const targetError = (model: Model, action: AgentAction): string | null =>
       "RequestedDeleteTemplate",
       "SelectedTemplate",
       ({ id }) =>
-        templatesOf(model).some((template) => template.id === id) ? null : "Template not found.",
+        Array.some(templatesOf(model), (template) => template.id === id)
+          ? null
+          : "Template not found.",
     ),
     Match.tag("RequestedHistoryDelete", "ClickedHistoryRow", ({ id }) =>
-      historyOf(model).some((session) => session.id === id) ? null : "Archived session not found.",
+      Array.some(historyOf(model), (session) => session.id === id)
+        ? null
+        : "Archived session not found.",
     ),
     Match.tag("ClickedExportHistoryCsv", ({ sessionId }) =>
-      historyOf(model).some((session) => session.id === sessionId)
+      Array.some(historyOf(model), (session) => session.id === sessionId)
         ? null
         : "Archived session not found.",
     ),
@@ -127,10 +131,14 @@ const checkboxValueError = (
   value: string,
 ) => {
   if (value === "") return null;
-  const selected = value.split(",");
+  const selected = String.split(value, ",");
   if (
-    field.options.filter((option) => selected.includes(option)).join(",") !== value ||
-    (selected.length > 1 && selected.some((option) => field.exclusiveOptions.includes(option)))
+    Array.join(
+      Array.filter(field.options, (option) => Array.contains(selected, option)),
+      ",",
+    ) !== value ||
+    (selected.length > 1 &&
+      Array.some(selected, (option) => Array.contains(field.exclusiveOptions, option)))
   )
     return "Use valid checkbox options in template order, respecting exclusive options.";
   return null;
@@ -138,10 +146,14 @@ const checkboxValueError = (
 
 /** Agents may only change the selected task, and only while it accepts changes. */
 const selectedEditableSection = (model: Model, taskFieldId: string) => {
-  const task = model.runner?.tasks.find(
-    (candidate) => candidate.id === model.runner?.currentTaskId,
+  const runner = model.runner;
+  if (runner === null) return null;
+  return Array.findFirst(runner.tasks, (candidate) => candidate.id === runner.currentTaskId).pipe(
+    Option.match({
+      onNone: () => null,
+      onSome: (task) => editableSection({ tasks: [task] }, taskFieldId),
+    }),
   );
-  return task === undefined ? null : editableSection({ tasks: [task] }, taskFieldId);
 };
 
 const fieldValueError = (
@@ -197,7 +209,7 @@ export const agentPorts = {
       Schema.Struct({
         requestId: Schema.String,
         action: Schema.Unknown,
-        confirmationVersion: Schema.optionalKey(Schema.Number),
+        confirmationVersion: Schema.optionalKey(Schema.Finite),
       }),
     ),
   },
@@ -233,7 +245,7 @@ const confirmedActions = [
     label: "discard the live session and its recordings",
     target: (model: Model) => {
       const active = activeSessionOf(model);
-      return model.pendingDiscardSession && active
+      return model.pendingDiscardSession && active !== null
         ? { id: active.id, name: active.sessionName }
         : null;
     },
@@ -243,7 +255,7 @@ const confirmedActions = [
     tag: "ConfirmedEndSession",
     label: "end recording the live session",
     target: (model: Model) =>
-      model.runner?.showEndConfirm
+      model.runner?.showEndConfirm === true
         ? { id: model.runner.sessionId, name: model.runner.sessionName }
         : null,
     invalidatedBy: [],
@@ -252,7 +264,7 @@ const confirmedActions = [
     tag: "ConfirmedDiscard",
     label: "discard unsaved template changes",
     target: (model: Model) =>
-      model.editor?.pendingDiscard
+      model.editor?.pendingDiscard === true
         ? { id: model.editor.id, name: model.editor.name, draft: model.editor }
         : null,
     invalidatedBy: [],
@@ -265,25 +277,29 @@ const confirmedActions = [
 }>;
 
 export const requiresConfirmation = (action: AgentAction) =>
-  confirmedActions.some(({ tag }) => tag === action._tag);
+  Array.some(confirmedActions, ({ tag }) => tag === action._tag);
 
 /** Shared by the prompt and the atomic update-loop consent check. */
-export const confirmationTarget = (model: Model, action: AgentAction) => {
-  const metadata = confirmedActions.find(({ tag }) => tag === action._tag);
-  return metadata?.target(model) ?? null;
-};
+export const confirmationTarget = (model: Model, action: AgentAction) =>
+  Array.findFirst(confirmedActions, ({ tag }) => tag === action._tag).pipe(
+    Option.match({ onNone: () => null, onSome: (metadata) => metadata.target(model) }),
+  );
 
 /** Plain-language description of a confirmed action for the browser prompt. */
 export const confirmationLabel = (action: AgentAction) =>
-  confirmedActions.find(({ tag }) => tag === action._tag)?.label ?? action._tag;
+  Array.findFirst(confirmedActions, ({ tag }) => tag === action._tag).pipe(
+    Option.match({ onNone: () => action._tag, onSome: ({ label }) => label }),
+  );
 
 const sameTarget = (
   a: (ConfirmationTarget & { readonly draft?: unknown }) | null | false,
   b: (ConfirmationTarget & { readonly draft?: unknown }) | null | false,
 ) =>
   a === b ||
-  (!!a &&
-    !!b &&
+  (a !== null &&
+    a !== false &&
+    b !== null &&
+    b !== false &&
     a.id === b.id &&
     a.name === b.name &&
     // Models are immutable, so an unchanged draft keeps its reference.
@@ -291,11 +307,13 @@ const sameTarget = (
 
 /** Whether any destructive confirmation target differs between two models. */
 export const confirmationChanged = (before: Model, after: Model) =>
-  confirmedActions.some(({ target }) => !sameTarget(target(before), target(after)));
+  Array.some(confirmedActions, ({ target }) => !sameTarget(target(before), target(after)));
 
 /** Events that consume approval even when their resulting target snapshot is unchanged. */
 export const invalidatesAgentConfirmation = (action: { readonly _tag: string }) =>
-  confirmedActions.some(
+  Array.some(
+    confirmedActions,
     ({ tag, invalidatedBy }) =>
-      tag === action._tag || invalidatedBy.some((invalidator) => invalidator === action._tag),
+      tag === action._tag ||
+      Array.some(invalidatedBy, (invalidator: string) => invalidator === action._tag),
   );

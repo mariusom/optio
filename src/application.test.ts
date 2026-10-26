@@ -64,7 +64,7 @@ describe("application wiring", () => {
   });
 
   it("starts from decoded Flags carrying saved preferences, the boot time and ID seed", () => {
-    const flags = Schema.decodeUnknownSync(applicationConfig.Flags)({
+    const flags = Schema.decodeSync(applicationConfig.Flags)({
       theme: "dark",
       style: "lyra",
       font: "serif",

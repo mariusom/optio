@@ -1,7 +1,7 @@
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
 
 import { cn } from "@/lib/utils";
-import { Option } from "effect";
+import { Array, Option } from "effect";
 import { badge } from "@/components/ui/badge";
 import { button, type ButtonConfig, type ButtonLabel } from "@/components/ui/button";
 import { cardClass } from "@/components/ui/card";
@@ -34,7 +34,7 @@ export const rowAction = <M>(
 
 /** Content column width; `"xl"` widens it only on wide desktops. */
 export const contentWidth = (wide: boolean | "xl" | undefined): string =>
-  wide === "xl" ? "max-w-3xl xl:max-w-5xl" : wide ? "max-w-5xl" : "max-w-3xl";
+  wide === "xl" ? "max-w-3xl xl:max-w-5xl" : wide === true ? "max-w-5xl" : "max-w-3xl";
 
 /** Content column: centered, readable width, bottom padding clears the tab bar. */
 export const page = <M>(
@@ -164,7 +164,7 @@ const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>
         h.span(
           [
             h.Class(
-              config.wrap
+              config.wrap === true
                 ? "basis-full whitespace-pre-wrap break-words text-muted-foreground"
                 : "shrink-0 max-w-[55%] truncate text-right text-muted-foreground tabular",
             ),
@@ -187,10 +187,10 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
     itemSizes.default,
     "min-h-11 flex-nowrap rounded-none border-0 [[data-slot=grouped-list]>&:not(:last-child)]:border-b text-left aria-[current=true]:bg-accent aria-[current=true]:text-accent-foreground aria-checked:bg-accent aria-checked:text-accent-foreground",
     "focus-visible:border-border focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ring focus-visible:-outline-offset-3",
-    config.wrap ? "flex-wrap gap-y-1" : "",
+    config.wrap === true ? "flex-wrap gap-y-1" : "",
     interactive ? "transition-colors hover:bg-muted/60 active:bg-muted disabled:opacity-50" : "",
-    config.destructive ? "text-destructive" : "text-foreground",
-    config.lazy ? "lazy-row" : "",
+    config.destructive === true ? "text-destructive" : "text-foreground",
+    config.lazy === true ? "lazy-row" : "",
     config.className,
   );
   const body = rowContent(config, chevron, h);
@@ -266,9 +266,9 @@ export const choiceRows = <M>(
   h: HtmlBuilder<M>,
 ): Html => {
   const choices = config.choices;
-  const selectedIndex = Math.max(
-    0,
-    choices.findIndex((choice) => choice.selected),
+  const selectedIndex = Option.getOrElse(
+    Array.findFirstIndex(choices, (choice) => choice.selected),
+    () => 0,
   );
   const at = (index: number) => choices[(index + choices.length) % choices.length];
   // One inset list like every other grouped setting; rows keep radio semantics.
@@ -279,7 +279,7 @@ export const choiceRows = <M>(
       role: "radiogroup",
       listAttributes: [h.AriaLabel(config.label)],
     },
-    choices.map((choice, index) =>
+    Array.map(choices, (choice, index) =>
       row(
         {
           title: choice.label,

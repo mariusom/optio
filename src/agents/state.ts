@@ -23,7 +23,7 @@ const TemplateEditor = Schema.Struct({
       kind: FieldKind,
       isRequired: Schema.Boolean,
       defaultValue: Schema.String,
-      sortOrder: Schema.Number,
+      sortOrder: Schema.Finite,
       options: Schema.Array(Schema.String),
       exclusiveOptions: Schema.Array(Schema.String),
       newOptionText: Schema.String,
@@ -37,8 +37,8 @@ const ActiveSession = Schema.Struct({
   templateId: Schema.NullOr(Schema.String),
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  completedCount: Schema.Number,
+  startedAt: Schema.Finite,
+  completedCount: Schema.Finite,
 });
 
 const AgentRunner = Schema.Struct({
@@ -52,31 +52,31 @@ const HistorySummary = Schema.Struct({
   displayName: Schema.String,
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  endedAt: Schema.Number,
-  taskCount: Schema.Number,
+  startedAt: Schema.Finite,
+  endedAt: Schema.Finite,
+  taskCount: Schema.Finite,
 });
 
 const HistoryDetail = Schema.Struct({
   id: Schema.String,
   sessionName: Schema.String,
   templateName: Schema.String,
-  startedAt: Schema.Number,
-  endedAt: Schema.NullOr(Schema.Number),
-  taskCount: Schema.Number,
+  startedAt: Schema.Finite,
+  endedAt: Schema.NullOr(Schema.Finite),
+  taskCount: Schema.Finite,
   tasks: Schema.Array(
     Schema.Struct({
       id: Schema.String,
-      taskId: Schema.Number,
-      startedAt: Schema.NullOr(Schema.Number),
-      endedAt: Schema.NullOr(Schema.Number),
+      taskId: Schema.Finite,
+      startedAt: Schema.NullOr(Schema.Finite),
+      endedAt: Schema.NullOr(Schema.Finite),
       sections: Schema.Array(
         Schema.Struct({
           sectionName: Schema.String,
           value: Schema.String,
           sectionType: Schema.String,
           isRequired: Schema.Boolean,
-          startedAt: Schema.NullOr(Schema.Number),
+          startedAt: Schema.NullOr(Schema.Finite),
         }),
       ),
     }),

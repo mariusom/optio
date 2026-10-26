@@ -4,6 +4,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import { Scene } from "foldkit/test";
 import { beforeEach, vi } from "vite-plus/test";
 
+import { appServices } from "../../../app/services";
 import { ShowSheet } from "../../../components/app/sheet";
 import { getStore } from "../../../livestore/client";
 import { init, subscriptions, update } from "../../../main";
@@ -37,7 +38,7 @@ const render = (view: (h: HtmlBuilder<Message>) => Html): Html => {
 };
 const text = (node: Html | string): string => {
   if (typeof node === "string") return node;
-  if (!node) return "";
+  if (node === null) return "";
   return [
     node.text ?? "",
     ...(node.children ?? []).map((child) => text(child as Html | string)),
@@ -245,7 +246,7 @@ describe("history detail regressions", () => {
       expect(commit).toHaveBeenCalledWith(
         expect.objectContaining({ args: { id: "s1", sessionName: expected } }),
       );
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.each(["textInput", "textArea", "boolean"])(

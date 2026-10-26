@@ -1,5 +1,6 @@
 import { Fieldset as FoldkitFieldset } from "@foldkit/ui";
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { Array } from "effect";
 import { cn } from "@/lib/utils";
 import { separatorClass } from "./separator";
 
@@ -221,7 +222,8 @@ export const fieldError = <M>(
   const uniqueErrors =
     config.errors === undefined
       ? []
-      : [...new Map(config.errors.map((error) => [error?.message, error])).values()].filter(
+      : Array.filter(
+          [...new Map(Array.map(config.errors, (error) => [error?.message, error])).values()],
           (error) => error?.message !== undefined,
         );
 
@@ -234,7 +236,7 @@ export const fieldError = <M>(
     content = [
       h.ul(
         [h.Class("ml-4 flex list-disc flex-col gap-1")],
-        uniqueErrors.map((error) => h.li([], [error!.message!])),
+        Array.map(uniqueErrors, (error) => h.li([], [error!.message!])),
       ),
     ];
   }

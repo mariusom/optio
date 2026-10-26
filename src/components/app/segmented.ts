@@ -1,4 +1,5 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { Array } from "effect";
 
 import { sectionFooter, sectionHeader } from "./layout";
 
@@ -34,7 +35,7 @@ export const segmentedControl = <M>(
           h.DataAttribute("slot", "segmented-control"),
           h.Class("grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-muted p-1"),
         ],
-        config.segments.map((segment) =>
+        Array.map(config.segments, (segment) =>
           h.label(
             [
               h.Class(

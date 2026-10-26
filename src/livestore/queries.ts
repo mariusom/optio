@@ -11,9 +11,9 @@ const ArchivedSessionRow = Schema.Struct({
   id: Schema.String,
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  endedAt: Schema.Number,
-  taskCount: Schema.Number,
+  startedAt: Schema.Finite,
+  endedAt: Schema.Finite,
+  taskCount: Schema.Finite,
 });
 type ArchivedSessionRow = typeof ArchivedSessionRow.Type;
 
@@ -34,8 +34,8 @@ const ActiveSessionRow = Schema.Struct({
   templateId: Schema.NullOr(Schema.String),
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  completedCount: Schema.Number,
+  startedAt: Schema.Finite,
+  completedCount: Schema.Finite,
 });
 type ActiveSessionRow = typeof ActiveSessionRow.Type;
 
@@ -117,11 +117,11 @@ export const archiveRows = (sessionId: string) => {
 const TemplateSummaryRow = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  isDefault: Schema.Number,
-  createdAt: Schema.Number,
-  updatedAt: Schema.Number,
-  fieldCount: Schema.Number,
-  requiredCount: Schema.Number,
+  isDefault: Schema.Finite,
+  createdAt: Schema.Finite,
+  updatedAt: Schema.Finite,
+  fieldCount: Schema.Finite,
+  requiredCount: Schema.Finite,
 });
 type TemplateSummaryRow = typeof TemplateSummaryRow.Type;
 
@@ -154,7 +154,7 @@ export const templateRows = (templateId: string) => {
   });
 };
 
-const ReportSummaryRow = Schema.Struct({ sessionCount: Schema.Number, totalMs: Schema.Number });
+const ReportSummaryRow = Schema.Struct({ sessionCount: Schema.Finite, totalMs: Schema.Finite });
 
 /** Finished sessions of one template, with their task records and answers. */
 const finishedOf = `join sessions s on s.id = r.sessionId

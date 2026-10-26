@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema } from "effect";
+import { Array, DateTime, Effect, Option, pipe, Schema, String } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -7,6 +7,7 @@ import type { FieldDef } from "../../../domain/fields";
 import { reportFailure } from "../../errors";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { nextDuplicateName } from "./naming";
+import { randomUuid, withFreshIds, withRandomUuids } from "../../../lib/ids";
 
 const failedTemplateOp = (error: string) => Message.FailedTemplateOp({ error });
 
@@ -19,13 +20,13 @@ export const CreateTemplate = Command.define("CreateTemplate", {
   execute: ({ id, name }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
-        const now = new Date(yield* Clock.currentTimeMillis);
+        const now = yield* DateTime.nowAsDate;
         // First template ever becomes the default automatically
         const existing = store.query(tables.templates.select());
         store.commit(
           events.templateCreated({
             id,
-            name: name.trim(),
+            name: String.trim(name),
             isDefault: existing.length === 0,
             now,
           }),
@@ -53,21 +54,19 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
   execute: ({ id }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
-        const now = new Date(yield* Clock.currentTimeMillis);
+        const now = yield* DateTime.nowAsDate;
         const templates = store.query(tables.templates.select());
-        const source = templates.find((t) => t.id === id);
-        if (source === undefined) return failedTemplateOp("That template no longer exists.");
+        const found = Array.findFirst(templates, (t) => t.id === id);
+        if (Option.isNone(found)) return failedTemplateOp("That template no longer exists.");
+        const source = found.value;
         const fieldRows = store.query(
           tables.templateFields.select().where({ templateId: id }).orderBy("sortOrder", "asc"),
         );
-        const fields = fieldRowsToDefs(fieldRows).map((field) => ({
-          ...field,
-          id: crypto.randomUUID(),
-        }));
-        const copyId = crypto.randomUUID();
+        const fields = yield* withFreshIds(fieldRowsToDefs(fieldRows));
+        const copyId = yield* randomUuid;
         const copyName = nextDuplicateName(
           source.name,
-          templates.map((t) => t.name),
+          Array.map(templates, (t) => t.name),
         );
         store.commit(
           events.templateCreated({ id: copyId, name: copyName, isDefault: false, now }),
@@ -85,15 +84,16 @@ export const DeleteTemplate = Command.define("DeleteTemplate", {
     withStore(({ store, tables, events }) =>
       Effect.sync(() => {
         const templates = store.query(tables.templates.select());
-        const target = templates.find((t) => t.id === id);
-        if (target === undefined) return Message.TemplateOpDone();
+        const target = Array.findFirst(templates, (t) => t.id === id);
+        if (Option.isNone(target)) return Message.TemplateOpDone();
         // Deleting the default promotes the earliest other template BEFORE deletion
-        const remaining = templates.filter((t) => t.id !== id);
+        const [firstRemaining, ...laterRemaining] = Array.filter(templates, (t) => t.id !== id);
         const promote =
-          target.isDefault === 1 && remaining.length > 0
+          target.value.isDefault === 1 && firstRemaining !== undefined
             ? [
                 events.templateDefaultSet({
-                  id: remaining.reduce((a, b) =>
+                  // Ties keep the earlier template.
+                  id: Array.reduce(laterRemaining, firstRemaining, (a, b) =>
                     a.createdAt.getTime() <= b.createdAt.getTime() ? a : b,
                   ).id,
                 }),
@@ -244,18 +244,15 @@ export const sampleTemplates = (newId: () => string): ReadonlyArray<SampleTempla
   ];
 };
 
-/** Random IDs, generated when a seeding Command runs. */
-const randomId = Effect.sync(() => () => crypto.randomUUID());
-
 /** Seeds the sample templates exactly once, when zero templates exist. */
 export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
   messages: [Message.TemplatesSeededCheck, Message.FailedTemplateOp],
   execute: withStore(({ store, tables, events }) =>
     Effect.gen(function* () {
-      const now = new Date(yield* Clock.currentTimeMillis);
+      const now = yield* DateTime.nowAsDate;
       const existing = store.query(tables.templates.select());
       if (existing.length > 0) return Message.TemplatesSeededCheck();
-      const templates = sampleTemplates(yield* randomId);
+      const templates = yield* withRandomUuids(sampleTemplates);
       store.commit(events.templatesSeeded({ templates, now }));
       return Message.TemplatesSeededCheck();
     }),
@@ -270,15 +267,18 @@ export const AddSampleTemplates = Command.define("AddSampleTemplates", {
   messages: [Message.SampleTemplatesAdded, Message.FailedTemplateOp],
   execute: withStore(({ store, tables, events }) =>
     Effect.gen(function* () {
-      const now = new Date(yield* Clock.currentTimeMillis);
+      const now = yield* DateTime.nowAsDate;
       const existing = store.query(tables.templates.select());
-      const taken = new Set(existing.map((t) => t.name));
-      const missing = sampleTemplates(yield* randomId)
-        .filter((template) => !taken.has(template.name))
-        .map((template, index) => ({
+      const taken = new Set(Array.map(existing, (t) => t.name));
+      const samples = yield* withRandomUuids(sampleTemplates);
+      const missing = pipe(
+        samples,
+        Array.filter((template) => !taken.has(template.name)),
+        Array.map((template, index) => ({
           ...template,
           isDefault: existing.length === 0 && index === 0,
-        }));
+        })),
+      );
       if (missing.length > 0) store.commit(events.templatesSeeded({ templates: missing, now }));
       return Message.SampleTemplatesAdded();
     }),

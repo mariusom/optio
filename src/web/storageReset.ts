@@ -14,8 +14,5 @@ export const ResetLocalStorage = Command.define("ResetLocalStorage", {
   execute: Effect.sync(() => {
     localStorage.setItem(storageResetKey, "1");
     window.location.reload();
-  }).pipe(
-    Effect.catchCause(() => Effect.void),
-    Effect.as(Message.Navigated()),
-  ),
+  }).pipe(Effect.ignoreCause, Effect.as(Message.Navigated())),
 });

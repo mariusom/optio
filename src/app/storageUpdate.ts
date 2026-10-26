@@ -1,10 +1,11 @@
+import type { AppServices } from "./services";
 import { AsyncData, type Update } from "foldkit";
 
 import { Message, type MessageHandlers } from "../messages";
 import { RetryStore } from "../web/storageNotice";
 import type { Model, StoreList } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type StorageHandlers = Pick<

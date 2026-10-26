@@ -15,6 +15,8 @@ import {
   initializeTheme,
 } from "./web/browserTheme";
 import { getStore } from "./livestore/client";
+import { randomUuid } from "./lib/ids";
+import { appServices } from "./app/services";
 import type { ModelContext } from "./agents/webmcp";
 import { signalUpdateReady } from "./web/updateSignal";
 
@@ -35,7 +37,8 @@ const flags = Effect.all({
   look: initializeLook,
   controlSize: initializeControlSize,
   now: Clock.currentTimeMillis,
-  idSeed: Effect.sync(() => crypto.randomUUID()),
+  // Flags run outside the Commands runtime, so provide its services here.
+  idSeed: randomUuid.pipe(Effect.provide(appServices)),
 });
 
 const main = Effect.gen(function* () {
@@ -48,7 +51,7 @@ const main = Effect.gen(function* () {
   const modelContext = (document as Document & { modelContext?: ModelContext }).modelContext;
   if (
     new URLSearchParams(location.search).get("agentTools") === "1" &&
-    modelContext &&
+    modelContext !== undefined &&
     window.confirm(
       "Let an assistant use Optio in this tab? It will be able to read, change and delete your studies, and may send them to its provider. Cancel to keep assistants off.",
     )
@@ -68,7 +71,7 @@ const main = Effect.gen(function* () {
         window.confirm(message),
       );
       yield* registerWebMcp(modelContext, makeToolHandlers(getStore, connection));
-      yield* Effect.never;
+      return yield* Effect.never;
     }).pipe(
       Effect.scoped,
       Effect.catchCause(() =>
@@ -77,8 +80,11 @@ const main = Effect.gen(function* () {
     );
     // Forked from the main program so the registration shares its runtime.
     const fiber = yield* Effect.forkDetach(registration);
+    // HMR dispose is a synchronous callback outside this fiber: run the
+    // interruption with the main program's services.
+    const runFork = Effect.runForkWith(yield* Effect.context<never>());
     import.meta.hot?.dispose(() => {
-      Effect.runFork(Fiber.interrupt(fiber));
+      runFork(Fiber.interrupt(fiber));
       handle.dispose();
     });
   } else {

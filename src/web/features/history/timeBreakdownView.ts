@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { groupedList } from "@/components/app";
@@ -38,7 +39,7 @@ const stackedBar = (question: QuestionBreakdown, h: HtmlBuilder<Message>): Html 
       h.Class("flex h-2.5 w-full gap-0.5 overflow-hidden rounded-sm forced-color-adjust-none"),
       h.AriaHidden(true),
     ],
-    question.segments.map((segment) =>
+    Array.map(question.segments, (segment) =>
       h.keyed("span")(segment.key, [
         h.Class(`block h-full min-w-0.5 ${fillClass(segment)}`),
         h.Style({ flex: `${segment.durationMs} 1 0%` }),
@@ -91,7 +92,7 @@ const questionBlock = (question: QuestionBreakdown, h: HtmlBuilder<Message>): Ht
       stackedBar(question, h),
       h.ul(
         [h.Class("flex flex-col gap-1.5"), h.AriaLabel(`Time by answer to ${question.question}`)],
-        question.segments.map((segment) => legendItem(segment, h)),
+        Array.map(question.segments, (segment) => legendItem(segment, h)),
       ),
     ],
   );
@@ -110,7 +111,7 @@ export const timeBreakdownSection = (
       header: "Time breakdown",
       footer: "Task time by answer to each single-choice and yes/no question.",
     },
-    breakdown.map((question) => questionBlock(question, h)),
+    Array.map(breakdown, (question) => questionBlock(question, h)),
     h,
   );
 };

@@ -1,6 +1,7 @@
 import { makePersistedAdapter } from "@livestore/adapter-web";
 import LiveStoreSharedWorker from "@livestore/adapter-web/shared-worker?sharedworker";
 import { createStorePromise } from "@livestore/livestore";
+import { Effect } from "effect";
 import { schema } from "./schema.ts";
 import { storageResetKey } from "./resetFlag";
 import LiveStoreWorker from "./livestore.worker.ts?worker";
@@ -34,21 +35,29 @@ const requestPersistentStorage = () => {
   }
 };
 
-export const openStore = async () => {
-  const reset = resetRequested();
-  const store = await createStorePromise({
-    // Pre-release reset: old events did not contain creation timestamps.
-    storeId: "optio-v3",
-    schema,
-    adapter: makeAdapter(reset),
-  });
-  if (reset) {
-    try {
-      localStorage.removeItem(storageResetKey);
-    } catch {
-      // The flag stays; the next open resets again, which is still empty.
-    }
+const clearResetRequest = () => {
+  try {
+    localStorage.removeItem(storageResetKey);
+  } catch {
+    // The flag stays; the next open resets again, which is still empty.
   }
-  if (store.storageMode !== "in-memory") requestPersistentStorage();
-  return store;
 };
+
+/** Promise boundary: the store client caches and retries this promise. */
+export const openStore = () =>
+  Effect.runPromise(
+    Effect.gen(function* () {
+      const reset = yield* Effect.sync(resetRequested);
+      const store = yield* Effect.promise(() =>
+        createStorePromise({
+          // Pre-release reset: old events did not contain creation timestamps.
+          storeId: "optio-v3",
+          schema,
+          adapter: makeAdapter(reset),
+        }),
+      );
+      if (reset) yield* Effect.sync(clearResetRequest);
+      if (store.storageMode !== "in-memory") yield* Effect.sync(requestPersistentStorage);
+      return store;
+    }),
+  );

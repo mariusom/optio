@@ -51,7 +51,7 @@ const resolve = (tokens: Tokens, name: string): string => {
   const value = tokens[name];
   if (value === undefined) throw new Error(`Missing ${name}`);
   const reference = /^var\((--[\w-]+)\)$/.exec(value);
-  return reference ? resolve(tokens, reference[1]!) : value;
+  return reference !== null ? resolve(tokens, reference[1]!) : value;
 };
 
 type Rgba = Readonly<{ rgb: ReadonlyArray<number>; alpha: number }>;
@@ -60,8 +60,8 @@ const oklch = (value: string): Rgba => {
   const match = /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+)(%?))?\s*\)$/.exec(
     value,
   );
-  if (!match) throw new Error(`Not an oklch() colour: ${value}`);
-  const lightness = match[2] ? Number(match[1]) / 100 : Number(match[1]);
+  if (match === null) throw new Error(`Not an oklch() colour: ${value}`);
+  const lightness = match[2] === "%" ? Number(match[1]) / 100 : Number(match[1]);
   const [chroma, hue] = [Number(match[3]), (Number(match[4]) * Math.PI) / 180];
   const [a, b] = [chroma * Math.cos(hue), chroma * Math.sin(hue)];
   const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
@@ -72,7 +72,7 @@ const oklch = (value: string): Rgba => {
     -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ].map((channel) => Math.min(1, Math.max(0, channel)));
-  const alpha = match[5] === undefined ? 1 : Number(match[5]) / (match[6] ? 100 : 1);
+  const alpha = match[5] === undefined ? 1 : Number(match[5]) / (match[6] === "%" ? 100 : 1);
   return { rgb: linear, alpha };
 };
 

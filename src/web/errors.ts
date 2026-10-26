@@ -36,6 +36,7 @@ const phrases: Record<FailedAction, string> = {
 export const friendlyFailure = (action: FailedAction, cause: unknown): string => {
   if (typeof console !== "undefined") {
     const detail = Cause.isCause(cause) ? Cause.pretty(cause) : cause;
+    // @effect-diagnostics-next-line globalConsole:off -- called synchronously from command error handlers
     console.error(`[optio] ${action} failed:`, detail);
   }
   return phrases[action];

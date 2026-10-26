@@ -1,4 +1,4 @@
-import { Option } from "effect";
+import { Array, Option, pipe, String } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { X, actionGroup, controlRow, groupedList, hint, icon, rowAction } from "@/components/app";
@@ -18,9 +18,12 @@ import { reorderButtons } from "./reorderButtons";
 
 /** Why the question can't be saved yet, in the order a person would fix it. */
 const draftHint = (draft: Editor["draft"] & object): string => {
-  if (draft.name.trim().length === 0) return "Name the question to save it.";
+  if (String.trim(draft.name).length === 0) return "Name the question to save it.";
   if (hasOptions(draft.kind) && draft.options.length < 2) return "Add at least two choices.";
-  if (draft.kind === "checkbox" && draft.options.some((option) => option.includes(",")))
+  if (
+    draft.kind === "checkbox" &&
+    Array.some(draft.options, (option) => pipe(option, String.includes(",")))
+  )
     return "Choices can’t contain commas.";
   return "Finish the question to save it.";
 };
@@ -33,7 +36,7 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
       wrapperClass: "[&>[data-slot=native-select-wrapper]]:w-full",
       value: kind,
       onChange: (value) => Message.ChangedFieldKind({ kind: value }),
-      options: ANSWER_TYPES.map((candidate) =>
+      options: Array.map(ANSWER_TYPES, (candidate) =>
         h.option([h.Value(candidate)], [answerTypeName(candidate)]),
       ),
     },
@@ -51,7 +54,7 @@ const exclusiveToggle = (
       h.Class(
         "group/exclusive flex h-auto min-h-11 shrink-0 items-center self-stretch px-1 outline-none focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-ring",
       ),
-      h.AriaPressed(String(config.isExclusive)),
+      h.AriaPressed(globalThis.String(config.isExclusive)),
       h.AriaLabel(`${config.option} clears others`),
       h.OnClick(Message.ToggledExclusiveOption({ index: config.index })),
     ],
@@ -121,8 +124,8 @@ const choicesSection = (
   kind: FieldKind,
   h: HtmlBuilder<Message>,
 ) => {
-  const trimmed = draft.newOptionText.trim();
-  const hasComma = kind === "checkbox" && draft.newOptionText.includes(",");
+  const trimmed = String.trim(draft.newOptionText);
+  const hasComma = kind === "checkbox" && pipe(draft.newOptionText, String.includes(","));
   const canAdd = trimmed !== "" && !hasComma && !draft.options.includes(trimmed);
   return groupedList(
     {
@@ -132,7 +135,7 @@ const choicesSection = (
       }`,
     },
     [
-      ...draft.options.map((option, index) =>
+      ...Array.map(draft.options, (option, index) =>
         choiceRow(
           {
             option,
@@ -160,7 +163,7 @@ const choicesSection = (
                 h.Autocomplete("off"),
                 h.Autocapitalize("sentences"),
                 h.EnterKeyHint("done"),
-                h.Attribute("aria-invalid", String(hasComma)),
+                h.Attribute("aria-invalid", globalThis.String(hasComma)),
                 h.OnInput((value) => Message.ChangedNewOptionText({ text: value })),
                 // Enter always goes to update, which validates the latest text:
                 // `canAdd` here is from the last render and lags fast typing or paste.
@@ -207,11 +210,14 @@ const defaultAnswerSection = (
                 value: draft.defaultValue,
                 onChange: (text) => Message.ChangedFieldDefaultValue({ text }),
                 label: "Default answer",
-                options: [
-                  ["", "Unanswered"],
-                  ["true", "Yes"],
-                  ["false", "No"],
-                ].map(([value, label]) => h.option([h.Value(value!)], [label!])),
+                options: Array.map(
+                  [
+                    ["", "Unanswered"],
+                    ["true", "Yes"],
+                    ["false", "No"],
+                  ],
+                  ([value, label]) => h.option([h.Value(value!)], [label!]),
+                ),
               },
               h,
             ),
@@ -258,7 +264,10 @@ const defaultAnswerSection = (
                       ? "numeric"
                       : "text",
                 ),
-                h.Attribute("aria-invalid", String(!isScalarAnswerValid(kind, draft.defaultValue))),
+                h.Attribute(
+                  "aria-invalid",
+                  globalThis.String(!isScalarAnswerValid(kind, draft.defaultValue)),
+                ),
                 h.OnInput((value) => Message.ChangedFieldDefaultValue({ text: value })),
               ]),
           ...(kind === "number"

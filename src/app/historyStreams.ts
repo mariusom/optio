@@ -1,4 +1,4 @@
-import type { Stream } from "effect";
+import { Array, type Stream } from "effect";
 import { storeStream } from "./managedStream";
 import { Message } from "../messages";
 import type { TaskSectionRow } from "../livestore/queries";
@@ -18,7 +18,7 @@ export const historyStream: Stream.Stream<Message> = storeStream(
     store.subscribe(queries.archivedSessions, (rows) =>
       emit(
         Message.GotHistory({
-          history: rows.map((row) => ({
+          history: Array.map(rows, (row) => ({
             ...row,
             displayName: displayNameFor(row.sessionName, row.templateName),
           })),
@@ -37,12 +37,12 @@ export const historyDetailStream = (sessionId: string): Stream.Stream<Message> =
       }
       const sectionsByRecord = groupSectionsByRecord(sections);
       // Records arrive ordered by task number.
-      const tasks = records.map((record) => ({
+      const tasks = Array.map(records, (record) => ({
         id: record.id,
         taskId: record.taskId,
         startedAt: record.startedAt?.getTime() ?? null,
         endedAt: record.endedAt?.getTime() ?? null,
-        sections: (sectionsByRecord.get(record.id) ?? []).map(toHistorySection),
+        sections: Array.map(sectionsByRecord.get(record.id) ?? [], toHistorySection),
       }));
       emit(
         Message.GotHistoryDetail({

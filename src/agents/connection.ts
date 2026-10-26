@@ -1,7 +1,9 @@
-import { Effect, Exit, Schema } from "effect";
+import { Array, Effect, Exit, Schema } from "effect";
 import type { Runtime } from "foldkit";
 // The model schema decodes replies at runtime; import it directly, not via main.ts.
 import { Model } from "../app/model";
+import { randomUuid } from "../lib/ids";
+import { appServices } from "../app/services";
 
 import {
   type AgentAction,
@@ -14,12 +16,12 @@ import {
 } from "./actions";
 import { projectAgentState } from "./state";
 
-class AgentConnectionError extends Schema.TaggedError<AgentConnectionError>()(
-  "AgentConnectionError",
-  {
-    message: Schema.String,
-  },
-) {}
+class AgentConnectionError extends Schema.TaggedError<
+  AgentConnectionError,
+  { readonly brand: unique symbol }
+>()("AgentConnectionError", {
+  message: Schema.String,
+}) {}
 
 export interface AgentApplication {
   readonly request: (
@@ -27,9 +29,13 @@ export interface AgentApplication {
   ) => Effect.Effect<AgentResult, AgentConnectionError>;
 }
 
+/** Quotes and escapes untrusted text exactly like `JSON.stringify`; a string always encodes. */
+const quoteJson = (text: string) =>
+  Schema.encodeEffect(Schema.fromJsonString(Schema.String))(text).pipe(Effect.orDie);
+
 const decodeModel = (reply: AgentPortReply) =>
   Schema.decodeUnknownEffect(Model)(reply.state).pipe(
-    Effect.mapError(() => new AgentConnectionError({ message: "Invalid app state." })),
+    Effect.mapError(() => AgentConnectionError.make({ message: "Invalid app state." })),
   );
 
 /** Each request owns its reply subscription; Effect handles interruption and timeout cleanup. */
@@ -39,7 +45,8 @@ export const connectAgentApplication = (
 ): AgentApplication => {
   const requestPort = Effect.fn("agents.requestPort")(
     function* (action: AgentAction | null, confirmationVersion?: number) {
-      const requestId = yield* Effect.sync(() => crypto.randomUUID());
+      // Outside the FoldKit runtime, so provide its services here.
+      const requestId = yield* randomUuid.pipe(Effect.provide(appServices));
       return yield* Effect.callback<AgentPortReply, AgentConnectionError>((resume) => {
         const unsubscribe = ports.agentReply.subscribe((reply) => {
           if (reply.requestId === requestId) resume(Effect.succeed(reply));
@@ -50,7 +57,7 @@ export const connectAgentApplication = (
           ...(confirmationVersion === undefined ? {} : { confirmationVersion }),
         });
         if (Exit.isFailure(sent)) {
-          resume(Effect.fail(new AgentConnectionError({ message: "Invalid app request." })));
+          resume(Effect.fail(AgentConnectionError.make({ message: "Invalid app request." })));
         }
         return Effect.sync(unsubscribe);
       });
@@ -59,7 +66,7 @@ export const connectAgentApplication = (
       duration: "10 seconds",
       orElse: () =>
         Effect.fail(
-          new AgentConnectionError({
+          AgentConnectionError.make({
             message:
               "App did not acknowledge the request. Read state before retrying; a dispatched action may have run and is not undone by cancellation.",
           }),
@@ -71,29 +78,33 @@ export const connectAgentApplication = (
     action: AgentAction | null,
   ) {
     let confirmationVersion: number | undefined;
-    if (action && requiresConfirmation(action)) {
+    if (action !== null && requiresConfirmation(action)) {
       const state = yield* decodeModel(yield* requestPort(null));
       const target = confirmationTarget(state, action);
       if (target === null)
-        return yield* new AgentConnectionError({ message: "Request confirmation first." });
+        return yield* AgentConnectionError.make({ message: "Request confirmation first." });
       confirmationVersion = state.agentConfirmationVersion;
+      const quotedName = yield* quoteJson(target.name);
       const approved = yield* Effect.sync(() =>
         confirm(
-          [
-            `Allow the assistant to ${confirmationLabel(action)}?`,
-            // Study names are untrusted input: quote them and keep them off the question line.
-            `Name: ${JSON.stringify(target.name)}`,
-            `ID: ${target.id}`,
-            "",
-            "Review the pending confirmation in Optio before allowing.",
-          ].join("\n"),
+          Array.join(
+            [
+              `Allow the assistant to ${confirmationLabel(action)}?`,
+              // Study names are untrusted input: quote them and keep them off the question line.
+              `Name: ${quotedName}`,
+              `ID: ${target.id}`,
+              "",
+              "Review the pending confirmation in Optio before allowing.",
+            ],
+            "\n",
+          ),
         ),
       );
       if (!approved)
-        return yield* new AgentConnectionError({ message: "User declined the action." });
+        return yield* AgentConnectionError.make({ message: "User declined the action." });
     }
     const reply = yield* requestPort(action, confirmationVersion);
-    if (reply.error !== null) return yield* new AgentConnectionError({ message: reply.error });
+    if (reply.error !== null) return yield* AgentConnectionError.make({ message: reply.error });
     const state = yield* decodeModel(reply);
     return { state: projectAgentState(state) };
   });

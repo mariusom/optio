@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema } from "effect";
+import { Array, DateTime, Effect, Option, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -7,12 +7,13 @@ import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
 import { serialized } from "./writeLock";
+import { randomUuid, withFreshIds } from "../../../lib/ids";
 import { archiveRecord } from "./archiveRecord";
 import { isAnswerComplete, isTaskEditable } from "./runner";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const now = Effect.map(Clock.currentTimeMillis, (millis) => new Date(millis));
+const now = DateTime.nowAsDate;
 
 type AnswerRow = { readonly kind: string; readonly isRequired: number; readonly value: string };
 
@@ -54,12 +55,12 @@ export const UpdateFieldValues = Command.define("UpdateFieldValues", {
       Effect.gen(function* () {
         const committedAt = yield* now;
         // Recheck persisted editability: a late input must not change a completed task.
-        const editable = writes.filter(({ taskFieldId }) =>
+        const editable = Array.filter(writes, ({ taskFieldId }) =>
           isPersistedFieldEditable(access, taskFieldId),
         );
         if (editable.length > 0) {
           access.store.commit(
-            ...editable.map(({ taskFieldId, value }) =>
+            ...Array.map(editable, ({ taskFieldId, value }) =>
               access.events.taskFieldValueChanged({ id: taskFieldId, value, now: committedAt }),
             ),
           );
@@ -80,7 +81,11 @@ export const AdjustCounter = Command.define("AdjustCounter", {
         const { store, tables, events } = access;
         const committedAt = yield* now;
         const field = store.query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0];
-        if (!field || field.kind !== "counter" || !isScalarAnswerValid("counter", field.value))
+        if (
+          field === undefined ||
+          field.kind !== "counter" ||
+          !isScalarAnswerValid("counter", field.value)
+        )
           return Message.UpdatedFieldValue();
         if (!isPersistedFieldEditable(access, taskFieldId)) return Message.UpdatedFieldValue();
         const value = Number(field.value) + delta;
@@ -104,10 +109,10 @@ export const RecordTask = Command.define("RecordTask", {
         const endedAt = yield* now;
         // Recheck persisted completion: the model may have changed since dispatch.
         const taskRows = store.query(tables.sessionTasks.select().where({ sessionId }));
-        const currentRow = taskRows.find((r) => r.id === currentTaskId);
-        if (currentRow === undefined) return failed("That task isn’t available any more.");
+        const currentRow = Array.findFirst(taskRows, (r) => r.id === currentTaskId);
+        if (Option.isNone(currentRow)) return failed("That task isn’t available any more.");
         // Guard: if task already finished, no-op
-        if (currentRow.endDate !== null)
+        if (currentRow.value.endDate !== null)
           return Message.TaskRecorded({ taskId: currentTaskId, fresh: false });
 
         const fieldRows = store.query(
@@ -117,20 +122,18 @@ export const RecordTask = Command.define("RecordTask", {
             .orderBy("sortOrder", "asc"),
         );
         // Recheck validity as well as requiredness against persisted values.
-        if (fieldRows.some(isIncomplete))
+        if (Array.some(fieldRows, isIncomplete))
           return failed("Complete required questions and correct invalid answers first.");
 
-        const nextOrder = taskRows.reduce((max, r) => Math.max(max, r.orderIndex), 0) + 1;
+        const nextOrder = Array.reduce(taskRows, 0, (max, r) => Math.max(max, r.orderIndex)) + 1;
         // The next task starts from the current task's questions and defaults.
-        const nextFields = fieldRowsToDefs(fieldRows).map((field) => ({
-          ...field,
-          id: crypto.randomUUID(),
-        }));
+        const nextFields = yield* withFreshIds(fieldRowsToDefs(fieldRows));
+        const nextTaskId = yield* randomUuid;
         store.commit(
           events.taskFinished({ id: currentTaskId, endedAt }),
           events.taskSpawned({
             sessionId,
-            id: crypto.randomUUID(),
+            id: nextTaskId,
             orderIndex: nextOrder,
             fields: nextFields,
           }),
@@ -150,11 +153,15 @@ export const EndSession = Command.define("EndSession", {
       Effect.gen(function* () {
         const endedAt = yield* now;
         const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
-        if (!session || session.endedAt !== null) return failed("This session has already ended.");
+        if (session === undefined || session.endedAt !== null)
+          return failed("This session has already ended.");
 
-        const finished = store
-          .query(tables.sessionTasks.select().where({ sessionId }).orderBy("orderIndex", "asc"))
-          .filter((task) => task.endDate !== null);
+        const finished = Array.filter(
+          store.query(
+            tables.sessionTasks.select().where({ sessionId }).orderBy("orderIndex", "asc"),
+          ),
+          (task) => task.endDate !== null,
+        );
 
         if (finished.length === 0) {
           // No tasks saved → delete live graph + session entirely
@@ -173,7 +180,7 @@ export const EndSession = Command.define("EndSession", {
               .where({ taskId: task.id })
               .orderBy("sortOrder", "asc"),
           );
-          if (fieldRows.some(isIncomplete)) {
+          if (Array.some(fieldRows, isIncomplete)) {
             return failed(
               `Open task ${task.orderIndex} and complete required questions and correct invalid answers, or cancel the edit first.`,
             );
@@ -200,27 +207,27 @@ export const SelectTask = Command.define("SelectTask", {
     withStore(({ store, tables, events }) =>
       Effect.sync(() => {
         const taskRows = store.query(tables.sessionTasks.select().where({ sessionId }));
-        const target = taskRows.find((r) => r.id === taskId);
-        if (target === undefined) return Message.TaskEditStarted({ taskId });
+        const target = Array.findFirst(taskRows, (r) => r.id === taskId);
+        if (Option.isNone(target)) return Message.TaskEditStarted({ taskId });
 
-        const edited = taskRows.find((r) => r.isBeingEdited === 1);
-        if (edited && edited.id !== taskId) {
+        const edited = Array.findFirst(taskRows, (r) => r.isBeingEdited === 1);
+        if (Option.isSome(edited) && edited.value.id !== taskId) {
           const fields = store.query(
-            tables.sessionTaskFields.select().where({ taskId: edited.id }),
+            tables.sessionTaskFields.select().where({ taskId: edited.value.id }),
           );
-          if (fields.some(isIncomplete)) {
+          if (Array.some(fields, isIncomplete)) {
             return failed(
               "Complete required questions and correct invalid answers, or cancel the edit first.",
             );
           }
         }
 
-        if (target.endDate !== null) {
+        if (target.value.endDate !== null) {
           store.commit(events.taskEditStarted({ sessionId, id: taskId }));
           return Message.TaskEditStarted({ taskId });
         }
         // Selecting current (unfinished) → clear any editing
-        if (edited !== undefined) store.commit(events.taskEditFinished({ id: edited.id }));
+        if (Option.isSome(edited)) store.commit(events.taskEditFinished({ id: edited.value.id }));
         return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("load", failed)),
@@ -245,7 +252,7 @@ export const SaveEdit = Command.define("SaveEdit", {
     withStore(({ store, tables, events }) =>
       Effect.sync(() => {
         const fieldRows = store.query(tables.sessionTaskFields.select().where({ taskId }));
-        if (fieldRows.some(isIncomplete))
+        if (Array.some(fieldRows, isIncomplete))
           return failed("Complete required questions and correct invalid answers first.");
         store.commit(events.taskEditFinished({ id: taskId }));
         return Message.TaskEditFinished({ savedTaskId: taskId });

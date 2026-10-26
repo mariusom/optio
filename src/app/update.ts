@@ -1,4 +1,6 @@
+import type { AppServices } from "./services";
 import type { Update } from "foldkit";
+import { Array, Record } from "effect";
 
 import { confirmationChanged, invalidatesAgentConfirmation } from "../agents/actions";
 import type { Message } from "../messages";
@@ -11,7 +13,7 @@ import { storageHandlers } from "./storageUpdate";
 import { agentHandlers, shellHandlers } from "./shellUpdate";
 import { templateHandlers } from "./templateUpdate";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type Tag = Message["_tag"];
 type Handler = (message: Message) => Result;
 
@@ -36,12 +38,13 @@ type CoveredTag = KeysOf<ReturnType<(typeof handlerGroups)[number]>>;
 const everyTagHandled: [Exclude<Tag, CoveredTag>] extends [never] ? true : never = true;
 void everyTagHandled;
 
-const groupByTag = new Map<string, (model: Model) => Record<string, Handler>>(
-  handlerGroups.flatMap((group) =>
-    Object.keys(group(null as never)).map(
-      (tag) => [tag, group as unknown as (model: Model) => Record<string, Handler>] as const,
-    ),
-  ),
+type HandlerGroup = (model: Model) => Record.ReadonlyRecord<string, Handler>;
+
+const groupByTag = new Map<string, HandlerGroup>(
+  Array.flatMap(handlerGroups, (group) => {
+    const handlers = group as unknown as HandlerGroup;
+    return Array.map(Record.keys(handlers(null as never)), (tag) => [tag, handlers] as const);
+  }),
 );
 
 const updateInternal = (model: Model, message: Message): Result => {

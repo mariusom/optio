@@ -12,7 +12,7 @@ export const RetryStore = Command.define("RetryStore", {
   messages: [Message.StoreOpened, Message.StoreUnavailable],
   execute: openStoreAccess.pipe(
     Effect.map(({ store }) => Message.StoreOpened({ storageMode: store.storageMode })),
-    Effect.catch(() => Effect.succeed(Message.StoreUnavailable())),
+    Effect.orElseSucceed(() => Message.StoreUnavailable()),
   ),
 });
 

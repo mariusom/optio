@@ -1,5 +1,5 @@
 import type { HtmlBuilder } from "foldkit/html";
-import { Schema } from "effect";
+import { Array, pipe, Schema, String } from "effect";
 
 import { choiceRows, controlRow, groupedList, segmentedControl } from "@/components/app";
 import { input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ export const lookRows = (look: Look, h: HtmlBuilder<Message>) =>
       label: "Look",
       header: "Look",
       footer: "Changes colours, surfaces and headings. Your layout and data stay the same.",
-      choices: LOOKS.map((option) => ({
+      choices: Array.map(LOOKS, (option) => ({
         label: h.span(
           [h.Class("flex items-center gap-3")],
           [
@@ -78,7 +78,7 @@ export const themeControl = (theme: Theme, h: HtmlBuilder<Message>) =>
       name: "settings-theme",
       label: "Appearance",
       footer: "Automatic follows your device’s light and dark setting.",
-      segments: THEMES.map((option) => ({
+      segments: Array.map(THEMES, (option) => ({
         label: option.label,
         selected: theme === option.value,
         onSelect: Message.SelectedTheme({ theme: option.value }),
@@ -93,7 +93,7 @@ export const iconLibraryControl = (iconLibrary: IconLibrary, h: HtmlBuilder<Mess
       name: "settings-icon-library",
       label: "Icon style",
       footer: "Changes symbols throughout Optio independently of font and component style.",
-      segments: ICON_LIBRARIES.map((option) => ({
+      segments: Array.map(ICON_LIBRARIES, (option) => ({
         label: option.label,
         selected: iconLibrary === option.value,
         onSelect: Message.SelectedIconLibrary({ library: option.value }),
@@ -128,6 +128,8 @@ export const controlSizeRow = (controlSize: ControlSize, h: HtmlBuilder<Message>
     h,
   );
 
+const isCustomAccent = (accent: Accent): boolean => pipe(accent, String.startsWith("#"));
+
 const accentLabel = (label: string, accent: Accent, h: HtmlBuilder<Message>) =>
   h.span(
     [h.Class("flex items-center gap-3")],
@@ -136,7 +138,7 @@ const accentLabel = (label: string, accent: Accent, h: HtmlBuilder<Message>) =>
         h.Class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20"),
         h.DataAttribute("accent", accent),
         h.AriaHidden(true),
-        ...(accent.startsWith("#") ? [h.Style({ backgroundColor: accent })] : []),
+        ...(isCustomAccent(accent) ? [h.Style({ backgroundColor: accent })] : []),
       ]),
       label,
     ],
@@ -150,15 +152,15 @@ export const accentRows = (accent: Accent, h: HtmlBuilder<Message>) =>
       footer:
         "Default uses the look’s own colour. Others replace it on controls and focus indicators.",
       choices: [
-        ...ACCENTS.map((option) => ({
+        ...Array.map(ACCENTS, (option) => ({
           label: accentLabel(option.label, option.value, h),
           selected: accent === option.value,
           onSelect: Message.SelectedAccent({ accent: option.value }),
         })),
         {
-          label: accentLabel("Other…", accent.startsWith("#") ? accent : "default", h),
-          subtitle: accent.startsWith("#") ? accent.toUpperCase() : "Choose a custom colour",
-          selected: accent.startsWith("#"),
+          label: accentLabel("Other…", isCustomAccent(accent) ? accent : "default", h),
+          subtitle: isCustomAccent(accent) ? String.toUpperCase(accent) : "Choose a custom colour",
+          selected: isCustomAccent(accent),
           onSelect: Message.OpenedAccentPicker(),
         },
       ],

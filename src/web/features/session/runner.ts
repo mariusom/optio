@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Array, Option, pipe, Schema } from "effect";
 import { isScalarAnswerValid } from "../../fields";
 
 // Shared runner contracts and pure task/section/session semantics.
@@ -9,18 +9,18 @@ const RunnerSectionSchema = Schema.Struct({
   kind: Schema.String,
   isRequired: Schema.Boolean,
   defaultValue: Schema.String,
-  sortOrder: Schema.Number,
+  sortOrder: Schema.Finite,
   options: Schema.Array(Schema.String),
   exclusiveOptions: Schema.Array(Schema.String),
   value: Schema.String,
-  startDate: Schema.Union([Schema.Null, Schema.Number]),
+  startDate: Schema.Union([Schema.Null, Schema.Finite]),
 });
 export type RunnerSection = typeof RunnerSectionSchema.Type;
 
 const RunnerTaskSchema = Schema.Struct({
   id: Schema.String,
-  orderIndex: Schema.Number,
-  endDate: Schema.Union([Schema.Null, Schema.Number]),
+  orderIndex: Schema.Finite,
+  endDate: Schema.Union([Schema.Null, Schema.Finite]),
   isBeingEdited: Schema.Boolean,
   sections: Schema.Array(RunnerSectionSchema),
 });
@@ -30,10 +30,10 @@ export const RunnerDataSchema = Schema.Struct({
   sessionId: Schema.String,
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
+  startedAt: Schema.Finite,
   tasks: Schema.Array(RunnerTaskSchema),
   currentTaskId: Schema.Union([Schema.Null, Schema.String]),
-  completedCount: Schema.Number,
+  completedCount: Schema.Finite,
 });
 export type RunnerData = typeof RunnerDataSchema.Type;
 
@@ -50,7 +50,7 @@ const PendingWriteSchema = Schema.Struct({
 
 /** Unwritten answers, and a revision that changes with every keystroke. */
 const FieldWritesSchema = Schema.Struct({
-  revision: Schema.Number,
+  revision: Schema.Finite,
   pending: Schema.Array(PendingWriteSchema),
 });
 export type FieldWrites = typeof FieldWritesSchema.Type;
@@ -74,7 +74,7 @@ export const RunnerStateSchema = Schema.Struct({
   showEndConfirm: Schema.Boolean,
   showSidebar: Schema.Boolean,
   lastError: Schema.Union([Schema.Null, Schema.String]),
-  now: Schema.Number,
+  now: Schema.Finite,
   fieldWrites: FieldWritesSchema,
   announcement: Schema.NullOr(RunnerAnnouncementSchema),
 });
@@ -92,7 +92,7 @@ export const isAnswerComplete = (answer: {
 
 export const isSectionDone = (section: RunnerSection): boolean => isAnswerComplete(section);
 
-export const isTaskDone = (task: RunnerTask): boolean => task.sections.every(isSectionDone);
+export const isTaskDone = (task: RunnerTask): boolean => Array.every(task.sections, isSectionDone);
 
 /** Open tasks and completed tasks in edit mode accept answer changes. */
 export const isTaskEditable = (task: {
@@ -106,8 +106,8 @@ export const editableSection = (
   taskFieldId: string,
 ): RunnerSection | null => {
   for (const task of runner.tasks) {
-    const section = task.sections.find((candidate) => candidate.id === taskFieldId);
-    if (section !== undefined) return isTaskEditable(task) ? section : null;
+    const section = Array.findFirst(task.sections, (candidate) => candidate.id === taskFieldId);
+    if (Option.isSome(section)) return isTaskEditable(task) ? section.value : null;
   }
   return null;
 };
@@ -121,7 +121,11 @@ export const canRecordTask = (task: RunnerTask | null | undefined): boolean =>
 
 // Earliest touched section startDate (min) — mirrors Task.startDate
 export const taskStartDate = (task: RunnerTask): number | null => {
-  const starts = task.sections.map((s) => s.startDate).filter((v): v is number => v !== null);
+  const starts = pipe(
+    task.sections,
+    Array.map((s) => s.startDate),
+    Array.filter((v): v is number => v !== null),
+  );
   if (starts.length === 0) return null;
   return Math.min(...starts);
 };
@@ -129,15 +133,21 @@ export const taskStartDate = (task: RunnerTask): number | null => {
 // Derive current task from runner (prefers editing task, else unfinished)
 export const currentTask = (runner: RunnerData | RunnerState): RunnerTask | null => {
   if (runner.currentTaskId !== null) {
-    const byId = runner.tasks.find((t) => t.id === runner.currentTaskId);
-    if (byId !== undefined) return byId;
+    const byId = Array.findFirst(runner.tasks, (t) => t.id === runner.currentTaskId);
+    if (Option.isSome(byId)) return byId.value;
   }
   // Fallback: prefer edited, else unfinished with max orderIndex, else last
-  const edited = runner.tasks.find((t) => t.isBeingEdited);
-  if (edited !== undefined) return edited;
-  const unfinished = [...runner.tasks].filter((t) => t.endDate === null);
-  if (unfinished.length > 0) {
-    return unfinished.reduce((a, b) => (a.orderIndex > b.orderIndex ? a : b));
+  const edited = Array.findFirst(runner.tasks, (t) => t.isBeingEdited);
+  if (Option.isSome(edited)) return edited.value;
+  const [firstUnfinished, ...laterUnfinished] = Array.filter(
+    runner.tasks,
+    (t) => t.endDate === null,
+  );
+  if (firstUnfinished !== undefined) {
+    // Ties keep the later task.
+    return Array.reduce(laterUnfinished, firstUnfinished, (a, b) =>
+      a.orderIndex > b.orderIndex ? a : b,
+    );
   }
   return runner.tasks.length > 0 ? (runner.tasks[runner.tasks.length - 1] as RunnerTask) : null;
 };
@@ -148,9 +158,9 @@ export const findNextUnfulfilledSectionId = (
   sections: ReadonlyArray<RunnerSection>,
   currentSectionId: string,
 ): string | null => {
-  const currentIndex = sections.findIndex((s) => s.id === currentSectionId);
-  if (currentIndex === -1) return null;
-  for (let i = currentIndex + 1; i < sections.length; i += 1) {
+  const found = Array.findFirstIndex(sections, (s) => s.id === currentSectionId);
+  if (Option.isNone(found)) return null;
+  for (let i = found.value + 1; i < sections.length; i += 1) {
     const candidate = sections[i] as RunnerSection;
     if (!isSectionDone(candidate) || candidate.value === "") return candidate.id;
   }

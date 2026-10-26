@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Check, Copy, List, icon } from "@/components/app";
@@ -127,8 +128,8 @@ export const taskCountLabel = (runner: RunnerState, h: HtmlBuilder<Message>) => 
 
 /** "1 of 3 required answered", while a required answer is missing or invalid. */
 export const requiredProgress = (task: RunnerTask, h: HtmlBuilder<Message>): Html | null => {
-  const required = task.sections.filter((section) => section.isRequired);
-  const answered = required.filter(isSectionDone).length;
+  const required = Array.filter(task.sections, (section) => section.isRequired);
+  const answered = Array.filter(required, isSectionDone).length;
   if (required.length === 0 || answered === required.length) return null;
   const text = `${answered} of ${required.length} required answered`;
   return progress(

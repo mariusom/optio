@@ -1,17 +1,19 @@
 // Display-time formatting. Epoch millis are stored timezone-agnostic;
 // Intl resolves the viewer's zone/locale at render time.
 
+import { Array, String, pipe } from "effect";
+
 const timeOnly = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 
-const padTwoDigits = (value: number): string => String(value).padStart(2, "0");
+const padTwoDigits = (value: number): string =>
+  pipe(globalThis.String(value), String.padStart(2, "0"));
 
 /** "9:41 AM" — short time only. */
-export const formatTimeOnly = (epochMs: number): string => timeOnly.format(new Date(epochMs));
+export const formatTimeOnly = (epochMs: number): string => timeOnly.format(epochMs);
 
 /** Fixed CSV timestamp: "dd-MM-yyyy HH:mm:ss" — matches CSVGenerator.displayDate exactly. */
-export const formatCsvDate = (date: Date): string => {
-  return `${padTwoDigits(date.getDate())}-${padTwoDigits(date.getMonth() + 1)}-${date.getFullYear()} ${padTwoDigits(date.getHours())}:${padTwoDigits(date.getMinutes())}:${padTwoDigits(date.getSeconds())}`;
-};
+export const formatCsvDate = (date: Date): string =>
+  `${padTwoDigits(date.getDate())}-${padTwoDigits(date.getMonth() + 1)}-${date.getFullYear()} ${padTwoDigits(date.getHours())}:${padTwoDigits(date.getMinutes())}:${padTwoDigits(date.getSeconds())}`;
 
 /** "1h 5m 30s" / "42s" — DateComponentsFormatter abbreviated hour/min/sec. */
 export const formatDurationHms = (ms: number): string => {
@@ -21,11 +23,11 @@ export const formatDurationHms = (ms: number): string => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  const parts: Array<string> = [];
+  const parts: globalThis.Array<string> = [];
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
   if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
-  return parts.join(" ");
+  return Array.join(parts, " ");
 };
 
 /** "1h 5m" — DateComponentsFormatter abbreviated hour/minute only. */
@@ -34,9 +36,11 @@ export const formatDurationHm = (ms: number): string => {
   const hours = Math.floor(minutes / 60);
   const rem = minutes % 60;
   if (hours === 0 && rem === 0) return "0m";
-  return [hours > 0 ? `${hours}h` : null, rem > 0 || hours === 0 ? `${rem}m` : null]
-    .filter((x) => x !== null)
-    .join(" ");
+  return pipe(
+    [hours > 0 ? `${hours}h` : null, rem > 0 || hours === 0 ? `${rem}m` : null],
+    Array.filter((x) => x !== null),
+    Array.join(" "),
+  );
 };
 
 /**

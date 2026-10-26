@@ -1,3 +1,5 @@
+import { Array, Option, pipe, String } from "effect";
+
 import type { FieldDef, FieldKind } from "../../../domain/fields";
 import { hasOptions, isScalarAnswerValid } from "../../fields";
 
@@ -39,7 +41,7 @@ export type EditorState = {
 export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDraft => {
   let next = { ...draft, kind: nextKind };
   if (nextKind === "textInput") {
-    next = { ...next, defaultValue: next.defaultValue.replace(/[\r\n]/g, "") };
+    next = { ...next, defaultValue: pipe(next.defaultValue, String.replace(/[\r\n]/g, "")) };
   }
   if (!hasOptions(nextKind)) {
     next = { ...next, options: [], exclusiveOptions: [], newOptionText: "" };
@@ -60,7 +62,9 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
   if (nextKind === "checkbox" && next.exclusiveOptions.length > 0) {
     next = {
       ...next,
-      exclusiveOptions: next.exclusiveOptions.filter((option) => next.options.includes(option)),
+      exclusiveOptions: Array.filter(next.exclusiveOptions, (option) =>
+        next.options.includes(option),
+      ),
     };
   }
   if (nextKind !== "checkbox") next = { ...next, exclusiveOptions: [] };
@@ -71,13 +75,16 @@ export const withKindChanged = (draft: FieldDraft, nextKind: FieldKind): FieldDr
 // ── Validation ─────────────────────────────────────────────────────────────
 
 export const isTemplateValid = (editor: { readonly name: string }): boolean =>
-  editor.name.trim().length > 0;
+  String.trim(editor.name).length > 0;
 
 export const isDraftValid = (draft: FieldDraft): boolean => {
-  if (draft.name.trim().length === 0) return false;
+  if (String.trim(draft.name).length === 0) return false;
   if (!isScalarAnswerValid(draft.kind, draft.defaultValue)) return false;
   if (hasOptions(draft.kind) && draft.options.length < 2) return false;
-  if (draft.kind === "checkbox" && draft.options.some((option) => option.includes(","))) {
+  if (
+    draft.kind === "checkbox" &&
+    Array.some(draft.options, (option) => pipe(option, String.includes(",")))
+  ) {
     return false;
   }
   return true;
@@ -86,7 +93,7 @@ export const isDraftValid = (draft: FieldDraft): boolean => {
 // ── hasChanges — deep diff of id,name,kind,isRequired,options,exclusive,defaultValue + name/default ──
 
 const arrayEqual = (a: ReadonlyArray<string>, b: ReadonlyArray<string>): boolean =>
-  a.length === b.length && a.every((value, index) => value === b[index]);
+  a.length === b.length && Array.every(a, (value, index) => value === b[index]);
 
 /** One field's dirty check: identity + every editable attribute. */
 export const fieldDiffers = (current: FieldDef, original: FieldDef): boolean =>
@@ -103,22 +110,23 @@ export const hasChanges = (editor: EditorState): boolean =>
   editor.name !== editor.original.name ||
   editor.isDefault !== editor.original.isDefault ||
   editor.fields.length !== editor.original.fields.length ||
-  editor.fields.some((current, index) =>
+  Array.some(editor.fields, (current, index) =>
     fieldDiffers(current as FieldDef, editor.original.fields[index] as FieldDef),
   );
 
 // ── Sort order helpers — dense renumber after moves/deletes ───────────────
 
 export const renumberFields = (fields: ReadonlyArray<FieldDef>): ReadonlyArray<FieldDef> =>
-  fields.map((field, index) => ({ ...field, sortOrder: index }));
+  Array.map(fields, (field, index) => ({ ...field, sortOrder: index }));
 
 export const moveField = (
   fields: ReadonlyArray<FieldDef>,
   id: string,
   direction: -1 | 1,
 ): ReadonlyArray<FieldDef> => {
-  const index = fields.findIndex((field) => field.id === id);
-  if (index === -1) return fields;
+  const found = Array.findFirstIndex(fields, (field) => field.id === id);
+  if (Option.isNone(found)) return fields;
+  const index = found.value;
   const target = index + direction;
   if (target < 0 || target >= fields.length) return fields;
   const next = [...fields];
@@ -129,7 +137,7 @@ export const moveField = (
 };
 
 export const deleteField = (fields: ReadonlyArray<FieldDef>, id: string): ReadonlyArray<FieldDef> =>
-  renumberFields(fields.filter((field) => field.id !== id));
+  renumberFields(Array.filter(fields, (field) => field.id !== id));
 
 // ── Draft → FieldDef conversion with normalization ──────────────────────────
 
@@ -139,19 +147,19 @@ export const draftToFieldDef = (draft: FieldDraft): FieldDef => {
   const options = hasOpts ? [...draft.options] : [];
   const exclusiveOptions =
     kind === "checkbox"
-      ? [...draft.exclusiveOptions].filter((option) => options.includes(option))
+      ? Array.filter(draft.exclusiveOptions, (option) => options.includes(option))
       : [];
   let defaultValue = draft.defaultValue;
   if (kind === "boolean") {
     defaultValue = isScalarAnswerValid(kind, defaultValue) ? defaultValue : "";
   }
   if (hasOpts && defaultValue !== "") {
-    const defaults = kind === "checkbox" ? defaultValue.split(",") : [defaultValue];
-    if (!defaults.every((option) => options.includes(option))) defaultValue = "";
+    const defaults = kind === "checkbox" ? String.split(defaultValue, ",") : [defaultValue];
+    if (!Array.every(defaults, (option) => options.includes(option))) defaultValue = "";
   }
   return {
     id: draft.id,
-    name: draft.name.trim(),
+    name: String.trim(draft.name),
     kind,
     isRequired: draft.isRequired,
     defaultValue,
@@ -201,20 +209,20 @@ export const moveOptionInDraft = (
 };
 
 export const addOptionToDraft = (draft: FieldDraft): FieldDraft => {
-  const trimmed = draft.newOptionText.trim();
+  const trimmed = String.trim(draft.newOptionText);
   if (trimmed === "") return draft;
-  if (draft.kind === "checkbox" && trimmed.includes(",")) return draft;
+  if (draft.kind === "checkbox" && pipe(trimmed, String.includes(","))) return draft;
   if (draft.options.includes(trimmed)) return { ...draft, newOptionText: "" };
   return { ...draft, options: [...draft.options, trimmed], newOptionText: "" };
 };
 
 export const deleteOptionFromDraft = (draft: FieldDraft, index: number): FieldDraft => {
-  const options = draft.options.filter((_, candidate) => candidate !== index);
+  const options = Array.filter(draft.options, (_, candidate) => candidate !== index);
   const removed = draft.options[index];
   const exclusiveOptions =
     removed === undefined
       ? draft.exclusiveOptions
-      : draft.exclusiveOptions.filter((option) => option !== removed);
+      : Array.filter(draft.exclusiveOptions, (option) => option !== removed);
   return { ...draft, options, exclusiveOptions };
 };
 
@@ -224,7 +232,7 @@ export const toggleExclusiveOption = (draft: FieldDraft, index: number): FieldDr
   if (draft.kind !== "checkbox") return draft;
   const isExclusive = draft.exclusiveOptions.includes(option);
   const exclusiveOptions = isExclusive
-    ? draft.exclusiveOptions.filter((candidate) => candidate !== option)
+    ? Array.filter(draft.exclusiveOptions, (candidate) => candidate !== option)
     : [...draft.exclusiveOptions, option];
   return { ...draft, exclusiveOptions };
 };

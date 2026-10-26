@@ -1,6 +1,7 @@
 import { RadioGroup as FoldkitRadioGroup } from "@foldkit/ui";
 import type { Option } from "effect/Option";
 import type { Html, HtmlBuilder } from "foldkit/html";
+import { Array } from "effect";
 
 import { cn } from "@/lib/utils";
 import {
@@ -130,7 +131,7 @@ const optionControl = <M, Value extends string>(
     [
       ...content.info.option,
       ...(content.info.isDisabled ? [h.Disabled(true), h.Tabindex(-1)] : []),
-      ...(content.isInvalid ? [h.Attribute("aria-invalid", "true")] : []),
+      ...(content.isInvalid === true ? [h.Attribute("aria-invalid", "true")] : []),
       h.DataAttribute("slot", "radio-group-item"),
       h.Class(cn(radioItemClass)),
     ],
@@ -219,7 +220,7 @@ const defaultOptionRow = <M, Value extends string>(
     h.DataAttribute("slot", "field"),
     h.DataAttribute("orientation", "horizontal"),
     ...(info.isDisabled ? [h.DataAttribute("disabled", "true")] : []),
-    ...(isInvalid ? [h.DataAttribute("invalid", "true")] : []),
+    ...(isInvalid === true ? [h.DataAttribute("invalid", "true")] : []),
   ];
   if (layout === "choice-card")
     return h.label(
@@ -287,14 +288,14 @@ export const styledViewInputs = <M, Value extends string = string>(
           ),
         ],
         [
-          ...options.map((option) => {
+          ...Array.map(options, (option) => {
             if (viewInputs.option !== undefined) {
               // Legacy path: consumer-owned content inside the attributed row.
               return h.div(
                 [
                   ...option.option,
                   ...(option.isDisabled ? [h.Tabindex(-1)] : []),
-                  ...(viewInputs.isInvalid ? [h.Attribute("aria-invalid", "true")] : []),
+                  ...(viewInputs.isInvalid === true ? [h.Attribute("aria-invalid", "true")] : []),
                   h.DataAttribute("slot", "radio-group-item"),
                   h.Class(cn(radioOptionClass, viewInputs.optionClass)),
                 ],

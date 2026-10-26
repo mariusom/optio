@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import { cn as mergeClasses } from "cn";
 import { getCurrentStyleClasses } from "@/web/style";
 
@@ -6,6 +7,8 @@ import { getCurrentStyleClasses } from "@/web/style";
 export const cn = (...classes: Parameters<typeof mergeClasses>): string => {
   const replacements = getCurrentStyleClasses();
   return mergeClasses(
-    ...classes.map((value) => (typeof value === "string" ? (replacements[value] ?? value) : value)),
+    ...Array.map(classes, (value) =>
+      typeof value === "string" ? (replacements[value] ?? value) : value,
+    ),
   );
 };

@@ -1,4 +1,4 @@
-import type { Stream } from "effect";
+import { Array, pipe, String, type Stream } from "effect";
 import { storeStream } from "./managedStream";
 import { Message } from "../messages";
 import { fieldRowsToDefs } from "../web/fieldRows";
@@ -11,9 +11,11 @@ export const templatesStream: Stream.Stream<Message> = storeStream(
     store.subscribe(queries.templateSummaries, (rows) =>
       emit(
         Message.GotTemplates({
-          templates: rows
-            .map((row) => ({ ...row, isDefault: row.isDefault === 1 }))
-            .toSorted((a, b) => a.name.localeCompare(b.name)),
+          templates: Array.sort(
+            Array.map(rows, (row) => ({ ...row, isDefault: row.isDefault === 1 })),
+            (a: { readonly name: string }, b: { readonly name: string }) =>
+              pipe(a.name, String.localeCompare(b.name)),
+          ),
         }),
       ),
     ),
@@ -54,7 +56,7 @@ const toReportTask =
   (record: ReportRecord) => ({
     startedAt: record.startedAt?.getTime() ?? null,
     endedAt: record.endedAt?.getTime() ?? null,
-    sections: (sectionsByRecord.get(record.id) ?? []).map(toReportSection),
+    sections: Array.map(sectionsByRecord.get(record.id) ?? [], toReportSection),
   });
 
 /** Every finished session of one template, for its time report. */
@@ -67,7 +69,7 @@ export const templateReportStream = (templateId: string): Stream.Stream<Message>
             templateId,
             sessionCount: summary.sessionCount,
             totalMs: summary.totalMs,
-            tasks: records.map(toReportTask(groupSectionsByRecord(sections))),
+            tasks: Array.map(records, toReportTask(groupSectionsByRecord(sections))),
           },
         }),
       ),

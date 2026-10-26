@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema } from "effect";
+import { DateTime, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -7,6 +7,7 @@ import type { AppStore } from "../../../livestore/client";
 import { withStore, type StoreAccess } from "../../../livestore/access";
 import { FieldDef } from "../../../domain/fields";
 import { fieldRowsToDefs } from "../../fieldRows";
+import { randomUuid } from "../../../lib/ids";
 
 type StartTemplate = {
   templateId: string | null;
@@ -60,13 +61,14 @@ export const StartSession = Command.define("StartSession", {
   execute: ({ id, templateId, templateName, sessionName, fields }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
-        const now = new Date(yield* Clock.currentTimeMillis);
+        const now = yield* DateTime.nowAsDate;
         const activeSession = store.query(tables.sessions.select().where({ endedAt: null }))[0];
         if (activeSession !== undefined) {
           return Message.SessionStarted({ sessionId: activeSession.id, joinedExisting: true });
         }
 
         const template = resolveStartTemplate(store, tables, { templateId, templateName, fields });
+        const taskId = yield* randomUuid;
         store.commit(
           events.sessionStarted({
             id,
@@ -77,7 +79,7 @@ export const StartSession = Command.define("StartSession", {
           }),
           events.taskSpawned({
             sessionId: id,
-            id: crypto.randomUUID(),
+            id: taskId,
             orderIndex: 1,
             fields: [...template.fields],
           }),

@@ -89,6 +89,38 @@ at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `vite-plus`) are
 ignored as dependencies. Prefer deleting an unused export over adding an
 exemption.
 
+## Effect diagnostics
+
+The Effect language service (`@effect/tsgo`) is configured as a TypeScript
+plugin in `tsconfig.json` with the `style`, `effect-native` and `recommended`
+presets. `pnpm install` runs its `prepare` script, which patches the installed
+native TypeScript, so `pnpm exec tsc --noEmit` and editors that launch the
+project's TypeScript report Effect diagnostics; warnings fail the type check.
+In VS Code, use the workspace TypeScript (native preview) so the patched server
+runs; see the package README for other editors. Run
+`pnpm exec effect-tsgo unpatch --typescript` to restore stock TypeScript.
+
+Configuration choices, all in `tsconfig.json`:
+
+- `missingPipeableSignature` is off: dual (pipeable) signatures are for library
+  APIs, and Optio's exported helpers are application code.
+- `allowedUnstableApis` lists the unstable modules Optio deliberately uses:
+  `@effect/vitest`, `effect/ai` (agent tools), the key-value stores, the browser
+  runtime and `Crypto`.
+- Tests and `vite.config.ts` turn off the effect-native rules for platform
+  globals and native helpers (clock, IDs, promises, timers, console, Node
+  built-ins, native Array/String/Object methods, synchronous Schema calls),
+  matching the lint exemptions for test files.
+- `schemaNumber` is off in `src/livestore/schema.ts`: its event and table
+  schemas are persisted contracts.
+
+Prefer fixing a diagnostic over suppressing it. When a native method must keep
+its exact semantics, suppress that line with
+`// @effect-diagnostics-next-line <rule>:off` and a reason. Random IDs come from
+Effect's `Crypto` service (`src/lib/ids.ts`), which FoldKit provides to Commands
+through the application's `resources` layer (`src/app/services.ts`); code
+outside the runtime provides `appServices` itself.
+
 ## What tests establish
 
 `pnpm test` runs the `unit` and `browser` (Chromium component) Vitest projects
@@ -188,29 +220,34 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   state from the existing event log; retain `optio-v3` and the event schemas.
   Hard crashes can still lose unacknowledged writes. On any LiveStore change,
   run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
-- The Effect cohort is pinned to 4.0.5 across the app and workers. FoldKit's
+- The Effect cohort is pinned to 4.0.6 across the app and workers. FoldKit's
   published peers still pin 4.0.0; the coordinated overrides use the later stable
   patch eligible under the release-age guard (LiveStore needs at least 4.0.3).
   Verify runtime, browser and persistence tests
-  before changing them. Effect 4.0.6 was inside the 24-hour release-age guard on
-  October 23; its companion packages must not advance independently.
-- Vite+ 1.3.0 bundles Vitest 5.0.5. The workspace catalog aligns the browser
+  before changing them. Its companion packages must not advance independently.
+- Vite+ 1.4.0 bundles Vitest 5.0.5 and Oxlint 1.89.0. The workspace catalog aligns the browser
   provider and runner, and overrides `vite` to the matching Vite+ core alias.
-  Bundled dev also needs direct `rolldown` 1.2.14: this Vite+ release resolves
+  Bundled dev also needs direct `rolldown` 1.2.15: this Vite+ release resolves
   its matching browser HMR runtime through that package name. It is a tooling
   dependency, exempted from fallow until upstream fixes the runtime lookup.
   Use `vite-plus/test` and `vite-plus/test/browser` imports. The migration's
   asynchronous assertions were already awaited (including saved assertion
   promises); polling assertions retain their existing timeouts. Browser locators
   use explicit suffix patterns for task-count-prefixed sidebar buttons and an
-  explicit partial match for the guide link with its subtitle. Vite+ 1.4.0 was
-  inside the release-age guard on October 23. Keep the guard without exemptions.
+  explicit partial match for the guide link with its subtitle. Match `rolldown`
+  to the version embedded in the Vite+ core package when updating. Keep the
+  release-age guard without exemptions.
 - LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
   it from optimized browser modules. Exclude it from the shared vendor group to
   avoid a circular import between its external entry and that group. Version
-  1.9.1 satisfies the installed SDK's `<1.10` peer range.
+  1.9.1 satisfies the installed SDK's `<1.10` peer range; keep it until the SDK
+  accepts API 1.10.
 - The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
   LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
+- `@effect/tsgo` 0.57.0 provides the Effect language service (see
+  [Effect diagnostics](#effect-diagnostics)). 0.59.0 was inside the release-age
+  guard on October 26. Each release supports specific TypeScript and Oxlint
+  versions (listed in its README); check them before updating TypeScript.
 - pnpm 12.15.0 is pinned. Use it for the two-document lockfile and verify a
   frozen install. External scanners must read the app graph, not only the
   package-manager document.

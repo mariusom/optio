@@ -67,9 +67,8 @@ it("operates template/field CRUD and the full record → edit → archive → de
     const reply = Schema.decodeUnknownSync(AgentResult)(await invoke("optio_get_state", {}));
     return reply.state;
   };
-  const act = async (action: AgentAction) => {
-    return Schema.decodeUnknownSync(AgentResult)(await invoke("optio_action", { action }));
-  };
+  const act = async (action: AgentAction) =>
+    Schema.decodeUnknownSync(AgentResult)(await invoke("optio_action", { action }));
   const readInternalModel = () =>
     new Promise<Model>((resolve, reject) => {
       const requestId = crypto.randomUUID();

@@ -102,6 +102,7 @@ export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: HtmlBu
             h.DataAttribute("size", config.size ?? "default"),
             ...(config.attributes ?? []),
           ],
+          // @effect-diagnostics-next-line preferEffectArray:off -- Effect's isArray does not narrow ReadonlyArray labels
           Array.isArray(label) ? label : [label],
         ),
     },

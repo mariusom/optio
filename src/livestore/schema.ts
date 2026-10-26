@@ -1,5 +1,5 @@
 import { Events, State, makeSchema } from "@livestore/livestore";
-import { Schema } from "effect";
+import { Array, Record, Schema, pipe } from "effect";
 
 import { FieldDef } from "../domain/fields";
 import { ArchiveRecord, uniqueTasks } from "../domain/archive";
@@ -262,7 +262,7 @@ export const events = {
 // ── Materializers ─────────────────────────────────────────────────────────
 
 const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef>) =>
-  fields.map((field) =>
+  Array.map(fields, (field) =>
     tables.templateFields.insert({
       id: field.id,
       templateId,
@@ -277,7 +277,7 @@ const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef
   );
 
 const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>) =>
-  fields.map((field) =>
+  Array.map(fields, (field) =>
     tables.sessionTaskFields.insert({
       // Materializers run in both the client and worker, and during replay.
       // Updates must target the same field everywhere; namespace template IDs
@@ -302,7 +302,7 @@ const insertArchiveRecords = (
   sessionId: string,
   records: ReadonlyArray<typeof ArchiveRecord.Type>,
 ) =>
-  records.flatMap((record) => {
+  Array.flatMap(records, (record) => {
     const recordId = `${sessionId}:${record.taskIdNumber}`;
     return [
       tables.taskRecords.insert({
@@ -313,7 +313,7 @@ const insertArchiveRecords = (
         startedAt: record.startedAt,
         endedAt: record.endedAt,
       }),
-      ...record.sections.map((section, index) =>
+      ...Array.map(record.sections, (section, index) =>
         tables.taskSectionRecords.insert({
           id: `${recordId}:${index}`,
           taskRecordId: recordId,
@@ -330,7 +330,7 @@ const insertArchiveRecords = (
 
 type MaterializerQuery = (input: {
   query: string;
-  bindValues: Record<string, string>;
+  bindValues: { readonly [name: string]: string };
 }) => ReadonlyArray<unknown>;
 
 /** Live (not ended) sessions, optionally only the given one. */
@@ -380,9 +380,9 @@ const materializers = State.SQLite.materializers(events, {
   // exists, so replaying both events yields one set with one default.
   "v3.TemplatesSeeded": ({ templates, now }, { query }) => {
     const existing = query(tables.templates.select());
-    const taken = new Set(existing.map((row) => row.name));
-    let hasDefault = existing.some((row) => row.isDefault === 1);
-    return templates.flatMap((t) => {
+    const taken = new Set(Array.map(existing, (row) => row.name));
+    let hasDefault = Array.some(existing, (row) => row.isDefault === 1);
+    return Array.flatMap(templates, (t) => {
       if (taken.has(t.name)) return [];
       taken.add(t.name);
       const isDefault = t.isDefault && !hasDefault;
@@ -423,7 +423,7 @@ const materializers = State.SQLite.materializers(events, {
     }) as ReadonlyArray<{ readonly count: number }>;
     if ((rows[0]?.count ?? 0) < 1) return [];
     return [
-      tables.sessions.update({ endedAt: new Date(endedAt) }).where({ id }),
+      tables.sessions.update({ endedAt }).where({ id }),
       ...insertArchiveRecords(id, records),
     ];
   },
@@ -435,16 +435,17 @@ const materializers = State.SQLite.materializers(events, {
   "v3.BackupRestored": ({ now, templates, sessions }, { query }) => {
     const claim = idClaimer(query);
     return [
-      ...templates
-        .filter(
+      ...pipe(
+        templates,
+        Array.filter(
           (t) =>
             claim("templates", [t.id]) &&
             claim(
               "templateFields",
-              t.fields.map((f) => f.id),
+              Array.map(t.fields, (f) => f.id),
             ),
-        )
-        .flatMap((t) => [
+        ),
+        Array.flatMap((t) => [
           tables.templates.insert({
             id: t.id,
             name: t.name,
@@ -454,12 +455,15 @@ const materializers = State.SQLite.materializers(events, {
           }),
           ...insertTemplateFields(t.id, t.fields),
         ]),
-      ...sessions
-        .filter((s) => claim("sessions", [s.id]))
-        .flatMap(({ records, ...session }) => [
+      ),
+      ...pipe(
+        sessions,
+        Array.filter((s) => claim("sessions", [s.id])),
+        Array.flatMap(({ records, ...session }) => [
           tables.sessions.insert(session),
           ...insertArchiveRecords(session.id, uniqueTasks(records)),
         ]),
+      ),
     ];
   },
   "v2.SessionLiveGraphCleared": ({ sessionId }) => [
@@ -506,16 +510,19 @@ const materializers = State.SQLite.materializers(events, {
         ],
   // First finish wins: a duplicate record from another tab keeps the original end time.
   "v2.TaskFinished": ({ id, endedAt }) =>
-    tables.sessionTasks.update({ endDate: new Date(endedAt) }).where({ id, endDate: null }),
+    tables.sessionTasks.update({ endDate: endedAt }).where({ id, endDate: null }),
   "v3.TaskEditStarted": ({ sessionId, id }, { query }) => {
     const task = query(tables.sessionTasks.select().where({ id, sessionId }))[0];
     if (task === undefined || task.endDate === null) return [];
     const backup =
       task.editBackup ??
-      Object.fromEntries(
-        query(
-          tables.sessionTaskFields.select().where({ taskId: id }).orderBy("sortOrder", "asc"),
-        ).map((field) => [field.id, field.value]),
+      Record.fromEntries(
+        Array.map(
+          query(
+            tables.sessionTaskFields.select().where({ taskId: id }).orderBy("sortOrder", "asc"),
+          ),
+          (field) => [field.id, field.value] as const,
+        ),
       );
     return [
       tables.sessionTasks
@@ -530,7 +537,7 @@ const materializers = State.SQLite.materializers(events, {
     const task = query(tables.sessionTasks.select().where({ id, isBeingEdited: 1 }))[0];
     if (task?.editBackup == null) return [];
     return [
-      ...Object.entries(task.editBackup).map(([fieldId, value]) =>
+      ...Array.map(Record.toEntries(task.editBackup), ([fieldId, value]) =>
         tables.sessionTaskFields.update({ value }).where({ id: fieldId, taskId: id }),
       ),
       tables.sessionTasks.update({ isBeingEdited: 0, editBackup: null }).where({ id }),

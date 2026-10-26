@@ -1,3 +1,4 @@
+import { Array, Record, String, pipe } from "effect";
 import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode, SVGProps } from "lucide";
 import { iconNodeForCurrentLibrary, type HugeIconNode } from "./iconPreference";
@@ -39,16 +40,17 @@ const svgAttributes = <M>(
 ];
 
 const nodeToAttributes = <M>(
-  attrs: SVGProps | Readonly<Record<string, string | number>>,
+  attrs: SVGProps | { readonly [name: string]: string | number },
   h: HtmlBuilder<M>,
 ): ReadonlyArray<Attribute<M> | ChildAttribute> =>
-  Object.entries(attrs).flatMap(([name, value]) =>
+  Array.flatMap(Record.toEntries(attrs), ([name, value]) =>
     name === "key"
       ? []
       : [
           h.Attribute(
-            name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`),
-            String(value),
+            // SVG attribute names are ASCII camelCase: strokeWidth -> stroke-width.
+            pipe(name, String.replace(/[A-Z]/g, "-$&"), String.toLowerCase),
+            globalThis.String(value),
           ),
         ],
   );
@@ -66,8 +68,11 @@ export const icon = <M>(
   const className = typeof options === "string" ? options : (options.className ?? defaultIconClass);
   const position = typeof options === "string" ? undefined : options.position;
   return h.svg(
-    [...svgAttributes(className, h), ...(position ? [h.DataAttribute("icon", position)] : [])],
-    (iconNodeForCurrentLibrary(node) as HugeIconNode).map(([tag, attrs]) =>
+    [
+      ...svgAttributes(className, h),
+      ...(position === undefined ? [] : [h.DataAttribute("icon", position)]),
+    ],
+    Array.map(iconNodeForCurrentLibrary(node) as HugeIconNode, ([tag, attrs]) =>
       svgElement(tag, h)(nodeToAttributes(attrs, h)),
     ),
   );

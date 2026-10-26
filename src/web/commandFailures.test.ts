@@ -3,6 +3,7 @@ import { describe, expect, it } from "@effect/vitest";
 import * as Scene from "foldkit/scene";
 import { beforeEach, vi } from "vite-plus/test";
 
+import { appServices } from "../app/services";
 import { getStore, type AppStore } from "../livestore/client";
 import { init, update, type Model } from "../main";
 import { Message } from "../messages";
@@ -181,7 +182,7 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
       });
       expect(query).toHaveBeenCalledTimes(rows.length);
       expect(commit).toHaveBeenCalledTimes(writes ? 1 : 0);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect.each(["open", ...(writes ? ["commit"] : []), ...rows.map((_, index) => index)])(
@@ -212,7 +213,7 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
         expect(reported).not.toContain("Error");
         expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
         if (stage === "open") expect(query).not.toHaveBeenCalled();
-      }),
+      }).pipe(Effect.provide(appServices)),
   );
 });
 
@@ -452,6 +453,6 @@ describe("template save failure recovery", () => {
       expect(update(recovered.model, Message.ClickedSaveTemplate()).model.editor?.isSaving).toBe(
         true,
       );
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });

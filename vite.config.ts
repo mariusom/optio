@@ -128,6 +128,7 @@ export default defineConfig(({ command, mode }) => {
     // watches the source dependencies registered by Tailwind's transform.
     for (const plugin of tailwind) delete plugin.hotUpdate;
   }
+  const publicUrl = process.env.PUBLIC_URL ?? "";
   return defineConfig({
     lint,
     experimental: { bundledDev },
@@ -135,7 +136,7 @@ export default defineConfig(({ command, mode }) => {
     resolve: { alias: { "@": new URL("./src", import.meta.url).pathname } },
     server: {
       port: 60_001,
-      allowedHosts: process.env.PUBLIC_URL ? [new URL(process.env.PUBLIC_URL).hostname] : [],
+      allowedHosts: publicUrl === "" ? [] : [new URL(publicUrl).hostname],
     },
     worker: { format: "es" },
     plugins: [
@@ -148,7 +149,7 @@ export default defineConfig(({ command, mode }) => {
                 // https://github.com/vitejs/vite/issues/23216
                 // Run before Vite's base middleware so it can strip the prefix.
                 server.middlewares.use((req, _res, next) => {
-                  if (req.url?.startsWith("/@vite/lazy?")) {
+                  if (req.url?.startsWith("/@vite/lazy?") === true) {
                     req.url = `${server.config.base.slice(0, -1)}${req.url}`;
                   }
                   next();

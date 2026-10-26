@@ -1,4 +1,4 @@
-import { Match } from "effect";
+import { Array, Match } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { cardClass } from "@/components/ui/card";
@@ -37,7 +37,7 @@ const listRow = <M>(index: number, subtitles: boolean, h: HtmlBuilder<M>) =>
 const controlRow = <M>(h: HtmlBuilder<M>) =>
   h.div([h.Class("flex flex-col gap-2")], [bar("h-4 w-28", h), bar("h-11 w-full", h)]);
 
-const indexesOf = (rows: number) => Array.from({ length: rows }, (_, index) => index);
+const indexesOf = (rows: number) => globalThis.Array.from({ length: rows }, (_, index) => index);
 
 const block = <M>(config: SkeletonBlock, h: HtmlBuilder<M>): Html =>
   Match.valueTags(config, {
@@ -48,14 +48,14 @@ const block = <M>(config: SkeletonBlock, h: HtmlBuilder<M>): Html =>
           sectionHeader(h),
           h.div(
             [h.Class(cn(cardClass, "gap-0 py-0 divide-y divide-border"))],
-            indexesOf(rows).map((index) => listRow(index, subtitles ?? false, h)),
+            Array.map(indexesOf(rows), (index) => listRow(index, subtitles ?? false, h)),
           ),
         ],
       ),
     Controls: ({ rows }) =>
       h.div(
         [h.Class("flex flex-col gap-4")],
-        [sectionHeader(h), ...indexesOf(rows).map(() => controlRow(h))],
+        [sectionHeader(h), ...Array.map(indexesOf(rows), () => controlRow(h))],
       ),
     Action: () => bar("h-12 w-full", h),
   });
@@ -74,7 +74,7 @@ export const skeletonPage = <M>(
     { className: "loading-reveal" },
     [
       h.p([h.Class("sr-only"), h.Role("status")], [config.label]),
-      ...config.blocks.map((item) =>
+      ...Array.map(config.blocks, (item) =>
         h.div([h.AriaHidden(true), h.DataAttribute("slot", "skeleton-block")], [block(item, h)]),
       ),
     ],

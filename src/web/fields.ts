@@ -1,3 +1,4 @@
+import { Array, String, pipe } from "effect";
 import type { FieldKind } from "../domain/fields";
 
 // FieldKind metadata shared by templates and observations.
@@ -31,7 +32,7 @@ export const toggleCheckboxOption = (
     exclusiveOptions: ReadonlyArray<string>;
   }>,
 ): string => {
-  const current = currentValue.split(",").filter((item) => item !== "");
+  const current = Array.filter(String.split(currentValue, ","), (item) => item !== "");
   const isSelected = current.includes(option);
   const exclusives = new Set(exclusiveOptions);
 
@@ -39,21 +40,26 @@ export const toggleCheckboxOption = (
   if (!isSelected && exclusives.has(option)) {
     // Selecting an exclusive clears everything else
     next = [option];
-  } else if (!isSelected && current.some((item) => exclusives.has(item))) {
+  } else if (!isSelected && Array.some(current, (item) => exclusives.has(item))) {
     // Selecting a normal option while an exclusive is held replaces it
     next = [option];
   } else if (isSelected) {
-    next = current.filter((item) => item !== option);
+    next = Array.filter(current, (item) => item !== option);
   } else {
     next = [...current, option];
   }
 
   // Reorder to template option order, drop unknowns/duplicates
   const nextSet = new Set(next);
-  return options.filter((candidate) => nextSet.has(candidate)).join(",");
+  return pipe(
+    options,
+    Array.filter((candidate) => nextSet.has(candidate)),
+    Array.join(","),
+  );
 };
 
-export const isBooleanTrue = (value: string): boolean => value.trim().toLowerCase() === "true";
+export const isBooleanTrue = (value: string): boolean =>
+  String.toLowerCase(String.trim(value)) === "true";
 
 export const formatBooleanDisplay = (value: string): string =>
   value === "" ? "Unanswered" : isBooleanTrue(value) ? "Yes" : "No";
