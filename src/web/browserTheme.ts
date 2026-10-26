@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Effect, Schema, String, pipe } from "effect";
 import * as BrowserKeyValueStore from "@effect/platform-browser/BrowserKeyValueStore";
 import iconSvg from "../../public/icon.svg?raw";
 import {
@@ -31,12 +31,14 @@ import { getCurrentStyle, readStyle, saveStyle, setCurrentStyle, type FoldcnStyl
 const updateFavicon = () => {
   const styles = getComputedStyle(document.documentElement);
   const svg = new DOMParser().parseFromString(iconSvg, "image/svg+xml");
-  svg.querySelector("rect")!.setAttribute("fill", styles.getPropertyValue("--primary").trim());
+  svg
+    .querySelector("rect")!
+    .setAttribute("fill", String.trim(styles.getPropertyValue("--primary")));
   const text = svg.querySelector("text")!;
-  text.setAttribute("fill", styles.getPropertyValue("--primary-foreground").trim());
+  text.setAttribute("fill", String.trim(styles.getPropertyValue("--primary-foreground")));
   text.setAttribute("font-family", styles.fontFamily);
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (!link) {
+  if (link === null) {
     link = document.createElement("link");
     link.rel = "icon";
     document.head.append(link);
@@ -168,7 +170,7 @@ export const changeIconLibrary = Effect.fn("changeIconLibrary")(function* (libra
 const applyAccent = (accent: Accent) => {
   const root = document.documentElement;
   root.dataset.accent = accent;
-  if (accent.startsWith("#")) {
+  if (pipe(accent, String.startsWith("#"))) {
     root.style.setProperty("--primary", accent);
     root.style.setProperty("--primary-foreground", accentForeground(accent));
     root.style.setProperty("--ring", accent);
@@ -214,7 +216,7 @@ export const initializeStyle = Effect.gen(function* () {
 
 export const changeStyle = Effect.fn("changeStyle")(function* (style: FoldcnStyle) {
   const applied = yield* Effect.tryPromise(() => setCurrentStyle(style)).pipe(
-    Effect.catch(() => Effect.succeed(null)),
+    Effect.orElseSucceed(() => null),
   );
   if (applied === false) return null; // A newer selection superseded this download.
   if (applied === null) return { appliedStyle: getCurrentStyle(), saved: false, loadFailed: true };

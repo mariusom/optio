@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { choiceRows, groupedList, notice, page, row } from "@/components/app";
@@ -46,8 +47,8 @@ type FailureOptions = Readonly<{
 }>;
 
 /** Preferences that apply at once but may fail to save, and what to say. */
-const unsavedNotices = (options: FailureOptions): ReadonlyArray<string> =>
-  [
+const unsavedNotices = (options: FailureOptions): ReadonlyArray<string> => {
+  const notices: ReadonlyArray<readonly [boolean, string]> = [
     [options.styleLoadFailed, "Couldn't load that style. Reload the app before trying again."],
     [options.styleSaveFailed, "The component style was applied but couldn’t be saved."],
     [options.lookSaveFailed, "The look was applied but couldn’t be saved."],
@@ -55,7 +56,9 @@ const unsavedNotices = (options: FailureOptions): ReadonlyArray<string> =>
     [options.fontSaveFailed, "The font was applied but couldn’t be saved."],
     [options.iconLibrarySaveFailed, "The icon style was applied but couldn’t be saved."],
     [options.accentSaveFailed, "The accent colour was applied but couldn’t be saved."],
-  ].flatMap(([failed, text]) => (failed ? [text as string] : []));
+  ];
+  return Array.flatMap(notices, ([failed, text]) => (failed ? [text] : []));
+};
 
 const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
   ...(options.themeSaveFailed
@@ -78,7 +81,7 @@ const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
         ),
       ]
     : []),
-  ...unsavedNotices(options).map((text) => notice({ tone: "warning", text }, h)),
+  ...Array.map(unsavedNotices(options), (text) => notice({ tone: "warning", text }, h)),
 ];
 
 const helpAndAbout = (h: HtmlBuilder<Message>) =>
@@ -169,7 +172,7 @@ export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
                   label: "Font",
                   header: "Font",
                   footer: "Uses fonts already available on your device.",
-                  choices: FONTS.map((option) => ({
+                  choices: Array.map(FONTS, (option) => ({
                     label: option.label,
                     selected: model.font === option.value,
                     onSelect: Message.SelectedFont({ font: option.value }),
@@ -184,7 +187,7 @@ export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
                   header: "Component style",
                   footer:
                     "Changes component shape, spacing and typography independently of appearance.",
-                  choices: STYLES.map((option) => ({
+                  choices: Array.map(STYLES, (option) => ({
                     label: option.label,
                     selected: model.style === option.value,
                     onSelect: Message.SelectedStyle({ style: option.value }),

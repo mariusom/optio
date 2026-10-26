@@ -22,7 +22,7 @@ export const FieldDef = Schema.Struct({
   kind: FieldKind,
   isRequired: Schema.Boolean,
   defaultValue: Schema.String,
-  sortOrder: Schema.Number,
+  sortOrder: Schema.Finite,
   options: Schema.Array(Schema.String),
   exclusiveOptions: Schema.Array(Schema.String),
 });

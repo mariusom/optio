@@ -1,3 +1,4 @@
+import { Array, Order, String } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Check, ListX, groupedList, hint, icon, statusPill } from "@/components/app";
@@ -28,13 +29,11 @@ const choiceBody = (
         // dir="auto": a right-to-left label lays out (and wraps) from its own start.
         [h.Class("min-w-0 flex-1 text-start"), h.Dir("auto")],
         [
-          ...label
-            .split(/(\s+)/)
-            .map((word) =>
-              /^\s+$/.test(word)
-                ? word
-                : h.span([h.Class("inline-block max-w-full break-words")], [word]),
-            ),
+          ...Array.map(String.split(label, /(\s+)/), (word) =>
+            /^\s+$/.test(word)
+              ? word
+              : h.span([h.Class("inline-block max-w-full break-words")], [word]),
+          ),
           ...(isExclusive
             ? [
                 // Visible on touch too; the button's aria-description carries the meaning.
@@ -96,9 +95,9 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
       h.Class(section.kind === "rating" ? "grid grid-cols-5 gap-2 text-sm" : choiceGridClass),
       h.Role("radiogroup"),
       h.AriaLabel(section.name),
-      h.Attribute("aria-required", String(section.isRequired)),
+      h.Attribute("aria-required", globalThis.String(section.isRequired)),
     ],
-    section.options.map((option) => {
+    Array.map(section.options, (option) => {
       const isSelected = section.value === option;
       // Yes/no keeps an explicit "no answer" choice; it must not read as an answer.
       const isUnanswered = option === "";
@@ -149,10 +148,10 @@ const singleChoiceGroup = (section: RunnerSection, scope: string, h: HtmlBuilder
   );
 
 const multipleChoiceGroup = (section: RunnerSection, h: HtmlBuilder<Message>) => {
-  const selected = new Set(section.value.split(",").filter((value) => value !== ""));
+  const selected = new Set(Array.filter(String.split(section.value, ","), (value) => value !== ""));
   return h.div(
     [h.Class(choiceGridClass), h.Role("group"), h.AriaLabel(section.name)],
-    section.options.map((option) => {
+    Array.map(section.options, (option) => {
       const isSelected = selected.has(option);
       const isExclusive = section.exclusiveOptions.includes(option);
       const nextValue = toggleCheckboxOption(section.value, option, section);
@@ -238,8 +237,8 @@ const numericAnswer = (section: RunnerSection, h: HtmlBuilder<Message>) => {
             h.Placeholder("Unanswered"),
             h.AriaLabel(section.name),
             h.Attribute("inputmode", counter ? "numeric" : "decimal"),
-            h.Attribute("aria-required", String(section.isRequired)),
-            h.Attribute("aria-invalid", String(!valid)),
+            h.Attribute("aria-required", globalThis.String(section.isRequired)),
+            h.Attribute("aria-invalid", globalThis.String(!valid)),
             h.OnInput((value) => Message.ChangedFieldValue({ taskFieldId: section.id, value })),
             h.OnBlur(Message.BlurredField()),
           ]),
@@ -369,19 +368,21 @@ const questionView = (section: RunnerSection, scope: string, h: HtmlBuilder<Mess
       );
 
 /** `leading` renders above the first question, below the scroll target. */
+const bySortOrder = Order.mapInput(Order.Number, (section: RunnerSection) => section.sortOrder);
+
 export const formSectionsView = (
   task: RunnerTask,
   h: HtmlBuilder<Message>,
   options: Readonly<{ scope?: string; leading?: ReadonlyArray<Html> }> = {},
 ) => {
   const scope = options.scope ?? "mobile";
-  const sections = task.sections.toSorted((a, b) => a.sortOrder - b.sortOrder);
+  const sections = Array.sort(task.sections, bySortOrder);
   return h.div(
     [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-6 px-safe pt-4 pb-8")],
     [
       h.div([h.Class("h-0 w-full scroll-mt-16"), h.Id(`${scope}-formTop`)]),
       ...(options.leading ?? []),
-      ...sections.map((section) => questionView(section, scope, h)),
+      ...Array.map(sections, (section) => questionView(section, scope, h)),
     ],
   );
 };

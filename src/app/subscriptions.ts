@@ -166,7 +166,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     }),
   ),
   templates: entry(
-    { seedChecked: Schema.Boolean, attempt: Schema.Number },
+    { seedChecked: Schema.Boolean, attempt: Schema.Finite },
     {
       modelToDependencies: (model) => ({
         seedChecked: model.templatesSeedChecked,
@@ -177,7 +177,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   history: entry(
-    { attempt: Schema.Number },
+    { attempt: Schema.Finite },
     {
       modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
       dependenciesToStream: () => reportingListFailure("history")(historyStream),
@@ -214,7 +214,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   activeSession: entry(
-    { attempt: Schema.Number },
+    { attempt: Schema.Finite },
     {
       modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
       dependenciesToStream: () => reportingListFailure("activeSession")(activeSessionStream),
@@ -238,7 +238,7 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
     },
   ),
   fieldWriteFlush: entry(
-    { revision: Schema.Union([Schema.Null, Schema.Number]), onRunner: Schema.Boolean },
+    { revision: Schema.Union([Schema.Null, Schema.Finite]), onRunner: Schema.Boolean },
     {
       modelToDependencies: (model) => ({
         revision:

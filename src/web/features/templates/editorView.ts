@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
@@ -143,10 +144,15 @@ const editorNavBar = (
           ? editor.editingFieldId === null
             ? "New question"
             : "Edit question"
-          : showCreate
+          : showCreate === true
             ? "New template"
             : "Template builder",
-      subtitle: editor.draft !== null ? editor.name || "Untitled template" : undefined,
+      subtitle:
+        editor.draft !== null
+          ? editor.name !== ""
+            ? editor.name
+            : "Untitled template"
+          : undefined,
       wide: true,
       back:
         editor.draft !== null
@@ -182,7 +188,7 @@ const questionsList = (editor: Editor, h: HtmlBuilder<Message>) =>
           : `${editor.fields.length} question${editor.fields.length === 1 ? "" : "s"}`,
     },
     [
-      ...editor.fields.map((field, index) =>
+      ...Array.map(editor.fields, (field, index) =>
         h.keyed("div")(
           field.id,
           [],

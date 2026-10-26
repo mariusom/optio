@@ -373,7 +373,9 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
         completedCount,
         now: 59_000,
         tasks: [
-          ...(completedCount ? [{ ...active, id: "done", orderIndex: 1, endDate: 1_000 }] : []),
+          ...(completedCount !== 0
+            ? [{ ...active, id: "done", orderIndex: 1, endDate: 1_000 }]
+            : []),
           active,
         ],
       });

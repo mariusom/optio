@@ -40,12 +40,12 @@ export const actionGroup = <M>(config: ActionGroupConfig<M>, h: HtmlBuilder<M>) 
       h.DataAttribute("slot", "action-group"),
     ],
     [
-      ...(config.destructive ? [action(config.destructive, "destructive")] : []),
+      ...(config.destructive === undefined ? [] : [action(config.destructive, "destructive")]),
       h.div(
         [h.Class("ml-auto flex flex-wrap items-center justify-end gap-2")],
         [
-          ...(config.cancel ? [action(config.cancel, "secondary")] : []),
-          ...(config.confirm ? [action(config.confirm, "default")] : []),
+          ...(config.cancel === undefined ? [] : [action(config.cancel, "secondary")]),
+          ...(config.confirm === undefined ? [] : [action(config.confirm, "default")]),
         ],
       ),
     ],

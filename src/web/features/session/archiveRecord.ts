@@ -1,3 +1,5 @@
+import { Array } from "effect";
+
 import type { ArchiveRecord } from "../../../domain/archive";
 
 type TaskRow = Readonly<{ orderIndex: number; taskType: string; endDate: Date | null }>;
@@ -18,13 +20,18 @@ export const archiveRecord = (
   task: TaskRow,
   fieldRows: ReadonlyArray<FieldRow>,
 ): typeof ArchiveRecord.Type => {
-  const starts = fieldRows.flatMap((r) => (r.startDate === null ? [] : [r.startDate.getTime()]));
+  // The earliest first-answer time, or null when no question was touched.
+  const startedAt = Array.reduce(fieldRows, null as Date | null, (earliest, r) =>
+    r.startDate !== null && (earliest === null || r.startDate.getTime() < earliest.getTime())
+      ? r.startDate
+      : earliest,
+  );
   return {
     taskIdNumber: task.orderIndex,
     taskType: task.taskType,
-    startedAt: starts.length > 0 ? new Date(Math.min(...starts)) : null,
+    startedAt,
     endedAt: task.endDate,
-    sections: fieldRows.map((r) => ({
+    sections: Array.map(fieldRows, (r) => ({
       sectionName: r.name,
       value: r.value,
       sectionType: r.kind,

@@ -22,7 +22,11 @@ const joinedNotice = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
     {
       tone: "info",
       text: `Another tab had already started “${
-        runner === null ? "a session" : runner.sessionName || runner.templateName
+        runner === null
+          ? "a session"
+          : runner.sessionName !== ""
+            ? runner.sessionName
+            : runner.templateName
       }”. Only one session can record at a time, so you’re in that one.`,
       onDismiss: Message.DismissedJoinedSession(),
       dismissLabel: "Dismiss",

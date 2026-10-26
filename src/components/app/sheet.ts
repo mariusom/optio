@@ -68,7 +68,7 @@ export const ShowSheet = Mount.define("ShowSheet", {
               if (openSheets > 0) return;
               const target = opener;
               opener = null;
-              if (target?.isConnected) target.focus({ preventScroll: true });
+              if (target !== null && target.isConnected) target.focus({ preventScroll: true });
             }),
           ),
         ),
@@ -211,7 +211,7 @@ export const confirmSheet = <M>(config: ConfirmConfig<M>, h: HtmlBuilder<M>): Ht
       onDismiss: config.onCancel,
       onSettled: config.onSettled,
       footer: {
-        [config.destructive ? "destructive" : "confirm"]: {
+        [config.destructive === true ? "destructive" : "confirm"]: {
           label: config.confirmLabel,
           onClick: config.onConfirm,
           isDisabled: config.isConfirmDisabled,

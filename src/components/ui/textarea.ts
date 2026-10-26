@@ -57,7 +57,7 @@ export const textarea = <M>(config: TextareaConfig<M>, h: HtmlBuilder<M>): Html 
         h.div(
           [
             h.Class(cn(textareaWrapperClass, config.wrapperClass)),
-            ...(config.isDisabled ? [h.DataAttribute("disabled", "")] : []),
+            ...(config.isDisabled === true ? [h.DataAttribute("disabled", "")] : []),
           ],
           [
             h.label(

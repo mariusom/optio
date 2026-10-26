@@ -1,4 +1,4 @@
-import { Clock, Duration, Effect, Option, Schema } from "effect";
+import { Array, Clock, DateTime, Duration, Effect, Option, pipe, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -36,9 +36,11 @@ const backupTemplates = ({ store, tables }: Access): BackupFile["templates"] => 
     store.query(tables.templateFields.select().orderBy("sortOrder", "asc")),
     (row) => row.templateId,
   );
-  return store
-    .query(tables.templates.select().orderBy("name", "asc"))
-    .map((t) => ({ id: t.id, name: t.name, fields: [...fieldRowsToDefs(fields.get(t.id) ?? [])] }));
+  return Array.map(store.query(tables.templates.select().orderBy("name", "asc")), (t) => ({
+    id: t.id,
+    name: t.name,
+    fields: [...fieldRowsToDefs(fields.get(t.id) ?? [])],
+  }));
 };
 
 /** Every finished session with its archived tasks and answers, oldest first. */
@@ -51,21 +53,21 @@ const backupSessions = ({ store, tables }: Access): BackupFile["sessions"] => {
     store.query(tables.taskRecords.select().orderBy("taskId", "asc")),
     (row) => row.sessionId,
   );
-  return store
-    .query(tables.sessions.select().orderBy("startedAt", "asc"))
-    .flatMap(({ endedAt, ...session }) =>
+  return Array.flatMap(
+    store.query(tables.sessions.select().orderBy("startedAt", "asc")),
+    ({ endedAt, ...session }) =>
       endedAt === null
         ? []
         : [
             {
               ...session,
               endedAt,
-              records: (records.get(session.id) ?? []).map((record) => ({
+              records: Array.map(records.get(session.id) ?? [], (record) => ({
                 taskIdNumber: record.taskId,
                 taskType: record.taskType,
                 startedAt: record.startedAt,
                 endedAt: record.endedAt,
-                sections: (sections.get(record.id) ?? []).map((section) => ({
+                sections: Array.map(sections.get(record.id) ?? [], (section) => ({
                   sectionName: section.sectionName,
                   value: section.value,
                   sectionType: section.sectionType,
@@ -75,7 +77,7 @@ const backupSessions = ({ store, tables }: Access): BackupFile["sessions"] => {
               })),
             },
           ],
-    );
+  );
 };
 
 /**
@@ -84,19 +86,19 @@ const backupSessions = ({ store, tables }: Access): BackupFile["sessions"] => {
  * and a backup is the only way to keep it.
  */
 const openSessions = ({ store, tables }: Access, endedAt: Date): BackupFile["sessions"] =>
-  store
-    .query(tables.sessions.select())
-    .filter((session) => session.endedAt === null)
-    .flatMap(({ endedAt: _open, ...session }) => {
-      const records = store
-        .query(
+  pipe(
+    store.query(tables.sessions.select()),
+    Array.filter((session) => session.endedAt === null),
+    Array.flatMap(({ endedAt: _open, ...session }) => {
+      const records = pipe(
+        store.query(
           tables.sessionTasks
             .select()
             .where({ sessionId: session.id })
             .orderBy("orderIndex", "asc"),
-        )
-        .filter((task) => task.endDate !== null)
-        .map((task) =>
+        ),
+        Array.filter((task) => task.endDate !== null),
+        Array.map((task) =>
           archiveRecord(
             task,
             store.query(
@@ -106,9 +108,11 @@ const openSessions = ({ store, tables }: Access, endedAt: Date): BackupFile["ses
                 .orderBy("sortOrder", "asc"),
             ),
           ),
-        );
+        ),
+      );
       return records.length === 0 ? [] : [{ ...session, endedAt, records }];
-    });
+    }),
+  );
 
 export const DownloadBackup = Command.define("DownloadBackup", {
   args: { includeOpenSession: Schema.Boolean },
@@ -116,7 +120,7 @@ export const DownloadBackup = Command.define("DownloadBackup", {
   execute: ({ includeOpenSession }) =>
     withStore((access) =>
       Effect.gen(function* () {
-        const exportedAt = new Date(yield* Clock.currentTimeMillis);
+        const exportedAt = yield* DateTime.nowAsDate;
         const file: BackupFile = {
           format: "optio-backup",
           version: 1,
@@ -128,24 +132,27 @@ export const DownloadBackup = Command.define("DownloadBackup", {
           ],
         };
         const filename = backupFilename(exportedAt);
-        try {
-          saveTextFile(encodeBackup(file), filename, "application/json");
-        } catch (error) {
-          return failed(friendlyFailure("backup", error));
-        }
-        return Message.BackupDownloaded({ filename });
+        return yield* Effect.try(() =>
+          saveTextFile(encodeBackup(file), filename, "application/json"),
+        ).pipe(
+          Effect.match({
+            // Log the thrown value itself, as before; the user sees the backup phrase.
+            onFailure: (error) => failed(friendlyFailure("backup", error.cause)),
+            onSuccess: () => Message.BackupDownloaded({ filename }),
+          }),
+        );
       }),
     ).pipe(reportFailure("backup", failed)),
 });
 
 /** The chosen file's text, clearing the input so the same file can be chosen again. */
 const readChosenFile = (inputId: string) =>
-  Effect.promise(async () => {
+  Effect.suspend((): Effect.Effect<string | null> => {
     const input = document.getElementById(inputId);
-    if (!(input instanceof HTMLInputElement)) return null;
+    if (!(input instanceof HTMLInputElement)) return Effect.succeed(null);
     const file = input.files?.[0];
     input.value = "";
-    return file === undefined ? null : file.text();
+    return file === undefined ? Effect.succeed(null) : Effect.promise(() => file.text());
   });
 
 /** Longest wait for a restore to reach disk before reporting it as still saving. */
@@ -157,12 +164,16 @@ const restore = (access: Access, file: BackupFile) =>
     const sessionRows = store.query(tables.sessions.select());
     const plan = planRestore(file, {
       templates: backupTemplates(access),
-      sessionIds: new Set(sessionRows.map((row) => row.id)),
+      sessionIds: new Set(Array.map(sessionRows, (row) => row.id)),
       liveSessionIds: new Set(
-        sessionRows.filter((row) => row.endedAt === null).map((row) => row.id),
+        pipe(
+          sessionRows,
+          Array.filter((row) => row.endedAt === null),
+          Array.map((row) => row.id),
+        ),
       ),
     });
-    const now = new Date(yield* Clock.currentTimeMillis);
+    const now = yield* DateTime.nowAsDate;
     store.commit(
       events.backupRestored({ now, templates: plan.templates, sessions: plan.sessions }),
     );

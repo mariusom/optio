@@ -22,7 +22,7 @@ const render = (view: (h: HtmlBuilder<Message>) => Html): Html => {
 
 const text = (node: Html | string): string => {
   if (typeof node === "string") return node;
-  if (!node) return "";
+  if (node === null) return "";
   return [node.text ?? "", ...(node.children ?? []).map((child) => text(child as Html | string))]
     .join(" ")
     .replace(/\s+/g, " ")

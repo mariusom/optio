@@ -1,10 +1,10 @@
-import { Schema } from "effect";
+import { Array, Schema } from "effect";
 
 // Store-free: the backup file format and the schema both use this shape.
 
 /** One finished task as archived into history (session end and backup restore). */
 export const ArchiveRecord = Schema.Struct({
-  taskIdNumber: Schema.Number,
+  taskIdNumber: Schema.Finite,
   taskType: Schema.String,
   startedAt: Schema.Union([Schema.Null, Schema.DateFromMillis]),
   endedAt: Schema.Union([Schema.Null, Schema.DateFromMillis]),
@@ -22,5 +22,4 @@ export const ArchiveRecord = Schema.Struct({
 /** The first record for each task number (a backup may repeat one). */
 export const uniqueTasks = <R extends { readonly taskIdNumber: number }>(
   records: ReadonlyArray<R>,
-): ReadonlyArray<R> =>
-  records.filter((r, i) => records.findIndex((o) => o.taskIdNumber === r.taskIdNumber) === i);
+): ReadonlyArray<R> => Array.dedupeWith(records, (a, b) => a.taskIdNumber === b.taskIdNumber);

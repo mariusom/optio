@@ -1,13 +1,23 @@
-import { Effect } from "effect";
+import { Crypto, Effect, Layer } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import { afterEach, vi } from "vite-plus/test";
 
+import { appServices } from "../../../app/services";
 import { getStore, type AppStore } from "../../../livestore/client";
 import { events } from "../../../livestore/schema";
 import { Message } from "../../../messages";
 import { DiscardLiveSession, StartSession } from "./startCommands";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+
+/** Crypto drawing all-zero bytes, so every random UUID is predictable. */
+const zeroCrypto = Layer.succeed(
+  Crypto.Crypto,
+  Crypto.make({
+    randomBytes: (size) => new Uint8Array(size),
+    digest: (_algorithm, data) => Effect.succeed(data),
+  }),
+);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -54,7 +64,7 @@ describe.each(["start", "discard"] as const)("%s session failures", (operation) 
         expect.stringContaining("Persistence unavailable"),
       );
       if (failure === "open") expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });
 
@@ -116,8 +126,7 @@ describe("StartSession template resolution", () => {
     "keeps a zero-field template ID instead of borrowing a same-name template's fields",
     () =>
       Effect.gen(function* () {
-        const taskId = "00000000-0000-4000-8000-000000000001";
-        const uuid = vi.spyOn(crypto, "randomUUID").mockReturnValue(taskId);
+        const taskId = "00000000-0000-4000-8000-000000000000";
         const query = vi
           .fn()
           .mockReturnValueOnce([])
@@ -171,8 +180,7 @@ describe("StartSession template resolution", () => {
             fields: [],
           }),
         );
-        uuid.mockRestore();
-      }),
+      }).pipe(Effect.provide(zeroCrypto)),
   );
 });
 
@@ -213,7 +221,7 @@ describe("StartSession active-session guard", () => {
       expect(first).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: false }));
       expect(second).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: true }));
       expect(commit).toHaveBeenCalledTimes(1);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("does not let ended sessions block a new start", () =>
@@ -229,7 +237,7 @@ describe("StartSession active-session guard", () => {
         Message.SessionStarted({ sessionId: "new", joinedExisting: false }),
       );
       expect(commit).toHaveBeenCalledTimes(1);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("acknowledges an active session without writing", () =>
@@ -242,6 +250,6 @@ describe("StartSession active-session guard", () => {
         Message.SessionStarted({ sessionId: "active", joinedExisting: true }),
       );
       expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });

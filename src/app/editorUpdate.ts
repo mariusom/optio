@@ -1,3 +1,5 @@
+import type { AppServices } from "./services";
+import { Array, Option, Order, String } from "effect";
 import type { FieldDef, FieldKind } from "../domain/fields";
 import { SaveTemplate } from "../web/features/templates/editorCommands";
 import {
@@ -24,7 +26,12 @@ import { Message, type MessageHandlers } from "../messages";
 import { ClearNewChoice } from "../web/features/templates/choiceInput";
 import { takeId, type Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+const bySortOrder = Order.mapInput(
+  Order.Number,
+  (field: { readonly sortOrder: number }) => field.sortOrder,
+);
+
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type EditorLoadHandlers = Pick<
@@ -46,7 +53,7 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
       };
     }
     if (model.editor !== null && model.editor.id === template.id) {
-      const sorted = [...template.fields].toSorted((a, b) => a.sortOrder - b.sortOrder);
+      const sorted = Array.sort(template.fields, bySortOrder);
       const dense = renumberFields(sorted as ReadonlyArray<FieldDef>);
       const nextEditor = {
         ...model.editor,
@@ -61,7 +68,7 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
       };
       return { model: { ...model, editor: nextEditor } };
     }
-    const sorted = [...template.fields].toSorted((a, b) => a.sortOrder - b.sortOrder);
+    const sorted = Array.sort(template.fields, bySortOrder);
     const dense = renumberFields(sorted as ReadonlyArray<FieldDef>);
     return {
       model: {
@@ -126,21 +133,22 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
   ClickedBackFromField: () => {
     if (model.editor === null) return { model };
     const draft = model.editor.draft;
-    const editedField = model.editor.fields.find(
+    const editedField = Array.findFirst(
+      model.editor.fields,
       (field) => field.id === model.editor?.editingFieldId,
     );
     const isDraftDirty =
       draft !== null &&
       (model.editor.editingFieldId === null
-        ? draft.name.trim() !== "" ||
+        ? String.trim(draft.name) !== "" ||
           draft.kind !== "textInput" ||
           draft.isRequired ||
           draft.defaultValue !== "" ||
           draft.options.length > 0 ||
           draft.newOptionText !== ""
         : draft.newOptionText !== "" ||
-          editedField === undefined ||
-          fieldDiffers(draftToFieldDef(draft), draftToFieldDef(draftFromField(editedField))));
+          Option.isNone(editedField) ||
+          fieldDiffers(draftToFieldDef(draft), draftToFieldDef(draftFromField(editedField.value))));
     if (isDraftDirty) {
       return { model: { ...model, editor: { ...model.editor, pendingDiscard: true } } };
     }
@@ -154,8 +162,8 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
   ClickedEditField: ({ id }) => {
     if (model.editor === null || model.editor.draft !== null || model.editor.isSaving)
       return { model };
-    const field = model.editor.fields.find((entry) => entry.id === id);
-    if (field === undefined) return { model };
+    const field = Array.findFirst(model.editor.fields, (entry) => entry.id === id);
+    if (Option.isNone(field)) return { model };
     return {
       model: {
         ...model,
@@ -163,7 +171,7 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
           ...model.editor,
           editingFieldId: id,
           showAddField: false,
-          draft: draftFromField(field),
+          draft: draftFromField(field.value),
         },
       },
     };
@@ -196,7 +204,7 @@ const saveField = (model: Model): Result => {
   const nextFields: ReadonlyArray<FieldDef> =
     model.editor.editingFieldId === null
       ? [...model.editor.fields, { ...fieldDef, sortOrder: model.editor.fields.length }]
-      : model.editor.fields.map((entry) =>
+      : Array.map(model.editor.fields, (entry) =>
           entry.id === model.editor?.editingFieldId
             ? { ...fieldDef, sortOrder: entry.sortOrder }
             : entry,
@@ -277,7 +285,7 @@ export const editorFieldHandlers = (model: Model): EditorFieldHandlers => ({
     if (nextDraft === model.editor.draft) return { model };
     return {
       model: { ...model, editor: { ...model.editor, draft: nextDraft } },
-      commands: [ClearNewChoice({ added: model.editor.draft.newOptionText.trim() })],
+      commands: [ClearNewChoice({ added: String.trim(model.editor.draft.newOptionText) })],
     };
   },
   ClearedNewChoice: () => ({ model }),

@@ -12,6 +12,7 @@ export const saveTextFile = (content: string, filename: string, type: string): v
   a.style.display = "none";
   document.body.appendChild(a);
   a.click();
+  // @effect-diagnostics-next-line globalTimers:off -- synchronous helper; revoke after the click's task, as Safari needs
   setTimeout(() => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);

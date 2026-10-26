@@ -2,6 +2,7 @@ import { Effect } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import { afterEach, beforeEach, vi } from "vite-plus/test";
 
+import { appServices } from "../../../app/services";
 import { getStore, type AppStore } from "../../../livestore/client";
 import { events } from "../../../livestore/schema";
 import { Message } from "../../../messages";
@@ -60,7 +61,7 @@ describe.each([
     Effect.gen(function* () {
       expect(yield* command().effect).toEqual(success);
       expect(commit).toHaveBeenCalledOnce();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("reports a rejected store open in plain language, never a stack trace", () =>
@@ -68,7 +69,7 @@ describe.each([
       vi.mocked(getStore).mockRejectedValue(new Error("Store unavailable"));
       expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
       expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("reports a synchronous persistence failure in plain language", () =>
@@ -77,7 +78,7 @@ describe.each([
         throw new Error("Persistence failed");
       });
       expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });
 
@@ -187,7 +188,7 @@ describe("template queries", () => {
         _tag: "FailedTemplateOp",
       });
       expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("seeds the four sample templates when the app is empty", () =>
@@ -199,7 +200,7 @@ describe("template queries", () => {
         "Warehouse pick",
         "Packing measurements",
       ]);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("skips seeding when templates already exist", () =>
@@ -207,7 +208,7 @@ describe("template queries", () => {
       query.mockReturnValue([{ id: "existing" }]);
       expect(yield* EnsureTemplatesSeeded().effect).toEqual(Message.TemplatesSeededCheck());
       expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });
 
@@ -222,7 +223,7 @@ describe("AddSampleTemplates", () => {
         "Packing measurements",
       ]);
       expect(seededTemplates().every((t: { isDefault: boolean }) => !t.isDefault)).toBe(true);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("commits nothing when every sample is already there", () =>
@@ -232,7 +233,7 @@ describe("AddSampleTemplates", () => {
       );
       expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
       expect(commit).not.toHaveBeenCalled();
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 
   it.effect("makes the first sample the default when the app has no templates", () =>
@@ -244,6 +245,6 @@ describe("AddSampleTemplates", () => {
         false,
         false,
       ]);
-    }),
+    }).pipe(Effect.provide(appServices)),
   );
 });

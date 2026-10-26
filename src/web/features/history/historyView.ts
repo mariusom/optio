@@ -1,3 +1,4 @@
+import { Array, Option } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import {
@@ -187,7 +188,9 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
   const openActions =
     model.historyActionsFor === null
       ? null
-      : (model.history.find((session) => session.id === model.historyActionsFor) ?? null);
+      : Option.getOrNull(
+          Array.findFirst(model.history, (session) => session.id === model.historyActionsFor),
+        );
 
   return page(
     {},
@@ -207,10 +210,10 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
           ]),
       ...(model.history.length === 0
         ? [noSessionsView(h)]
-        : groups.map((group) =>
+        : Array.map(groups, (group) =>
             groupedList(
               { header: dayHeader(group, h) },
-              group.sessions.map((session) => sessionRow(session, h)),
+              Array.map(group.sessions, (session) => sessionRow(session, h)),
               h,
             ),
           )),

@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Array, Effect, Schema, String } from "effect";
 import * as KeyValueStore from "effect/persistence/KeyValueStore";
 
 export const Theme = Schema.Literals(["light", "dark", "auto"]);
@@ -38,8 +38,8 @@ export const lookThemeColors: Readonly<Record<Look, { light: string; dark: strin
 
 /** Choose the higher-contrast foreground for a validated sRGB hex colour. */
 export const accentForeground = (hex: string): "#000000" | "#ffffff" => {
-  const channels = [1, 3, 5].map((offset) => {
-    const value = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+  const channels = Array.map([1, 3, 5], (offset) => {
+    const value = Number.parseInt(String.slice(offset, offset + 2)(hex), 16) / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   });
   const luminance = 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
@@ -57,7 +57,7 @@ export const readTheme = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(themeStorageKey);
   return yield* Schema.decodeUnknownEffect(Theme)(value).pipe(
-    Effect.catch(() => Effect.succeed("auto" as const)),
+    Effect.orElseSucceed(() => "auto" as const),
   );
 });
 
@@ -70,7 +70,7 @@ export const readFont = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(fontStorageKey);
   return yield* Schema.decodeUnknownEffect(Font)(value).pipe(
-    Effect.catch(() => Effect.succeed("sans" as const)),
+    Effect.orElseSucceed(() => "sans" as const),
   );
 });
 
@@ -83,7 +83,7 @@ export const readIconLibrary = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(iconLibraryStorageKey);
   return yield* Schema.decodeUnknownEffect(IconLibrary)(value).pipe(
-    Effect.catch(() => Effect.succeed("hugeicons" as const)),
+    Effect.orElseSucceed(() => "hugeicons" as const),
   );
 });
 
@@ -96,7 +96,7 @@ export const readAccent = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(accentStorageKey);
   return yield* Schema.decodeUnknownEffect(Accent)(value).pipe(
-    Effect.catch(() => Effect.succeed("default" as const)),
+    Effect.orElseSucceed(() => "default" as const),
   );
 });
 
@@ -109,7 +109,7 @@ export const readLook = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(lookStorageKey);
   return yield* Schema.decodeUnknownEffect(Look)(value).pipe(
-    Effect.catch(() => Effect.succeed(defaultLook)),
+    Effect.orElseSucceed(() => defaultLook),
   );
 });
 
@@ -122,7 +122,7 @@ export const readControlSize = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(controlSizeStorageKey);
   return yield* Schema.decodeUnknownEffect(ControlSize)(value).pipe(
-    Effect.catch(() => Effect.succeed("standard" as const)),
+    Effect.orElseSucceed(() => "standard" as const),
   );
 });
 

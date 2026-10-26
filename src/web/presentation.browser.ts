@@ -568,7 +568,11 @@ describe("persistent presentation regressions", () => {
     const right = bounds.right;
     // Labels, headings and the action footer retain the form's left inset.
     for (const element of form.querySelectorAll("h2, label, :scope > div:last-child")) {
-      if (element.closest('[data-slot="grouped-list"]')?.querySelector("#new-choice")) continue;
+      if (
+        (element.closest('[data-slot="grouped-list"]')?.querySelector("#new-choice") ?? null) !==
+        null
+      )
+        continue;
       const rect = element.getBoundingClientRect();
       expect(Math.abs(rect.left - left), element.outerHTML).toBeLessThanOrEqual(1);
       expect(rect.right).toBeLessThanOrEqual(right + 1);
@@ -595,7 +599,7 @@ describe("persistent presentation regressions", () => {
       }
     }
     const newChoice = form.querySelector("#new-choice");
-    if (newChoice) {
+    if (newChoice !== null) {
       const list = newChoice.closest('[data-slot="grouped-list"]')!;
       expect(Math.abs(list.getBoundingClientRect().left - left)).toBeLessThanOrEqual(1);
       expect(Math.abs(list.getBoundingClientRect().right - right)).toBeLessThanOrEqual(1);

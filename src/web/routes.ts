@@ -1,4 +1,4 @@
-import { Option, pipe, Schema } from "effect";
+import { Option, pipe, Schema, String } from "effect";
 import {
   defineRouteUnion,
   literal,
@@ -73,7 +73,10 @@ const parsePath = parseUrlWithFallback(router, { make: () => StartTab() });
 export const parseRoute = (url: Url): Route =>
   parsePath({
     ...url,
-    pathname: Option.getOrElse(url.hash, () => "").replace(/^#/, ""),
+    pathname: pipe(
+      Option.getOrElse(url.hash, () => ""),
+      String.replace(/^#/, ""),
+    ),
     search: Option.none(),
   });
 

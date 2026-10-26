@@ -89,7 +89,18 @@ Reviewed the 66-item registry against upstream
 [`a6a82bd`](https://github.com/elianiva/foldcn/commit/a6a82bd820578ef064257c39ea81ec77ea45a0dc).
 Registry URLs are live, not commit-pinned. Rechecked on 2026-10-10 against
 [`5fa3b78`](https://github.com/elianiva/foldcn/commit/5fa3b78): the only change is
-a new `message` component; no imported component changed. The 17 modules the app renders have
+a new `message` component; no imported component changed. Rechecked on
+2026-10-26 against [`2b69296`](https://github.com/elianiva/foldcn/commit/2b69296):
+no new items, no imported component or per-style CSS changed (only type-level
+FoldKit 0.169 fixes in command, sidebar, toast and virtual-list), so the style
+table is current. The base style only bumped dependency ranges; its
+`@layer base` is unchanged, and ours deliberately keeps a full-strength ring
+outline, `:focus-visible` outline and `font-sans` (`no-scrollbar` and the
+accordion keyframes have no consumer). The unchanged `login-form`,
+`settings-page` and `data-table` blocks are starters, not components: Optio has
+no sign-in, its settings page already composes the same primitives (and has
+no profile or save step), and `data-table` repeats the rejected table with
+clickable rows. The 17 modules the app renders have
 style mappings for the eight presets (skeleton, progress and kbd were added on
 2026-10-10 for loading pages, required-answer progress and the record shortcut); checkbox, fieldset,
 label, radio-group and separator keep their local classes under every preset

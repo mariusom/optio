@@ -23,7 +23,7 @@ export const Flags = Schema.Struct({
   look: Look,
   controlSize: ControlSize,
   /** From Effect's Clock, never Date.now(), so the first render has a real time. */
-  now: Schema.Number,
+  now: Schema.Finite,
   /** Random per boot, so IDs that update derives from it are unique (see `takeId`). */
   idSeed: Schema.String,
 });

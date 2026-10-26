@@ -1,3 +1,4 @@
+import { Array, Option, Order } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import {
@@ -131,10 +132,10 @@ const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 // ── Action bar ──────────────────────────────────────────────────────────────
 
 const missingRequiredCount = (task: RunnerTask): number =>
-  task.sections.filter((section) => !isSectionDone(section)).length;
+  Array.filter(task.sections, (section) => !isSectionDone(section)).length;
 
 const recordHint = (task: RunnerTask): string => {
-  if (task.sections.some((section) => !isScalarAnswerValid(section.kind, section.value)))
+  if (Array.some(task.sections, (section) => !isScalarAnswerValid(section.kind, section.value)))
     return "Correct invalid answers before continuing.";
   const missing = missingRequiredCount(task);
   const verb = task.isBeingEdited ? "to save" : "first";
@@ -212,11 +213,18 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
 const taskStatus = (task: RunnerTask): "recording" | "editing" | "done" =>
   task.endDate === null ? "recording" : task.isBeingEdited ? "editing" : "done";
 
+const bySortOrder = Order.mapInput(
+  Order.Number,
+  (section: RunnerTask["sections"][number]) => section.sortOrder,
+);
+
 const firstAnswer = (task: RunnerTask): string => {
-  const answered = task.sections
-    .toSorted((a, b) => a.sortOrder - b.sortOrder)
-    .find((section) => section.value !== "");
-  if (answered === undefined) return "No answers yet";
+  const found = Array.findFirst(
+    Array.sort(task.sections, bySortOrder),
+    (section) => section.value !== "",
+  );
+  if (Option.isNone(found)) return "No answers yet";
+  const answered = found.value;
   if (answered.kind === "boolean") {
     return `${answered.name}: ${isBooleanTrue(answered.value) ? "Yes" : "No"}`;
   }
@@ -277,10 +285,14 @@ export const taskRows = (
   h: HtmlBuilder<Message>,
   options: Readonly<{ showValue?: boolean }> = {},
 ): ReadonlyArray<Html> => {
-  const sorted = runner.tasks.toSorted((a, b) => b.orderIndex - a.orderIndex);
+  const sorted = Array.sort(runner.tasks, newestFirst);
   const currentId = currentTask(runner)?.id ?? runner.currentTaskId;
-  return sorted.map((task) => taskRow(task, { ...options, isCurrent: task.id === currentId }, h));
+  return Array.map(sorted, (task) =>
+    taskRow(task, { ...options, isCurrent: task.id === currentId }, h),
+  );
 };
+
+const newestFirst = Order.mapInput(Order.flip(Order.Number), (task: RunnerTask) => task.orderIndex);
 
 const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
   sheet(

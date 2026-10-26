@@ -1,4 +1,5 @@
-import { Result, Schema } from "effect";
+import type { AppServices } from "./services";
+import { pipe, Result, Schema, String } from "effect";
 import {
   actionError,
   AgentAction,
@@ -31,7 +32,7 @@ import { toString as urlToString } from "foldkit/url";
 import { Message, type MessageHandlers } from "../messages";
 import { activeSessionOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type AgentHandlers = Pick<AllHandlers, "AgentRequest">;
@@ -301,7 +302,10 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     commands: [SaveAccent({ accent })],
   }),
   OpenedAccentPicker: () => ({
-    model: { ...model, accentDraft: model.accent.startsWith("#") ? model.accent : "#2563eb" },
+    model: {
+      ...model,
+      accentDraft: pipe(model.accent, String.startsWith("#")) ? model.accent : "#2563eb",
+    },
   }),
   ChangedAccentDraft: ({ colour }) => ({
     model: model.accentDraft === null ? model : { ...model, accentDraft: colour },
@@ -309,7 +313,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   CanceledAccentPicker: () => ({ model: { ...model, accentDraft: null } }),
   ConfirmedAccentPicker: () => {
     if (!Schema.is(HexColour)(model.accentDraft)) return { model };
-    const accent = model.accentDraft.toLowerCase();
+    const accent = String.toLowerCase(model.accentDraft);
     return {
       model: { ...model, accent, accentDraft: null },
       commands: [SaveAccent({ accent })],

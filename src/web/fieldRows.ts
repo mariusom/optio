@@ -6,14 +6,16 @@
  * `safeArray` parse and `fieldRowsToDefs` mapping (3–4 copies each).
  */
 
-import { Schema } from "effect";
+import { Array, Schema } from "effect";
 
 import { FieldKind, type FieldDef } from "../domain/fields";
 
 export const safeArray = (json: string): ReadonlyArray<string> => {
   try {
     const parsed: unknown = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+    return Array.isArray(parsed)
+      ? Array.filter(parsed, (x): x is string => typeof x === "string")
+      : [];
   } catch {
     return [];
   }
@@ -40,7 +42,7 @@ export type FieldRow = {
 };
 
 export const fieldRowsToDefs = (rows: ReadonlyArray<FieldRow>): ReadonlyArray<FieldDef> =>
-  rows.map((row) => ({
+  Array.map(rows, (row) => ({
     id: row.id,
     name: row.name,
     kind: toFieldKind(row.kind),

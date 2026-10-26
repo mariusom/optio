@@ -1,3 +1,4 @@
+import { Array, Option, Order, pipe } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import {
@@ -52,14 +53,19 @@ type SessionDetailModel = {
   readonly detailLoadFailed: boolean;
 };
 
+const byTaskId = Order.mapInput(Order.Number, (task: SessionDetailTask) => task.taskId);
+
 /** First two answers, so the row says what the task was without opening it. */
 const taskSubtitle = (task: SessionDetailTask): string | undefined => {
-  const answered = task.sections.filter((section) => section.value !== "");
+  const answered = Array.filter(task.sections, (section) => section.value !== "");
   if (answered.length === 0) return undefined;
-  return answered
-    .slice(0, 2)
-    .map((section) => `${section.sectionName}: ${formatAnswer(section.sectionType, section.value)}`)
-    .join(" · ");
+  return pipe(
+    answered.slice(0, 2),
+    Array.map(
+      (section) => `${section.sectionName}: ${formatAnswer(section.sectionType, section.value)}`,
+    ),
+    Array.join(" · "),
+  );
 };
 
 const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
@@ -132,10 +138,12 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
   // Seconds, like the task rows below, so short sessions never read "0m".
   const duration =
     detail.endedAt !== null ? formatDurationHms(detail.endedAt - detail.startedAt) : null;
-  const sortedTasks = detail.tasks.toSorted((a, b) => a.taskId - b.taskId);
+  const sortedTasks = Array.sort(detail.tasks, byTaskId);
   const selectedTask =
     model.selectedHistoryTaskId !== null
-      ? (detail.tasks.find((task) => task.id === model.selectedHistoryTaskId) ?? null)
+      ? Option.getOrNull(
+          Array.findFirst(detail.tasks, (task) => task.id === model.selectedHistoryTaskId),
+        )
       : null;
   const canExport = detail.endedAt !== null && detail.taskCount > 0;
   const breakdown = timeBreakdownSection(detail.tasks, h);
@@ -218,7 +226,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
             },
             sortedTasks.length === 0
               ? [row({ title: "No tasks were recorded." }, h)]
-              : sortedTasks.map((task) => taskRow(task, h)),
+              : Array.map(sortedTasks, (task) => taskRow(task, h)),
             h,
           ),
           groupedList(

@@ -1,3 +1,5 @@
+import type { AppServices } from "./services";
+import { Array, Option, String } from "effect";
 import {
   DeleteHistorySession,
   ExportSessionCsv,
@@ -10,7 +12,7 @@ import { Message, type MessageHandlers } from "../messages";
 import { AsyncData } from "foldkit";
 import { historyOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type HistoryHandlers = Pick<
@@ -70,12 +72,18 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
   }),
   RequestedHistoryDelete: ({ id, displayName }) => {
-    const session = historyOf(model).find((candidate) => candidate.id === id);
+    const session = Array.findFirst(historyOf(model), (candidate) => candidate.id === id);
     return {
       model: {
         ...model,
         historyActionsFor: null,
-        pendingHistoryDelete: { id, displayName: session?.displayName ?? displayName },
+        pendingHistoryDelete: {
+          id,
+          displayName: Option.match(session, {
+            onNone: () => displayName,
+            onSome: (found) => found.displayName,
+          }),
+        },
       },
     };
   },
@@ -134,7 +142,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
   ConfirmedEditHistoryName: () => {
     if (model.selectedHistorySession === null)
       return { model: { ...model, showEditHistoryName: false } };
-    const trimmed = model.editHistoryNameInput.trim();
+    const trimmed = String.trim(model.editHistoryNameInput);
     // Allow empty to clear custom name (revert to template)
     return {
       model: { ...model, showEditHistoryName: false },

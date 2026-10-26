@@ -21,6 +21,7 @@ let currentClasses: Readonly<Record<string, string>> = {};
 
 export const getCurrentStyle = (): FoldcnStyle => currentStyle;
 export const getCurrentStyleClasses = () => currentClasses;
+// @effect-diagnostics-next-line asyncFunction:off -- Promise API awaited by tests; Effect callers wrap it in tryPromise
 export const setCurrentStyle = async (style: FoldcnStyle): Promise<boolean> => {
   const request = ++selection;
   // Nova uses the local component classes. Other presets are only needed when
@@ -39,7 +40,7 @@ export const readStyle = Effect.gen(function* () {
   const store = yield* KeyValueStore.KeyValueStore;
   const value = yield* store.get(storageKey);
   return yield* Schema.decodeUnknownEffect(FoldcnStyle)(value).pipe(
-    Effect.catch(() => Effect.succeed("nova" as const)),
+    Effect.orElseSucceed(() => "nova" as const),
   );
 });
 

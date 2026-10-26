@@ -1,4 +1,4 @@
-import { Clock, Effect, Schema } from "effect";
+import { Array, DateTime, Effect, Schema } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -73,7 +73,7 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
   execute: ({ sessionId, spreadsheetSafe = false }) =>
     withStore(({ store, queries }) =>
       Effect.gen(function* () {
-        const exportedAt = new Date(yield* Clock.currentTimeMillis);
+        const exportedAt = yield* DateTime.nowAsDate;
         // Reads only this session's records and answers, in question order.
         const { session, records, sections } = store.query(queries.archiveRows(sessionId));
         if (session === null) return failedExport("That session is no longer here.");
@@ -81,11 +81,11 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
           return failedExport("There are no tasks in this session to export.");
 
         const sectionsByRecord = groupSectionsByRecord(sections);
-        const tasks: ReadonlyArray<ArchiveTask> = records.map((record) => ({
+        const tasks: ReadonlyArray<ArchiveTask> = Array.map(records, (record) => ({
           taskId: record.taskId,
           startedAt: record.startedAt,
           endedAt: record.endedAt,
-          sections: (sectionsByRecord.get(record.id) ?? []).map(toCsvSection),
+          sections: Array.map(sectionsByRecord.get(record.id) ?? [], toCsvSection),
         }));
 
         return downloadCsv(

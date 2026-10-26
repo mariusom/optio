@@ -6,7 +6,10 @@ import { getStore, type AppStore } from "./client";
 export type StoreAccess = { readonly store: AppStore } & typeof import("./modules");
 
 /** The store could not be opened (for example, storage is blocked or locked). */
-class StoreUnavailable extends Schema.TaggedError<StoreUnavailable>()("StoreUnavailable", {
+class StoreUnavailable extends Schema.TaggedError<
+  StoreUnavailable,
+  { readonly brand: unique symbol }
+>()("StoreUnavailable", {
   cause: Schema.Defect(),
 }) {}
 
@@ -35,7 +38,7 @@ export const openStoreAccess: Effect.Effect<StoreAccess, StoreUnavailable> = Eff
       store,
       ...modules,
     })),
-  catch: (cause) => new StoreUnavailable({ cause }),
+  catch: (cause) => StoreUnavailable.make({ cause }),
 }).pipe(
   Effect.tap(() =>
     Effect.sync(() => {

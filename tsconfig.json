@@ -1,4 +1,5 @@
 {
+  "$schema": "./node_modules/@effect/tsgo/schema.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
@@ -11,8 +12,144 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "useDefineForClassFields": true,
-    "paths": { "@/*": ["./src/*"] },
-    "types": ["vite-plus/client", "vite-plugin-pwa/client"]
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["vite-plus/client", "vite-plugin-pwa/client"],
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "abortControllerInEffect": "warning",
+          "acquireReleaseDisposable": "warning",
+          "allOfMapToForEach": "warning",
+          "asyncFunction": "warning",
+          "catchAllTagDispatchToCatchTag": "warning",
+          "catchAllToMapError": "warning",
+          "catchChainToFirstSuccessOf": "warning",
+          "catchConditionalRefailToCatchIf": "warning",
+          "catchDieToOrDie": "warning",
+          "catchIfTagToCatchTag": "warning",
+          "catchRefailToTapError": "warning",
+          "catchTagToCatchReason": "warning",
+          "catchToIgnore": "warning",
+          "catchToOrElseSucceed": "warning",
+          "cryptoRandomUUID": "warning",
+          "cryptoRandomUUIDInEffect": "warning",
+          "deterministicKeys": "warning",
+          "effectDoNotation": "warning",
+          "effectFnOpportunity": "warning",
+          "effectMapFlatten": "warning",
+          "effectMapVoid": "warning",
+          "effectSleepZeroToYieldNow": "warning",
+          "effectSucceedWithVoid": "warning",
+          "extendsNativeError": "warning",
+          "flatMapConditionalToFilterOrFail": "warning",
+          "flatMapIgnoredParamToAndThen": "warning",
+          "flatMapToMap": "warning",
+          "flatMapToTap": "warning",
+          "globalConsole": "warning",
+          "globalConsoleInEffect": "warning",
+          "globalDate": "warning",
+          "globalDateInEffect": "warning",
+          "globalFetch": "warning",
+          "globalFetchInEffect": "warning",
+          "globalRandom": "warning",
+          "globalRandomInEffect": "warning",
+          "globalTimers": "warning",
+          "globalTimersInEffect": "warning",
+          "instanceOfSchema": "warning",
+          "mapSomeToAsSome": "warning",
+          "matchEffectToMapBoth": "warning",
+          "matchEffectToMatch": "warning",
+          "missedPipeableOpportunity": "warning",
+          "missingEffectServiceDependency": "warning",
+          "missingPipeableSignature": "off",
+          "multipleCatchTag": "warning",
+          "nestedEffectGenYield": "warning",
+          "newPromise": "warning",
+          "newSchemaClass": "warning",
+          "nodeBuiltinImport": "warning",
+          "optionMatchToFromOption": "warning",
+          "preferBarrelImport": "warning",
+          "preferEffectArray": "warning",
+          "preferEffectRecord": "warning",
+          "preferEffectString": "warning",
+          "preferNamespaceImport": "warning",
+          "preferSchemaOverJson": "warning",
+          "preferSchemaTaggedError": "warning",
+          "preferSchemaTypeProperty": "warning",
+          "preferSucceedSomeOrNone": "warning",
+          "preferTypedSchemaDecoder": "warning",
+          "processEnv": "warning",
+          "processEnvInEffect": "warning",
+          "provideLayerSucceedToProvideService": "warning",
+          "raceFirstWithSleepToTimeout": "warning",
+          "redundantMapError": "warning",
+          "redundantOrDie": "warning",
+          "redundantSchemaTagIdentifier": "warning",
+          "runOfExitToRunExit": "warning",
+          "schemaNumber": "warning",
+          "schemaStructWithTag": "warning",
+          "schemaSync": "warning",
+          "schemaUnionOfLiterals": "warning",
+          "serviceNotAsClass": "warning",
+          "strictBooleanExpressions": "warning",
+          "syncToSucceed": "warning",
+          "timeoutCatchTagToTimeoutOrElse": "warning",
+          "unnecessaryArrowBlock": "warning",
+          "unnecessaryEffectGen": "warning",
+          "unnecessaryFailYieldableError": "warning",
+          "unnecessaryPipe": "warning",
+          "unnecessaryPipeChain": "warning",
+          "unnecessaryTypeofType": "warning"
+        },
+        "allowedUnstableApis": [
+          "@effect/vitest",
+          "effect/ai",
+          "effect/persistence/KeyValueStore",
+          "@effect/platform-browser/BrowserKeyValueStore",
+          "@effect/platform-browser/BrowserRuntime",
+          "effect/Crypto",
+          "@effect/platform-browser/BrowserCrypto"
+        ],
+        "overrides": [
+          {
+            "include": ["src/**/*.test.ts", "src/**/*.browser.ts", "vite.config.ts"],
+            "options": {
+              "diagnosticSeverity": {
+                "asyncFunction": "off",
+                "globalDate": "off",
+                "globalDateInEffect": "off",
+                "cryptoRandomUUID": "off",
+                "cryptoRandomUUIDInEffect": "off",
+                "newPromise": "off",
+                "globalTimers": "off",
+                "globalTimersInEffect": "off",
+                "globalConsole": "off",
+                "globalRandom": "off",
+                "processEnv": "off",
+                "preferEffectArray": "off",
+                "preferEffectString": "off",
+                "preferEffectRecord": "off",
+                "schemaSync": "off",
+                "preferSchemaOverJson": "off",
+                "schemaNumber": "off",
+                "nodeBuiltinImport": "off"
+              }
+            }
+          },
+          {
+            "include": ["src/livestore/schema.ts"],
+            "options": {
+              "diagnosticSeverity": {
+                "schemaNumber": "off"
+              }
+            }
+          }
+        ]
+      }
+    ]
   },
   "include": ["src", "vite.config.ts"]
 }

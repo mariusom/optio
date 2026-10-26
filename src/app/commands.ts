@@ -1,4 +1,5 @@
-import { Duration, Effect, Match, Schema } from "effect";
+import type { AppServices } from "./services";
+import { Array, Duration, Effect, Match, Schema } from "effect";
 import { Command, Navigation, Port, Update } from "foldkit";
 import { Message } from "../messages";
 import { AgentPortReply, agentPorts } from "../agents/actions";
@@ -139,7 +140,7 @@ const ReplyToAgent = Command.define("ReplyToAgent", {
 
 // ── Session planner bridge (pure reducer → FoldKit commands) ─────────────
 
-const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> =>
+const emissionToCommand = (emission: SessionEmission): Update.Commands<Message, AppServices> =>
   Match.valueTags(emission, {
     CommitFieldValues: ({ writes }) => [UpdateFieldValues({ writes })],
     CommitCounterAdjustment: ({ taskFieldId, delta }) => [AdjustCounter({ taskFieldId, delta })],
@@ -152,13 +153,16 @@ const emissionToCommand = (emission: SessionEmission): Update.Commands<Message> 
   });
 
 /** Plan a session event; merge the result into model + commands. */
-const applyPlan = (model: Model, event: SessionEvent): Update.Return<Model, Message> => {
+const applyPlan = (
+  model: Model,
+  event: SessionEvent,
+): Update.Return<Model, Message, AppServices> => {
   const plan = planSession({ runner: model.runner, now: model.now }, event);
   // The planner returns the same runner reference for events that don't apply.
   if (plan.runner === model.runner && plan.emissions.length === 0) return { model };
   return {
     model: { ...model, runner: plan.runner },
-    commands: plan.emissions.flatMap(emissionToCommand),
+    commands: Array.flatMap(plan.emissions, emissionToCommand),
   };
 };
 

@@ -1,5 +1,6 @@
 import type { Html, HtmlBuilder } from "foldkit/html";
 import type { IconNode } from "lucide";
+import { Array } from "effect";
 
 import { RouteSchema, hrefFor, type Route } from "../../web/routes";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
     [
       h.div(
         [h.Class("mx-auto flex h-[3.25rem] max-w-md items-stretch px-2")],
-        tabs.map((tab) => {
+        Array.map(tabs, (tab) => {
           const active = current === tab.tag;
           return h.a(
             [
@@ -156,7 +157,7 @@ export const sidebar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
       ),
       h.nav(
         [h.Class("flex flex-col gap-1"), h.AriaLabel("Sections")],
-        tabs.map((tab) => {
+        Array.map(tabs, (tab) => {
           const active = current === tab.tag;
           return h.a(
             [

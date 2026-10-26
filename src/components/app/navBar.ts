@@ -51,7 +51,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
           h.Class(
             cn(
               "mx-auto grid min-h-11 w-full grid-cols-[minmax(max-content,1fr)_minmax(0,auto)_minmax(max-content,1fr)] items-center px-safe py-1",
-              config.wide ? "max-w-5xl" : "max-w-3xl",
+              config.wide === true ? "max-w-5xl" : "max-w-3xl",
             ),
           ),
         ],
@@ -60,7 +60,7 @@ export const navBar = <M>(config: NavBarConfig<M>, h: HtmlBuilder<M>): Html =>
             [h.Class("flex min-w-0 items-center justify-start")],
             config.back !== undefined
               ? [backButton(config.back, h)]
-              : config.leading
+              : config.leading !== undefined && config.leading !== null
                 ? [config.leading]
                 : [],
           ),
@@ -139,9 +139,14 @@ export const navBarAction = <M>(
   }>,
   h: HtmlBuilder<M>,
 ): Html => {
-  const className = cn("px-2 text-base text-primary", config.emphasized && "font-semibold");
+  const className = cn(
+    "px-2 text-base text-primary",
+    config.emphasized === true && "font-semibold",
+  );
   const attributes = [
-    ...(config.ariaLabel ? [h.AriaLabel(config.ariaLabel)] : []),
+    ...(config.ariaLabel !== undefined && config.ariaLabel !== ""
+      ? [h.AriaLabel(config.ariaLabel)]
+      : []),
     ...(config.attributes ?? []),
   ];
   if (config.href !== undefined) {

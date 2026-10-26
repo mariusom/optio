@@ -22,7 +22,7 @@ export const Message = defineMessageUnion({
   AgentRequest: {
     requestId: Schema.String,
     action: Schema.Unknown,
-    confirmationVersion: Schema.optionalKey(Schema.Number),
+    confirmationVersion: Schema.optionalKey(Schema.Finite),
   },
   // ── Storage ────────────────────────────────────────────────────────────
   StoreOpened: { storageMode: Schema.Literals(["persisted", "in-memory"]) },
@@ -79,9 +79,9 @@ export const Message = defineMessageUnion({
   /** A backup file was chosen in Settings; its text is read by RestoreBackup. */
   ChoseBackupFile: {},
   BackupRestored: {
-    templates: Schema.Number,
-    sessions: Schema.Number,
-    skipped: Schema.Number,
+    templates: Schema.Finite,
+    sessions: Schema.Finite,
+    skipped: Schema.Finite,
     /** False when it had not reached disk within the wait; it may still be saving. */
     saved: Schema.Boolean,
   },
@@ -142,9 +142,9 @@ export const Message = defineMessageUnion({
   ConfirmedAddOption: {},
   /** The "New choice" field was emptied after its text was added. */
   ClearedNewChoice: {},
-  ClickedDeleteOption: { index: Schema.Number },
+  ClickedDeleteOption: { index: Schema.Finite },
   ClickedMoveOption: { index: Schema.Int, direction: Schema.Literals([-1, 1]) },
-  ToggledExclusiveOption: { index: Schema.Number },
+  ToggledExclusiveOption: { index: Schema.Finite },
   ClickedDeleteField: { id: Schema.String },
   ClickedMoveFieldUp: { id: Schema.String },
   ClickedMoveFieldDown: { id: Schema.String },
@@ -179,7 +179,7 @@ export const Message = defineMessageUnion({
   GotRunnerData: {
     data: Schema.Union([Schema.Null, RunnerDataSchema]),
   },
-  Tick: { now: Schema.Number },
+  Tick: { now: Schema.Finite },
   ChangedFieldValue: { taskFieldId: Schema.String, value: Schema.String },
   /** Typing paused, or the page is being hidden or left: write pending answers. */
   SettledFieldInput: {},

@@ -1,4 +1,4 @@
-import { Option, Schema } from "effect";
+import { Array, Option, Order, Schema, String, pipe } from "effect";
 
 import { ArchiveRecord, uniqueTasks } from "../domain/archive";
 import { FieldDef } from "../domain/fields";
@@ -29,6 +29,7 @@ export type BackupFile = typeof BackupFileSchema.Type;
 
 /** Pretty-printed so the file stays readable and diffable. */
 export const encodeBackup = (file: BackupFile): string =>
+  // @effect-diagnostics-next-line schemaSync:off -- callers need a plain string; a decoded BackupFile always encodes
   `${JSON.stringify(Schema.encodeSync(BackupFileSchema)(file), null, 2)}\n`;
 
 const parseJson = (text: string): unknown => {
@@ -43,14 +44,13 @@ const parseJson = (text: string): unknown => {
 export const decodeBackup = (text: string): Option.Option<BackupFile> =>
   Schema.decodeUnknownOption(BackupFileSchema)(parseJson(text));
 
-const pad = (value: number) => String(value).padStart(2, "0");
+const pad = (value: number) => pipe(globalThis.String(value), String.padStart(2, "0"));
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 /** "optio-backup-2026-10-10.json", in local time like CSV exports. */
-export const backupFilename = (exportedAt: Date): string => {
-  return `optio-backup-${exportedAt.getFullYear()}-${pad(exportedAt.getMonth() + 1)}-${pad(exportedAt.getDate())}.json`;
-};
+export const backupFilename = (exportedAt: Date): string =>
+  `optio-backup-${exportedAt.getFullYear()}-${pad(exportedAt.getMonth() + 1)}-${pad(exportedAt.getDate())}.json`;
 
 /**
  * "Restored 2 templates and 5 sessions." Skipped items are either already
@@ -76,9 +76,13 @@ type BackupTemplate = BackupFile["templates"][number];
 const templateSignature = (template: Pick<BackupTemplate, "name" | "fields">): string =>
   JSON.stringify([
     template.name,
-    template.fields
-      .toSorted((a, b) => a.sortOrder - b.sortOrder)
-      .map((f) => [f.name, f.kind, f.isRequired, f.defaultValue, f.options, f.exclusiveOptions]),
+    Array.map(
+      Array.sort(
+        template.fields,
+        Order.mapInput(Order.Number, (f: FieldDef) => f.sortOrder),
+      ),
+      (f) => [f.name, f.kind, f.isRequired, f.defaultValue, f.options, f.exclusiveOptions],
+    ),
   ]);
 
 /**
@@ -100,25 +104,29 @@ export const planRestore = (
     liveSessionIds?: ReadonlySet<string>;
   }>,
 ) => {
-  const templateIds = new Set(existing.templates.map((t) => t.id));
-  const fieldIds = new Set(existing.templates.flatMap((t) => t.fields.map((f) => f.id)));
-  const bySignature = new Map(existing.templates.map((t) => [templateSignature(t), t.id]));
+  const templateIds = new Set(Array.map(existing.templates, (t) => t.id));
+  const fieldIds = new Set(
+    Array.flatMap(existing.templates, (t) => Array.map(t.fields, (f) => f.id)),
+  );
+  const bySignature = new Map(
+    Array.map(existing.templates, (t) => [templateSignature(t), t.id] as const),
+  );
   const remap = new Map<string, string>();
-  const templates = file.templates.filter((template) => {
+  const templates = Array.filter(file.templates, (template) => {
     if (templateIds.has(template.id) || remap.has(template.id)) return false;
     const match = bySignature.get(templateSignature(template));
     if (match !== undefined) {
       remap.set(template.id, match);
       return false;
     }
-    const ids = template.fields.map((f) => f.id);
-    if (new Set(ids).size !== ids.length || ids.some((id) => fieldIds.has(id))) return false;
+    const ids = Array.map(template.fields, (f) => f.id);
+    if (new Set(ids).size !== ids.length || Array.some(ids, (id) => fieldIds.has(id))) return false;
     templateIds.add(template.id);
     for (const id of ids) fieldIds.add(id);
     return true;
   });
   const sessionIds = new Set(existing.sessionIds);
-  const sessions = file.sessions.flatMap((session) => {
+  const sessions = Array.flatMap(file.sessions, (session) => {
     const id =
       existing.liveSessionIds?.has(session.id) === true ? `${session.id}-restored` : session.id;
     if (sessionIds.has(id)) return [];
@@ -143,26 +151,30 @@ const validTime = (date: Date | null, latest: number): boolean =>
  */
 export const backupProblem = (file: BackupFile, now: number): string | null => {
   const latest = Math.min(file.exportedAt.getTime(), now + 86_400_000);
-  const badTemplate = file.templates.some(
+  const badTemplate = Array.some(
+    file.templates,
     (t) =>
-      t.name.trim() === "" ||
-      t.fields.some(
-        (f) => f.name.trim() === "" || !Number.isSafeInteger(f.sortOrder) || f.sortOrder < 0,
+      String.trim(t.name) === "" ||
+      Array.some(
+        t.fields,
+        (f) => String.trim(f.name) === "" || !Number.isSafeInteger(f.sortOrder) || f.sortOrder < 0,
       ),
   );
-  const badSession = file.sessions.some(
+  const badSession = Array.some(
+    file.sessions,
     (s) =>
-      s.templateName.trim() === "" ||
+      String.trim(s.templateName) === "" ||
       !validTime(s.startedAt, latest) ||
       !validTime(s.endedAt, latest) ||
       s.endedAt.getTime() < s.startedAt.getTime() ||
-      s.records.some(
+      Array.some(
+        s.records,
         (r) =>
           !Number.isSafeInteger(r.taskIdNumber) ||
           r.taskIdNumber < 1 ||
           !validTime(r.startedAt, latest) ||
           !validTime(r.endedAt, latest) ||
-          r.sections.some((section) => !validTime(section.startedAt, latest)),
+          Array.some(r.sections, (section) => !validTime(section.startedAt, latest)),
       ),
   );
   return badTemplate || badSession

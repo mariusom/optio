@@ -6,22 +6,22 @@ export const TemplateSummary = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
   isDefault: Schema.Boolean,
-  createdAt: Schema.Number,
-  updatedAt: Schema.Number,
-  fieldCount: Schema.Number,
-  requiredCount: Schema.Number,
+  createdAt: Schema.Finite,
+  updatedAt: Schema.Finite,
+  fieldCount: Schema.Finite,
+  requiredCount: Schema.Finite,
 });
 export type TemplateSummary = typeof TemplateSummary.Type;
 
 /** A template's time report: every finished session's tasks and answers. */
 export const TemplateReport = Schema.Struct({
   templateId: Schema.String,
-  sessionCount: Schema.Number,
-  totalMs: Schema.Number,
+  sessionCount: Schema.Finite,
+  totalMs: Schema.Finite,
   tasks: Schema.Array(
     Schema.Struct({
-      startedAt: Schema.NullOr(Schema.Number),
-      endedAt: Schema.NullOr(Schema.Number),
+      startedAt: Schema.NullOr(Schema.Finite),
+      endedAt: Schema.NullOr(Schema.Finite),
       sections: Schema.Array(
         Schema.Struct({
           sectionName: Schema.String,

@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Message } from "../../../messages";
@@ -41,11 +42,14 @@ const reportBody = (report: TemplateReport | "failed" | null, h: HtmlBuilder<Mes
           h.DataAttribute("slot", "report-totals"),
         ],
         [
-          [
-            sessionsLabel(report.sessionCount),
-            taskCountLabel(report.tasks.length),
-            formatDurationShort(report.totalMs),
-          ].join(" · "),
+          Array.join(
+            [
+              sessionsLabel(report.sessionCount),
+              taskCountLabel(report.tasks.length),
+              formatDurationShort(report.totalMs),
+            ],
+            " · ",
+          ),
         ],
       ),
       breakdown ?? note("No single-choice or yes/no answers to break down yet.", h),

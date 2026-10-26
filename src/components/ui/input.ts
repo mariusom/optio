@@ -61,7 +61,7 @@ export const input = <M>(config: InputConfig<M>, h: HtmlBuilder<M>): Html =>
         h.div(
           [
             h.Class(cn(inputWrapperClass, config.wrapperClass)),
-            ...(config.isDisabled ? [h.DataAttribute("disabled", "")] : []),
+            ...(config.isDisabled === true ? [h.DataAttribute("disabled", "")] : []),
           ],
           [
             h.label(

@@ -1,3 +1,4 @@
+import { Array, Option } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
@@ -218,11 +219,13 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
   const openFor =
     model.templateActionsFor === undefined || model.templateActionsFor === null
       ? null
-      : (model.templates.find((t) => t.id === model.templateActionsFor) ?? null);
+      : Option.getOrNull(
+          Array.findFirst(model.templates, (t) => t.id === model.templateActionsFor),
+        );
   const reportFor =
     model.templateReportFor === undefined || model.templateReportFor === null
       ? null
-      : (model.templates.find((t) => t.id === model.templateReportFor) ?? null);
+      : Option.getOrNull(Array.findFirst(model.templates, (t) => t.id === model.templateReportFor));
 
   const body =
     model.templates.length === 0
@@ -254,7 +257,7 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
           [
             groupedList(
               { header: "Your templates", className: gridListClass },
-              model.templates.map((template) => templateRow(template, h)),
+              Array.map(model.templates, (template) => templateRow(template, h)),
               h,
             ),
             addSamplesButton(h),

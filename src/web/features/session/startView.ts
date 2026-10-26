@@ -1,4 +1,4 @@
-import { Option } from "effect";
+import { Array, Option, Order, pipe, String } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import {
@@ -151,12 +151,17 @@ const noTemplatesView = (h: HtmlBuilder<Message>) =>
 
 // ── New session form ──────────────────────────────────────────────────────
 
+const byName = Order.mapInput(
+  Order.make<string>((a, b) => pipe(a, String.localeCompare(b))),
+  (template: TemplateSummary) => template.name,
+);
+
 const templatePicker = (
   templates: ReadonlyArray<TemplateSummary>,
   selectedId: string | null,
   h: HtmlBuilder<Message>,
 ) => {
-  const sorted = templates.toSorted((a, b) => a.name.localeCompare(b.name));
+  const sorted = Array.sort(templates, byName);
   return nativeSelect(
     {
       id: "study-template",
@@ -169,7 +174,7 @@ const templatePicker = (
           ? [h.option([h.Value(""), h.Disabled(true)], ["Choose a template"])]
           : []),
         // The default template is preselected; a suffix would truncate on phones.
-        ...sorted.map((template) => h.option([h.Value(template.id)], [template.name])),
+        ...Array.map(sorted, (template) => h.option([h.Value(template.id)], [template.name])),
       ],
     },
     h,
@@ -229,7 +234,7 @@ const newSessionView = (
 ) => {
   const { templates, selectedTemplateId, placeholderName, sessionNameInput } = options;
   const canStart =
-    selectedTemplateId !== null && templates.some((t) => t.id === selectedTemplateId);
+    selectedTemplateId !== null && Array.some(templates, (t) => t.id === selectedTemplateId);
   return h.div(
     [h.Class("flex flex-col gap-6")],
     [
@@ -284,7 +289,9 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
   page(
     {},
     [
-      ...(model.lastError ? [notice({ tone: "error", text: model.lastError }, h)] : []),
+      ...(model.lastError !== undefined && model.lastError !== null && model.lastError !== ""
+        ? [notice({ tone: "error", text: model.lastError }, h)]
+        : []),
       model.activeSession !== null
         ? resumeView(
             {

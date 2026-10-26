@@ -1,3 +1,5 @@
+import { Array, Option, pipe } from "effect";
+
 import type { TemplateSummary } from "../../types";
 
 // Pure derivations for Start tab — tested in isolation.
@@ -16,8 +18,7 @@ export const resolveSelectedTemplate = (
   selectedTemplateId: string | null,
 ): TemplateSummary | null => {
   if (selectedTemplateId === null) return null;
-  const byId = templates.find((t) => t.id === selectedTemplateId);
-  return byId ?? null;
+  return Option.getOrNull(Array.findFirst(templates, (t) => t.id === selectedTemplateId));
 };
 
 /** Spec: template lookup by id then name fallback (resume path). */
@@ -27,12 +28,12 @@ export const resolveTemplateByIdOrName = (
   templateName: string,
 ): TemplateSummary | null => {
   if (templateId !== null) {
-    const byId = templates.find((t) => t.id === templateId);
-    if (byId !== undefined) return byId;
+    const byId = Array.findFirst(templates, (t) => t.id === templateId);
+    if (Option.isSome(byId)) return byId.value;
   }
   if (templateName !== "") {
-    const byName = templates.find((t) => t.name === templateName);
-    if (byName !== undefined) return byName;
+    const byName = Array.findFirst(templates, (t) => t.name === templateName);
+    if (Option.isSome(byName)) return byName.value;
   }
   return null;
 };
@@ -44,8 +45,11 @@ export const effectiveTemplateId = (
   if (templates.length === 0) return null;
   const selected = resolveSelectedTemplate(templates, selectedTemplateId);
   if (selected !== null) return selected.id;
-  const defaultTemplate = templates.find((t) => t.isDefault) ?? templates[0] ?? null;
-  return defaultTemplate?.id ?? null;
+  const defaultTemplate = pipe(
+    Array.findFirst(templates, (t) => t.isDefault),
+    Option.orElse(() => Array.head(templates)),
+  );
+  return Option.match(defaultTemplate, { onNone: () => null, onSome: (template) => template.id });
 };
 
 export const canStart = (

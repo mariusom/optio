@@ -1,4 +1,4 @@
-import { Context, Effect, ManagedRuntime, Option, Schema, Stream } from "effect";
+import { Context, Effect, ManagedRuntime, Option, Record, Schema, Stream } from "effect";
 import { Tool } from "effect/ai";
 
 import { OptioTools, type makeToolHandlers } from "./tools";
@@ -21,9 +21,12 @@ export interface ModelContext {
   ): Promise<void>;
 }
 
-class WebMcpError extends Schema.TaggedError<WebMcpError>()("WebMcpError", {
-  message: Schema.String,
-}) {}
+class WebMcpError extends Schema.TaggedError<WebMcpError, { readonly brand: unique symbol }>()(
+  "WebMcpError",
+  {
+    message: Schema.String,
+  },
+) {}
 
 /** Scope owns registration and in-flight calls, including partial-registration rollback. */
 export const registerWebMcp = Effect.fn("agents.registerWebMcp")(function* (
@@ -38,26 +41,26 @@ export const registerWebMcp = Effect.fn("agents.registerWebMcp")(function* (
     Effect.sync(() => new AbortController()),
     (controller) => Effect.sync(() => controller.abort()),
   );
-  for (const tool of Object.values(OptioTools.tools)) {
+  for (const tool of Record.values(OptioTools.tools)) {
     const execute = Effect.fn(`agents.webmcp.${tool.name}`)(function* (input: unknown) {
       const parameters = yield* Schema.decodeUnknownEffect(tool.parametersSchema)(input);
       const toolkit = yield* OptioTools;
       const results = yield* toolkit.handle(tool.name, parameters);
       const last = yield* Stream.runLast(results);
-      if (Option.isNone(last)) return yield* new WebMcpError({ message: "No tool result." });
-      if (last.value.isFailure) return yield* new WebMcpError({ message: "Optio tool failed." });
+      if (Option.isNone(last)) return yield* WebMcpError.make({ message: "No tool result." });
+      if (last.value.isFailure) return yield* WebMcpError.make({ message: "Optio tool failed." });
       return last.value.encodedResult;
     });
     // Native WebMCP discards rejection reasons. Preserve expected, sanitized
     // failures as JSON; interruption and defects must still reject execution.
     const result = (input: unknown) =>
       execute(input).pipe(
-        Effect.catchTag("AgentReadError", (error) =>
-          Effect.succeed({ isError: true, error: { message: error.message } }),
-        ),
-        Effect.catchTag("SchemaError", () =>
-          Effect.succeed({ isError: true, error: { message: "Invalid tool input." } }),
-        ),
+        Effect.catchTags({
+          AgentReadError: (error) =>
+            Effect.succeed({ isError: true, error: { message: error.message } }),
+          SchemaError: () =>
+            Effect.succeed({ isError: true, error: { message: "Invalid tool input." } }),
+        }),
       );
     yield* Effect.tryPromise({
       try: () =>
@@ -75,7 +78,7 @@ export const registerWebMcp = Effect.fn("agents.registerWebMcp")(function* (
           },
           { signal: registration.signal },
         ),
-      catch: () => new WebMcpError({ message: `Could not register ${tool.name}.` }),
+      catch: () => WebMcpError.make({ message: `Could not register ${tool.name}.` }),
     });
   }
 });

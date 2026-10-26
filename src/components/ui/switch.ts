@@ -71,7 +71,7 @@ const switchView = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
         h.div(
           [
             h.Class(cn(switchWrapperClass, config.wrapperClass)),
-            ...(config.isDisabled ? [h.DataAttribute("disabled", "")] : []),
+            ...(config.isDisabled === true ? [h.DataAttribute("disabled", "")] : []),
           ],
           [
             h.button(

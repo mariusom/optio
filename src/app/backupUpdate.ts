@@ -1,3 +1,4 @@
+import type { AppServices } from "./services";
 import type { Update } from "foldkit";
 
 import { restoreSummary } from "../web/backup";
@@ -7,7 +8,7 @@ import type { Message, MessageHandlers } from "../messages";
 import { ResetLocalStorage } from "../web/storageReset";
 import type { Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type BackupHandlers = Pick<
   MessageHandlers<Result>,
   | "ClickedDownloadBackup"

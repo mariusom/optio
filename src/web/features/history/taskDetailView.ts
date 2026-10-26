@@ -1,3 +1,4 @@
+import { Array, pipe } from "effect";
 import type { HtmlBuilder } from "foldkit/html";
 
 import { groupedList, row } from "@/components/app";
@@ -25,10 +26,12 @@ export type TaskDetailModel = {
 /** "9:41 AM → 9:44 AM · 3m 12s" — when the task was recorded. */
 const whenText = (startedAt: number | null, endedAt: number | null): string | undefined => {
   if (startedAt === null && endedAt === null) return undefined;
-  const range = [startedAt, endedAt]
-    .filter((value): value is number => value !== null)
-    .map(formatTimeOnly)
-    .join(" → ");
+  const range = pipe(
+    [startedAt, endedAt],
+    Array.filter((value): value is number => value !== null),
+    Array.map((value) => formatTimeOnly(value)),
+    Array.join(" → "),
+  );
   return startedAt !== null && endedAt !== null
     ? `${range} · ${formatDurationHms(endedAt - startedAt)}`
     : range;
@@ -55,7 +58,7 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
           )
         : groupedList(
             { header: "Answers" },
-            task.sections.map((section) =>
+            Array.map(task.sections, (section) =>
               row(
                 {
                   title: section.sectionName,

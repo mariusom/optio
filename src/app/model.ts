@@ -15,8 +15,8 @@ export const ActiveSessionSummary = Schema.Struct({
   templateId: Schema.Union([Schema.Null, Schema.String]),
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  completedCount: Schema.Number,
+  startedAt: Schema.Finite,
+  completedCount: Schema.Finite,
 });
 
 /** One archived session in the History list. */
@@ -25,9 +25,9 @@ export const HistorySessionSummary = Schema.Struct({
   displayName: Schema.String,
   templateName: Schema.String,
   sessionName: Schema.String,
-  startedAt: Schema.Number,
-  endedAt: Schema.Number,
-  taskCount: Schema.Number,
+  startedAt: Schema.Finite,
+  endedAt: Schema.Finite,
+  taskCount: Schema.Finite,
 });
 
 /** An archived session with its tasks and answers. */
@@ -35,22 +35,22 @@ export const HistorySessionDetail = Schema.Struct({
   id: Schema.String,
   sessionName: Schema.String,
   templateName: Schema.String,
-  startedAt: Schema.Number,
-  endedAt: Schema.Union([Schema.Null, Schema.Number]),
-  taskCount: Schema.Number,
+  startedAt: Schema.Finite,
+  endedAt: Schema.Union([Schema.Null, Schema.Finite]),
+  taskCount: Schema.Finite,
   tasks: Schema.Array(
     Schema.Struct({
       id: Schema.String,
-      taskId: Schema.Number,
-      startedAt: Schema.Union([Schema.Null, Schema.Number]),
-      endedAt: Schema.Union([Schema.Null, Schema.Number]),
+      taskId: Schema.Finite,
+      startedAt: Schema.Union([Schema.Null, Schema.Finite]),
+      endedAt: Schema.Union([Schema.Null, Schema.Finite]),
       sections: Schema.Array(
         Schema.Struct({
           sectionName: Schema.String,
           value: Schema.String,
           sectionType: Schema.String,
           isRequired: Schema.Boolean,
-          startedAt: Schema.Union([Schema.Null, Schema.Number]),
+          startedAt: Schema.Union([Schema.Null, Schema.Finite]),
         }),
       ),
     }),
@@ -73,21 +73,21 @@ const ReadFailed = Schema.Literal("ReadFailed");
 const fromStore = <A, I>(data: Schema.Codec<A, I>) => AsyncData.Schema(data, ReadFailed).schema;
 
 export const Model = Schema.Struct({
-  agentConfirmationVersion: Schema.Number,
+  agentConfirmationVersion: Schema.Finite,
   /**
    * New IDs are `idSeed-idCounter`: the seed is random per boot (a startup
    * Flag) and the counter only grows, so update creates unique IDs without
    * calling a random generator itself. See `takeId`.
    */
   idSeed: Schema.String,
-  idCounter: Schema.Number,
+  idCounter: Schema.Finite,
   route: RouteSchema,
   /**
    * Latest wall-clock time (ms), filled by the runtime boot and the ticker
    * subscription from Effect's Clock. Views and update read time from here,
    * never the clock, so rendering stays a function of the Model.
    */
-  now: Schema.Number,
+  now: Schema.Finite,
   theme: Theme,
   /** The operating system's scheme, which the "auto" theme follows. */
   systemPrefersDark: Schema.Boolean,
@@ -126,7 +126,7 @@ export const Model = Schema.Struct({
    */
   templatesSeedChecked: Schema.Boolean,
   /** Bumped by "Try again" after a failed list read; restarts the list subscriptions. */
-  listReadAttempt: Schema.Number,
+  listReadAttempt: Schema.Finite,
   showCreate: Schema.Boolean,
   newName: Schema.String,
   pendingDelete: Schema.Union([
@@ -163,7 +163,7 @@ export const Model = Schema.Struct({
           kind: FieldKind,
           isRequired: Schema.Boolean,
           defaultValue: Schema.String,
-          sortOrder: Schema.Number,
+          sortOrder: Schema.Finite,
           options: Schema.Array(Schema.String),
           exclusiveOptions: Schema.Array(Schema.String),
           newOptionText: Schema.String,

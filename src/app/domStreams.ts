@@ -1,4 +1,4 @@
-import { Effect, Stream } from "effect";
+import { Array, Effect, Option, Stream } from "effect";
 import { Render } from "foldkit";
 
 /** Runs a DOM effect once the render that caused it has committed. */
@@ -6,10 +6,13 @@ const afterCommit = (action: () => void): Stream.Stream<never> =>
   Stream.fromEffect(Effect.andThen(Render.afterCommit, Effect.sync(action))).pipe(Stream.drain);
 
 /** Responsive copies share content under different IDs; target the rendered one. */
-const visibleElement = (ids: ReadonlyArray<string>) =>
-  ids
-    .map((id) => document.getElementById(id))
-    .find((element) => element !== null && element.getClientRects().length > 0);
+const visibleElement = (ids: ReadonlyArray<string>): Option.Option<HTMLElement> =>
+  Array.findFirst(ids, (id) => {
+    const element = document.getElementById(id);
+    return element !== null && element.getClientRects().length > 0
+      ? Option.some(element)
+      : Option.none();
+  });
 
 /** Scripted smooth scrolling is not covered by the CSS reduced-motion rule. */
 const scrollBehavior = (): ScrollBehavior =>
@@ -28,20 +31,18 @@ export const focusEditorDraft = (draftId: string | null): Stream.Stream<never> =
 export const scrollToSection = (sectionId: string | null): Stream.Stream<never> => {
   if (sectionId === null) return Stream.empty;
   return afterCommit(() => {
-    visibleElement([`mobile-${sectionId}`, `tablet-${sectionId}`])?.scrollIntoView({
-      behavior: scrollBehavior(),
-      block: "center",
-    });
+    Option.map(visibleElement([`mobile-${sectionId}`, `tablet-${sectionId}`]), (element) =>
+      element.scrollIntoView({ behavior: scrollBehavior(), block: "center" }),
+    );
   });
 };
 
 export const scrollToCurrentTask = (taskId: string | null): Stream.Stream<never> => {
   if (taskId === null) return Stream.empty;
   return afterCommit(() => {
-    visibleElement(["mobile-formTop", "tablet-formTop"])?.scrollIntoView({
-      behavior: scrollBehavior(),
-      block: "start",
-    });
+    Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
+      element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
+    );
   });
 };
 
@@ -58,7 +59,7 @@ export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream
         const content = document.querySelector(`[data-help-page="${page}"]`);
         const main = content?.closest("main");
         const heading = content?.querySelector("h1");
-        if (main && heading) {
+        if (main !== null && main !== undefined && heading !== null && heading !== undefined) {
           main.scrollTop = 0;
           if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
           heading.focus({ preventScroll: true });

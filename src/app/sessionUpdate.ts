@@ -1,3 +1,5 @@
+import type { AppServices } from "./services";
+import { String } from "effect";
 import { DiscardLiveSession, StartSession } from "../web/features/session/startCommands";
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
 import { sessionRunnerRouter } from "../web/routes";
@@ -8,7 +10,7 @@ import { Message, type MessageHandlers } from "../messages";
 import { AsyncData } from "foldkit";
 import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message>;
+type Result = Update.Return<Model, Message, AppServices>;
 type AllHandlers = MessageHandlers<Result>;
 
 type SessionHandlers = Pick<
@@ -63,8 +65,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   ClickedStartSession: () => {
     const selected = resolveSelectedTemplate(templatesOf(model), model.selectedTemplateId);
     if (selected === null) return { model };
-    const sessionName =
-      model.sessionNameInput.trim() !== "" ? model.sessionNameInput.trim() : model.placeholderName;
+    const trimmedName = String.trim(model.sessionNameInput);
+    const sessionName = trimmedName !== "" ? trimmedName : model.placeholderName;
     const [id, next] = takeId(model);
     // Pass empty fields array; StartSession will resolve via store fallback
     return {

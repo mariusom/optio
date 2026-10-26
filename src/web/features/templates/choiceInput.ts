@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Effect, Schema, String } from "effect";
 import { Command } from "foldkit";
 
 import { Message } from "../../../messages";
@@ -21,7 +21,7 @@ export const ClearNewChoice = Command.define("ClearNewChoice", {
     Effect.sync(() => {
       const input =
         typeof document === "undefined" ? null : document.getElementById(newChoiceInputId);
-      if (input instanceof HTMLInputElement && input.value.trim() === added) input.value = "";
+      if (input instanceof HTMLInputElement && String.trim(input.value) === added) input.value = "";
       return Message.ClearedNewChoice();
     }),
 });
