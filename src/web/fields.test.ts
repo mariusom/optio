@@ -16,6 +16,7 @@ describe("safeArray (StringArrayCodec semantics)", () => {
     expect(safeArray("[]")).toEqual([]);
     expect(safeArray("not json")).toEqual([]);
     expect(safeArray('{"a":1}')).toEqual([]);
+    expect(safeArray('["A",1,null,"B",false,{},["C"]]')).toEqual(["A", "B"]);
   });
 });
 

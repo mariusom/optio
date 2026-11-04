@@ -1,8 +1,8 @@
-import type { Crypto } from "effect";
+import type { SecureRandom } from "effect/crypto";
 import * as BrowserCrypto from "@effect/platform-browser/BrowserCrypto";
 
 /** Services Commands may require; the runtime provides them as `resources`. */
-export type AppServices = Crypto.Crypto;
+export type AppServices = SecureRandom.SecureRandom;
 
-/** Web Crypto backs Effect's Crypto service (random IDs). */
-export const appServices = BrowserCrypto.layer;
+/** Provide only the secure randomness needed for record IDs. */
+export const appServices = BrowserCrypto.layerSecureRandom;

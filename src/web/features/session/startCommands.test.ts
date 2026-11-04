@@ -1,4 +1,5 @@
-import { Crypto, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
+import { SecureRandom } from "effect/crypto";
 import { describe, expect, it } from "@effect/vitest";
 import { afterEach, vi } from "vite-plus/test";
 
@@ -10,13 +11,10 @@ import { DiscardLiveSession, StartSession } from "./startCommands";
 
 vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
 
-/** Crypto drawing all-zero bytes, so every random UUID is predictable. */
+/** Secure randomness drawing all-zero bytes, so every UUID is predictable. */
 const zeroCrypto = Layer.succeed(
-  Crypto.Crypto,
-  Crypto.make({
-    randomBytes: (size) => new Uint8Array(size),
-    digest: (_algorithm, data) => Effect.succeed(data),
-  }),
+  SecureRandom.SecureRandom,
+  SecureRandom.make((size) => new Uint8Array(size)),
 );
 
 afterEach(() => {

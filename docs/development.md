@@ -85,7 +85,7 @@ and the retained registry item without a consumer (label;
 see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
-at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `vite-plus`) are
+at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `rolldown`) are
 ignored as dependencies. Prefer deleting an unused export over adding an
 exemption.
 
@@ -106,7 +106,7 @@ Configuration choices, all in `tsconfig.json`:
   APIs, and Optio's exported helpers are application code.
 - `allowedUnstableApis` lists the unstable modules Optio deliberately uses:
   `@effect/vitest`, `effect/ai` (agent tools), the key-value stores, the browser
-  runtime and `Crypto`.
+  runtime and `effect/crypto`.
 - Tests and `vite.config.ts` turn off the effect-native rules for platform
   globals and native helpers (clock, IDs, promises, timers, console, Node
   built-ins, native Array/String/Object methods, synchronous Schema calls),
@@ -117,7 +117,7 @@ Configuration choices, all in `tsconfig.json`:
 Prefer fixing a diagnostic over suppressing it. When a native method must keep
 its exact semantics, suppress that line with
 `// @effect-diagnostics-next-line <rule>:off` and a reason. Random IDs come from
-Effect's `Crypto` service (`src/lib/ids.ts`), which FoldKit provides to Commands
+Effect's `SecureRandom` service (`src/lib/ids.ts`), which FoldKit provides to Commands
 through the application's `resources` layer (`src/app/services.ts`); code
 outside the runtime provides `appServices` itself.
 
@@ -210,9 +210,9 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- FoldKit, UI and DevTools are aligned at 0.169.0; the Vite plugin is 0.28.0.
-  This release fixes controlled inputs losing characters during queued updates,
-  IME Enter handling and portal teardown. The app's custom Record/Save shortcut
+- FoldKit, UI and DevTools are aligned at 0.170.0; the Vite plugin is 0.29.0.
+  This release supports Effect 4.1, including its split crypto services. It retains
+  the controlled-input, IME and portal fixes from 0.169. The custom Record/Save shortcut
   also ignores `keyCode` 229 when an IME clears `isComposing` too early.
 - LiveStore packages now use stable 0.5.0 instead of the October 5 snapshot.
   It fixes interrupted state rebuild recovery, restores snapshot heads and drains
@@ -220,11 +220,13 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   state from the existing event log; retain `optio-v3` and the event schemas.
   Hard crashes can still lose unacknowledged writes. On any LiveStore change,
   run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
-- The Effect cohort is pinned to 4.0.6 across the app and workers. FoldKit's
-  published peers still pin 4.0.0; the coordinated overrides use the later stable
-  patch eligible under the release-age guard (LiveStore needs at least 4.0.3).
-  Verify runtime, browser and persistence tests
-  before changing them. Its companion packages must not advance independently.
+- The Effect cohort is pinned to 4.1.2 across the app and workers, within
+  FoldKit's `~4.1.0` peers. UUIDs use `SecureRandom.uuidV4` from `effect/crypto`
+  and only `BrowserCrypto.layerSecureRandom`, not the full crypto layer.
+  JSON boundaries use `Schema.fromJsonString`, preserving backup milliseconds,
+  pretty printing and tolerant stored-option decoding. Verify runtime, browser
+  and persistence tests before changing the cohort; companion packages must not
+  advance independently.
 - Vite+ 1.4.0 bundles Vitest 5.0.5 and Oxlint 1.89.0. The workspace catalog aligns the browser
   provider and runner, and overrides `vite` to the matching Vite+ core alias.
   Bundled dev also needs direct `rolldown` 1.2.15: this Vite+ release resolves
@@ -237,6 +239,8 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   explicit partial match for the guide link with its subtitle. Match `rolldown`
   to the version embedded in the Vite+ core package when updating. Keep the
   release-age guard without exemptions.
+  On November 4, Vite+ 1.5.0 was younger than 24 hours, so it and its coordinated
+  Vitest 5.1.0/Rolldown update are deferred rather than mixed into this cohort.
 - LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
   it from optimized browser modules. Exclude it from the shared vendor group to
   avoid a circular import between its external entry and that group. Version
@@ -244,13 +248,18 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   accepts API 1.10.
 - The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
   LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
-- `@effect/tsgo` 0.57.0 provides the Effect language service (see
-  [Effect diagnostics](#effect-diagnostics)). 0.59.0 was inside the release-age
-  guard on October 26. Each release supports specific TypeScript and Oxlint
-  versions (listed in its README); check them before updating TypeScript.
-- pnpm 12.15.0 is pinned. Use it for the two-document lockfile and verify a
+- `@effect/tsgo` 0.64.1 provides the Effect language service (see
+  [Effect diagnostics](#effect-diagnostics)); its README lists support for the
+  installed TypeScript 7.0.2 and Oxlint 1.89.0. Releases 0.67.x were younger than
+  24 hours on November 4. The deprecated `preferSchemaOverJson` diagnostic is
+  replaced by `globalJson` and `globalJsonInEffect`.
+- pnpm 12.16.1 is pinned. Use it for the two-document lockfile and verify a
   frozen install. External scanners must read the app graph, not only the
   package-manager document.
+- Transitive updates include the serialize-javascript 7.1.3 security fix.
+  Workbox still brings glob 11/minimatch 10 (two moderate advisories) and
+  deepmerge 4 (one low advisory with no published fix). Do not force unreviewed
+  cross-major overrides into the service-worker build; recheck upstream updates.
 - Dependabot proposes grouped lockfile and GitHub Actions updates, waiting a
   day after each release to match pnpm's release-age guard. Exact manifest pins
   and workspace overrides need deliberate coordinated updates.
