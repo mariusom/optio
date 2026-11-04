@@ -27,22 +27,16 @@ const BackupFileSchema = Schema.Struct({
 });
 export type BackupFile = typeof BackupFileSchema.Type;
 
+const BackupJson = Schema.fromJsonString(BackupFileSchema, { space: 2 });
+
 /** Pretty-printed so the file stays readable and diffable. */
 export const encodeBackup = (file: BackupFile): string =>
   // @effect-diagnostics-next-line schemaSync:off -- callers need a plain string; a decoded BackupFile always encodes
-  `${JSON.stringify(Schema.encodeSync(BackupFileSchema)(file), null, 2)}\n`;
-
-const parseJson = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-};
+  `${Schema.encodeSync(BackupJson)(file)}\n`;
 
 /** The decoded backup, or none when the text is not an Optio backup. */
 export const decodeBackup = (text: string): Option.Option<BackupFile> =>
-  Schema.decodeUnknownOption(BackupFileSchema)(parseJson(text));
+  Schema.decodeOption(BackupJson)(text);
 
 const pad = (value: number) => pipe(globalThis.String(value), String.padStart(2, "0"));
 
@@ -74,7 +68,8 @@ type BackupTemplate = BackupFile["templates"][number];
 
 /** Same name and the same questions in the same order: the same template. */
 const templateSignature = (template: Pick<BackupTemplate, "name" | "fields">): string =>
-  JSON.stringify([
+  // @effect-diagnostics-next-line schemaSync:off -- only validated template primitives are encoded
+  Schema.encodeSync(Schema.fromJsonString(Schema.Json))([
     template.name,
     Array.map(
       Array.sort(

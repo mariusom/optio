@@ -28,9 +28,9 @@ const devOnlyLicenses = new Map([
   ["(MIT OR CC0-1.0)", "type-fest types reached through tempy and workbox-build"],
 ]);
 const redisFallback = {
-  file: "redis-6.3.0-LICENSE",
+  file: "redis-6.3.1-LICENSE",
   source:
-    "https://github.com/redis/node-redis/blob/c3e8b53b0d9c97d05ca674f92a24a9ee91a50a0e/LICENSE",
+    "https://github.com/redis/node-redis/blob/12bcff0ad9ebffdeed0365df2820ae385de7daaa/LICENSE",
 };
 const yukuFallback = {
   file: "yuku-0.19.0-LICENSE",
@@ -97,12 +97,13 @@ const reviewedFallbacks = new Map([
         "https://github.com/cloudflare/workerd/blob/17143186b375231689b60a23e53933315fd9e24e/LICENSE",
     },
   ],
-  ["redis@6.3.0", redisFallback],
-  ["@redis/bloom@6.3.0", redisFallback],
-  ["@redis/client@6.3.0", redisFallback],
-  ["@redis/json@6.3.0", redisFallback],
-  ["@redis/search@6.3.0", redisFallback],
-  ["@redis/time-series@6.3.0", redisFallback],
+  // Checked LICENSE at each package's npm gitHead for 6.3.1; all are identical.
+  ["redis@6.3.1", redisFallback],
+  ["@redis/bloom@6.3.1", redisFallback],
+  ["@redis/client@6.3.1", redisFallback],
+  ["@redis/json@6.3.1", redisFallback],
+  ["@redis/search@6.3.1", redisFallback],
+  ["@redis/time-series@6.3.1", redisFallback],
   [
     "qrcode-generator@2.0.4",
     {

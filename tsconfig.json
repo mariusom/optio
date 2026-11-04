@@ -76,7 +76,8 @@
           "preferEffectRecord": "warning",
           "preferEffectString": "warning",
           "preferNamespaceImport": "warning",
-          "preferSchemaOverJson": "warning",
+          "globalJson": "warning",
+          "globalJsonInEffect": "warning",
           "preferSchemaTaggedError": "warning",
           "preferSchemaTypeProperty": "warning",
           "preferSucceedSomeOrNone": "warning",
@@ -110,7 +111,7 @@
           "effect/persistence/KeyValueStore",
           "@effect/platform-browser/BrowserKeyValueStore",
           "@effect/platform-browser/BrowserRuntime",
-          "effect/Crypto",
+          "effect/crypto",
           "@effect/platform-browser/BrowserCrypto"
         ],
         "overrides": [
@@ -133,7 +134,8 @@
                 "preferEffectString": "off",
                 "preferEffectRecord": "off",
                 "schemaSync": "off",
-                "preferSchemaOverJson": "off",
+                "globalJson": "off",
+                "globalJsonInEffect": "off",
                 "schemaNumber": "off",
                 "nodeBuiltinImport": "off"
               }

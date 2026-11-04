@@ -261,6 +261,9 @@ export const events = {
 
 // ── Materializers ─────────────────────────────────────────────────────────
 
+// @effect-diagnostics-next-line schemaSync:off -- materializers encode validated string arrays synchronously
+const encodeOptions = Schema.encodeSync(Schema.fromJsonString(Schema.Array(Schema.String)));
+
 const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef>) =>
   Array.map(fields, (field) =>
     tables.templateFields.insert({
@@ -271,8 +274,8 @@ const insertTemplateFields = (templateId: string, fields: ReadonlyArray<FieldDef
       isRequired: field.isRequired ? 1 : 0,
       defaultValue: field.defaultValue,
       sortOrder: field.sortOrder,
-      optionsJson: JSON.stringify(field.options),
-      exclusiveOptionsJson: JSON.stringify(field.exclusiveOptions),
+      optionsJson: encodeOptions(field.options),
+      exclusiveOptionsJson: encodeOptions(field.exclusiveOptions),
     }),
   );
 
@@ -289,8 +292,8 @@ const insertSessionTaskFields = (taskId: string, fields: ReadonlyArray<FieldDef>
       isRequired: field.isRequired ? 1 : 0,
       defaultValue: field.defaultValue,
       sortOrder: field.sortOrder,
-      optionsJson: JSON.stringify(field.options),
-      exclusiveOptionsJson: JSON.stringify(field.exclusiveOptions),
+      optionsJson: encodeOptions(field.options),
+      exclusiveOptionsJson: encodeOptions(field.exclusiveOptions),
       // Pre-filled with the template default; startDate stays nil until touched
       value: field.defaultValue,
       startDate: null,
