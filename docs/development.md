@@ -86,7 +86,9 @@ see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
 at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `rolldown`) are
-ignored as dependencies. Prefer deleting an unused export over adding an
+ignored as dependencies, as is `@effect/language-service`: fallow 3.41+ reads
+`tsconfig.json` plugin names as packages, but that name is served by the
+patched TypeScript from `@effect/tsgo`, not by a package of its own. Prefer deleting an unused export over adding an
 exemption.
 
 ## Effect diagnostics
