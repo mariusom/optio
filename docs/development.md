@@ -212,8 +212,8 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- FoldKit, UI and DevTools are aligned at 0.170.0; the Vite plugin is 0.29.0.
-  This release supports Effect 4.1, including its split crypto services. It retains
+- FoldKit, UI and DevTools are aligned at 0.171.0; the Vite plugin is 0.29.1.
+  FoldKit 0.170+ supports Effect 4.1, including its split crypto services. It retains
   the controlled-input, IME and portal fixes from 0.169. The custom Record/Save shortcut
   also ignores `keyCode` 229 when an IME clears `isComposing` too early.
 - LiveStore packages now use stable 0.5.0 instead of the October 5 snapshot.
@@ -222,16 +222,19 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   state from the existing event log; retain `optio-v3` and the event schemas.
   Hard crashes can still lose unacknowledged writes. On any LiveStore change,
   run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
-- The Effect cohort is pinned to 4.1.2 across the app and workers, within
+- The Effect cohort is pinned to 4.1.4 across the app and workers, within
   FoldKit's `~4.1.0` peers. UUIDs use `SecureRandom.uuidV4` from `effect/crypto`
   and only `BrowserCrypto.layerSecureRandom`, not the full crypto layer.
   JSON boundaries use `Schema.fromJsonString`, preserving backup milliseconds,
   pretty printing and tolerant stored-option decoding. Verify runtime, browser
   and persistence tests before changing the cohort; companion packages must not
   advance independently.
-- Vite+ 1.4.0 bundles Vitest 5.0.5 and Oxlint 1.89.0. The workspace catalog aligns the browser
-  provider and runner, and overrides `vite` to the matching Vite+ core alias.
-  Bundled dev also needs direct `rolldown` 1.2.15: this Vite+ release resolves
+- Vite+ 1.7.0 bundles Vitest 5.1.0 and Oxlint 1.94.0. The workspace catalog aligns the browser
+  provider and runner with that bundled Vitest (not the newer standalone 5.1.1), and
+  overrides `vite` to the matching Vite+ core alias. Since Vite+ 1.7.0 the core
+  package carries its own version (`@voidzero-dev/vite-plus-core@8.3.8000`); take it
+  from the `vite` dependency of `vite-plus`, and use the same version in
+  `peerDependencyRules`. Bundled dev also needs direct `rolldown` 1.2.19: this Vite+ release resolves
   its matching browser HMR runtime through that package name. It is a tooling
   dependency, exempted from fallow until upstream fixes the runtime lookup.
   Use `vite-plus/test` and `vite-plus/test/browser` imports. The migration's
@@ -241,8 +244,6 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   explicit partial match for the guide link with its subtitle. Match `rolldown`
   to the version embedded in the Vite+ core package when updating. Keep the
   release-age guard without exemptions.
-  On November 4, Vite+ 1.5.0 was younger than 24 hours, so it and its coordinated
-  Vitest 5.1.0/Rolldown update are deferred rather than mixed into this cohort.
 - LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
   it from optimized browser modules. Exclude it from the shared vendor group to
   avoid a circular import between its external entry and that group. Version
@@ -250,10 +251,10 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   accepts API 1.10.
 - The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
   LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
-- `@effect/tsgo` 0.64.1 provides the Effect language service (see
+- `@effect/tsgo` 0.70.0 provides the Effect language service (see
   [Effect diagnostics](#effect-diagnostics)); its README lists support for the
-  installed TypeScript 7.0.2 and Oxlint 1.89.0. Releases 0.67.x were younger than
-  24 hours on November 4. The deprecated `preferSchemaOverJson` diagnostic is
+  installed TypeScript 7.0.2 and Oxlint 1.94.0. Release 0.73.2 was younger than
+  24 hours on November 20. The deprecated `preferSchemaOverJson` diagnostic is
   replaced by `globalJson` and `globalJsonInEffect`.
 - pnpm 12.16.1 is pinned. Use it for the two-document lockfile and verify a
   frozen install. External scanners must read the app graph, not only the

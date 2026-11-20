@@ -66,11 +66,11 @@ const reviewedFallbacks = new Map([
     "linux-arm64-musl",
     "win32-arm64-msvc",
   ].map((platform) => [
-    `@voidzero-dev/vite-plus-${platform}@1.4.0`,
+    `@voidzero-dev/vite-plus-${platform}@1.7.0`,
     {
-      file: "vite-plus-1.4.0-LICENSE",
+      file: "vite-plus-1.7.0-LICENSE",
       source:
-        "https://github.com/voidzero-dev/vite-plus/blob/102fe8edad2c45690f24830feee30bfe242817ee/LICENSE",
+        "https://github.com/voidzero-dev/vite-plus/blob/a3f54d7130158cbebcb8352c6af05a0dfeb0ca0f/LICENSE",
     },
   ]),
   [
