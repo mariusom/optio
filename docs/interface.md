@@ -9,8 +9,25 @@ component APIs; review local customizations before refreshing a registry item.
   targets (`h-11`); large buttons use `h-12`. Pages control layout, while shared
   primitives own control padding, radii, typography and sizing.
 - Keep the phone-first layout: bottom tabs below 768px, a sidebar above that,
-  and a labeled sidebar from 1280px. Live sessions hide phone tabs and add a
-  task column on larger screens.
+  and a labeled sidebar from 1280px. The phone tab bar is a floating capsule
+  inset from the screen edges (iOS 26 placement, without glass refraction);
+  the current tab sits in its own inner capsule. The runner's action bar
+  floats the same way, with a capsule Record button over a soft fade.
+- Live sessions hide phone tabs. Their task list is a right-hand panel: a side
+  sheet on phones, a collapsible docked column from 768px. The runner nav bar
+  spans the window, and from 1280px the form keeps a matching left gutter
+  while the panel is open, so the session stays centred.
+- History and Templates are tables built with `dataGrid` (app primitives) on
+  the Foldcn `table` builders and TanStack Table core: search, sortable
+  column headers (`aria-sort`), optional column filters and a match count.
+  The Model owns each grid's state (`historyGrid`, `templatesGrid`); the view
+  sends the next state in one `ChangedGrid` Message. Columns marked `from`
+  hide on narrow screens, so the first column repeats their summary there;
+  its button opens the row and names it by visible text.
+- Spacing: pages stack sections with `gap-6`; the first section sits `pt-6`
+  below any page header, nav bar or notices (one rule in `index.css`); groups
+  use `gap-3`/`gap-4` inside. Tab roots and their headers share
+  `contentWidth`: tables use the wide column, forms the readable one.
 - Use bottom sheets on phones and centered cards on larger screens, built with
   [sheet.ts](../src/components/app/sheet.ts) (app pages use the
   [web/sheets.ts](../src/web/sheets.ts) wrappers). Each renders the
@@ -66,9 +83,9 @@ component APIs; review local customizations before refreshing a registry item.
 Looks (Classic, Studio, Swiss, Shopfloor, Blueprint) restyle colours,
 surfaces and headings through `html[data-look]` in [looks.css](../src/looks.css),
 with a light and a dark palette each and system fonts only; layout, sizes and
-data stay the same. Blueprint is the default look (`defaultLook` in `web/theme.ts`; a saved choice
-wins); Classic uses the base tokens in `index.css`. The static `theme-color` tags
-in `index.html` and the PWA manifest colours match Blueprint. A non-default
+data stay the same. Swiss is the default look (`defaultLook` in `web/theme.ts`; a saved choice
+wins); Classic uses the base tokens in `index.css`.
+The static `theme-color` tags in `index.html` and the PWA manifest colours match Swiss. A non-default
 accent still replaces a look's primary colour, except in the dark navigation of
 Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast, including status text on
 its own tint (`bg-destructive/10`, `/20` in dark, `bg-primary/12`);
@@ -99,13 +116,16 @@ outline, `:focus-visible` outline and `font-sans` (`no-scrollbar` and the
 accordion keyframes have no consumer). The unchanged `login-form`,
 `settings-page` and `data-table` blocks are starters, not components: Optio has
 no sign-in, its settings page already composes the same primitives (and has
-no profile or save step), and `data-table` repeats the rejected table with
-clickable rows. The 17 modules the app renders have
+no profile or save step), and `data-table` is a starter that leaves sorting
+to the consumer; the app's `dataGrid` composes the imported `table` with
+TanStack Table core instead. The 17 modules the app renders have
 style mappings for the eight presets (skeleton, progress and kbd were added on
 2026-10-10 for loading pages, required-answer progress and the record shortcut); checkbox, fieldset,
 label, radio-group and separator keep their local classes under every preset
 until they gain a consumer (add them to the generator then), because every
-mapped class ships in the CSS bundle. Local touch sizing and compact field
+mapped class ships in the CSS bundle. The `table` builders (added 2026-11-21) also keep
+their local classes; the grid supplies its own cell padding and card surface.
+Local touch sizing and compact field
 layouts remain intentional overrides. “Unchanged” below means the
 authored component had no upstream change since the September 9 snapshot.
 
@@ -128,9 +148,10 @@ authored component had no upstream change since the September 9 snapshot.
 | progress        | FoldKit `Progress.view` supplies the range, fill and accessibility attributes; the local wrapper keeps the Foldcn slots and the runner's required-answer label.                          |
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
-| sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel.                                                                                   |
+| sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel, plus a right-hand side placement for the runner's task list.                      |
 | skeleton        | Unchanged; loading pages use it through `skeletonPage`.                                                                                                                                  |
 | spinner         | Added to session loading; decorative icon with reduced-motion support and one parent live status.                                                                                        |
+| table           | Added (2026-11-21) for the History and Templates data grids; the builders are unchanged from upstream.                                                                                   |
 | switch          | Forward description presence; retain settings toggles and local label layout.                                                                                                            |
 | textarea        | Forward description presence; retain editor sizing.                                                                                                                                      |
 
@@ -181,7 +202,6 @@ than copied without consumers. “New” identifies additions since September 9.
 | select                 | Native-select covers the current use cases without an extra submodel.                          |
 | sidebar                | Preserve bottom tabs, compact/labeled sidebar breakpoints and live-session task column.        |
 | slider                 | Exact numeric entry is more appropriate for existing questions.                                |
-| table                  | Current grouped result rows serve mobile layouts; CSV handles tabular export.                  |
 | tabs                   | App tabs are route navigation, not an in-page tab-panel widget.                                |
 | toast                  | Persistent inline errors and explicit refresh prompts must not auto-dismiss.                   |
 | toggle                 | Existing switches and buttons already express boolean/actions semantics.                       |

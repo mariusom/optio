@@ -1,13 +1,11 @@
 import { Array } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
-import { Check, Copy, List, icon } from "@/components/app";
-import { button } from "@/components/ui/button";
+import { Check, List, icon } from "@/components/app";
 import { progress, progressLabel } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock } from "../../format";
-import { repeatPlan, type RepeatPlan } from "./repeatAnswers";
 import {
   currentTask,
   isSectionDone,
@@ -17,7 +15,7 @@ import {
 } from "./runner";
 
 // Live status pieces around the runner form: the header clock and task
-// counter, required-answer progress, confirmations and "Repeat last answers".
+// counter, required-answer progress, and confirmations.
 
 // ── Header clock ────────────────────────────────────────────────────────────
 
@@ -148,7 +146,11 @@ export const requiredProgress = (
       segments: required.length > 1 && required.length <= 8 ? required.length : undefined,
       children: [
         progressLabel(
-          { className: "text-muted-foreground tabular", id: `${scope}-required-answer-label` },
+          // Bars lead, the count trails; only the visual order changes, so it is still read first.
+          {
+            className: "order-last shrink-0 text-muted-foreground tabular",
+            id: `${scope}-required-answer-label`,
+          },
           [text],
           h,
         ),
@@ -182,39 +184,3 @@ export const announcementView = (
     ],
     announcement === null ? [] : [icon(h, Check, "size-4 shrink-0"), announcement.text],
   );
-
-// ── Repeat last answers ─────────────────────────────────────────────────────
-
-const repeatHint = (plan: RepeatPlan): string => {
-  if (plan.source === null) return "No earlier task to copy answers from yet.";
-  const count = plan.writes.length;
-  if (count === 0) return `Nothing left to fill from task ${plan.source.orderIndex}.`;
-  return `Fills ${count} empty answer${count === 1 ? "" : "s"} from task ${plan.source.orderIndex}.`;
-};
-
-/** Shown above the questions of an open task; responsive copies scope the hint ID. */
-export const repeatAnswersRow = (
-  runner: RunnerState,
-  scope: string,
-  h: HtmlBuilder<Message>,
-): Html | null => {
-  const plan = repeatPlan(runner);
-  if (plan === null) return null;
-  const hintId = `${scope}-repeat-hint`;
-  return h.div(
-    [h.Class("flex flex-wrap items-center gap-x-3 gap-y-1.5")],
-    [
-      button(
-        {
-          variant: "outline",
-          isDisabled: plan.writes.length === 0,
-          onClick: Message.ClickedRepeatLastAnswers(),
-          attributes: [h.AriaDescribedBy(hintId)],
-        },
-        [icon(h, Copy, "size-4"), "Repeat last answers"],
-        h,
-      ),
-      h.p([h.Id(hintId), h.Class("min-w-0 text-sm text-muted-foreground")], [repeatHint(plan)]),
-    ],
-  );
-};

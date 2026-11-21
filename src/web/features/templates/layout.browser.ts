@@ -144,6 +144,12 @@ describe.each([390, 820, 1184])("compact choice rows at %ipx", (width) => {
   });
 });
 
+/** Template names in the order the table shows them. */
+const visibleOrder = () =>
+  [...document.querySelectorAll("tbody tr")].map(
+    (row) => row.querySelector("button")!.textContent!.match(/Template \d/)![0],
+  );
+
 /** Template rows are named by their visible text, starting with the title. */
 const openRow = (index: number) =>
   page.getByRole("button", { name: new RegExp(`^Template ${index} `) }).element();
@@ -165,7 +171,7 @@ describe("template list layout", () => {
   it("names each row by its visible text so voice control can activate it", async () => {
     await mount(list, { width: 390 });
     const first = page.getByRole("button", {
-      name: "Template 1 3 questions · 1 required Default",
+      name: "Template 1 Default 3 questions · 1 required",
       exact: true,
     });
     await expect.element(first).toBeVisible();
@@ -176,20 +182,32 @@ describe("template list layout", () => {
     }
   });
 
-  it("stacks rows in one column below 1280px", async () => {
-    await mount(list, { width: 1184 });
-    const [first, second] = [openRow(1), openRow(2)].map((row) => row.getBoundingClientRect());
-    expect(second!.top).toBeGreaterThanOrEqual(first!.bottom);
-    expect(second!.left).toBe(first!.left);
+  it("sorts by name both ways and reports the order to assistive technology", async () => {
+    await mount(list, { width: 1280 });
+    expect(visibleOrder()).toEqual(["Template 1", "Template 2", "Template 3"]);
+    const name = page.getByRole("columnheader", { name: "Name" });
+    await expect.element(name).toHaveAttribute("aria-sort", "ascending");
+    await name.getByRole("button").click();
+    await expect.element(name).toHaveAttribute("aria-sort", "descending");
+    expect(visibleOrder()).toEqual(["Template 3", "Template 2", "Template 1"]);
   });
 
-  it("lays rows out as a two-column card grid in DOM order from 1280px", async () => {
+  it("filters rows by search and counts the matches", async () => {
     await mount(list, { width: 1280 });
-    const [first, second, third] = [1, 2, 3].map((index) => openRow(index).getBoundingClientRect());
-    expect(second!.top).toBe(first!.top);
-    expect(second!.left).toBeGreaterThan(first!.right);
-    expect(third!.top).toBeGreaterThan(first!.bottom);
-    expect(third!.left).toBe(first!.left);
+    await page.getByRole("searchbox", { name: "Search templates" }).fill("template 2");
+    await expect.poll(visibleOrder).toEqual(["Template 2"]);
+    await expect.element(page.getByText("1 of 3 templates")).toBeVisible();
+    await page.getByRole("searchbox", { name: "Search templates" }).fill("nothing like it");
+    await expect.element(page.getByText("No templates match your search.")).toBeVisible();
+  });
+
+  it("hides the count columns on phones without scrolling sideways", async () => {
+    await mount(list, { width: 390 });
+    await expect.element(page.getByRole("columnheader", { name: "Name" })).toBeVisible();
+    const headers = [...document.querySelectorAll("th")].filter((th) => th.offsetParent !== null);
+    expect(headers.map((th) => th.textContent)).toEqual(["Name", "Actions"]);
+    const table = document.querySelector<HTMLElement>("[data-slot=table-container]")!;
+    expect(table.scrollWidth).toBeLessThanOrEqual(table.clientWidth);
   });
 });
 

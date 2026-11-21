@@ -9,6 +9,13 @@ import { TemplateReport, TemplateSummary } from "../web/types";
 
 // Payload shapes shared by the Model and the Messages that deliver them.
 
+/** A table's search text, sort order and column filter values (`dataGrid`). */
+export const GridStateSchema = Schema.Struct({
+  query: Schema.String,
+  sorting: Schema.Array(Schema.Struct({ id: Schema.String, desc: Schema.Boolean })),
+  filters: Schema.Record(Schema.String, Schema.String),
+});
+
 /** The open session shown on the Start tab. */
 export const ActiveSessionSummary = Schema.Struct({
   id: Schema.String,
@@ -118,6 +125,9 @@ export const Model = Schema.Struct({
     Schema.Struct({ tone: Schema.Literals(["success", "error"]), text: Schema.String }),
   ),
   lookSaveFailed: Schema.Boolean,
+  /** Search, sort and filters of the History and Templates tables. */
+  historyGrid: GridStateSchema,
+  templatesGrid: GridStateSchema,
   controlSize: ControlSize,
   controlSizeSaveFailed: Schema.Boolean,
   // Templates tab slice
@@ -242,6 +252,8 @@ const initialModel = (route: Route): Model => ({
   joinedExistingSession: false,
   backupNotice: null,
   lookSaveFailed: false,
+  historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
+  templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
   controlSize: "standard",
   controlSizeSaveFailed: false,
   templates: AsyncData.Loading(),

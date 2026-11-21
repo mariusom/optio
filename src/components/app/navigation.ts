@@ -17,10 +17,11 @@ export type TabDef = Readonly<{
 }>;
 
 /** Always the same four tabs, so nothing shifts once the first session is
- *  saved; History shows its own empty state until then. */
+ *  saved; History shows its own empty state until then. Session leads: it is
+ *  the landing page and the task people open Optio for. */
 export const navigationTabs: ReadonlyArray<TabDef> = [
-  { tag: "TemplatesTab", label: "Templates", icon: FileText },
   { tag: "StartTab", label: "Session", icon: Play },
+  { tag: "TemplatesTab", label: "Templates", icon: FileText },
   { tag: "HistoryTab", label: "History", icon: Clock },
   { tag: "SettingsTab", label: "Settings", icon: Settings2 },
 ];
@@ -42,8 +43,10 @@ const activeTab = (route: Route): TabTag =>
 // ── Phone: bottom tab bar ─────────────────────────────────────────────────
 
 /**
- * iOS-style tab bar. Anchors drive hash routing. Hidden at md+ where the
- * sidebar takes over, and on full-screen routes (the live session).
+ * iOS 26-style tab bar: a floating capsule inset from the screen edges, whose
+ * current tab sits in its own inner capsule (icon over label). Anchors drive
+ * hash routing. Hidden at md+ where the sidebar takes over, and on full-screen
+ * routes (the live session). No glass refraction: a translucent surface only.
  */
 export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
   const tabs = navigationTabs;
@@ -51,22 +54,30 @@ export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
   return h.nav(
     [
       h.Class(
-        "md:hidden fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-card/90 pb-safe backdrop-blur-xl select-none",
+        "md:hidden pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] select-none",
       ),
       h.AriaLabel("Tabs"),
       h.DataAttribute("slot", "tab-bar"),
     ],
     [
       h.div(
-        [h.Class("mx-auto flex h-[3.25rem] max-w-md items-stretch px-2")],
+        [
+          h.Class(
+            "pointer-events-auto mx-auto flex h-16 max-w-md items-stretch gap-1 rounded-full border border-border/70 bg-card/85 p-1 shadow-lg shadow-black/10 backdrop-blur-xl",
+          ),
+          h.DataAttribute("slot", "tab-bar-capsule"),
+        ],
         Array.map(tabs, (tab) => {
           const active = current === tab.tag;
           return h.a(
             [
               h.Class(
                 cn(
-                  "flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg transition-colors duration-150 active:opacity-60",
-                  active ? "text-primary" : "text-muted-foreground",
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring active:scale-[0.97] motion-reduce:active:scale-100",
+                  // The inner capsule marks the current tab beyond colour alone.
+                  active
+                    ? "bg-primary/12 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
                 ),
               ),
               h.Href(hrefFor({ _tag: tab.tag })),
@@ -74,18 +85,7 @@ export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
               ...(active ? [h.AriaCurrent("page")] : []),
             ],
             [
-              // The pill marks the current tab beyond colour alone.
-              h.span(
-                [
-                  h.Class(
-                    cn(
-                      "grid h-7 w-14 place-items-center rounded-full transition-colors duration-150",
-                      active && "bg-primary/12",
-                    ),
-                  ),
-                ],
-                [icon(h, tab.icon, "size-6 shrink-0")],
-              ),
+              icon(h, tab.icon, "size-6 shrink-0"),
               h.span(
                 [
                   h.Class(

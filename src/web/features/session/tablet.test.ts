@@ -71,6 +71,8 @@ const makeModel = (runner: Model["runner"]): Model => ({
   joinedExistingSession: false,
   backupNotice: null,
   lookSaveFailed: false,
+  historyGrid: { query: "", sorting: [], filters: {} },
+  templatesGrid: { query: "", sorting: [], filters: {} },
   controlSize: "standard",
   controlSizeSaveFailed: false,
   templates: AsyncData.succeed([]),

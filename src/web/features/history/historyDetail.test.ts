@@ -305,7 +305,7 @@ describe("history detail regressions", () => {
     expect(text(render((h) => sessionDetailPage(model(), h)))).not.toContain("Time breakdown");
   });
 
-  it("shows seconds for short sessions in the list, with day totals", () => {
+  it("shows seconds for short sessions and hours for long ones in the list", () => {
     const now = new Date(2026, 5, 15, 12, 0, 0).getTime();
     const rendered = text(
       render((h) =>
@@ -319,18 +319,18 @@ describe("history detail regressions", () => {
             pendingHistoryDelete: null,
             historyActionsFor: null,
             historyError: null,
+            historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
           },
           h,
         ),
       ),
     );
-    // The duration sits under the start time, not in the truncating subtitle.
     expect(rendered).toContain("1 task");
-    expect(rendered).not.toContain("1 task · 6s");
     expect(rendered).toContain("6s");
+    expect(rendered).toContain("1h 10m");
     expect(rendered).not.toMatch(/\b0m\b/);
-    expect(rendered).toContain("Today");
-    expect(rendered).toContain("· 2 sessions · 1h 10m");
+    expect(rendered).toContain("Today, ");
+    expect(rendered).toContain("2 sessions");
   });
 
   it("renders taskId order even when earlier tasks have no start time", () => {

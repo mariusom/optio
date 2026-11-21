@@ -219,6 +219,10 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   FoldKit 0.170+ supports Effect 4.1, including its split crypto services. It retains
   the controlled-input, IME and portal fixes from 0.169. The custom Record/Save shortcut
   also ignores `keyCode` 229 when an IME clears `isComposing` too early.
+- `@tanstack/table-core` 9.3.1 (MIT) derives the sorted and filtered rows of
+  the History and Templates grids. v9 needs `coreReactivityFeature:
+  storeReactivityBindings()` in its feature registry; only the sorting,
+  column-filter and global-filter features are registered.
 - LiveStore packages now use stable 0.5.0 instead of the October 5 snapshot.
   It fixes interrupted state rebuild recovery, restores snapshot heads and drains
   admitted events on orderly shutdown. Its first open rematerializes derived

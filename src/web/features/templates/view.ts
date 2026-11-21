@@ -4,32 +4,29 @@ import type { HtmlBuilder } from "foldkit/html";
 import {
   ChartBar,
   Copy,
-  Ellipsis,
   LayoutTemplate,
   Play,
   Star,
   Trash2,
+  dataGrid,
   emptyState,
-  groupedList,
   icon,
   notice,
   page,
-  row,
-  rowAction,
   statusPill,
+  type GridState,
 } from "@/components/app";
 import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { questionSummaryLine } from "./naming";
 import type { TemplateReport, TemplateSummary } from "../../types";
 import { templateReportSheet } from "./reportSheet";
 import { displaySessionName, type ActiveSession } from "../session/startHelpers";
 
-// Templates tab — a grouped list of templates (a two-column card grid from
-// 1280px). Tapping a row opens the editor; the "⋯" button opens an action sheet
-// (start session / set as default / duplicate / delete).
+// Templates tab — a searchable, sortable table of templates. Opening a row
+// shows the editor; the "⋯" button opens an action sheet (start session / set
+// as default / time report / duplicate / delete).
 
 type TemplatesModel = {
   readonly templates: ReadonlyArray<TemplateSummary>;
@@ -44,43 +41,86 @@ type TemplatesModel = {
   readonly lastError: string | null;
   /** The live session, if any: only one can run, so the sheet offers to resume it. */
   readonly liveSession?: ActiveSession | null;
+  readonly templatesGrid: GridState;
 };
 
-// ── Rows ───────────────────────────────────────────────────────────────────
+// ── Table ──────────────────────────────────────────────────────────────────
 
-// From 1280px the grouped card becomes a two-column grid of row cards; DOM
-// (and keyboard) order stays row-major, matching the visual order.
-const gridListClass =
-  "xl:grid xl:grid-cols-2 xl:gap-3 xl:divide-y-0 xl:overflow-visible xl:rounded-none xl:bg-transparent xl:ring-0";
-const gridCardClass = "xl:overflow-hidden xl:rounded-xl xl:bg-card xl:ring-1 xl:ring-foreground/10";
+const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
-const templateRow = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
-  h.keyed("div")(
-    template.id,
-    [h.Class(cn("lazy-row flex w-full items-stretch", gridCardClass))],
+/** Phones hide the count columns; the name cell repeats them under the name. */
+const nameCell = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
+  h.span(
+    [h.Class("flex min-w-0 flex-col items-start gap-0.5")],
     [
-      row(
-        {
-          title: template.name,
-          subtitle: questionSummaryLine(template.fieldCount, template.requiredCount),
-          trailing: template.isDefault
-            ? statusPill({ tone: "primary" }, ["Default"], h)
-            : undefined,
-          className: "min-w-0 flex-1",
-          // Named by its visible text (title, counts, badge) so voice control matches it.
-          onClick: Message.ClickedTemplateRow({ id: template.id }),
-        },
-        h,
+      h.span(
+        [h.Class("flex max-w-full min-w-0 items-center gap-2")],
+        [
+          h.span([h.Class("truncate")], [template.name]),
+          ...(template.isDefault ? [statusPill({ tone: "primary" }, ["Default"], h)] : []),
+        ],
       ),
-      rowAction(
-        {
-          onClick: Message.OpenedTemplateActions({ id: template.id }),
-          attributes: [h.AriaLabel(`Actions for "${template.name}"`)],
-        },
-        [icon(h, Ellipsis, "size-5")],
-        h,
+      h.span(
+        [h.Class("truncate text-xs font-normal text-muted-foreground sm:hidden")],
+        [questionSummaryLine(template.fieldCount, template.requiredCount)],
       ),
     ],
+  );
+
+const templatesGrid = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
+  dataGrid(
+    {
+      id: "templates",
+      label: "Templates",
+      noun: "templates",
+      singular: "template",
+      rows: model.templates,
+      rowId: (template) => template.id,
+      onOpen: (template) => Message.ClickedTemplateRow({ id: template.id }),
+      actions: {
+        label: (template) => `Actions for "${template.name}"`,
+        onClick: (template) => Message.OpenedTemplateActions({ id: template.id }),
+      },
+      columns: [
+        {
+          id: "name",
+          header: "Name",
+          value: (template) => template.name,
+          cell: (template) => nameCell(template, h),
+          searchable: true,
+        },
+        {
+          id: "questions",
+          header: "Questions",
+          value: (template) => template.fieldCount,
+          cell: (template) => String(template.fieldCount),
+          align: "end",
+          from: "sm",
+          descFirst: true,
+        },
+        {
+          id: "required",
+          header: "Required",
+          value: (template) => template.requiredCount,
+          cell: (template) => String(template.requiredCount),
+          align: "end",
+          from: "sm",
+          descFirst: true,
+        },
+        {
+          id: "updated",
+          header: "Updated",
+          value: (template) => template.updatedAt,
+          cell: (template) => dateFormatter.format(template.updatedAt),
+          from: "md",
+          descFirst: true,
+          className: "whitespace-nowrap",
+        },
+      ],
+      state: model.templatesGrid,
+      onChange: (state) => Message.ChangedGrid({ grid: "templates", state }),
+    },
+    h,
   );
 
 const addSamplesButton = (h: HtmlBuilder<Message>) =>
@@ -252,20 +292,10 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
           },
           h,
         )
-      : h.div(
-          [h.Class("flex flex-col gap-3")],
-          [
-            groupedList(
-              { header: "Your templates", className: gridListClass },
-              Array.map(model.templates, (template) => templateRow(template, h)),
-              h,
-            ),
-            addSamplesButton(h),
-          ],
-        );
+      : h.div([h.Class("flex flex-col gap-3")], [templatesGrid(model, h), addSamplesButton(h)]);
 
   return page(
-    {},
+    { wide: true },
     [
       ...(model.lastError === null ? [] : [notice({ tone: "error", text: model.lastError }, h)]),
       body,

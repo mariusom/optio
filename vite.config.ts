@@ -188,8 +188,8 @@ export default defineConfig(({ command, mode }) => {
           short_name: "optio",
           description:
             "Create time studies, record tasks, and export CSV. Works offline after initial loading. No account needed.",
-          theme_color: "#ecf7ff",
-          background_color: "#ecf7ff",
+          theme_color: "#ffffff",
+          background_color: "#ffffff",
           display: "standalone",
           icons: [
             { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

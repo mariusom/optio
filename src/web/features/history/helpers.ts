@@ -3,7 +3,7 @@
 import { Array, DateTime, Order, pipe, String } from "effect";
 
 import { isBooleanTrue } from "../../fields";
-import { formatCsvDate, formatDurationShort } from "../../format";
+import { formatCsvDate } from "../../format";
 
 const padTwoDigits = (value: number): string =>
   pipe(globalThis.String(value), String.padStart(2, "0"));
@@ -167,21 +167,6 @@ const fullDayFormatter = new Intl.DateTimeFormat(undefined, {
 export const formatDay = (epochMs: number): string =>
   DateTime.formatIntl(DateTime.makeUnsafe(epochMs), fullDayFormatter);
 
-/** Groups already date-sorted sessions into consecutive runs of the same day. */
-export const groupByDay = <T extends { readonly startedAt: number }>(
-  sessions: ReadonlyArray<T>,
-  now: number,
-): ReadonlyArray<{ readonly label: string; readonly sessions: ReadonlyArray<T> }> => {
-  const groups: Array<{ label: string; sessions: Array<T> }> = [];
-  for (const session of sessions) {
-    const label = dayGroupLabel(session.startedAt, now);
-    const last = groups[groups.length - 1];
-    if (last !== undefined && last.label === label) last.sessions.push(session);
-    else groups.push({ label, sessions: [session] });
-  }
-  return groups;
-};
-
 /** A recorded answer in plain language: "Yes"/"No", "A, B", or an em dash. */
 export const formatAnswer = (sectionType: string, value: string): string => {
   if (String.trim(value) === "") return "—";
@@ -200,19 +185,6 @@ export const formatAnswer = (sectionType: string, value: string): string => {
 
 /** "12 tasks" / "1 task". */
 export const taskCountLabel = (count: number): string => `${count} task${count === 1 ? "" : "s"}`;
-
-/** "3 sessions · 1h 12m" — a day's session count and total recorded time. */
-export const daySummaryLabel = (
-  sessions: ReadonlyArray<{ readonly startedAt: number; readonly endedAt: number }>,
-): string => {
-  const totalMs = Array.reduce(
-    sessions,
-    0,
-    (sum, session) => sum + Math.max(0, session.endedAt - session.startedAt),
-  );
-  const count = `${sessions.length} session${sessions.length === 1 ? "" : "s"}`;
-  return `${count} · ${formatDurationShort(totalMs)}`;
-};
 
 /**
  * End time for session detail: "4:12 PM", or with the day ("12:02 AM, Sun, Oct

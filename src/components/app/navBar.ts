@@ -174,8 +174,8 @@ export type PageHeaderConfig = Readonly<{
   subtitle?: Child;
   /** One trailing control, usually an icon button or short text button. */
   trailing?: Html;
-  /** Match a page that widens on desktops (`page({ wide: "xl" })`). */
-  wide?: "xl";
+  /** Match a page that widens (`page({ wide })`). */
+  wide?: boolean | "xl";
 }>;
 
 /**

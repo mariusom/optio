@@ -2,6 +2,7 @@ import type { HtmlBuilder } from "foldkit/html";
 import { Array, pipe, Schema, String } from "effect";
 
 import { choiceRows, controlRow, groupedList, segmentedControl } from "@/components/app";
+import { cn } from "@/lib/utils";
 import { input } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { sheet } from "../../sheets";
@@ -27,10 +28,10 @@ const ICON_LIBRARIES: ReadonlyArray<{ value: IconLibrary; label: string }> = [
 ];
 
 const LOOKS: ReadonlyArray<{ value: Look; label: string; description: string }> = [
-  { value: "blueprint", label: "Blueprint", description: "Grid paper and cobalt ink (default)" },
+  { value: "swiss", label: "Swiss", description: "White, ruled lines, signal red (default)" },
   { value: "classic", label: "Classic", description: "Neutral and quiet" },
   { value: "studio", label: "Studio", description: "Warm paper, teal, serif titles" },
-  { value: "swiss", label: "Swiss", description: "White, ruled lines, signal red" },
+  { value: "blueprint", label: "Blueprint", description: "Grid paper and cobalt ink" },
   { value: "shopfloor", label: "Shopfloor", description: "Dark navigation, safety amber" },
 ];
 
@@ -42,6 +43,16 @@ const ACCENTS: ReadonlyArray<{ value: Accent; label: string }> = [
   { value: "rose", label: "Rose" },
 ];
 
+const swatch = (look: Look, h: HtmlBuilder<Message>, className: string) =>
+  h.span(
+    [
+      h.Class(cn("look-swatch shrink-0", className)),
+      h.DataAttribute("look", look),
+      h.AriaHidden(true),
+    ],
+    [h.span([])],
+  );
+
 /** Look picker: each row previews the look in the current light/dark scheme. */
 export const lookRows = (look: Look, h: HtmlBuilder<Message>) =>
   choiceRows(
@@ -52,17 +63,7 @@ export const lookRows = (look: Look, h: HtmlBuilder<Message>) =>
       choices: Array.map(LOOKS, (option) => ({
         label: h.span(
           [h.Class("flex items-center gap-3")],
-          [
-            h.span(
-              [
-                h.Class("look-swatch h-8 w-12 shrink-0"),
-                h.DataAttribute("look", option.value),
-                h.AriaHidden(true),
-              ],
-              [h.span([])],
-            ),
-            option.label,
-          ],
+          [swatch(option.value, h, "h-8 w-12"), option.label],
         ),
         subtitle: option.description,
         selected: look === option.value,

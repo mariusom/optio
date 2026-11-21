@@ -181,7 +181,7 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
         h,
       ),
       page(
-        { className: "pt-4" },
+        {},
         [
           ...(model.historyError === null
             ? []

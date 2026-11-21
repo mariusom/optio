@@ -24,6 +24,8 @@ export type SheetConfig<M> = Readonly<{
   footer?: ActionGroupConfig<M>;
   /** Wider panel on large screens (forms). */
   size?: "sm" | "md";
+  /** "side" slides a full-height panel in from the right edge (task lists). */
+  placement?: "bottom" | "side";
   className?: string;
 }>;
 
@@ -109,7 +111,12 @@ export const sheet = <M>(
             h.AriaModal(true),
             h.DataAttribute("slot", "sheet"),
             h.Class(
-              "m-0 items-end justify-center overflow-hidden bg-transparent p-0 text-foreground open:flex sm:items-center",
+              cn(
+                "m-0 overflow-hidden bg-transparent p-0 text-foreground open:flex",
+                config.placement === "side"
+                  ? "items-stretch justify-end"
+                  : "items-end justify-center sm:items-center",
+              ),
             ),
             h.OnMount(Mount.mapMessage(ShowSheet(), () => config.onSettled)),
           ],
@@ -127,19 +134,29 @@ export const sheet = <M>(
                 h.DataAttribute("slot", "sheet-content"),
                 h.Class(
                   cn(
-                    "relative flex w-full max-h-[calc(100dvh-3rem)] flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl",
-                    "rounded-t-lg pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
-                    "sm:rounded-lg sm:border sm:border-border sm:zoom-in-95 sm:slide-in-from-bottom-0",
-                    config.size === "md" ? "sm:max-w-lg" : "sm:max-w-sm",
+                    "relative flex flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl",
+                    config.placement === "side"
+                      ? "h-full w-[min(22rem,calc(100vw-3rem))] rounded-l-lg border-l border-border pt-safe pb-safe animate-in slide-in-from-right-8 fade-in-0 duration-200"
+                      : cn(
+                          "w-full max-h-[calc(100dvh-3rem)] rounded-t-lg pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
+                          "sm:rounded-lg sm:border sm:border-border sm:zoom-in-95 sm:slide-in-from-bottom-0",
+                          config.size === "md" ? "sm:max-w-lg" : "sm:max-w-sm",
+                        ),
                     config.className,
                   ),
                 ),
               ],
               [
-                h.div([
-                  h.Class("mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden"),
-                  h.AriaHidden(true),
-                ]),
+                ...(config.placement === "side"
+                  ? []
+                  : [
+                      h.div([
+                        h.Class(
+                          "mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden",
+                        ),
+                        h.AriaHidden(true),
+                      ]),
+                    ]),
                 h.div(
                   [h.Class("flex flex-col gap-2 p-6 text-left")],
                   [

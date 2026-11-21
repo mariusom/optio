@@ -107,6 +107,7 @@ describe("template action sheet", () => {
     templateActionsFor: template.id,
     lastError: null,
     liveSession: null,
+    templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
   };
   const config = {
     view: templatesPage,

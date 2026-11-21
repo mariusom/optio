@@ -38,7 +38,6 @@ type SessionHandlers = Pick<
   | "PressedPrimaryShortcut"
   | "TaskRecorded"
   | "GaveRecordFeedback"
-  | "ClickedRepeatLastAnswers"
   | "ClickedEndSession"
   | "CanceledEndSession"
   | "ConfirmedEndSession"
@@ -165,7 +164,6 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     }),
   TaskRecorded: ({ taskId, fresh }) => applyPlan(model, { _tag: "RecordAcked", taskId, fresh }),
   GaveRecordFeedback: () => ({ model }),
-  ClickedRepeatLastAnswers: () => applyPlan(model, { _tag: "RepeatRequested" }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
   CanceledEndSession: () => applyPlan(model, { _tag: "EndCancelled" }),
   ConfirmedEndSession: () => applyPlan(model, { _tag: "EndConfirmed" }),

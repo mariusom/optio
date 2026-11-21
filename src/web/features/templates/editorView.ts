@@ -114,7 +114,7 @@ const loadingView = (lastError: string | null, loadFailed: boolean, h: HtmlBuild
     [
       navBar({ title: "Template", back: backLink }, h),
       page(
-        { className: "pt-6" },
+        {},
         [
           ...(lastError === null ? [] : [notice({ tone: "error", text: lastError }, h)]),
           loadFailed
@@ -273,7 +273,7 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
     [
       editorNavBar({ editor, showCreate: model.showCreate, canSave }, h),
       page(
-        { className: "pt-6", wide: true },
+        { wide: true },
         [
           ...(model.lastError === null
             ? []

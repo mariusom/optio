@@ -144,6 +144,6 @@ export const infoPage = (
         },
         h,
       ),
-      page({ className: "pt-6" }, kind === "About" ? aboutContent(h) : agentContent(access, h), h),
+      page({}, kind === "About" ? aboutContent(h) : agentContent(access, h), h),
     ],
   );

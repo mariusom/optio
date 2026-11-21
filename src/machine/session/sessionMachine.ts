@@ -17,7 +17,6 @@ import {
   type RunnerState,
   type RunnerTask,
 } from "../../web/features/session/runner";
-import { repeatPlan } from "../../web/features/session/repeatAnswers";
 
 export type { RunnerData, RunnerState };
 
@@ -38,7 +37,6 @@ const SessionEvent = Schema.TaggedUnion({
   SectionFocused: { fieldId: Schema.Union([Schema.Null, Schema.String]) },
   RecordRequested: {},
   /** Fill the open task's unanswered questions from the previous recorded task. */
-  RepeatRequested: {},
   TaskSelected: { taskId: Schema.String },
   TaskListToggled: {},
   EndRequested: {},
@@ -246,7 +244,6 @@ const flushesFirst = new Set<SessionEvent["_tag"]>([
   "FlushRequested",
   "CounterAdjusted",
   "RecordRequested",
-  "RepeatRequested",
   "TaskSelected",
   "EditCancelled",
   "EditSaved",
@@ -258,7 +255,6 @@ const clearsAnnouncement = new Set<SessionEvent["_tag"]>([
   "FieldChanged",
   "CounterAdjusted",
   "RecordRequested",
-  "RepeatRequested",
   "TaskSelected",
   "EditCancelled",
   "EditSaved",
@@ -283,39 +279,6 @@ const taskAnnouncement = (
       onSome: ({ orderIndex }) => `Task ${orderIndex} ${kind}`,
     }),
   };
-};
-
-/**
- * Copies the previous recorded task's answers into unanswered questions as
- * one batch. Each is a first write, so the store stamps its `startDate` now;
- * the overlay keeps the values until the store echoes them.
- */
-const repeatAnswers = (runner: RunnerState): SessionPlan => {
-  const plan = repeatPlan(runner);
-  if (plan === null || plan.source === null || plan.writes.length === 0) return stay(runner);
-  const { writes, source } = plan;
-  const ids = new Set(Array.map(writes, (write) => write.taskFieldId));
-  const filled = Array.reduce(writes, runner, (state, { taskFieldId, value }) =>
-    withSectionValue(state, taskFieldId, value),
-  );
-  const count = writes.length;
-  return next(
-    {
-      ...filled,
-      fieldWrites: {
-        revision: runner.fieldWrites.revision + 1,
-        pending: [
-          ...Array.filter(runner.fieldWrites.pending, (write) => !ids.has(write.taskFieldId)),
-          ...Array.map(writes, (write) => ({ ...write, committed: true })),
-        ],
-      },
-      announcement: {
-        kind: "filled",
-        text: `Filled ${count} answer${count === 1 ? "" : "s"} from task ${source.orderIndex}`,
-      },
-    },
-    { _tag: "CommitFieldValues", writes: Array.map(writes, (write) => ({ ...write })) },
-  );
 };
 
 /** Events accepted in either live phase. */
@@ -406,7 +369,6 @@ const collecting: PhaseHandlers = {
       ? next(updated, { _tag: "CommitFieldValues", writes: [{ taskFieldId, value }] })
       : next(updated);
   },
-  RepeatRequested: repeatAnswers,
   RecordRequested: (runner) => {
     const task = currentTask(runner);
     // Completed tasks are saved through the edit flow, never recorded again.

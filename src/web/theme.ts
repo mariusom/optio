@@ -14,8 +14,8 @@ export type Accent = typeof Accent.Type;
 /** Whole-app looks: palette, surfaces and typography over the same layout. */
 export const Look = Schema.Literals(["classic", "studio", "swiss", "shopfloor", "blueprint"]);
 export type Look = typeof Look.Type;
-/** Blueprint is the default; a saved choice (including Classic) still wins. */
-export const defaultLook: Look = "blueprint";
+/** Swiss is the default; a saved choice (including Classic) still wins. */
+export const defaultLook: Look = "swiss";
 /** "large" (glove mode) enlarges text, answer choices and primary actions. */
 export const ControlSize = Schema.Literals(["standard", "large"]);
 export type ControlSize = typeof ControlSize.Type;

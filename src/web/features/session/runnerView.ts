@@ -30,7 +30,6 @@ import {
 } from "./runner";
 import {
   announcementView,
-  repeatAnswersRow,
   requiredProgress,
   sessionTimerView,
   taskCountLabel,
@@ -43,21 +42,14 @@ export { formSectionsView } from "./questionControls";
 export const runnerCanvas = (
   options: Readonly<{ runner: RunnerState; task: RunnerTask; scope: string }>,
   h: HtmlBuilder<Message>,
-) => {
-  const repeat = repeatAnswersRow(options.runner, options.scope, h);
-  return h.div(
+) =>
+  h.div(
     [
       h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain"),
       h.DataAttribute("runner-layout", ""),
     ],
-    [
-      formSectionsView(options.task, h, {
-        scope: options.scope,
-        leading: repeat === null ? [] : [repeat],
-      }),
-    ],
+    [formSectionsView(options.task, h, { scope: options.scope })],
   );
-};
 
 // ── Nav bar pieces ──────────────────────────────────────────────────────────
 
@@ -85,7 +77,7 @@ const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 
 export const runnerNavBar = (
   runner: RunnerState,
-  leading: ReadonlyArray<Html>,
+  controls: Readonly<{ leading?: ReadonlyArray<Html>; trailing?: ReadonlyArray<Html> }>,
   h: HtmlBuilder<Message>,
 ) =>
   h.header(
@@ -103,7 +95,7 @@ export const runnerNavBar = (
           ),
         ],
         [
-          h.div([h.Class("flex items-center justify-start")], leading),
+          h.div([h.Class("flex items-center justify-start")], controls.leading ?? []),
           h.div(
             [h.Class("min-w-0 text-center")],
             [
@@ -117,14 +109,17 @@ export const runnerNavBar = (
               sessionTimerView(runner, h),
             ],
           ),
-          h.div([h.Class("flex items-center justify-end")], [endAction(h)]),
+          h.div(
+            [h.Class("flex items-center justify-end gap-2")],
+            [...(controls.trailing ?? []), endAction(h)],
+          ),
         ],
       ),
     ],
   );
 
 const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
-  runnerNavBar(runner, [taskListAction(runner, h)], h);
+  runnerNavBar(runner, { leading: [taskListAction(runner, h)] }, h);
 
 // ── Action bar ──────────────────────────────────────────────────────────────
 
@@ -173,6 +168,7 @@ export const runnerActionBar = (
             {
               size: "lg",
               variant: "secondary",
+              className: "rounded-full",
               onClick: Message.ClickedCancelEdit(),
               attributes: [h.AriaLabel("Cancel editing")],
             },
@@ -182,7 +178,7 @@ export const runnerActionBar = (
           button(
             {
               size: "lg",
-              className: "@container relative",
+              className: "@container relative rounded-full shadow-lg shadow-primary/20",
               isDisabled: !canSubmit,
               onClick: Message.ClickedSaveEdit(),
               attributes: [h.AriaLabel("Save changes"), ...actionAttributes],
@@ -195,7 +191,7 @@ export const runnerActionBar = (
     : button(
         {
           size: "lg",
-          className: "@container relative w-full",
+          className: "@container relative w-full rounded-full shadow-lg shadow-primary/20",
           isDisabled: !canSubmit,
           onClick: Message.ClickedRecord(),
           attributes: [h.AriaLabel("Record task"), ...actionAttributes],
@@ -206,12 +202,15 @@ export const runnerActionBar = (
 
   return h.div(
     [
-      h.Class("shrink-0 border-t border-border/70 bg-background/90 pb-safe backdrop-blur-xl"),
+      // Floats like the tab bar: no rule, a soft fade, and a capsule action.
+      h.Class(
+        "shrink-0 bg-linear-to-t from-background from-70% to-background/0 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+      ),
       h.DataAttribute("slot", "action-bar"),
     ],
     [
       h.div(
-        [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-3 pb-3")],
+        [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-2")],
         [
           h.div(
             [h.Class("relative flex min-h-5 flex-col justify-center")],
@@ -320,7 +319,7 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
       title: "Tasks",
       description: `${runner.completedCount} recorded. Select a task to change its answers.`,
       onDismiss: Message.ToggledTaskList(),
-      size: "md",
+      placement: "side",
       footer: {
         confirm: {
           label: "Done",

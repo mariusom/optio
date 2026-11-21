@@ -10,6 +10,7 @@ import { FoldcnStyle } from "./web/style";
 import { RunnerDataSchema } from "./web/features/session/runner";
 import {
   ActiveSessionSummary,
+  GridStateSchema,
   HistorySessionDetail,
   HistorySessionSummary,
   StoreList,
@@ -64,6 +65,7 @@ export const Message = defineMessageUnion({
   CanceledAccentPicker: {},
   SelectedLook: { look: Look },
   LookSaveFinished: { look: Look, saved: Schema.Boolean },
+  ChangedGrid: { grid: Schema.Literals(["history", "templates"]), state: GridStateSchema },
   SelectedControlSize: { controlSize: ControlSize },
   ControlSizeSaveFinished: { controlSize: ControlSize, saved: Schema.Boolean },
   /** Writes have stayed unconfirmed long enough that saving looks stuck (or recovered). */
@@ -190,7 +192,6 @@ export const Message = defineMessageUnion({
   TaskRecorded: { taskId: Schema.String, fresh: Schema.Boolean },
   /** The recorded-task vibration ran, or was skipped where unsupported. */
   GaveRecordFeedback: {},
-  ClickedRepeatLastAnswers: {},
   ClickedEndSession: {},
   ConfirmedEndSession: {},
   CanceledEndSession: {},
