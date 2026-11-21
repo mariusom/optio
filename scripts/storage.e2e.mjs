@@ -266,7 +266,8 @@ void test(
       await page.getByRole("radio", { name: "No", exact: true }).press("Space");
       await input("Parcel weight (kg)").fill("not a number");
       await page
-        .getByText("Correct invalid answers before continuing.")
+        .getByRole("alert")
+        .filter({ hasText: "Correct invalid answers." })
         .filter({ visible: true })
         .waitFor();
       assert.equal(await record.isDisabled(), true);
@@ -339,7 +340,8 @@ void test(
       await waitValue("Items packed", "12");
       await input("Items packed").fill("-1");
       await page
-        .getByText("Correct invalid answers before continuing.")
+        .getByRole("alert")
+        .filter({ hasText: "Correct invalid answers." })
         .filter({ visible: true })
         .waitFor();
       await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();

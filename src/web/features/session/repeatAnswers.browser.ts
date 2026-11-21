@@ -104,6 +104,7 @@ it.each([390, 1184])(
       .not.toBeInTheDocument();
     const record = page.getByRole("button", { name: "Record task" });
     await expect.element(record).toHaveAttribute("aria-disabled", "true");
+    await expect.element(record).toHaveAccessibleDescription("0 of 2 required answered");
     const recordY = record.element().getBoundingClientRect().top;
     const repeat = page.getByRole("button", { name: "Repeat last answers" });
     await expect.element(repeat).toHaveAttribute("aria-disabled", "true");

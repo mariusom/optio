@@ -146,7 +146,13 @@ export const requiredProgress = (
       ariaLabel: "Required answers",
       valueText: text,
       segments: required.length > 1 && required.length <= 8 ? required.length : undefined,
-      children: [progressLabel({ className: "text-muted-foreground tabular" }, [text], h)],
+      children: [
+        progressLabel(
+          { className: "text-muted-foreground tabular", id: `${scope}-required-answer-label` },
+          [text],
+          h,
+        ),
+      ],
     },
     h,
   );
@@ -158,6 +164,7 @@ export const requiredProgress = (
  */
 export const announcementView = (
   announcement: RunnerState["announcement"],
+  isVisible: boolean,
   h: HtmlBuilder<Message>,
 ) =>
   h.p(
@@ -169,6 +176,7 @@ export const announcementView = (
         cn(
           "flex items-center justify-center gap-1.5 text-sm font-medium empty:sr-only",
           announcement?.kind === "recorded" ? "text-success" : "text-foreground",
+          !isVisible && "sr-only",
         ),
       ),
     ],

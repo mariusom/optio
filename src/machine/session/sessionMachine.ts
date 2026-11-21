@@ -265,6 +265,11 @@ const clearsAnnouncement = new Set<SessionEvent["_tag"]>([
   "EndConfirmed",
 ]);
 
+const incompleteRecord = "Answer the required questions before recording.";
+const incompleteSave = "Answer the required questions before saving.";
+const incompleteEdit =
+  "Complete required questions and correct invalid answers, or cancel the edit first.";
+
 const taskAnnouncement = (
   runner: RunnerState,
   taskId: string,
@@ -408,7 +413,7 @@ const collecting: PhaseHandlers = {
     // Check this before required fields so a stale selection is a quiet no-op.
     if (task === null || task.endDate !== null || task.isBeingEdited) return stay(runner);
     if (!isTaskDone(task)) {
-      return next({ ...runner, lastError: "Answer the required questions before recording." });
+      return next({ ...runner, lastError: incompleteRecord });
     }
     return next(
       { ...runner, focusedSectionId: null, lastError: null },
@@ -419,11 +424,7 @@ const collecting: PhaseHandlers = {
     if (!Array.some(runner.tasks, (t) => t.id === taskId)) return stay(runner);
     const editing = Array.findFirst(runner.tasks, (t) => t.isBeingEdited);
     if (Option.isSome(editing) && editing.value.id !== taskId && !isTaskDone(editing.value)) {
-      return next({
-        ...runner,
-        lastError:
-          "Complete required questions and correct invalid answers, or cancel the edit first.",
-      });
+      return next({ ...runner, lastError: incompleteEdit });
     }
     return next(
       { ...withCurrentTask(runner, taskId), focusedSectionId: null, showTaskList: false },
@@ -441,7 +442,7 @@ const collecting: PhaseHandlers = {
     if (Option.isNone(found)) return stay(runner);
     const editing = found.value;
     if (!isTaskDone(editing)) {
-      return next({ ...runner, lastError: "Answer the required questions before saving." });
+      return next({ ...runner, lastError: incompleteSave });
     }
     return leaveEdit(runner, { _tag: "CommitSaveEdit", taskId: editing.id });
   },
@@ -485,9 +486,16 @@ export const planSession = (
       ? next(freshRunner(event.data, now))
       : stay(null);
   }
+  const clearStatus = clearsAnnouncement.has(event._tag);
+  const validationError =
+    runner.lastError === incompleteRecord ||
+    runner.lastError === incompleteSave ||
+    runner.lastError === incompleteEdit;
+  // Once the user changes answers or tasks, the footer reflects the new
+  // question state. Actual write failures remain until dismissed or resolved.
   const quiet =
-    runner.announcement !== null && clearsAnnouncement.has(event._tag)
-      ? { ...runner, announcement: null }
+    clearStatus && (runner.announcement !== null || validationError)
+      ? { ...runner, announcement: null, lastError: validationError ? null : runner.lastError }
       : runner;
   const flush = flushesFirst.has(event._tag) ? takeWrites(quiet) : stay(quiet);
   // `flush.runner` is non-null: takeWrites only clears the pending list.

@@ -130,7 +130,7 @@ const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 
 const recordHint = (task: RunnerTask): string | null => {
   if (Array.some(task.sections, (section) => !isScalarAnswerValid(section.kind, section.value)))
-    return "Correct invalid answers before continuing.";
+    return "Correct invalid answers.";
   if (!task.isBeingEdited && task.endDate !== null)
     return "This task is already recorded. Pick it in the task list to change it.";
   return null;
@@ -142,16 +142,28 @@ export const runnerActionBar = (
   h: HtmlBuilder<Message>,
 ) => {
   const isEditing = task.isBeingEdited;
-  const canRecord = canRecordTask(task);
-  const canSave = isTaskDone(task);
-  const actionHint = (isEditing ? canSave : canRecord) ? null : recordHint(task);
-  const announcement =
-    runner.lastError === null && actionHint === null ? runner.announcement : null;
-  const progressBar =
-    runner.lastError !== null || actionHint !== null || announcement !== null
-      ? null
-      : (requiredProgress(task, scope, h) ??
-        h.span([h.Class("text-muted-foreground text-sm")], ["No required questions"]));
+  const canSubmit = isEditing ? isTaskDone(task) : canRecordTask(task);
+  const actionHint = canSubmit ? null : recordHint(task);
+  const hasError = runner.lastError !== null || actionHint !== null;
+  const showAnnouncement = !hasError && runner.announcement !== null;
+  const statusId = `${scope}-runner-action-status`;
+  const actionAttributes = [
+    h.AriaKeyshortcuts(primaryShortcut),
+    ...(canSubmit || showAnnouncement
+      ? []
+      : [h.AriaDescribedBy(hasError ? statusId : `${scope}-required-answer-label`)]),
+  ];
+  const status =
+    runner.lastError !== null
+      ? [errorAlert(runner.lastError, h)]
+      : actionHint !== null
+        ? [h.p([h.Role("alert"), h.Class("text-destructive text-sm font-medium")], [actionHint])]
+        : showAnnouncement
+          ? []
+          : [
+              requiredProgress(task, scope, h) ??
+                h.span([h.Class("text-muted-foreground text-sm")], ["No required questions"]),
+            ];
 
   const actions = isEditing
     ? h.div(
@@ -171,9 +183,9 @@ export const runnerActionBar = (
             {
               size: "lg",
               className: "@container relative",
-              isDisabled: !canSave,
+              isDisabled: !canSubmit,
               onClick: Message.ClickedSaveEdit(),
-              attributes: [h.AriaLabel("Save changes"), h.AriaKeyshortcuts(primaryShortcut)],
+              attributes: [h.AriaLabel("Save changes"), ...actionAttributes],
             },
             ["Save", primaryShortcutHint(h)],
             h,
@@ -184,9 +196,9 @@ export const runnerActionBar = (
         {
           size: "lg",
           className: "@container relative w-full",
-          isDisabled: !canRecord,
+          isDisabled: !canSubmit,
           onClick: Message.ClickedRecord(),
-          attributes: [h.AriaLabel("Record task"), h.AriaKeyshortcuts(primaryShortcut)],
+          attributes: [h.AriaLabel("Record task"), ...actionAttributes],
         },
         [icon(h, Check, "size-5"), "Record task", primaryShortcutHint(h)],
         h,
@@ -202,19 +214,10 @@ export const runnerActionBar = (
         [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-3 pb-3")],
         [
           h.div(
-            [h.Class("flex min-h-5 flex-col justify-center")],
+            [h.Class("relative flex min-h-5 flex-col justify-center")],
             [
-              announcementView(announcement, h),
-              ...(runner.lastError === null ? [] : [errorAlert(runner.lastError, h)]),
-              ...(actionHint === null || runner.lastError !== null
-                ? []
-                : [
-                    h.p(
-                      [h.Role("alert"), h.Class("text-destructive text-sm font-medium")],
-                      [actionHint],
-                    ),
-                  ]),
-              ...(progressBar === null ? [] : [progressBar]),
+              announcementView(runner.announcement, showAnnouncement, h),
+              h.div([h.Id(statusId)], status),
             ],
           ),
           actions,

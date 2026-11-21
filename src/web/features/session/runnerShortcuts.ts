@@ -52,8 +52,14 @@ export const primaryShortcutPresses: Stream.Stream<Message> =
 export const primaryShortcutHint = (h: HtmlBuilder<Message>): Html =>
   h.span(
     [
-      h.Class("absolute right-3 hidden md:pointer-fine:@min-[15rem]:inline-flex"),
+      h.Class("absolute right-3 hidden md:pointer-fine:@min-[14rem]:inline-flex"),
       h.AriaHidden(true),
     ],
-    [Kbd({ className: "bg-primary-foreground/15 text-primary-foreground" }, ["Ctrl/⌘ + Enter"], h)],
+    [
+      Kbd(
+        { className: "border border-current bg-transparent text-primary-foreground" },
+        ["Ctrl/⌘ + Enter"],
+        h,
+      ),
+    ],
   );

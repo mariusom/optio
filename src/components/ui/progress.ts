@@ -70,12 +70,16 @@ export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>
 
 /** Static label for the bar (consumer-owned text). */
 export const progressLabel = <M>(
-  config: StyleConfig,
+  config: StyleConfig & Readonly<{ id?: string }>,
   children: ReadonlyArray<Child>,
   h: HtmlBuilder<M>,
 ): Html =>
   h.span(
-    [h.Class(cn(progressLabelClass, config.className)), h.DataAttribute("slot", "progress-label")],
+    [
+      h.Class(cn(progressLabelClass, config.className)),
+      h.DataAttribute("slot", "progress-label"),
+      ...(config.id === undefined ? [] : [h.Id(config.id)]),
+    ],
     children,
   );
 
