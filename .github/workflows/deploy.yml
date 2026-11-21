@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       # Cheap guard for direct pushes that bypassed the PR checks.
-      - run: pnpm check && pnpm exec tsc --noEmit
+      - run: pnpm check && pnpm typecheck
       - run: pnpm build
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

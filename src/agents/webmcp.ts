@@ -74,7 +74,10 @@ export const registerWebMcp = Effect.fn("agents.registerWebMcp")(function* (
               untrustedContentHint: true,
               consequentialHint: !Context.get(tool.annotations, Tool.Readonly),
             },
-            execute: (input, { signal }) => runtime.runPromise(result(input), { signal }),
+            execute: (input, { signal }) =>
+              signal.aborted
+                ? Promise.reject(signal.reason)
+                : runtime.runPromise(result(input), { signal }),
           },
           { signal: registration.signal },
         ),

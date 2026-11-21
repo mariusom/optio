@@ -126,7 +126,7 @@ describe("WebMCP tools", () => {
 
   it("rolls back partial registration", async () => {
     const { tools, context } = registry();
-    const register = context.registerTool;
+    const register = context.registerTool.bind(context);
     context.registerTool = async (tool, options) => {
       if (tools.size === 1) throw new Error("Registration blocked");
       await register(tool, options);

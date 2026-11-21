@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { chromium } from "playwright";
 import { preview } from "vite-plus";
 
-test(
+void test(
   "real storage survives restart, edit cancellation and offline export",
   { timeout: 120_000 },
   async () => {
@@ -214,7 +214,7 @@ test(
   },
 );
 
-test(
+void test(
   "quantitative sample records, reloads and exports distinct answers",
   { timeout: 120_000 },
   async () => {
@@ -266,7 +266,8 @@ test(
       await page.getByRole("radio", { name: "No", exact: true }).press("Space");
       await input("Parcel weight (kg)").fill("not a number");
       await page
-        .getByText("Correct invalid answers before continuing.")
+        .getByRole("alert")
+        .filter({ hasText: "Correct invalid answers." })
         .filter({ visible: true })
         .waitFor();
       assert.equal(await record.isDisabled(), true);
@@ -339,7 +340,8 @@ test(
       await waitValue("Items packed", "12");
       await input("Items packed").fill("-1");
       await page
-        .getByText("Correct invalid answers before continuing.")
+        .getByRole("alert")
+        .filter({ hasText: "Correct invalid answers." })
         .filter({ visible: true })
         .waitFor();
       await page.getByRole("button", { name: /^Task 2\b.*Recording$/ }).click();
@@ -408,7 +410,7 @@ test(
   },
 );
 
-test("warns when the browser keeps studies only in memory", { timeout: 60_000 }, async () => {
+void test("warns when the browser keeps studies only in memory", { timeout: 60_000 }, async () => {
   const server = await preview({ preview: { host: "127.0.0.1", port: 0, open: false } });
   const base = `http://127.0.0.1:${server.httpServer.address().port}/optio/`;
   const browser = await chromium.launch();

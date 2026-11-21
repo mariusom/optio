@@ -76,7 +76,10 @@ export const sessionTabletView = (runner: RunnerState | null, h: HtmlBuilder<Mes
               h.AriaLabel("Task answers"),
               h.DataAttribute("runner-layout", ""),
             ],
-            [runnerCanvas({ runner, task, scope: "tablet" }, h), runnerActionBar(runner, task, h)],
+            [
+              runnerCanvas({ runner, task, scope: "tablet" }, h),
+              runnerActionBar({ runner, task, scope: "tablet" }, h),
+            ],
           ),
         ],
       ),

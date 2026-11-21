@@ -94,17 +94,18 @@ it.each([390, 1184])(
     history.replaceState(null, "", "#/session/s");
     mount();
 
-    // Required progress and the visible reason Record is disabled.
+    // Progress explains why Record is disabled without a second hint.
     const progress = page.getByRole("progressbar", { name: "Required answers" });
     await expect.element(progress).toBeVisible();
     expect(progress.element().getAttribute("aria-valuetext")).toBe("0 of 2 required answered");
+    expect(document.querySelectorAll(`#${progress.element().id}`)).toHaveLength(1);
     await expect
-      .element(
-        page.getByRole("status").filter({ hasText: "Answer the 2 required questions first." }),
-      )
-      .toBeVisible();
+      .element(page.getByText("Answer the 2 required questions first."))
+      .not.toBeInTheDocument();
     const record = page.getByRole("button", { name: "Record task" });
     await expect.element(record).toHaveAttribute("aria-disabled", "true");
+    await expect.element(record).toHaveAccessibleDescription("0 of 2 required answered");
+    const recordY = record.element().getBoundingClientRect().top;
     const repeat = page.getByRole("button", { name: "Repeat last answers" });
     await expect.element(repeat).toHaveAttribute("aria-disabled", "true");
     await expect
@@ -118,13 +119,16 @@ it.each([390, 1184])(
 
     await page.getByRole("radiogroup", { name: "Activity" }).getByText("Observe").click();
     await expect.element(progress).toHaveAttribute("aria-valuetext", "1 of 2 required answered");
+    await expect.element(progress).toHaveAttribute("aria-valuenow", "50");
     await userEvent.type(page.getByRole("textbox", { name: "Station" }), "B4");
     await userEvent.tab();
-    await expect.element(progress).not.toBeInTheDocument();
+    await expect.element(progress).toHaveAttribute("aria-valuetext", "2 of 2 required answered");
+    expect(record.element().getBoundingClientRect().top).toBe(recordY);
     await record.click();
 
     const status = page.getByRole("status").filter({ hasText: "recorded" });
     await expect.element(status).toMatchTextContent("Task 1 recorded");
+    expect(record.element().getBoundingClientRect().top).toBe(recordY);
     expect(status.element().getAttribute("aria-live")).toBe("polite");
     await expect.poll(() => vibrate.mock.calls).toEqual([[30]]);
     const toggle = page.getByRole("button", { name: /^1 task recorded/ });

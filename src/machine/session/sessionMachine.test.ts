@@ -244,10 +244,16 @@ describe("sessionMachine recording", () => {
     expect(runner!.focusedSectionId).toBeNull();
   });
 
-  it("gates RecordRequested on required fields with lastError", () => {
-    const { runner, emissions } = plan(liveRunner(), { _tag: "RecordRequested" });
-    expect(emissions).toEqual([]);
-    expect(runner!.lastError).toBe("Answer the required questions before recording.");
+  it("blocks incomplete recording and clears the validation message on the next answer", () => {
+    const incomplete = plan(liveRunner(), { _tag: "RecordRequested" });
+    expect(incomplete.emissions).toEqual([]);
+    expect(incomplete.runner!.lastError).toBe("Answer the required questions before recording.");
+    const corrected = planFrom(incomplete, {
+      _tag: "FieldChanged",
+      taskFieldId: "f-activity",
+      value: "Observe",
+    });
+    expect(corrected.runner!.lastError).toBeNull();
   });
 
   it("commits a record when the current task is complete", () => {

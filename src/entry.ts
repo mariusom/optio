@@ -82,7 +82,7 @@ const main = Effect.gen(function* () {
     const fiber = yield* Effect.forkDetach(registration);
     // HMR dispose is a synchronous callback outside this fiber: run the
     // interruption with the main program's services.
-    const runFork = Effect.runForkWith(yield* Effect.context<never>());
+    const runFork = Effect.runForkWith(yield* Effect.context());
     import.meta.hot?.dispose(() => {
       runFork(Fiber.interrupt(fiber));
       handle.dispose();

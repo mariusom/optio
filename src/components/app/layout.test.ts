@@ -93,9 +93,7 @@ describe("row", () => {
 
   it("lets long values wrap when asked", () => {
     const value = nodes(row({ title: "Notes", value: "a very long answer", wrap: true }, h)).find(
-      (n) =>
-        String(n.data?.class ?? "").includes("whitespace-pre-wrap") ||
-        Object.keys(n.data?.class ?? {}).includes("whitespace-pre-wrap"),
+      (n) => Object.keys(n.data?.class ?? {}).includes("whitespace-pre-wrap"),
     );
     expect(value).toBeDefined();
   });

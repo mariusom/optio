@@ -81,17 +81,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-Patched dependencies
---------------------
-
-@livestore/adapter-web (Apache-2.0) is installed with
-patches/@livestore__adapter-web@0.5.0-dev.0.patch, which adds
-`codecFor: Schema.toCodecJson` to the worker RPC protocol. The patch marks the
-changed lines with a "Modified by Optio" notice in the package source and dist
-files, and that notice survives in the distributed worker bundle. See
-docs/development.md for why the patch exists and when it can be removed.
-
-
 LiveStore runtime packages
 --------------------------
 

@@ -3,7 +3,7 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 
 import { Check, Copy, List, icon } from "@/components/app";
 import { button } from "@/components/ui/button";
-import { Progress, progress } from "@/components/ui/progress";
+import { progress, progressLabel } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
 import { formatClock } from "../../format";
@@ -126,19 +126,33 @@ export const taskCountLabel = (runner: RunnerState, h: HtmlBuilder<Message>) => 
 
 // ── Action bar status ───────────────────────────────────────────────────────
 
-/** "1 of 3 required answered", while a required answer is missing or invalid. */
-export const requiredProgress = (task: RunnerTask, h: HtmlBuilder<Message>): Html | null => {
+/** Required-answer progress stays visible at completion to keep the footer steady. */
+export const requiredProgress = (
+  task: RunnerTask,
+  scope: string,
+  h: HtmlBuilder<Message>,
+): Html | null => {
   const required = Array.filter(task.sections, (section) => section.isRequired);
   const answered = Array.filter(required, isSectionDone).length;
-  if (required.length === 0 || answered === required.length) return null;
+  if (required.length === 0) return null;
   const text = `${answered} of ${required.length} required answered`;
   return progress(
     {
+      id: `${scope}-required-answer-progress`,
       value: (answered / required.length) * 100,
       // The muted track barely shows on the light background; keep it visible.
-      className: "w-full gap-y-1.5 [&_[data-slot=progress-track]]:bg-foreground/10",
-      attributes: [h.AriaLabel("Required answers"), h.AriaValuetext(text)],
-      children: [Progress.label({ className: "text-muted-foreground tabular" }, [text], h)],
+      className:
+        "w-full flex-nowrap items-center [&>[data-slot=progress-track]]:h-1.5 [&>[data-slot=progress-track]]:min-w-8 [&>[data-slot=progress-track]]:flex-1 [&>[data-slot=progress-track]]:bg-foreground/15",
+      ariaLabel: "Required answers",
+      valueText: text,
+      segments: required.length > 1 && required.length <= 8 ? required.length : undefined,
+      children: [
+        progressLabel(
+          { className: "text-muted-foreground tabular", id: `${scope}-required-answer-label` },
+          [text],
+          h,
+        ),
+      ],
     },
     h,
   );
@@ -148,9 +162,12 @@ export const requiredProgress = (task: RunnerTask, h: HtmlBuilder<Message>): Htm
  * The runner's polite status region. It is always rendered, so screen readers
  * already track it when a confirmation appears; empty, it takes no space.
  */
-export const announcementView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
-  const announcement = runner.announcement;
-  return h.p(
+export const announcementView = (
+  announcement: RunnerState["announcement"],
+  isVisible: boolean,
+  h: HtmlBuilder<Message>,
+) =>
+  h.p(
     [
       h.Role("status"),
       h.AriaLive("polite"),
@@ -159,12 +176,12 @@ export const announcementView = (runner: RunnerState, h: HtmlBuilder<Message>) =
         cn(
           "flex items-center justify-center gap-1.5 text-sm font-medium empty:sr-only",
           announcement?.kind === "recorded" ? "text-success" : "text-foreground",
+          !isVisible && "sr-only",
         ),
       ),
     ],
     announcement === null ? [] : [icon(h, Check, "size-4 shrink-0"), announcement.text],
   );
-};
 
 // ── Repeat last answers ─────────────────────────────────────────────────────
 

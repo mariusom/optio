@@ -4,13 +4,13 @@ packages:
 # Keep one Effect version across app, worker and LiveStore RPC runtimes.
 # FoldKit 0.171 supports Effect 4.1; align LiveStore's runtime packages with it.
 overrides:
-  effect: 4.1.4
-  "@effect/vitest": 4.1.4
-  "@effect/opentelemetry": 4.1.4
-  "@effect/platform-browser": 4.1.4
-  "@effect/platform-bun": 4.1.4
-  "@effect/platform-node": 4.1.4
-  "@effect/platform-node-shared": 4.1.4
+  effect: 4.1.5
+  "@effect/vitest": 4.1.5
+  "@effect/opentelemetry": 4.1.5
+  "@effect/platform-browser": 4.1.5
+  "@effect/platform-bun": 4.1.5
+  "@effect/platform-node": 4.1.5
+  "@effect/platform-node-shared": 4.1.5
   # LiveStore still pins vulnerable Nano ID 5.0.9.
   "@livestore/utils>nanoid": 5.1.16
   # OpenTelemetry SDK 2.12 requires the API below 1.10.
@@ -27,7 +27,6 @@ minimumReleaseAge: 1440
 onlyBuiltDependencies:
   - "@tailwindcss/oxide"
   - esbuild
-  - rolldown
   - sqlite-wasm
 catalog:
   vitest: 5.1.0

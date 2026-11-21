@@ -45,24 +45,21 @@ export const primaryShortcutPresses: Stream.Stream<Message> =
             : Option.none(),
       });
 
-// Key text at 80% foreground: muted text on the muted key is under 4.5:1.
-const key = (label: string, h: HtmlBuilder<Message>): Html =>
-  Kbd({ className: "text-foreground/80" }, [label], h);
-
-const combo = (modifier: string, h: HtmlBuilder<Message>): Html =>
-  Kbd.group({}, [key(modifier, h), key("Enter", h)], h);
-
 /**
- * "Record with Ctrl Enter or ⌘ Enter", shown only with a fine pointer from
- * 768px. Hidden from assistive tech: the button's `aria-keyshortcuts` says it.
+ * The in-button hint stays out of the label's layout and accessible name.
+ * The button's `aria-keyshortcuts` exposes the shortcut to assistive tech.
  */
-export const primaryShortcutHint = (verb: string, h: HtmlBuilder<Message>): Html =>
-  h.p(
+export const primaryShortcutHint = (h: HtmlBuilder<Message>): Html =>
+  h.span(
     [
-      h.Class(
-        "hidden items-center justify-center gap-1.5 text-xs text-muted-foreground md:pointer-fine:flex",
-      ),
+      h.Class("absolute right-3 hidden md:pointer-fine:@min-[14rem]:inline-flex"),
       h.AriaHidden(true),
     ],
-    [`${verb} with`, combo("Ctrl", h), "or", combo("⌘", h)],
+    [
+      Kbd(
+        { className: "border border-current bg-transparent text-primary-foreground" },
+        ["Ctrl/⌘ + Enter"],
+        h,
+      ),
+    ],
   );

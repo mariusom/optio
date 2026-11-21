@@ -13,7 +13,7 @@ runs:
     - name: Type-check
       if: ${{ !cancelled() }}
       shell: bash
-      run: pnpm exec tsc --noEmit
+      run: pnpm typecheck
     - name: Unused code and dependencies
       if: ${{ !cancelled() }}
       shell: bash

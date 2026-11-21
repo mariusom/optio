@@ -4,10 +4,8 @@ import type { Html, HtmlBuilder } from "foldkit/html";
 import {
   Check,
   Timer,
-  actionGroup,
   emptyState,
   groupedList,
-  hint,
   icon,
   loadingState,
   navBarAction,
@@ -25,7 +23,6 @@ import { primaryShortcut, primaryShortcutHint } from "./runnerShortcuts";
 import {
   canRecordTask,
   currentTask,
-  isSectionDone,
   isTaskDone,
   taskStartDate,
   type RunnerState,
@@ -131,63 +128,81 @@ const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 
 // ── Action bar ──────────────────────────────────────────────────────────────
 
-const missingRequiredCount = (task: RunnerTask): number =>
-  Array.filter(task.sections, (section) => !isSectionDone(section)).length;
-
-const recordHint = (task: RunnerTask): string => {
+const recordHint = (task: RunnerTask): string | null => {
   if (Array.some(task.sections, (section) => !isScalarAnswerValid(section.kind, section.value)))
-    return "Correct invalid answers before continuing.";
-  const missing = missingRequiredCount(task);
-  const verb = task.isBeingEdited ? "to save" : "first";
+    return "Correct invalid answers.";
   if (!task.isBeingEdited && task.endDate !== null)
     return "This task is already recorded. Pick it in the task list to change it.";
-  return missing === 1
-    ? `Answer the required question ${verb}.`
-    : `Answer the ${missing} required questions ${verb}.`;
+  return null;
 };
 
 /** The one action that matters, always within thumb reach. */
-export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBuilder<Message>) => {
+export const runnerActionBar = (
+  { runner, task, scope }: Readonly<{ runner: RunnerState; task: RunnerTask; scope: string }>,
+  h: HtmlBuilder<Message>,
+) => {
   const isEditing = task.isBeingEdited;
-  const canRecord = canRecordTask(task);
-  const canSave = isTaskDone(task);
+  const canSubmit = isEditing ? isTaskDone(task) : canRecordTask(task);
+  const actionHint = canSubmit ? null : recordHint(task);
+  const hasError = runner.lastError !== null || actionHint !== null;
+  const showAnnouncement = !hasError && runner.announcement !== null;
+  const statusId = `${scope}-runner-action-status`;
+  const actionAttributes = [
+    h.AriaKeyshortcuts(primaryShortcut),
+    ...(canSubmit || showAnnouncement
+      ? []
+      : [h.AriaDescribedBy(hasError ? statusId : `${scope}-required-answer-label`)]),
+  ];
+  const status =
+    runner.lastError !== null
+      ? [errorAlert(runner.lastError, h)]
+      : actionHint !== null
+        ? [h.p([h.Role("alert"), h.Class("text-destructive text-sm font-medium")], [actionHint])]
+        : showAnnouncement
+          ? []
+          : [
+              requiredProgress(task, scope, h) ??
+                h.span([h.Class("text-muted-foreground text-sm")], ["No required questions"]),
+            ];
 
   const actions = isEditing
-    ? [
-        actionGroup(
-          {
-            cancel: {
-              label: "Cancel",
+    ? h.div(
+        [h.Class("grid grid-cols-2 gap-2")],
+        [
+          button(
+            {
+              size: "lg",
+              variant: "secondary",
               onClick: Message.ClickedCancelEdit(),
-              ariaLabel: "Cancel editing",
+              attributes: [h.AriaLabel("Cancel editing")],
             },
-            confirm: {
-              label: "Save",
+            "Cancel",
+            h,
+          ),
+          button(
+            {
+              size: "lg",
+              className: "@container relative",
+              isDisabled: !canSubmit,
               onClick: Message.ClickedSaveEdit(),
-              isDisabled: !canSave,
-              ariaLabel: "Save changes",
-              keyShortcuts: primaryShortcut,
+              attributes: [h.AriaLabel("Save changes"), ...actionAttributes],
             },
-          },
-          h,
-        ),
-        canSave ? primaryShortcutHint("Save", h) : hint(recordHint(task), h),
-      ]
-    : [
-        button(
-          {
-            size: "lg",
-            className: "w-full",
-            isDisabled: !canRecord,
-            onClick: Message.ClickedRecord(),
-            attributes: [h.AriaLabel("Record task"), h.AriaKeyshortcuts(primaryShortcut)],
-          },
-          [icon(h, Check, "size-5"), "Record task"],
-          h,
-        ),
-        canRecord ? primaryShortcutHint("Record", h) : hint(recordHint(task), h),
-      ];
-  const progressBar = requiredProgress(task, h);
+            ["Save", primaryShortcutHint(h)],
+            h,
+          ),
+        ],
+      )
+    : button(
+        {
+          size: "lg",
+          className: "@container relative w-full",
+          isDisabled: !canSubmit,
+          onClick: Message.ClickedRecord(),
+          attributes: [h.AriaLabel("Record task"), ...actionAttributes],
+        },
+        [icon(h, Check, "size-5"), "Record task", primaryShortcutHint(h)],
+        h,
+      );
 
   return h.div(
     [
@@ -198,10 +213,14 @@ export const runnerActionBar = (runner: RunnerState, task: RunnerTask, h: HtmlBu
       h.div(
         [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-3 pb-3")],
         [
-          ...(runner.lastError === null ? [] : [errorAlert(runner.lastError, h)]),
-          announcementView(runner, h),
-          ...(progressBar === null ? [] : [progressBar]),
-          ...actions,
+          h.div(
+            [h.Class("relative flex min-h-5 flex-col justify-center")],
+            [
+              announcementView(runner.announcement, showAnnouncement, h),
+              h.div([h.Id(statusId)], status),
+            ],
+          ),
+          actions,
         ],
       ),
     ],
@@ -397,7 +416,7 @@ export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
     [
       phoneNavBar(runner, h),
       runnerCanvas({ runner, task, scope: "mobile" }, h),
-      runnerActionBar(runner, task, h),
+      runnerActionBar({ runner, task, scope: "mobile" }, h),
     ],
   );
 };

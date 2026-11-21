@@ -46,11 +46,11 @@ try {
 
   const storageFailure = await browser.newContext({ serviceWorkers: "block" });
   await storageFailure.addInitScript(() => {
-    const setItem = Storage.prototype.setItem;
+    const { setItem } = Object.getOwnPropertyDescriptors(Storage.prototype);
     Storage.prototype.setItem = function (key, value) {
       if (key === "optio-foldcn-style")
         throw new DOMException("Storage full", "QuotaExceededError");
-      return setItem.call(this, key, value);
+      return setItem.value.call(this, key, value);
     };
   });
   const storagePage = await storageFailure.newPage();
