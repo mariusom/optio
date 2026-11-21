@@ -92,12 +92,17 @@ export const agentHandlers = (
 type LookMessage =
   | "SelectedLook"
   | "LookSaveFinished"
+  | "ChangedGrid"
   | "SelectedControlSize"
   | "ControlSizeSaveFinished";
 
 /** Look and control size: applied by their save commands, like font. */
 const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
   SelectedLook: ({ look }) => ({ model: { ...model, look }, commands: [SaveLook({ look })] }),
+  ChangedGrid: ({ grid, state }) => ({
+    model:
+      grid === "history" ? { ...model, historyGrid: state } : { ...model, templatesGrid: state },
+  }),
   LookSaveFinished: ({ look, saved }) => ({
     model: look === model.look ? { ...model, lookSaveFailed: !saved } : model,
   }),

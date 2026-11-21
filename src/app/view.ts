@@ -14,8 +14,10 @@ import { sessionDetailPage } from "../web/features/history/sessionDetailView";
 import { storageNotice } from "../web/storageNotice";
 import { appUpdatePrompt } from "../web/appUpdate";
 import { button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Plus,
+  contentWidth,
   icon,
   notice,
   pageHeader,
@@ -45,7 +47,7 @@ const documentTitle = (model: Model): string =>
 /** A list could not be read; the page offers to read it again. */
 const listReadFailure = (h: HtmlBuilder<Message>): Html =>
   h.div(
-    [h.Class("mx-auto w-full max-w-3xl px-safe pb-4")],
+    [h.Class("mx-auto w-full max-w-3xl px-safe pt-6")],
     [
       notice(
         {
@@ -171,6 +173,7 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
         pageHeader(
           {
             title: pageTitle(model.route),
+            wide: true,
             trailing:
               templatesOf(model).length > 0
                 ? button(
@@ -188,12 +191,39 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
           h,
         ),
       StartTab: titled,
-      HistoryTab: titled,
+      HistoryTab: () => pageHeader({ title: pageTitle(model.route), wide: true }, h),
       SettingsTab: () => pageHeader({ title: pageTitle(model.route), wide: "xl" }, h),
     },
     () => null,
   );
 };
+
+/** Matches each tab root's content column, so notices line up with the page. */
+const routeWidth = (route: Route): boolean | "xl" | undefined =>
+  RouteSchema.matchOrElse(
+    route,
+    { TemplatesTab: () => true, HistoryTab: () => true, SettingsTab: () => "xl" as const },
+    () => undefined,
+  );
+
+/** Storage warnings above the page content, in the page's own column. */
+const pageNotices = (model: Model, storage: Html | null, h: HtmlBuilder<Message>) =>
+  storage === null
+    ? []
+    : [
+        h.div(
+          [
+            h.Class(
+              cn(
+                "mx-auto flex w-full flex-col gap-3 px-safe pt-6",
+                contentWidth(routeWidth(model.route)),
+              ),
+            ),
+            h.DataAttribute("slot", "page-notices"),
+          ],
+          [storage],
+        ),
+      ];
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const isRunner = model.route._tag === "SessionRunner";
@@ -225,9 +255,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           ],
           [
             ...(header === null ? [] : [header]),
-            ...(storage === null
-              ? []
-              : [h.div([h.Class("mx-auto w-full max-w-3xl px-safe pb-4")], [storage])]),
+            ...pageNotices(model, storage, h),
             pageFor(model, h),
           ],
         ),

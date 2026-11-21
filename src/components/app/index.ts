@@ -1,4 +1,5 @@
 export * from "./actionGroup";
+export * from "./dataGrid";
 export * from "./feedback";
 export * from "./icons";
 export * from "./layout";

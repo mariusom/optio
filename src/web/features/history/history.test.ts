@@ -4,7 +4,6 @@ import {
   buildArchiveCsv,
   csvEscaped,
   dayGroupLabel,
-  daySummaryLabel,
   displayNameFor,
   filenameForArchive,
   filenameSafe,
@@ -12,7 +11,6 @@ import {
   formatDay,
   formatEndTime,
   formatFilenameDate,
-  groupByDay,
   taskCountLabel,
 } from "./helpers";
 
@@ -336,27 +334,6 @@ describe("dayGroupLabel", () => {
   });
 });
 
-describe("groupByDay", () => {
-  const now = new Date(2026, 5, 15, 10, 0, 0).getTime();
-  it("keeps date order and merges consecutive same-day sessions", () => {
-    const groups = groupByDay(
-      [
-        { startedAt: new Date(2026, 5, 15, 9, 0, 0).getTime() },
-        { startedAt: new Date(2026, 5, 15, 8, 0, 0).getTime() },
-        { startedAt: new Date(2026, 5, 14, 8, 0, 0).getTime() },
-      ],
-      now,
-    );
-    expect(groups.map((group) => [group.label, group.sessions.length])).toEqual([
-      ["Today", 2],
-      ["Yesterday", 1],
-    ]);
-  });
-  it("returns nothing for no sessions", () => {
-    expect(groupByDay([], now)).toEqual([]);
-  });
-});
-
 describe("formatAnswer", () => {
   it("says Yes and No for toggles", () => {
     expect(formatAnswer("boolean", "true")).toBe("Yes");
@@ -372,21 +349,6 @@ describe("formatAnswer", () => {
   });
   it("passes text through unchanged", () => {
     expect(formatAnswer("textArea", "Line one")).toBe("Line one");
-  });
-});
-
-describe("daySummaryLabel", () => {
-  it("counts sessions and totals their recorded time", () => {
-    expect(
-      daySummaryLabel([
-        { startedAt: 0, endedAt: 3_600_000 },
-        { startedAt: 0, endedAt: 600_000 },
-        { startedAt: 0, endedAt: 120_000 },
-      ]),
-    ).toBe("3 sessions · 1h 12m");
-  });
-  it("uses the singular and shows seconds for short days", () => {
-    expect(daySummaryLabel([{ startedAt: 1_000, endedAt: 7_000 }])).toBe("1 session · 6s");
   });
 });
 

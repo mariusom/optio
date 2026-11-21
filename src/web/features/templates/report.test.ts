@@ -102,6 +102,7 @@ describe("template report sheet", () => {
     templateReport: null,
     lastError: null,
     liveSession: null,
+    templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
   };
   const config = {
     view: templatesPage,

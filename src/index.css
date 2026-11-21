@@ -127,7 +127,10 @@ main,
   font-variant-numeric: tabular-nums;
 }
 
-[data-slot="page-header"] + [data-slot="page"] {
+/* One top gap below every header, so tab roots and pushed screens line up. */
+[data-slot="page-header"] + [data-slot="page"],
+[data-slot="nav-bar"] + [data-slot="page"],
+[data-slot="page-notices"] + [data-slot="page"] {
   padding-top: 1.5rem;
 }
 

@@ -21,6 +21,7 @@ import {
   Pencil,
   Play,
   Plus,
+  Search,
   Settings2,
   Star,
   Timer,
@@ -52,6 +53,7 @@ import MinusSignIcon from "@hugeicons/core-free-icons/MinusSignIcon";
 import MoreHorizontalIcon from "@hugeicons/core-free-icons/MoreHorizontalIcon";
 import PlayIcon from "@hugeicons/core-free-icons/PlayIcon";
 import PlusSignIcon from "@hugeicons/core-free-icons/PlusSignIcon";
+import Search01Icon from "@hugeicons/core-free-icons/Search01Icon";
 import Settings02Icon from "@hugeicons/core-free-icons/Settings02Icon";
 import Task01Icon from "@hugeicons/core-free-icons/Task01Icon";
 import TaskRemove01Icon from "@hugeicons/core-free-icons/TaskRemove01Icon";
@@ -92,6 +94,7 @@ const hugeiconsByLucideNode = new Map<IconNode, HugeIconNode>([
   [Pencil, Edit02Icon],
   [Play, PlayIcon],
   [Plus, PlusSignIcon],
+  [Search, Search01Icon],
   [Settings2, Settings02Icon],
   [Star, StarIcon],
   [Timer, Timer01Icon],

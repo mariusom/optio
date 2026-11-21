@@ -329,7 +329,7 @@ export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
     ],
     [
       h.div(
-        [h.Class("flex flex-col gap-5 pb-2")],
+        [h.Class("flex flex-col gap-4 pb-2")],
         [
           groupedList(
             { surface: "plain" },

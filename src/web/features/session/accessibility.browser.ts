@@ -401,7 +401,7 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
     },
   );
 
-  it("centers the header controls with task navigation left and End right", async () => {
+  it("centers the title, with the task list toggle beside its panel and End right", async () => {
     await mount(width);
     const toggle = page
       .getByRole("button", { name: width < 768 ? /show task list$/ : /collapse sidebar$/ })
@@ -415,8 +415,12 @@ describe.each([390, 820])("runner actions at %ipx", (width) => {
       .getByRole("heading", { name: "Keyboard accessibility" })
       .element()
       .getBoundingClientRect();
-    expect(toggle.right).toBeLessThan(title.left);
-    expect(title.right).toBeLessThan(end.left);
+    // Phones open the task list from the left; larger screens toggle the right-hand panel.
+    if (width < 768) expect(toggle.right).toBeLessThan(title.left);
+    else expect(title.right).toBeLessThan(toggle.left);
+    expect(Math.max(title.right, toggle.right)).toBeLessThan(end.left);
+    // With the task panel docked, the title stays centred in the window, not in the form column.
+    if (width >= 768) expect(Math.abs((title.left + title.right) / 2 - width / 2)).toBeLessThan(2);
     expect(Math.abs(toggle.y + toggle.height / 2 - end.y - end.height / 2)).toBeLessThan(1);
     expect(end.right).toBeLessThanOrEqual(width);
   });
@@ -489,9 +493,6 @@ describe.each([820, 1440])("task sidebar at %ipx", (width) => {
     await expect
       .element(page.getByRole("button", { name: "End session", exact: true }))
       .toHaveFocus();
-    await userEvent.tab();
-    // Disabled (aria-disabled) on the first task, but focusable with its reason.
-    await expect.element(page.getByRole("button", { name: "Repeat last answers" })).toHaveFocus();
     await userEvent.tab();
     expect(document.activeElement?.getAttribute("type")).toBe("radio");
     await page.getByRole("button", { name: /expand sidebar$/ }).click();

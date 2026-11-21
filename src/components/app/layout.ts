@@ -46,7 +46,7 @@ export const page = <M>(
     [
       h.Class(
         cn(
-          "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-12",
+          "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12",
           contentWidth(config.wide),
           config.className,
         ),

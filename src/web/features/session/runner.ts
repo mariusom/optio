@@ -62,7 +62,7 @@ export const noFieldWrites: FieldWrites = { revision: 0, pending: [] };
  * recorded"). It stays until the next answer change or task action.
  */
 const RunnerAnnouncementSchema = Schema.Struct({
-  kind: Schema.Literals(["recorded", "filled", "saved"]),
+  kind: Schema.Literals(["recorded", "saved"]),
   text: Schema.String,
 });
 export type RunnerAnnouncement = typeof RunnerAnnouncementSchema.Type;

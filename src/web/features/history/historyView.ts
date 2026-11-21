@@ -1,25 +1,23 @@
-import { Array, Option } from "effect";
+import { Array, Option, Order } from "effect";
 import type { Html, HtmlBuilder } from "foldkit/html";
 
 import {
   Download,
-  Ellipsis,
   History,
   Trash2,
+  dataGrid,
   emptyState,
-  groupedList,
   icon,
   notice,
   page,
-  row,
-  rowAction,
+  type GridState,
 } from "@/components/app";
 import { confirmSheet, sheet, sheetAction } from "../../sheets";
 import { buttonClass } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationShort, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
-import { daySummaryLabel, groupByDay, taskCountLabel } from "./helpers";
+import { dayGroupLabel, taskCountLabel } from "./helpers";
 
 type HistorySession = {
   readonly id: string;
@@ -38,74 +36,106 @@ type HistoryModel = {
   readonly pendingHistoryDelete: { readonly id: string; readonly displayName: string } | null;
   readonly historyActionsFor: string | null;
   readonly historyError: string | null;
+  readonly historyGrid: GridState;
 };
 
-// ── One session ───────────────────────────────────────────────────────────
+// ── Table ─────────────────────────────────────────────────────────────────
 
 /** "<template> · 4 tasks"; the template name is isolated so right-to-left names keep the order. */
 const summaryFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
   h.span([], [h.bdi([], [session.templateName]), ` · ${taskCountLabel(session.taskCount)}`]);
 
-/** Start time over duration, right-aligned, so neither is cut off on phones. */
-const timesFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+const durationOf = (session: HistorySession): number => session.endedAt - session.startedAt;
+
+/** Phones hide the template, duration and task columns; the name cell repeats them. */
+const nameCell = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
   h.span(
-    [h.Class("flex flex-col items-end text-sm leading-tight")],
+    [h.Class("flex min-w-0 flex-col")],
     [
-      h.span([], [formatTimeOnly(session.startedAt)]),
+      h.span([h.Class("truncate")], [session.displayName]),
       h.span(
-        [h.Class("text-xs text-muted-foreground tabular")],
-        [formatDurationShort(session.endedAt - session.startedAt)],
+        [h.Class("truncate text-xs font-normal text-muted-foreground md:hidden")],
+        [
+          summaryFor(session, h),
+          h.span([h.Class("sm:hidden")], [` · ${formatDurationShort(durationOf(session))}`]),
+        ],
       ),
     ],
   );
 
-/**
- * A tappable row plus its own "⋯" button. The two controls sit side by side
- * inside one list cell — a button can't be nested inside the row's button.
- */
-const sessionRow = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
-  h.keyed("div")(
-    session.id,
-    [h.Class("flex items-stretch")],
-    [
-      row(
+const historyGrid = (model: HistoryModel, h: HtmlBuilder<Message>): Html =>
+  dataGrid(
+    {
+      id: "history",
+      label: "Sessions",
+      noun: "sessions",
+      singular: "session",
+      rows: model.history,
+      rowId: (session) => session.id,
+      onOpen: (session) => Message.ClickedHistoryRow({ id: session.id }),
+      actions: {
+        label: (session) => `Actions for "${session.displayName}"`,
+        onClick: (session) => Message.OpenedHistoryActions({ id: session.id }),
+      },
+      columns: [
         {
-          title: session.displayName,
-          subtitle: summaryFor(session, h),
-          value: timesFor(session, h),
-          onClick: Message.ClickedHistoryRow({ id: session.id }),
-          chevron: true,
-          lazy: true,
-          className: "min-w-0 flex-1",
-          // Named by its visible text, so voice control matches it.
+          id: "name",
+          header: "Session",
+          value: (session) => session.displayName,
+          cell: (session) => nameCell(session, h),
+          searchable: true,
         },
-        h,
-      ),
-      rowAction(
         {
-          attributes: [h.AriaLabel(`Actions for "${session.displayName}"`)],
-          onClick: Message.OpenedHistoryActions({ id: session.id }),
+          id: "template",
+          header: "Template",
+          value: (session) => session.templateName,
+          cell: (session) => h.bdi([], [session.templateName]),
+          from: "md",
+          searchable: true,
         },
-        [icon(h, Ellipsis, "size-5")],
-        h,
-      ),
-    ],
-  );
-
-/** "Today · 3 sessions · 1h 12m", with the totals quieter than the day. */
-const dayHeader = (
-  group: { readonly label: string; readonly sessions: ReadonlyArray<HistorySession> },
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.span(
-    [],
-    [
-      group.label,
-      h.span(
-        [h.Class("font-normal text-muted-foreground")],
-        [` · ${daySummaryLabel(group.sessions)}`],
-      ),
-    ],
+        {
+          id: "started",
+          header: "Started",
+          value: (session) => session.startedAt,
+          cell: (session) =>
+            `${dayGroupLabel(session.startedAt, model.now)}, ${formatTimeOnly(session.startedAt)}`,
+          descFirst: true,
+          className: "whitespace-nowrap",
+        },
+        {
+          id: "duration",
+          header: "Duration",
+          value: durationOf,
+          cell: (session) => formatDurationShort(durationOf(session)),
+          align: "end",
+          from: "sm",
+          descFirst: true,
+        },
+        {
+          id: "tasks",
+          header: "Tasks",
+          value: (session) => session.taskCount,
+          cell: (session) => globalThis.String(session.taskCount),
+          align: "end",
+          from: "md",
+          descFirst: true,
+        },
+      ],
+      filters: [
+        {
+          columnId: "template",
+          label: "Template",
+          allLabel: "All templates",
+          options: Array.sort(
+            Array.dedupe(Array.map(model.history, (session) => session.templateName)),
+            Order.String,
+          ),
+        },
+      ],
+      state: model.historyGrid,
+      onChange: (state) => Message.ChangedGrid({ grid: "history", state }),
+    },
+    h,
   );
 
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
@@ -184,7 +214,6 @@ const noSessionsView = (h: HtmlBuilder<Message>) =>
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
-  const groups = groupByDay(model.history, model.now);
   const openActions =
     model.historyActionsFor === null
       ? null
@@ -193,7 +222,7 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
         );
 
   return page(
-    {},
+    { wide: true },
     [
       ...(model.historyError === null
         ? []
@@ -208,15 +237,7 @@ export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
               h,
             ),
           ]),
-      ...(model.history.length === 0
-        ? [noSessionsView(h)]
-        : Array.map(groups, (group) =>
-            groupedList(
-              { header: dayHeader(group, h) },
-              Array.map(group.sessions, (session) => sessionRow(session, h)),
-              h,
-            ),
-          )),
+      ...(model.history.length === 0 ? [noSessionsView(h)] : [historyGrid(model, h)]),
       ...(openActions === null ? [] : [historyActionsSheet(openActions, h)]),
       ...(model.pendingHistoryDelete === null
         ? []

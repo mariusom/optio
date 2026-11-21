@@ -289,20 +289,27 @@ describe("persistent presentation regressions", () => {
     expect(getComputedStyle(task).outlineOffset).toBe("-3px");
   });
 
-  it.each(foldcnStyles)("fills the history action cell in %s", async (style) => {
+  it.each(foldcnStyles)("keeps 44px table row actions inside their row in %s", async (style) => {
     await setCurrentStyle(style);
-    await mount((model, h) => historyPage({ ...model, history: [history] }, h));
-    await page.viewport(1184, 900);
-    const action = page.getByRole("button", { name: `Actions for "${history.displayName}"` });
-    await expect.element(action).toBeVisible();
-    const button = action.element();
-    const bounds = button.getBoundingClientRect();
-    const parent = button.parentElement!.getBoundingClientRect();
-    expect(bounds.top).toBe(parent.top);
-    expect(bounds.bottom).toBe(parent.bottom);
-    expect(bounds.right).toBe(parent.right);
-    expect(bounds.width).toBeGreaterThanOrEqual(44);
-    expect(getComputedStyle(button).borderRadius).toBe("0px");
+    await mount((model, h) =>
+      h.div(
+        [],
+        [
+          historyPage({ ...model, history: [history] }, h),
+          templatesPage({ ...model, templates: [template] }, h),
+        ],
+      ),
+    );
+    for (const name of [`Actions for "${history.displayName}"`, 'Actions for "Observation"']) {
+      const action = page.getByRole("button", { name });
+      await expect.element(action).toBeVisible();
+      const bounds = action.element().getBoundingClientRect();
+      const row = action.element().closest("tr")!.getBoundingClientRect();
+      expect(bounds.width).toBeGreaterThanOrEqual(44);
+      expect(bounds.height).toBeGreaterThanOrEqual(44);
+      expect(bounds.top).toBeGreaterThanOrEqual(row.top);
+      expect(bounds.bottom).toBeLessThanOrEqual(row.bottom);
+    }
   });
 
   it.each(foldcnStyles)("uses %s Card and Item styling in template groups", async (style) => {
@@ -723,20 +730,6 @@ describe("persistent presentation regressions", () => {
     expect(hit?.closest('[data-slot="sheet"]')).not.toBeNull();
   });
 
-  it.each(foldcnStyles)("fills template action cells in %s", async (style) => {
-    await setCurrentStyle(style);
-    await mount((model, h) => templatesPage({ ...model, templates: [template] }, h));
-    const action = page.getByRole("button", { name: 'Actions for "Observation"' });
-    await expect.element(action).toBeVisible();
-    const element = action.element();
-    const bounds = element.getBoundingClientRect();
-    const rowBounds = element.parentElement!.getBoundingClientRect();
-    expect(bounds.top).toBe(rowBounds.top);
-    expect(bounds.bottom).toBe(rowBounds.bottom);
-    expect(bounds.right).toBe(rowBounds.right);
-    expect(getComputedStyle(element).borderRadius).toBe("0px");
-  });
-
   it.each(foldcnStyles)("fills question move action cells in %s", async (style) => {
     await setCurrentStyle(style);
     await mount((model, h) => templateEditorPage({ ...model, editor: editor(2, 2) }, h));
@@ -1086,7 +1079,10 @@ describe("persistent presentation regressions", () => {
         ),
       1200,
     );
-    await expect.element(page.getByText("5 questions · 3 required", { exact: true })).toBeVisible();
+    // Wide screens give the counts their own sortable columns.
+    await expect.element(page.getByRole("columnheader", { name: "Questions" })).toBeVisible();
+    await expect.element(page.getByRole("cell", { name: "5", exact: true })).toBeVisible();
+    await expect.element(page.getByRole("cell", { name: "3", exact: true })).toBeVisible();
     await expect.element(page.getByText("Default", { exact: true })).toBeVisible();
     await expect.element(page.getByRole("button", { name: "Add sample templates" })).toBeVisible();
   });
