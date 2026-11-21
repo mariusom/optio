@@ -28,7 +28,7 @@ registerSW({ immediate: true, onNeedReload: signalUpdateReady });
 // Startup Flags: saved preferences (applied to the document as they load) and
 // the Model's first time, from Effect's Clock, never Date.now(), and the
 // random seed for IDs created in update.
-const flags = Effect.all({
+const browserFlags = Effect.all({
   theme: initializeTheme,
   style: initializeStyle,
   font: initializeFont,
@@ -49,13 +49,22 @@ const main = Effect.gen(function* () {
 
   // Explicit per-tab opt-in grants access to study values and all existing UI operations.
   const modelContext = (document as Document & { modelContext?: ModelContext }).modelContext;
-  if (
-    new URLSearchParams(location.search).get("agentTools") === "1" &&
-    modelContext !== undefined &&
+  const url = new URL(location.href);
+  const supported = typeof modelContext?.registerTool === "function";
+  const requested = supported && url.searchParams.get("agentTools") === "1";
+  const approved =
+    requested &&
     window.confirm(
       "Let an assistant use Optio in this tab? It will be able to read, change and delete your studies, and may send them to its provider. Cancel to keep assistants off.",
-    )
-  ) {
+    );
+  if (requested && !approved) {
+    // A retry must load a new document, not just change the fragment.
+    url.searchParams.delete("agentTools");
+    history.replaceState(history.state, "", url);
+  }
+  const assistantAccess = approved ? "approved" : supported ? "off" : "unavailable";
+  const flags = Effect.map(browserFlags, (values) => ({ ...values, assistantAccess }) as const);
+  if (approved) {
     const handle = Runtime.embed(application, { flags });
     const registration = Effect.gen(function* () {
       const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =

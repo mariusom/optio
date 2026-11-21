@@ -30,6 +30,7 @@ const fields: FieldDef[] = [
 ];
 
 const flags = Effect.succeed({
+  assistantAccess: "unavailable",
   theme: "auto",
   style: "nova",
   font: "sans",

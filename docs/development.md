@@ -148,8 +148,10 @@ an input's DOM value alone does not prove durability. Page-leaving flushes
 are best effort, so this journey does not promise immediate-reload durability.
 Unit tests separately check deterministic event
 replay; `src/livestore/*.browser.ts` check materializer guards and queries
-against a real in-memory store. Native WebMCP integration and real Safari/mobile-device behavior still
-need separate verification.
+against a real in-memory store. The local production preview checks native WebMCP
+discovery after declining, approving and revoking access with Chromium’s testing
+flag. This does not exercise a hosted assistant or the origin-bound trial token.
+Real Safari/mobile-device behavior still needs separate verification.
 
 For interface changes, inspect affected states on phone, tablet and desktop,
 including keyboard navigation and light/dark appearance. The screenshot helper

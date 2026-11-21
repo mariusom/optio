@@ -66,9 +66,6 @@ export const Message = defineMessageUnion({
   LookSaveFinished: { look: Look, saved: Schema.Boolean },
   SelectedControlSize: { controlSize: ControlSize },
   ControlSizeSaveFinished: { controlSize: ControlSize, saved: Schema.Boolean },
-  ClickedCopyTemplatePrompt: {},
-  TemplatePromptCopyFinished: { copied: Schema.Boolean },
-  ResetTemplatePromptCopy: {},
   /** Writes have stayed unconfirmed long enough that saving looks stuck (or recovered). */
   SaveStalled: { stalled: Schema.Boolean },
   ClickedDownloadBackup: {},

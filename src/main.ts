@@ -4,7 +4,7 @@ import type { Url } from "foldkit/url";
 import { EnsureTemplatesSeeded } from "./web/features/templates/commands";
 import { parseRoute } from "./web/routes";
 import { GeneratePlaceholderName } from "./app/commands";
-import { initialModel } from "./app/model";
+import { AssistantAccess, initialModel } from "./app/model";
 import { Accent, ControlSize, Font, IconLibrary, Look, Theme } from "./web/theme";
 import { FoldcnStyle } from "./web/style";
 
@@ -15,6 +15,7 @@ export { view } from "./app/view";
 
 /** Startup input read by the browser entry: saved preferences and the boot time. */
 export const Flags = Schema.Struct({
+  assistantAccess: AssistantAccess,
   theme: Theme,
   style: FoldcnStyle,
   font: Font,

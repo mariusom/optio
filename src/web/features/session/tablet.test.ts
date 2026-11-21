@@ -45,6 +45,7 @@ const makeRunner = (
 };
 
 const makeModel = (runner: Model["runner"]): Model => ({
+  assistantAccess: "unavailable",
   agentConfirmationVersion: 0,
   idSeed: "tablet-test",
   idCounter: 0,
@@ -102,7 +103,6 @@ const makeModel = (runner: Model["runner"]): Model => ({
   historyError: null,
   storage: "persisted",
   memoryStorageAcknowledged: false,
-  promptCopyStatus: "idle",
   appUpdate: "none",
 });
 

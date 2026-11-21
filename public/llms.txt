@@ -11,17 +11,15 @@ or sync. Clearing browser data can erase studies. Export important results.
 ## App and documentation
 
 - [Open Optio](https://mariusom.github.io/optio/): The canonical app URL to share.
-- [Agent guide](https://mariusom.github.io/optio/agent-guide.md): Browser workflow, optional assistant access, consent, and tool limitations.
-- [Use with AI](https://mariusom.github.io/optio/#/use-with-ai): Template-building prompts and experimental WebMCP setup for users.
+- [Agent guide](https://mariusom.github.io/optio/agent-guide.md): Text instructions for planning templates in a chat and using tools in the browser.
+- [Use with AI](https://mariusom.github.io/optio/#/use-with-ai): Enable or turn off WebMCP access for the current tab.
 - [About Optio](https://mariusom.github.io/optio/#/about): Product information and the installed app version.
 - [Source code](https://github.com/mariusom/optio): MIT-licensed implementation and contributor documentation.
 
 ## Agent access
 
-Ordinary browser navigation is available without enabling assistant tools.
-Experimental WebMCP tools require a compatible browser, an explicit query flag,
-and the user's confirmation. They are disabled by default. Enabling them grants
-read, change, and delete access, and the assistant provider may receive study
-data. There is no public API server, OAuth service, or payment API.
+WebMCP tools are off by default. A user with a compatible in-tab assistant can
+enable them under Use with AI and approve read, change, and delete access.
+The assistant provider may receive study data. There is no remote MCP endpoint.
 
 The public documentation and discovery catalog contain no user study data.
