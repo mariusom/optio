@@ -16,9 +16,7 @@ import {
   GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
-  CopyTemplatePrompt,
   ReplyToAgent,
-  ResetTemplatePromptCopy,
   SaveAccent,
   SaveControlSize,
   SaveFont,
@@ -245,9 +243,6 @@ type ShellHandlers = Pick<
   | "CompletedReplyToAgent"
   | "SettledSheet"
   | "SupersededStyleSave"
-  | "ClickedCopyTemplatePrompt"
-  | "TemplatePromptCopyFinished"
-  | "ResetTemplatePromptCopy"
 >;
 export const shellHandlers = (model: Model): ShellHandlers => ({
   SelectedTheme: ({ theme }) => ({
@@ -329,13 +324,4 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   CompletedReplyToAgent: () => ({ model }),
   SettledSheet: () => ({ model }),
   SupersededStyleSave: () => ({ model }),
-  ClickedCopyTemplatePrompt: () =>
-    model.promptCopyStatus === "copying" || model.promptCopyStatus === "copied"
-      ? { model }
-      : { model: { ...model, promptCopyStatus: "copying" }, commands: [CopyTemplatePrompt()] },
-  TemplatePromptCopyFinished: ({ copied }) => ({
-    model: { ...model, promptCopyStatus: copied ? "copied" : "failed" },
-    commands: copied ? [ResetTemplatePromptCopy()] : [],
-  }),
-  ResetTemplatePromptCopy: () => ({ model: { ...model, promptCopyStatus: "idle" } }),
 });

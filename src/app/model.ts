@@ -72,7 +72,10 @@ const ReadFailed = Schema.Literal("ReadFailed");
  */
 const fromStore = <A, I>(data: Schema.Codec<A, I>) => AsyncData.Schema(data, ReadFailed).schema;
 
+export const AssistantAccess = Schema.Literals(["unavailable", "off", "approved"]);
+
 export const Model = Schema.Struct({
+  assistantAccess: AssistantAccess,
   agentConfirmationVersion: Schema.Finite,
   /**
    * New IDs are `idSeed-idCounter`: the seed is random per boot (a startup
@@ -203,13 +206,13 @@ export const Model = Schema.Struct({
   /** Whether studies persist, live only in memory, or cannot be opened. */
   storage: Schema.Literals(["opening", "persisted", "in-memory", "unavailable"]),
   memoryStorageAcknowledged: Schema.Boolean,
-  promptCopyStatus: Schema.Literals(["idle", "copying", "copied", "failed"]),
   /** A new app version has taken control and waits for the user to reload. */
   appUpdate: Schema.Literals(["none", "ready", "applying"]),
 });
 export type Model = typeof Model.Type;
 
 const initialModel = (route: Route): Model => ({
+  assistantAccess: "unavailable",
   agentConfirmationVersion: 0,
   // Replaced by the random startup Flag; tests keep this fixed seed.
   idSeed: "local",
@@ -272,7 +275,6 @@ const initialModel = (route: Route): Model => ({
   historyError: null,
   storage: "opening",
   memoryStorageAcknowledged: false,
-  promptCopyStatus: "idle",
   appUpdate: "none",
 });
 

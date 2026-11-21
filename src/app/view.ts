@@ -111,8 +111,8 @@ const listSkeleton: ReadonlyArray<SkeletonBlock> = [{ _tag: "List", rows: 4, sub
 const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
   if (model.showCreate) return templateEditorPage(model, h);
   return RouteSchema.match(model.route, {
-    AgentHelp: () => infoPage("AgentHelp", h, model.promptCopyStatus),
-    About: () => infoPage("About", h, model.promptCopyStatus),
+    AgentHelp: () => infoPage("AgentHelp", h, model.assistantAccess),
+    About: () => infoPage("About", h, model.assistantAccess),
     SettingsTab: () => settingsPage(model, h),
     StartTab: () =>
       whenLoaded(

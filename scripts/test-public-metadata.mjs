@@ -1,8 +1,47 @@
 // Run after pnpm build; starts and closes its own temporary production preview.
 // Override OPTIO_URL to test another deployment without changing canonical URLs.
 import assert from "node:assert/strict";
+import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import { preview } from "vite-plus";
+
+// Only run against the disposable local preview, never against OPTIO_URL.
+async function checkAssistantConsent(page) {
+  let approve = false;
+  let prompts = 0;
+  page.on("dialog", async (dialog) => {
+    if (dialog.type() === "beforeunload") return dialog.accept();
+    assert.match(dialog.message(), /read, change and delete/);
+    prompts++;
+    return approve ? dialog.accept() : dialog.dismiss();
+  });
+  const tools = () => page.evaluate(async () => (await document.modelContext.getTools()).length);
+  const openHelp = async () => {
+    // Keep the query string and current document when returning to help.
+    await page.evaluate(() => {
+      location.hash = "/use-with-ai";
+    });
+  };
+  const enable = page.getByRole("button", { name: "Enable assistant tools" });
+  const templates = page.getByRole("heading", { name: "Templates", exact: true }).first();
+  assert.equal(await tools(), 0);
+  for (const decision of [false, true]) {
+    approve = decision;
+    await openHelp();
+    await enable.click();
+    await templates.waitFor();
+    if (!approve) assert.equal(await tools(), 0);
+  }
+  assert.equal(prompts, 2, "retry after declining must request fresh consent");
+  for (let i = 0; i < 100 && (await tools()) !== 5; i++) await delay(50);
+  assert.equal(await tools(), 5, "all five tools register after approval");
+  await openHelp();
+  await page.getByRole("button", { name: "Turn off assistant tools" }).click();
+  await templates.waitFor();
+  assert.equal(await tools(), 0);
+  assert.equal(prompts, 2);
+  console.log("PASS: native WebMCP consent, retry after declining, and revocation in the same tab");
+}
 
 const server = process.env.OPTIO_URL
   ? undefined
@@ -92,7 +131,9 @@ try {
   assert.doesNotMatch(resources["sitemap.xml"], /#|agentTools/);
 
   await context.close();
-  const appBrowser = await chromium.launch();
+  const appBrowser = await chromium.launch({
+    args: server ? ["--enable-blink-features=WebMCP"] : [],
+  });
   const fallbackContext = await appBrowser.newContext();
   try {
     const appPage = await fallbackContext.newPage();
@@ -105,6 +146,7 @@ try {
       "the no-JavaScript fallback must not remain in the running app",
     );
     assert.doesNotMatch(await appPage.locator("body").innerText(), /requires JavaScript/i);
+    if (server) await checkAssistantConsent(appPage);
   } finally {
     await fallbackContext.close();
     await appBrowser.close();
@@ -131,7 +173,6 @@ try {
       ["about", "Third-party notices", "Optio\n=====\n\nMIT License"],
     ]) {
       await app.goto(`${base}#/${route}`);
-      if (route === "use-with-ai") await app.locator("summary").click();
       const popupPromise = app.waitForEvent("popup");
       await app.getByRole("link", { name: label }).click();
       const documentPage = await popupPromise;
@@ -151,7 +192,7 @@ try {
   const navigationContext = await browser.newContext({ viewport: { width: 667, height: 375 } });
   const navigationPage = await navigationContext.newPage();
   for (const [label, introduction] of [
-    ["Use with AI", "Create a template with AI"],
+    ["Use with AI", "Assistant tools in this tab"],
     ["About Optio", "Time & motion studies"],
   ]) {
     await navigationPage.goto(`${base}#/settings`);
@@ -178,73 +219,8 @@ try {
       `${label} heading receives focus`,
     );
   }
-  console.log("PASS: help navigation resets the scroll container and focuses the heading");
-
-  await navigationPage.getByRole("link", { name: "Use with AI", exact: true }).click();
-  await navigationPage.getByRole("button", { name: "Copy prompt", exact: true }).waitFor();
-  await navigationPage.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-  );
-  await navigationPage.clock.install();
-  await navigationPage.clock.pauseAt(new Date());
-  await navigationPage.evaluate(() => {
-    window.copyCalls = 0;
-    navigator.clipboard.writeText = () => {
-      window.copyCalls++;
-      return new Promise((resolve) => {
-        window.finishCopy = resolve;
-      });
-    };
-  });
-  await navigationPage.getByRole("button", { name: "Copy prompt", exact: true }).click();
-  await navigationPage.clock.runFor(32);
-  await navigationPage.getByRole("link", { name: "Back to Settings" }).click();
-  await navigationPage.clock.runFor(32);
-  await navigationPage.getByText("Help & about", { exact: true }).click();
-  await navigationPage.getByRole("link", { name: "Use with AI", exact: true }).click();
-  await navigationPage.clock.runFor(32);
-  assert.equal(
-    await navigationPage.getByRole("button", { name: "Copying…", exact: true }).isDisabled(),
-    true,
-  );
-  assert.equal(await navigationPage.evaluate(() => window.copyCalls), 1);
-
-  await navigationPage.evaluate(() => window.finishCopy());
-  const completedAt = await navigationPage.evaluate(() => Date.now());
-  await navigationPage.clock.runFor(32);
-  assert.equal(
-    await navigationPage.getByRole("button", { name: "Copied", exact: true }).isDisabled(),
-    true,
-  );
-  // Copy completion must not move focus or reset a reader's scroll position.
-  await navigationPage.locator("summary").focus();
-  // Stay away from the bottom, where removing feedback naturally clamps scrollTop.
-  await navigationPage.locator("main").evaluate((main) => {
-    main.scrollTop = 40;
-  });
-  const elapsed = (await navigationPage.evaluate(() => Date.now())) - completedAt;
-  await navigationPage.clock.runFor(2999 - elapsed);
-  assert.equal(
-    await navigationPage.getByRole("button", { name: "Copied", exact: true }).count(),
-    1,
-    "feedback remains for the full three seconds",
-  );
-  await navigationPage.clock.runFor(33);
-  assert.equal(
-    await navigationPage.getByRole("button", { name: "Copy prompt", exact: true }).isEnabled(),
-    true,
-  );
-  assert.equal(
-    await navigationPage
-      .locator("summary")
-      .evaluate((summary) => document.activeElement === summary),
-    true,
-  );
-  assert.equal(await navigationPage.locator("main").evaluate((main) => main.scrollTop), 40);
   await navigationContext.close();
-  console.log(
-    "PASS: pending copy survives navigation; feedback lasts three seconds without resetting focus or scroll",
-  );
+  console.log("PASS: help navigation resets the scroll container and focuses the heading");
 } finally {
   await browser.close();
   await server?.close();

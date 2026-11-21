@@ -34,6 +34,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     Runtime.makeApplication({ ...applicationConfig, container, slow: false }),
     {
       flags: Effect.succeed({
+        assistantAccess: "approved",
         theme: "auto",
         style: "nova",
         font: "sans",

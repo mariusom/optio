@@ -325,7 +325,7 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
                 ),
                 h.Href(hrefFor({ _tag: "AgentHelp" })),
               ],
-              ["Create templates with AI"],
+              ["Use with AI"],
             ),
           ]
         : []),

@@ -1,5 +1,5 @@
 import type { AppServices } from "./services";
-import { Array, Duration, Effect, Match, Schema } from "effect";
+import { Array, Effect, Match, Schema } from "effect";
 import { Command, Navigation, Port, Update } from "foldkit";
 import { Message } from "../messages";
 import { AgentPortReply, agentPorts } from "../agents/actions";
@@ -25,7 +25,6 @@ import {
   UpdateFieldValues,
 } from "../web/features/session/runnerCommands";
 import { VibrateRecorded } from "../web/features/session/recordFeedback";
-import { templatePrompt } from "../web/features/settings/infoView";
 import { randomSessionName } from "../web/random-name";
 import {
   planSession,
@@ -109,21 +108,6 @@ const NavigateExternal = Command.define("NavigateExternal", {
   execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
 });
 
-const CopyTemplatePrompt = Command.define("CopyTemplatePrompt", {
-  messages: [Message.TemplatePromptCopyFinished],
-  execute: Effect.tryPromise(() => navigator.clipboard.writeText(templatePrompt)).pipe(
-    Effect.match({
-      onSuccess: () => Message.TemplatePromptCopyFinished({ copied: true }),
-      onFailure: () => Message.TemplatePromptCopyFinished({ copied: false }),
-    }),
-  ),
-});
-
-const ResetTemplatePromptCopy = Command.define("ResetTemplatePromptCopy", {
-  messages: [Message.ResetTemplatePromptCopy],
-  execute: Effect.sleep(Duration.seconds(3)).pipe(Effect.as(Message.ResetTemplatePromptCopy())),
-});
-
 const GeneratePlaceholderName = Command.define("GeneratePlaceholderName", {
   messages: [Message.GotPlaceholderName],
   execute: Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
@@ -168,12 +152,10 @@ const applyPlan = (
 
 export {
   ApplyColorScheme,
-  CopyTemplatePrompt,
   GeneratePlaceholderName,
   NavigateExternal,
   NavigateInternal,
   ReplyToAgent,
-  ResetTemplatePromptCopy,
   SaveAccent,
   SaveControlSize,
   SaveFont,

@@ -7,6 +7,7 @@ import { Message } from "../messages";
 
 const booted = initWithFlags(
   {
+    assistantAccess: "off",
     theme: "auto",
     style: "nova",
     font: "sans",
