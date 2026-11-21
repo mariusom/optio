@@ -32,8 +32,12 @@ const test: UserConfig["test"] = {
   projects: [
     {
       extends: true,
-      // Agent worktrees under .claude are full repository copies.
-      test: { name: "unit", exclude: ["**/node_modules/**", "**/.git/**", "**/.claude/**"] },
+      // Agent worktrees and scratch checkouts can contain full repository copies.
+      test: {
+        name: "unit",
+        exclude: ["**/node_modules/**", "**/.git/**", "**/.claude/**", "**/.amp/**"],
+        typecheck: { enabled: true, checker: "tsrs", include: ["src/**/*.test-d.ts"] },
+      },
     },
     {
       extends: true,
@@ -54,6 +58,7 @@ const test: UserConfig["test"] = {
 };
 
 const lint: UserConfig["lint"] = {
+  options: { typeAware: true },
   plugins: ["typescript", "unicorn", "oxc", "import", "promise"],
   jsPlugins: foldkitRecommended.jsPlugins,
   categories: { correctness: "error", suspicious: "error" },
@@ -70,6 +75,11 @@ const lint: UserConfig["lint"] = {
     "import/no-duplicates": "error",
     "import/no-unassigned-import": ["error", { allow: ["**/*.css", "**/*.woff", "**/*.woff2"] }],
     "typescript/no-require-imports": "error",
+    // Keep the checker migration separate from auditing existing casts and
+    // exhaustive switches (which the compiler already checks for returns).
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/consistent-return": "off",
     "no-unused-vars": ["error", { args: "all", argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     "promise/catch-or-return": "error",
     "unicorn/no-abusive-eslint-disable": "error",

@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect";
+import { DEVTOOLS_HOST_ID } from "foldkit/devtools-host";
 import * as Dom from "foldkit/dom";
 import type { Html, HtmlBuilder } from "foldkit/html";
 import * as Mount from "foldkit/mount";
@@ -56,9 +57,11 @@ export const ShowSheet = Mount.define("ShowSheet", {
         // focus restoration is owned above, so give it nothing to record.
         if (active instanceof HTMLElement) active.blur();
         yield* Dom.lockScroll;
-        yield* Dom.showDialog(`#${CSS.escape(id)}`, { focusSelector: "[autofocus]" }).pipe(
-          Effect.catch(() => Dom.unlockScroll),
-        );
+        yield* Dom.showDialog(`#${CSS.escape(id)}`, {
+          focusSelector: "[autofocus]",
+          isModal: true,
+          allowedOutsideSelectors: [`#${DEVTOOLS_HOST_ID}`],
+        }).pipe(Effect.catch(() => Dom.unlockScroll));
       }),
       () =>
         Dom.releaseDialogResources(id).pipe(

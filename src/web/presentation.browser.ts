@@ -143,7 +143,7 @@ const mount = async (
 };
 
 afterEach(async () => {
-  handle?.dispose();
+  await handle?.disposeAsync();
   container?.remove();
   document.documentElement.style.removeProperty("font-size");
   await setCurrentStyle("nova");
@@ -717,7 +717,7 @@ describe("persistent presentation regressions", () => {
         expect(left!.right).toBeLessThan(right!.left);
         expect(left!.top).toBe(right!.top);
         expect(group.scrollWidth).toBe(group.clientWidth);
-        handle?.dispose();
+        await handle?.disposeAsync();
         container?.remove();
       }
     },
@@ -1047,12 +1047,14 @@ describe("persistent presentation regressions", () => {
     );
     await page.viewport(390, 844);
     const trigger = page.getByRole("button", { name: 'Actions for "Morning observation"' });
-    (trigger.element() as HTMLButtonElement).focus();
+    const triggerElement = trigger.element() as HTMLButtonElement;
+    triggerElement.focus();
     await userEvent.click(trigger);
     const actions = page.getByRole("dialog", { name: "Morning observation" });
     await expect.element(actions).toBeVisible();
     const actionsElement = actions.element();
     await expect.poll(() => actionsElement.contains(document.activeElement)).toBe(true);
+    expect(triggerElement.closest("[inert]")).not.toBeNull();
     expect(document.documentElement.style.overflow).toBe("hidden");
     expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("hidden");
     for (const shift of [false, true]) {
@@ -1069,9 +1071,11 @@ describe("persistent presentation regressions", () => {
     await expect.element(confirmation).toBeVisible();
     await expect.element(actions).not.toBeInTheDocument();
     await expect.poll(() => confirmation.element().contains(document.activeElement)).toBe(true);
+    expect(triggerElement.closest("[inert]")).not.toBeNull();
     await userEvent.keyboard("{Escape}");
     await expect.element(confirmation).not.toBeInTheDocument();
     await expect.element(trigger).toHaveFocus();
+    expect(triggerElement.closest("[inert]")).toBeNull();
     await expect.poll(() => document.documentElement.style.overflow).toBe("");
     expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("auto");
   });

@@ -125,7 +125,7 @@ authored component had no upstream change since the September 9 snapshot.
 | item            | Unchanged; retain shared list-row styling.                                                                                                                                               |
 | label           | Unchanged; retain helper without forcing a migration of app labels.                                                                                                                      |
 | native-select   | Forward description presence; retain native selects.                                                                                                                                     |
-| progress        | Local `children`/`attributes` for upstream label anatomy and an accessible name; the runner shows required-answer progress ("1 of 3 required answered").                                 |
+| progress        | FoldKit `Progress.view` supplies the range, fill and accessibility attributes; the local wrapper keeps the Foldcn slots and the runner's required-answer label.                          |
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel.                                                                                   |

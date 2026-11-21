@@ -8,7 +8,7 @@ import { applicationConfig } from "../application";
 import { Model, update } from "../main";
 import { Message } from "../messages";
 import { getStore } from "../livestore/client";
-import { schema } from "../livestore/schema";
+import { schema, tables } from "../livestore/schema";
 import { EndSession } from "../web/features/session/runnerCommands";
 import { AgentResult, type AgentAction } from "./actions";
 import { connectAgentApplication } from "./connection";
@@ -194,11 +194,14 @@ it("operates template/field CRUD and the full record → edit → archive → de
     await act({ _tag: "ClickedRecord" });
     expect((await read()).runner!.completedCount).toBe(0);
     await act({ _tag: "ChangedFieldValue", taskFieldId, value: "Observe" });
-    state = await wait((s) => s.runner?.tasks[0].sections[0].value === "Observe");
-    const firstWrite = state.runner!.tasks[0].sections[0].startDate;
-    expect(firstWrite).not.toBeNull();
+    await wait((s) => s.runner?.tasks[0].sections[0].value === "Observe");
     await act({ _tag: "ClickedRecord" });
     await wait((s) => s.runner?.completedCount === 1);
+    // The first visible answer can still carry the optimistic timestamp.
+    const firstWrite = store
+      .query(tables.sessionTaskFields.select().where({ id: taskFieldId }))[0]
+      ?.startDate?.getTime();
+    expect(firstWrite).toBeTypeOf("number");
     await act({ _tag: "ClickedSelectTask", taskId: task.id });
     await wait((s) => s.runner?.tasks[0].isBeingEdited === true);
     await act({ _tag: "ChangedFieldValue", taskFieldId, value: "Canceled edit" });
@@ -315,7 +318,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     ).resolves.toEqual({ isError: true, error: { message: "Invalid tool input." } });
   } finally {
     await Effect.runPromise(Scope.close(scope, Exit.void));
-    handle.dispose();
+    await handle.disposeAsync();
     await Effect.runPromise(store.shutdown());
     container.remove();
   }

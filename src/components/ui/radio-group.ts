@@ -305,7 +305,7 @@ export const styledViewInputs = <M, Value extends string = string>(
             return defaultOptionRow(
               {
                 info: option,
-                labelText: viewInputs.optionLabel?.(option.value) ?? String(option.value),
+                labelText: viewInputs.optionLabel?.(option.value) ?? option.value,
                 descriptionText: viewInputs.optionDescription?.(option.value),
                 optionClass: viewInputs.optionClass,
                 isInvalid: viewInputs.isInvalid,

@@ -119,15 +119,13 @@ test("omits platform-specific Rollup native packages from deterministic contribu
   );
 });
 
-test("shipped notices carry copied-source provenance and the patch disclosure", () => {
+test("shipped notices carry copied-source and runtime provenance", () => {
   const options = fixtureOptions({ "/fixture/alpha": { LICENSE: "alpha license" } });
   const report = { MIT: [pkg("alpha")] };
   const rendered = renderArtifacts(report, report, options);
   assert.match(rendered.notices, /Foldcn registry components/);
   assert.match(rendered.notices, /Copyright \(c\) 2026 elianiva/);
   assert.match(rendered.notices, /Copyright \(c\) 2023 shadcn/);
-  assert.match(rendered.notices, /patches\/@livestore__adapter-web@0\.5\.0-dev\.0\.patch/);
-  assert.match(rendered.notices, /Modified by Optio/);
   // The whole provenance file ships; nothing may be truncated by a heading match.
   assert.match(rendered.notices, /LiveStore runtime packages/);
   assert.doesNotMatch(rendered.notices, /Bundled MIT-licensed runtime libraries/);

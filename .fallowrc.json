@@ -24,10 +24,5 @@
       "exports": ["icon"]
     }
   ],
-  "ignoreDependencies": [
-    "@livestore/wa-sqlite",
-    "@foldkit/devtools",
-    "rolldown",
-    "@effect/language-service"
-  ]
+  "ignoreDependencies": ["@livestore/wa-sqlite", "@foldkit/devtools", "@effect/language-service"]
 }

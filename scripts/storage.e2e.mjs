@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { chromium } from "playwright";
 import { preview } from "vite-plus";
 
-test(
+void test(
   "real storage survives restart, edit cancellation and offline export",
   { timeout: 120_000 },
   async () => {
@@ -214,7 +214,7 @@ test(
   },
 );
 
-test(
+void test(
   "quantitative sample records, reloads and exports distinct answers",
   { timeout: 120_000 },
   async () => {
@@ -408,7 +408,7 @@ test(
   },
 );
 
-test("warns when the browser keeps studies only in memory", { timeout: 60_000 }, async () => {
+void test("warns when the browser keeps studies only in memory", { timeout: 60_000 }, async () => {
   const server = await preview({ preview: { host: "127.0.0.1", port: 0, open: false } });
   const base = `http://127.0.0.1:${server.httpServer.address().port}/optio/`;
   const browser = await chromium.launch();

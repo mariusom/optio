@@ -38,7 +38,7 @@ Before submitting code changes:
 ```sh
 pnpm exec playwright install --only-shell chromium
 pnpm check
-pnpm exec tsc --noEmit
+pnpm typecheck
 pnpm lint:dead
 pnpm licenses:check
 pnpm test
@@ -53,8 +53,8 @@ Other commands are in `package.json`.
 
 ## Lint limits and module size
 
-`pnpm check` uses the Oxlint configuration in `vite.config.ts`, including in CI.
-For a lint-only run, use `pnpm exec vp lint`. It includes
+`pnpm check` runs Vite+ format checking and type-aware Oxlint through the Effect
+wrapper. For lint only, use `pnpm exec effect-tsgo vp lint`. It includes
 [`@foldkit/oxlint-plugin`](https://www.npmjs.com/package/@foldkit/oxlint-plugin)'s
 recommended rules (pure update, exhaustive `match`, Effect module names, keyed
 rows), minus five listed in `vite.config.ts` that assume child Submodels or
@@ -85,22 +85,23 @@ and the retained registry item without a consumer (label;
 see [interface conventions](interface.md)). `src/livestore/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
-at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`, `rolldown`) are
+at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`) are
 ignored as dependencies, as is `@effect/language-service`: fallow 3.41+ reads
 `tsconfig.json` plugin names as packages, but that name is served by the
-patched TypeScript from `@effect/tsgo`, not by a package of its own. Prefer deleting an unused export over adding an
-exemption.
+Effect-patched checker, not by a package of its own. Prefer deleting an unused
+export over adding an exemption.
 
 ## Effect diagnostics
 
-The Effect language service (`@effect/tsgo`) is configured as a TypeScript
-plugin in `tsconfig.json` with the `style`, `effect-native` and `recommended`
-presets. `pnpm install` runs its `prepare` script, which patches the installed
-native TypeScript, so `pnpm exec tsc --noEmit` and editors that launch the
-project's TypeScript report Effect diagnostics; warnings fail the type check.
-In VS Code, use the workspace TypeScript (native preview) so the patched server
-runs; see the package README for other editors. Run
-`pnpm exec effect-tsgo unpatch --typescript` to restore stock TypeScript.
+`pnpm typecheck` runs the Effect-patched TSRS compiler. `pnpm check` wraps Vite+
+so its type-aware Oxlint uses the matching TSRS backend. Both use the builds
+shipped by `@effect/tsgo` without modifying `node_modules`. Effect diagnostics
+remain in `tsconfig.json`; warnings fail the standalone type check.
+Vitest uses the local `tsrs` executable for `src/**/*.test-d.ts` type tests;
+normal runtime tests use Vite's transform. Editors
+that support a custom language server can launch
+`pnpm exec effect-tsgo tsrs --lsp --stdio` for Effect diagnostics. The patched
+TSRS/Oxlint builds require glibc on Linux.
 
 Configuration choices, all in `tsconfig.json`:
 
@@ -222,7 +223,7 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   state from the existing event log; retain `optio-v3` and the event schemas.
   Hard crashes can still lose unacknowledged writes. On any LiveStore change,
   run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
-- The Effect cohort is pinned to 4.1.4 across the app and workers, within
+- The Effect cohort is pinned to 4.1.5 across the app and workers, within
   FoldKit's `~4.1.0` peers. UUIDs use `SecureRandom.uuidV4` from `effect/crypto`
   and only `BrowserCrypto.layerSecureRandom`, not the full crypto layer.
   JSON boundaries use `Schema.fromJsonString`, preserving backup milliseconds,
@@ -234,15 +235,14 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   overrides `vite` to the matching Vite+ core alias. Since Vite+ 1.7.0 the core
   package carries its own version (`@voidzero-dev/vite-plus-core@8.3.8000`); take it
   from the `vite` dependency of `vite-plus`, and use the same version in
-  `peerDependencyRules`. Bundled dev also needs direct `rolldown` 1.2.19: this Vite+ release resolves
-  its matching browser HMR runtime through that package name. It is a tooling
-  dependency, exempted from fallow until upstream fixes the runtime lookup.
+  `peerDependencyRules`. Its bundled-dev HMR runtime resolves through the core
+  package's own export, so no standalone `rolldown` is needed. This does not
+  replace the lazy-import base-path middleware.
   Use `vite-plus/test` and `vite-plus/test/browser` imports. The migration's
   asynchronous assertions were already awaited (including saved assertion
   promises); polling assertions retain their existing timeouts. Browser locators
   use explicit suffix patterns for task-count-prefixed sidebar buttons and an
-  explicit partial match for the guide link with its subtitle. Match `rolldown`
-  to the version embedded in the Vite+ core package when updating. Keep the
+  explicit partial match for the guide link with its subtitle. Keep the
   release-age guard without exemptions.
 - LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
   it from optimized browser modules. Exclude it from the shared vendor group to
@@ -251,12 +251,11 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   accepts API 1.10.
 - The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
   LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
-- `@effect/tsgo` 0.70.0 provides the Effect language service (see
-  [Effect diagnostics](#effect-diagnostics)); its README lists support for the
-  installed TypeScript 7.0.2 and Oxlint 1.94.0. Release 0.73.2 was younger than
-  24 hours on November 20. The deprecated `preferSchemaOverJson` diagnostic is
-  replaced by `globalJson` and `globalJsonInEffect`.
-- pnpm 12.16.1 is pinned. Use it for the two-document lockfile and verify a
+- `@effect/tsgo` 0.73.2 supports Vite+ 1.7.0's Oxlint 1.94.0 and
+  `tsrs@7.1.0-beta.tsrs2` (see [Effect diagnostics](#effect-diagnostics)). Keep
+  the direct TSRS pin aligned with Vite+ and check the Effect support matrix
+  before updating either. Do not infer compatibility from npm's `latest` tag.
+- pnpm 12.21.0 is pinned. Use it for the two-document lockfile and verify a
   frozen install. External scanners must read the app graph, not only the
   package-manager document.
 - Transitive updates include the serialize-javascript 7.1.3 security fix.
@@ -300,6 +299,11 @@ artifact. Deployments queue rather than cancel one another. A separate deploymen
 job has Pages/OIDC write permissions; the build job does not. There is no manual
 deployment trigger. The `/optio/` base path and service-worker settings live in
 [vite.config.ts](../vite.config.ts).
+
+For a fresh repository, set **Settings → Pages → Build and deployment → Source
+→ GitHub Actions**. Optio uses [FoldKit's browser-only SPA build](https://foldkit.dev/get-started#quick-start): upload `dist`,
+not the `dist/client` and server entry used by SSR. Routes use URL fragments,
+so refreshing `/optio/#/history` requests `/optio/` and needs no Pages rewrite.
 
 Deployment relies on [branch protection](#maintainer-security-and-releases):
 the push trigger also deploys direct pushes, without running the PR checks.
@@ -398,8 +402,7 @@ record every patched dependency there. The reviewed fallbacks also cover the exa
 versions on their advertised platforms, plus sirv and @polka/url. Missing package license files require a
 version-scoped, reviewed fallback in `licenses/reviewed-fallbacks` with
 provenance in the collector. Do not extend a fallback to a new version without
-checking upstream. Do not edit generated notices by hand. Keep the LiveStore
-patch's modification comments.
+checking upstream. Do not edit generated notices by hand.
 
 `cn` is the Shadcn class-merging package (`shadcn-ui/cn`). `tw-animate-css`
 provides the imported components' composable enter/exit, fade, slide and zoom
