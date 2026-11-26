@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@effect/tsgo": "0.73.2",
+    "@effect/ui": "https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92",
     "@effect/vitest": "4.1.5",
     "@foldkit/devtools": "0.171.0",
     "@foldkit/oxlint-plugin": "0.15.4",

@@ -4,6 +4,7 @@ import { Message } from "../messages";
 import { fieldRowsToDefs } from "../web/fieldRows";
 import { groupSectionsByRecord } from "../web/features/history/helpers";
 import type { TaskSectionRow } from "../livestore/queries";
+import type { TemplateReport } from "../web/types";
 
 export const templatesStream: Stream.Stream<Message> = storeStream(
   Message.StoreUnavailable(),
@@ -59,19 +60,29 @@ const toReportTask =
     sections: Array.map(sectionsByRecord.get(record.id) ?? [], toReportSection),
   });
 
-/** Every finished session of one template, for its time report. */
-export const templateReportStream = (templateId: string): Stream.Stream<Message> =>
-  storeStream(Message.StoreUnavailable(), ({ store, queries }, emit) => [
+/**
+ * Every finished session of one template, for its time report, as the caller's
+ * messages: the FoldKit app's and the Effect UI report component's.
+ */
+export const templateReports = <M>(
+  templateId: string,
+  messages: Readonly<{ unavailable: M; loaded: (report: TemplateReport) => M }>,
+): Stream.Stream<M> =>
+  storeStream(messages.unavailable, ({ store, queries }, emit) => [
     store.subscribe(queries.templateReportRows(templateId), ({ summary, records, sections }) =>
       emit(
-        Message.GotTemplateReport({
-          report: {
-            templateId,
-            sessionCount: summary.sessionCount,
-            totalMs: summary.totalMs,
-            tasks: Array.map(records, toReportTask(groupSectionsByRecord(sections))),
-          },
+        messages.loaded({
+          templateId,
+          sessionCount: summary.sessionCount,
+          totalMs: summary.totalMs,
+          tasks: Array.map(records, toReportTask(groupSectionsByRecord(sections))),
         }),
       ),
     ),
   ]);
+
+export const templateReportStream = (templateId: string): Stream.Stream<Message> =>
+  templateReports<Message>(templateId, {
+    unavailable: Message.StoreUnavailable(),
+    loaded: (report) => Message.GotTemplateReport({ report }),
+  });

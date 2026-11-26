@@ -240,6 +240,9 @@ importers:
       '@effect/tsgo':
         specifier: 0.73.2
         version: 0.73.2
+      '@effect/ui':
+        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92
+        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)
       '@effect/vitest':
         specifier: 4.1.5
         version: 4.1.5(effect@4.1.5)(vitest@5.1.0)
@@ -891,6 +894,12 @@ packages:
   '@effect/tsgo@0.73.2':
     resolution: {integrity: sha512-eM5ayjlp0fD2l+aL+4O/y9d1LwF1m5in5EdNkOYwLFcXI3kcee8CWP4wr2xTc4L/+KJmS/uaYUGWdOj4G46BDA==}
     hasBin: true
+
+  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92':
+    resolution: {integrity: sha512-POm07ahakQr5GHJgOV7/WzFFNuA6WlK/Ycs8x0/5U4eOaqq8w+PeOq2NYTNN6lqZnMZzfoNTcsVu7Mtltftn1Q==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92}
+    version: 0.0.0
+    peerDependencies:
+      effect: 4.1.5
 
   '@effect/vitest@4.1.5':
     resolution: {integrity: sha512-18u1013wkJtSelk1ZYLc/5aUnluTQyDfi2hAemkJW1GQ9qXw4mtPSiSf0AXZPhesmGCvG1Dk2C4JYD2sz+R72w==}
@@ -4195,6 +4204,10 @@ snapshots:
       '@effect/tsgo-linux-x64': 0.73.2
       '@effect/tsgo-win32-arm64': 0.73.2
       '@effect/tsgo-win32-x64': 0.73.2
+
+  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)':
+    dependencies:
+      effect: 4.1.5
 
   '@effect/vitest@4.1.5(effect@4.1.5)(vitest@5.1.0)':
     dependencies:

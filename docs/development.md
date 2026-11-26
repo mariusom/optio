@@ -219,6 +219,14 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   FoldKit 0.170+ supports Effect 4.1, including its split crypto services. It retains
   the controlled-input, IME and portal fixes from 0.169. The custom Record/Save shortcut
   also ignores `keyCode` 229 when an IME clears `isComposing` too early.
+- `@effect/ui` (Effect UI, the successor to FoldKit 0.x) is a public preview
+  with no npm release, installed as a dev dependency from the pkg.pr.new
+  snapshot of Effect-TS/ui commit `77dcd92`, pinned by URL and lockfile hash.
+  Only the migration spike `web/features/templates/reportBody.ts` and its
+  test import it; the app does not render it, so it ships in no bundle and
+  needs no license inventory entry. Fallow reports it as a dev dependency used
+  in production; move it to `dependencies` when the app first renders it.
+  Bump it by replacing the short SHA in `package.json`.
 - `@tanstack/table-core` 9.3.1 (MIT) derives the sorted and filtered rows of
   the History and Templates grids. v9 needs `coreReactivityFeature:
   storeReactivityBindings()` in its feature registry; only the sorting,
