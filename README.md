@@ -1,31 +1,61 @@
 # optio
 
+**See where your time goes.** Optio is a free, open-source time and motion
+study app that runs in your browser: on a phone on the shop floor, a tablet on
+a ward round or a laptop at your desk.
+
 [![Checks](https://github.com/mariusom/optio/actions/workflows/checks.yml/badge.svg?event=pull_request)](https://github.com/mariusom/optio/actions/workflows/checks.yml)
 [![Deployment](https://github.com/mariusom/optio/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/mariusom/optio/actions/workflows/deploy.yml)
 
-Optio helps you study how time is spent on tasks. Create a set of questions,
-record observations as you work, then review sessions and export them as CSV.
-It began as a Swift time-study app and is now a browser app you can use without
-an account or server setup.
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="docs/images/promo-still.webp" />
+  <img src="docs/images/promo.webp" alt="Optio in use: starting a study on a phone, tapping answers and recording tasks, then reviewing a session's time breakdown on a desktop." />
+</picture>
 
-![Recording an assembly-line observation with one completed task](docs/images/recording.webp)
+### [Open Optio →](https://mariusom.github.io/optio/)
 
-[Open Optio](https://mariusom.github.io/optio/). It works on phones, tablets and
-computers, and can be added to your home screen. After the first visit finishes
-loading, you can use it offline. No account is needed.
+No account, no install, no server. Add it to your home screen and it works
+offline after the first visit.
 
-Studies stay in your browser, with no automatic backup or sync. Clearing site
-data can erase them, so download a backup from Settings (it can be restored on
-any device) or export results as CSV. Optional assistant access can
-share study data with an assistant provider; see [agent access](docs/agent-access.md)
-before enabling it.
+## How it works
+
+1. **Set up.** Pick a template of questions (station, task type, tools used…)
+   or build your own with single and multiple choice, yes/no, numbers, counters,
+   ratings and text.
+2. **Observe.** Tap what you see and record each task. A running timer, large
+   touch targets and a “Larger controls” mode keep it quick, even with gloves.
+   Every answer is saved as you go.
+3. **Review.** Each session breaks down task time by answer, so you can see how
+   much went to value-added work, walking or waiting. Templates add up every
+   session recorded with them. Export everything as CSV.
+
+## Why Optio
+
+- **Private by default.** Studies stay in your browser. Nothing is uploaded.
+- **Built for the floor.** Phone-first, offline, keyboard-friendly and
+  accessible. Every look is checked against WCAG 2.2 AA in light and dark.
+- **Your style.** Five looks (Swiss, Classic, Studio, Shopfloor, Blueprint),
+  accent colours, fonts and dark mode.
+- **Works with AI, if you want it.** Plan a template in any chat with the
+  [agent guide](https://mariusom.github.io/optio/agent-guide.md), or give an
+  in-tab assistant consent-gated access through WebMCP. It's off by default;
+  read [agent access](docs/agent-access.md) before enabling it.
+
+## Good to know
+
+Studies have no automatic backup or sync, and clearing site data can erase
+them. Download a backup from Settings (it restores on any device) or export
+CSV.
 
 This is a pre-release. The current storage revision starts fresh; earlier
-pre-release studies are not migrated. Export anything you want to keep from
-the old build before updating.
+pre-release studies are not migrated, so export anything you want to keep from
+an old build before updating.
 
-For contributors: [contributing](CONTRIBUTING.md), [development](docs/development.md),
-[architecture](docs/architecture.md), and [interface conventions](docs/interface.md).
+## Contributing
+
+Optio began as a Swift time-study app and is now an Effect UI web app.
+Start with [contributing](CONTRIBUTING.md), then [development](docs/development.md),
+[architecture](docs/architecture.md) and [interface conventions](docs/interface.md).
 
 [MIT license](LICENSE) · [Third-party notices](https://mariusom.github.io/optio/THIRD_PARTY_NOTICES.txt) ·
-[Security](SECURITY.md).
+[Security](SECURITY.md)
