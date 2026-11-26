@@ -9,6 +9,7 @@ import { mountView, type Mounted } from "../../../app/testMount";
 import { Message } from "../../../messages";
 import { sessionView } from "./sessionView";
 import type { RunnerState } from "./runner";
+import { looks } from "../../theme";
 import "../../../index.css";
 
 vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
@@ -345,6 +346,61 @@ describe.each([390, 1184])("choice grids at %ipx", (width) => {
     await tools.getByRole("checkbox", { name: "Scanner" }).click();
     await expect.element(none).not.toBeChecked();
     await expect.element(tools.getByRole("checkbox", { name: "Scanner" })).toBeChecked();
+  });
+});
+
+/** Relative luminance of any CSS colour, resolved by the browser through a canvas. */
+const luminanceOf = (color: string) => {
+  const context = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const channels = Array.from(context.getImageData(0, 0, 1, 1).data.subarray(0, 3), (value) => {
+    const c = value / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+};
+const contrastOf = (front: string, back: string) => {
+  const [high, low] = [luminanceOf(front), luminanceOf(back)].toSorted((x, y) => y - x);
+  return (high! + 0.05) / (low! + 0.05);
+};
+
+// Looks that fill a selected answer rescope --primary inside it; the check
+// mark must follow, or it disappears into its box (WCAG 1.4.11, 3:1).
+describe.each(looks)("selected answer indicators in %s", (look) => {
+  afterEach(() => {
+    delete document.documentElement.dataset.look;
+    delete document.documentElement.dataset.accent;
+    document.documentElement.classList.remove("dark");
+  });
+
+  it.each([false, true])("keep the check mark visible (dark %s)", async (dark) => {
+    // As the app sets them: Shopfloor's selected-answer rule keys on the default accent.
+    document.documentElement.dataset.look = look;
+    document.documentElement.dataset.accent = "default";
+    document.documentElement.classList.toggle("dark", dark);
+    const task = runnerFixture("Observe").tasks[0]!;
+    await mount(390, "Observe", {
+      tasks: [
+        {
+          ...task,
+          sections: [
+            task.sections[0]!,
+            {
+              ...task.sections[1]!,
+              kind: "checkbox",
+              name: "Tools",
+              options: ["Scanner"],
+              value: "Scanner",
+            },
+          ],
+        },
+      ],
+    });
+    const checked = page.getByRole("checkbox", { name: "Scanner" });
+    await expect.element(checked).toBeChecked();
+    const box = getComputedStyle(checked.element().querySelector("span[aria-hidden]")!);
+    expect(contrastOf(box.color, box.backgroundColor)).toBeGreaterThanOrEqual(3);
   });
 });
 
