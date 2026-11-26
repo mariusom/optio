@@ -27,7 +27,7 @@ const ICON_LIBRARIES: ReadonlyArray<{ value: IconLibrary; label: string }> = [
 ];
 
 const LOOKS: ReadonlyArray<{ value: Look; label: string; description: string }> = [
-  { value: "swiss", label: "Swiss", description: "White, ruled lines, signal red (default)" },
+  { value: "swiss", label: "Swiss", description: "White, hairlines, ink blue (default)" },
   { value: "classic", label: "Classic", description: "Neutral and quiet" },
   { value: "studio", label: "Studio", description: "Warm paper, teal, serif titles" },
   { value: "blueprint", label: "Blueprint", description: "Grid paper and cobalt ink" },

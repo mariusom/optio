@@ -93,8 +93,9 @@ wins); Classic uses the base tokens in `index.css`.
 The static `theme-color` tags in `index.html` and the PWA manifest colours match Swiss. A non-default
 accent still replaces a look's primary colour, except in the dark navigation of
 Shopfloor and Blueprint. `src/web/looks.test.ts` checks every palette's contrast, including status text on
-its own tint (`bg-destructive/10`, `/20` in dark, `bg-primary/12`);
-add new looks there. Browser chrome uses each look's `lookThemeColors` entry.
+its own tint (`bg-destructive/10`, `/20` in dark, `bg-primary/12`),
+and that each look's primary stays at least 40° of hue away from
+`--destructive`: red means danger, never an everyday action. Add new looks there. Browser chrome uses each look's `lookThemeColors` entry.
 “Larger controls” (`html[data-control-size="large"]`) scales text to 112.5%,
 gives answer choices and primary actions 56px and stacks choices on phones.
 Settings uses native-radio segmented controls (`segmentedControl` in app

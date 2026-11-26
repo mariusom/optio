@@ -207,6 +207,11 @@ const unexpected = (look: Look, dark: boolean, found: ReadonlyArray<string>) =>
       )
     : found;
 
+const hueOf = (value: string) => {
+  const [, , chroma, hue] = /^oklch\(\s*([\d.]+%?)\s+([\d.]+)\s+([\d.]+)/.exec(value) ?? [];
+  return { chroma: Number(chroma), hue: Number(hue) };
+};
+
 describe("looks", () => {
   for (const look of looks) {
     for (const dark of [false, true]) {
@@ -237,6 +242,23 @@ describe("looks", () => {
       });
     }
   }
+
+  // Everyday actions must not wear the warning colour: a look's own primary
+  // stays neutral or at least 40° of OKLCH hue away from --destructive.
+  it("keeps every look's primary distinct from destructive", () => {
+    const clashes = looks.flatMap((look) =>
+      [false, true].flatMap((dark) => {
+        const tokens = palette(look, dark);
+        const primary = hueOf(resolve(tokens, "--look-primary"));
+        const destructive = hueOf(resolve(tokens, "--destructive"));
+        const distance = Math.abs(primary.hue - destructive.hue) % 360;
+        return primary.chroma < 0.04 || Math.min(distance, 360 - distance) >= 40
+          ? []
+          : [`${look} ${dark ? "dark" : "light"}`];
+      }),
+    );
+    expect(clashes).toEqual([]);
+  });
 
   it("defines the same tokens for both schemes of every look", () => {
     for (const look of looks.filter((name) => name !== "classic")) {
