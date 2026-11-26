@@ -1,5 +1,6 @@
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Effect } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 
@@ -11,9 +12,8 @@ const recordedPulseMs = 30;
  * it. Unsupported browsers, blocked calls and failures are skipped silently:
  * the visible status already confirms the recording.
  */
-export const VibrateRecorded = Command.define("VibrateRecorded", {
-  messages: [Message.GaveRecordFeedback],
-  execute: Effect.sync(() => {
+export const VibrateRecorded = Command.make("VibrateRecorded", { args: {} }, () =>
+  Effect.sync(() => {
     try {
       if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function")
         navigator.vibrate(recordedPulseMs);
@@ -22,4 +22,4 @@ export const VibrateRecorded = Command.define("VibrateRecorded", {
     }
     return Message.GaveRecordFeedback();
   }),
-});
+);

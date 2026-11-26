@@ -1,5 +1,5 @@
-import { AsyncData } from "foldkit";
-import type { Document, Html, HtmlBuilder } from "foldkit/html";
+import * as AsyncData from "@/lib/asyncData";
+import type { H, Ui } from "@/lib/view";
 import { Message } from "../messages";
 import { activeSessionOf, templatesOf, type Model } from "./model";
 import { RouteSchema, isFullScreenRoute, type Route } from "../web/routes";
@@ -41,41 +41,34 @@ const pageTitle = (route: Route): string =>
   });
 
 /** Names the page in the tab, browser history and screen-reader announcements. */
-const documentTitle = (model: Model): string =>
+export const documentTitle = (model: Model): string =>
   `${model.showCreate ? "New template" : pageTitle(model.route)} · Optio`;
 
 /** A list could not be read; the page offers to read it again. */
-const listReadFailure = (h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [h.Class("mx-auto w-full max-w-3xl px-safe pt-6")],
-    [
-      notice(
-        {
-          tone: "error",
-          role: "alert",
-          text: h.div(
-            [h.Class("flex flex-wrap items-center gap-x-3 gap-y-2")],
-            [
-              h.span(
-                [h.Class("min-w-0 flex-1 basis-48")],
-                ["Your studies couldn’t be read. Try again, or reload Optio."],
-              ),
-              button(
-                {
-                  type: "button",
-                  variant: "outline",
-                  className: "h-11 text-foreground",
-                  onClick: Message.ClickedRetryListRead(),
-                },
-                "Try again",
-                h,
-              ),
-            ],
+const listReadFailure = (h: H<Message>): Ui =>
+  h.div.class("mx-auto w-full max-w-3xl px-safe pt-6").children(
+    notice(
+      {
+        tone: "error",
+        role: "alert",
+        text: h.div.class("flex flex-wrap items-center gap-x-3 gap-y-2").children(
+          h.span
+            .class("min-w-0 flex-1 basis-48")
+            .children("Your studies couldn’t be read. Try again, or reload Optio."),
+          button(
+            {
+              type: "button",
+              variant: "outline",
+              className: "h-11 text-foreground",
+              onClick: Message.ClickedRetryListRead(),
+            },
+            "Try again",
+            h,
           ),
-        },
-        h,
-      ),
-    ],
+        ),
+      },
+      h,
+    ),
   );
 
 /**
@@ -90,14 +83,14 @@ const whenLoaded = <A>(
   config: Readonly<{
     data: AsyncData.AsyncData<A, "ReadFailed">;
     skeleton: ReadonlyArray<SkeletonBlock>;
-    page: (data: A) => Html;
+    page: (data: A) => Ui;
   }>,
-  h: HtmlBuilder<Message>,
-): Html =>
+  h: H<Message>,
+): Ui =>
   AsyncData.matchData(config.data, {
     onEmpty: () =>
       model.storage === "unavailable"
-        ? h.div([])
+        ? h.div
         : skeletonPage({ label: "Opening your studies…", blocks: config.skeleton }, h),
     onFailure: () => listReadFailure(h),
     onData: config.page,
@@ -110,7 +103,7 @@ const startSkeleton: ReadonlyArray<SkeletonBlock> = [
 ];
 const listSkeleton: ReadonlyArray<SkeletonBlock> = [{ _tag: "List", rows: 4, subtitles: true }];
 
-const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
+const pageFor = (model: Model, h: H<Message>): Ui => {
   if (model.showCreate) return templateEditorPage(model, h);
   return RouteSchema.match(model.route, {
     AgentHelp: () => infoPage("AgentHelp", h, model.assistantAccess),
@@ -163,7 +156,7 @@ const pageFor = (model: Model, h: HtmlBuilder<Message>): Html => {
 };
 
 /** Large-title header for the four tab roots; detail screens draw their own nav bar. */
-const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
+const rootHeader = (model: Model, h: H<Message>): Ui | null => {
   if (model.showCreate) return null;
   const titled = () => pageHeader({ title: pageTitle(model.route) }, h);
   return RouteSchema.matchOrElse(
@@ -181,7 +174,7 @@ const rootHeader = (model: Model, h: HtmlBuilder<Message>): Html | null => {
                       size: "icon-lg",
                       className: "size-11 rounded-full",
                       onClick: Message.ClickedNewTemplate(),
-                      attributes: [h.AriaLabel("New template")],
+                      attrs: { "aria-label": "New template" },
                     },
                     icon(h, Plus, "size-5"),
                     h,
@@ -207,25 +200,23 @@ const routeWidth = (route: Route): boolean | "xl" | undefined =>
   );
 
 /** Storage warnings above the page content, in the page's own column. */
-const pageNotices = (model: Model, storage: Html | null, h: HtmlBuilder<Message>) =>
+const pageNotices = (model: Model, storage: Ui | null, h: H<Message>) =>
   storage === null
     ? []
     : [
-        h.div(
-          [
-            h.Class(
-              cn(
-                "mx-auto flex w-full flex-col gap-3 px-safe pt-6",
-                contentWidth(routeWidth(model.route)),
-              ),
+        h.div
+          .class(
+            cn(
+              "mx-auto flex w-full flex-col gap-3 px-safe pt-6",
+              contentWidth(routeWidth(model.route)),
             ),
-            h.DataAttribute("slot", "page-notices"),
-          ],
-          [storage],
-        ),
+          )
+          .attr("data-slot", "page-notices")
+          .children(storage),
       ];
 
-export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
+/** The app shell; the document title comes from `documentTitle` in the root's head. */
+export const view = (model: Model, h: H<Message>) => {
   const isRunner = model.route._tag === "SessionRunner";
   const header = rootHeader(model, h);
   // The runner places its own notice; starting a session counts as recording.
@@ -235,33 +226,24 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const updatePrompt = appUpdatePrompt(model.appUpdate, h, {
     belowNavBar: isFullScreenRoute(model.route),
   });
-  return {
-    title: documentTitle(model),
-    body: h.div(
-      [
-        h.Class(
-          `app-shell ${isFullScreenRoute(model.route) ? "focus-workspace" : "browse-workspace"} flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground`,
+  return h.div
+    .class(
+      `app-shell ${isFullScreenRoute(model.route) ? "focus-workspace" : "browse-workspace"} flex h-dvh w-full flex-col overflow-hidden bg-background text-foreground`,
+    )
+    .children(
+      isRunner ? [] : [sidebar(model.route, h)],
+      h.main
+        .class(
+          `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 has-[[data-slot=sheet]]:overflow-hidden ${
+            isRunner ? "runner-main" : "md:pl-[4.5rem] xl:pl-60"
+          }`,
+        )
+        .children(
+          header === null ? [] : [header],
+          pageNotices(model, storage, h),
+          pageFor(model, h),
         ),
-      ],
-      [
-        ...(isRunner ? [] : [sidebar(model.route, h)]),
-        h.main(
-          [
-            h.Class(
-              `relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain has-[[data-slot=sheet]]:z-40 has-[[data-slot=sheet]]:overflow-hidden ${
-                isRunner ? "runner-main" : "md:pl-[4.5rem] xl:pl-60"
-              }`,
-            ),
-          ],
-          [
-            ...(header === null ? [] : [header]),
-            ...pageNotices(model, storage, h),
-            pageFor(model, h),
-          ],
-        ),
-        ...(isFullScreenRoute(model.route) || model.showCreate ? [] : [tabBar(model.route, h)]),
-        ...(updatePrompt === null ? [] : [updatePrompt]),
-      ],
-    ),
-  } satisfies Document;
+      isFullScreenRoute(model.route) || model.showCreate ? [] : [tabBar(model.route, h)],
+      updatePrompt === null ? [] : [updatePrompt],
+    );
 };

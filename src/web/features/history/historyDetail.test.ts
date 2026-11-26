@@ -1,48 +1,42 @@
-import { Effect, Option, Stream } from "effect";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
+import { Html } from "@effect/ui/html";
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { Effect, Schema, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
-import type { Html, HtmlBuilder } from "foldkit/html";
-import { Scene } from "foldkit/test";
 import { beforeEach, vi } from "vite-plus/test";
 
-import { appServices } from "../../../app/services";
+import type { H, Ui } from "@/lib/view";
+
 import { ShowSheet } from "../../../components/app/sheet";
-import { getStore } from "../../../livestore/client";
-import { init, subscriptions, update } from "../../../main";
+import { getStore } from "../../../store/client";
+import { init, update } from "../../../main";
 import { Message } from "../../../messages";
 import { ExportSessionCsv } from "./historyCommands";
 import * as historyHelpers from "./helpers";
 import { historyPage } from "./historyView";
 import { sessionDetailPage } from "./sessionDetailView";
 import { taskDetailView } from "./taskDetailView";
+import { viewScene } from "../viewScene";
+import { runCommand, streamAt } from "../../../app/testSubscriptions";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
-/** Open sheets show through a Mount; acknowledge each one. */
-const settleSheets = <Model>(simulation: Scene.SceneSimulation<Model, Message>) =>
-  Scene.Mount.resolveAll(
-    ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
-  )(simulation);
-
-const render = (view: (h: HtmlBuilder<Message>) => Html): Html => {
-  let rendered: Html = null;
-  Scene.scene(
-    { update: (model: null, _message: Message) => ({ model }), view: (_model: null, h) => view(h) },
-    Scene.given(null),
-    settleSheets,
-    (simulation: Scene.SceneSimulation<null, Message>) => {
-      rendered = simulation.html;
-      return simulation;
-    },
-  );
-  return rendered;
-};
-const text = (node: Html | string): string => {
-  if (typeof node === "string") return node;
-  if (node === null) return "";
-  return [
-    node.text ?? "",
-    ...(node.children ?? []).map((child) => text(child as Html | string)),
-  ].join(" ");
+/**
+ * The rendered text of a fixed view, words joined by spaces. `start` skips
+ * the end check, so the sheets' mounts need no acknowledgement.
+ */
+const text = (view: (h: H<Message>) => Ui): string => {
+  const Static = Html.component({ name: "Static", model: Schema.Null, message: Message }).make({
+    init: () => null,
+    update: ($) => $.model,
+    view: (h) => view(h),
+  });
+  const words = (node: Locator.Node): string =>
+    node.tag === undefined && node.text !== undefined
+      ? node.text
+      : (node.children ?? []).map(words).join(" ");
+  return words(HtmlScene.start(Static, {}).root);
 };
 const task = (taskId: number, startedAt: number | null = null) => ({
   id: `task-${taskId}`,
@@ -61,14 +55,7 @@ const detail = {
   tasks: [task(3, 1), task(2), task(1)],
 };
 const model = () => ({
-  ...init({
-    protocol: "https:",
-    host: "example.com",
-    port: Option.none(),
-    pathname: "/",
-    search: Option.none(),
-    hash: Option.some("#/history/s1"),
-  }).model,
+  ...init("#/history/s1").model,
   selectedHistorySession: detail,
 });
 
@@ -98,9 +85,9 @@ const subscribeWith = (result: unknown) =>
       return () => {};
     },
   } as unknown as Awaited<ReturnType<typeof getStore>>);
-const firstDetail = subscriptions.historyDetail
-  .dependenciesToStream({ sessionId: "s1" })
-  .pipe(Stream.take(1), Stream.runCollect);
+const firstDetail = Effect.suspend(() =>
+  streamAt("#/history/s1", "historyDetail").pipe(Stream.take(1), Stream.runCollect),
+);
 
 const archiveRecord = (taskId: number) => ({
   id: `r${taskId}`,
@@ -151,7 +138,9 @@ describe("history detail regressions", () => {
     >);
     const csv = vi.spyOn(historyHelpers, "buildArchiveCsv");
     try {
-      expect(await Effect.runPromise(ExportSessionCsv({ sessionId: "s1" }).effect)).toMatchObject({
+      expect(
+        await Effect.runPromise(ExportSessionCsv.make({ sessionId: "s1" }).effect),
+      ).toMatchObject({
         _tag: "CsvExported",
       });
       expect(csv.mock.results[0]?.value).toBe(
@@ -162,57 +151,63 @@ describe("history detail regressions", () => {
     }
   });
 
-  it.each(["subscription", "delete"])(
+  it.effect.each(["subscription", "delete"])(
     "clears open detail UI after %s disappearance before opening another session",
-    (source) => {
-      let state = update(model(), Message.ClickedEditHistoryName()).model;
-      state = update(state, Message.ChangedEditHistoryName({ text: "Unsaved rename" })).model;
-      state = update(state, Message.ClickedHistoryTask({ taskId: "task-1" })).model;
-      expect(state.showEditHistoryName).toBe(true);
-      expect(state.selectedHistoryTaskId).toBe("task-1");
-      Scene.scene(
-        { view: sessionDetailPage, update },
-        Scene.given(state),
-        settleSheets,
-        Scene.expect(Scene.role("dialog", { name: "Session name" })).toExist(),
-        Scene.expect(Scene.role("dialog", { name: "Task 1" })).toExist(),
-        Scene.expect(Scene.role("textbox", { name: "Name" })).toHaveValue("Unsaved rename"),
-      );
-      state = update(
-        state,
-        source === "subscription"
-          ? Message.GotHistoryDetail({ detail: null })
-          : Message.HistoryDeleted(),
-      ).model;
-      expect(state).toMatchObject({
-        selectedHistorySession: null,
-        selectedHistoryTaskId: null,
-        showEditHistoryName: false,
-        editHistoryNameInput: "",
-      });
-      state = update(state, Message.GotRoute({ route: { _tag: "HistoryTab" } })).model;
-      state = update(
-        state,
-        Message.GotRoute({ route: { _tag: "SessionDetail", sessionId: "s2" } }),
-      ).model;
-      state = update(
-        state,
-        Message.GotHistoryDetail({ detail: { ...detail, id: "s2", sessionName: "Next" } }),
-      ).model;
-      expect(state).toMatchObject({
-        selectedHistorySession: { id: "s2" },
-        selectedHistoryTaskId: null,
-        showEditHistoryName: false,
-        editHistoryNameInput: "Next",
-      });
-      Scene.scene(
-        { view: sessionDetailPage, update },
-        Scene.given(state),
-        Scene.expect(Scene.role("dialog")).toBeAbsent(),
-        Scene.expect(Scene.role("textbox", { name: "Name" })).toBeAbsent(),
-        Scene.expect(Scene.text("Unsaved rename")).toBeAbsent(),
-      );
-    },
+    (source) =>
+      Effect.gen(function* () {
+        let state = update(model(), Message.ClickedEditHistoryName()).model;
+        state = update(state, Message.ChangedEditHistoryName({ text: "Unsaved rename" })).model;
+        state = update(state, Message.ClickedHistoryTask({ taskId: "task-1" })).model;
+        expect(state.showEditHistoryName).toBe(true);
+        expect(state.selectedHistoryTaskId).toBe("task-1");
+        const editing = state;
+        const open = yield* viewScene((h) => sessionDetailPage(editing, h));
+        open
+          .expectMount(ShowSheet({ id: "edit-session-name" }))
+          .expectMount(ShowSheet({ id: "history-task" }))
+          .expect(HtmlLocator.role("dialog", { name: "Session name" }))
+          .toExist()
+          .expect(HtmlLocator.role("dialog", { name: "Task 1" }))
+          .toExist()
+          .expect(HtmlLocator.role("textbox", { name: "Name" }))
+          .toHaveValue("Unsaved rename");
+        state = update(
+          state,
+          source === "subscription"
+            ? Message.GotHistoryDetail({ detail: null })
+            : Message.HistoryDeleted(),
+        ).model;
+        expect(state).toMatchObject({
+          selectedHistorySession: null,
+          selectedHistoryTaskId: null,
+          showEditHistoryName: false,
+          editHistoryNameInput: "",
+        });
+        state = update(state, Message.GotRoute({ route: { _tag: "HistoryTab" } })).model;
+        state = update(
+          state,
+          Message.GotRoute({ route: { _tag: "SessionDetail", sessionId: "s2" } }),
+        ).model;
+        state = update(
+          state,
+          Message.GotHistoryDetail({ detail: { ...detail, id: "s2", sessionName: "Next" } }),
+        ).model;
+        expect(state).toMatchObject({
+          selectedHistorySession: { id: "s2" },
+          selectedHistoryTaskId: null,
+          showEditHistoryName: false,
+          editHistoryNameInput: "Next",
+        });
+        const next = state;
+        const closed = yield* viewScene((h) => sessionDetailPage(next, h));
+        closed
+          .expect(HtmlLocator.role("dialog"))
+          .toBeAbsent()
+          .expect(HtmlLocator.role("textbox", { name: "Name" }))
+          .toBeAbsent()
+          .expect(Locator.text("Unsaved rename"))
+          .toBeAbsent();
+      }),
   );
 
   it.each([null, detail])(
@@ -234,7 +229,7 @@ describe("history detail regressions", () => {
     [" \t\n ", ""],
   ])("trims rename %j before persistence", ([input, expected]) =>
     Effect.gen(function* () {
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ commit } as unknown as Awaited<
         ReturnType<typeof getStore>
       >);
@@ -242,11 +237,11 @@ describe("history detail regressions", () => {
         { ...model(), editHistoryNameInput: input },
         Message.ConfirmedEditHistoryName(),
       );
-      for (const command of result.commands ?? []) yield* command.effect;
+      for (const command of result.commands ?? []) yield* runCommand(command);
       expect(commit).toHaveBeenCalledWith(
         expect.objectContaining({ args: { id: "s1", sessionName: expected } }),
       );
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.each(["textInput", "textArea", "boolean"])(
@@ -261,16 +256,16 @@ describe("history detail regressions", () => {
         };
         const expected = sectionType === "boolean" ? (value === "true" ? "Yes" : "No") : value;
         for (const rendered of [
-          render((h) => taskDetailView({ task: recorded }, h)),
-          render((h) =>
+          text((h) => taskDetailView({ task: recorded }, h)),
+          text((h) =>
             sessionDetailPage(
               { ...model(), selectedHistorySession: { ...detail, tasks: [recorded] } },
               h,
             ),
           ),
         ]) {
-          expect(text(rendered).split(/\s+/)).toContain(expected);
-          expect(text(rendered).split(/\s+/)).not.toContain(
+          expect(rendered.split(/\s+/)).toContain(expected);
+          expect(rendered.split(/\s+/)).not.toContain(
             sectionType === "boolean" ? value : value === "true" ? "Yes" : "No",
           );
         }
@@ -279,18 +274,16 @@ describe("history detail regressions", () => {
   );
 
   it("breaks task time down by answer, after the summary", () => {
-    const rendered = text(
-      render((h) =>
-        sessionDetailPage(
-          {
-            ...model(),
-            selectedHistorySession: {
-              ...detail,
-              tasks: [answered(1, 30_000, "Walk"), answered(2, 10_000, "")],
-            },
+    const rendered = text((h) =>
+      sessionDetailPage(
+        {
+          ...model(),
+          selectedHistorySession: {
+            ...detail,
+            tasks: [answered(1, 30_000, "Walk"), answered(2, 10_000, "")],
           },
-          h,
-        ),
+        },
+        h,
       ),
     );
     expect(rendered).toContain("Time breakdown");
@@ -302,27 +295,25 @@ describe("history detail regressions", () => {
   });
 
   it("omits the breakdown when no choice question was answered", () => {
-    expect(text(render((h) => sessionDetailPage(model(), h)))).not.toContain("Time breakdown");
+    expect(text((h) => sessionDetailPage(model(), h))).not.toContain("Time breakdown");
   });
 
   it("shows seconds for short sessions and hours for long ones in the list", () => {
     const now = new Date(2026, 5, 15, 12, 0, 0).getTime();
-    const rendered = text(
-      render((h) =>
-        historyPage(
-          {
-            history: [
-              listSession("a", now - 60_000, 6_000),
-              listSession("b", now - 7_200_000, 4_200_000),
-            ],
-            now,
-            pendingHistoryDelete: null,
-            historyActionsFor: null,
-            historyError: null,
-            historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
-          },
-          h,
-        ),
+    const rendered = text((h) =>
+      historyPage(
+        {
+          history: [
+            listSession("a", now - 60_000, 6_000),
+            listSession("b", now - 7_200_000, 4_200_000),
+          ],
+          now,
+          pendingHistoryDelete: null,
+          historyActionsFor: null,
+          historyError: null,
+          historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
+        },
+        h,
       ),
     );
     expect(rendered).toContain("1 task");
@@ -334,7 +325,7 @@ describe("history detail regressions", () => {
   });
 
   it("renders taskId order even when earlier tasks have no start time", () => {
-    const rendered = text(render((h) => sessionDetailPage(model(), h)));
+    const rendered = text((h) => sessionDetailPage(model(), h));
     expect(rendered.indexOf("Task 1")).toBeLessThan(rendered.indexOf("Task 2"));
     expect(rendered.indexOf("Task 2")).toBeLessThan(rendered.indexOf("Task 3"));
   });

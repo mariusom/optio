@@ -1,20 +1,20 @@
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Effect } from "effect";
-import { Command } from "foldkit";
-import type { HtmlBuilder } from "foldkit/html";
+import { Command } from "@effect/ui";
+import type { H } from "@/lib/view";
 
 import { notice } from "@/components/app";
 import { button } from "@/components/ui/button";
-import { openStoreAccess } from "../livestore/access";
+import { openStoreAccess } from "../store/access";
 import { Message } from "../messages";
 
 /** Opens the store again after a failure; subscriptions resume when it opens. */
-export const RetryStore = Command.define("RetryStore", {
-  messages: [Message.StoreOpened, Message.StoreUnavailable],
-  execute: openStoreAccess.pipe(
+export const RetryStore = Command.make("RetryStore", { args: {} }, () =>
+  openStoreAccess.pipe(
     Effect.map(({ store }) => Message.StoreOpened({ storageMode: store.storageMode })),
     Effect.orElseSucceed(() => Message.StoreUnavailable()),
   ),
-});
+);
 
 type StorageModel = {
   readonly storage: "opening" | "persisted" | "in-memory" | "unavailable";
@@ -28,30 +28,26 @@ type StorageModel = {
  * disk, but a backup still captures it. Hidden while a backup or restore runs,
  * because a large restore is legitimately slow to confirm.
  */
-const saveStallNotice = (h: HtmlBuilder<Message>) =>
+const saveStallNotice = (h: H<Message>) =>
   notice(
     {
       tone: "error",
-      text: h.div(
-        [h.Class("flex flex-wrap items-center gap-x-3 gap-y-2")],
-        [
-          h.span(
-            [h.Class("min-w-0 flex-1 basis-48")],
-            [
-              "Optio hasn’t been able to save your latest changes. Download a backup now to keep them, then reload Optio. If this appears again, reset storage in Settings and restore the backup.",
-            ],
+      text: h.div.class("flex flex-wrap items-center gap-x-3 gap-y-2").children(
+        h.span
+          .class("min-w-0 flex-1 basis-48")
+          .children(
+            "Optio hasn’t been able to save your latest changes. Download a backup now to keep them, then reload Optio. If this appears again, reset storage in Settings and restore the backup.",
           ),
-          button(
-            {
-              type: "button",
-              variant: "outline",
-              className: "h-11 text-foreground",
-              onClick: Message.ClickedDownloadBackup(),
-            },
-            "Download backup",
-            h,
-          ),
-        ],
+        button(
+          {
+            type: "button",
+            variant: "outline",
+            className: "h-11 text-foreground",
+            onClick: Message.ClickedDownloadBackup(),
+          },
+          "Download backup",
+          h,
+        ),
       ),
     },
     h,
@@ -63,31 +59,29 @@ const saveStallNotice = (h: HtmlBuilder<Message>) =>
  */
 export const storageNotice = (
   model: StorageModel,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
   { recording }: { readonly recording: boolean },
 ) => {
   if (model.storage === "unavailable")
     return notice(
       {
         tone: "error",
-        text: h.div(
-          [h.Class("flex flex-wrap items-center gap-x-3 gap-y-2")],
-          [
-            h.span(
-              [h.Class("min-w-0 flex-1 basis-48")],
-              ["Your studies can’t be opened right now. Close other Optio tabs, then try again."],
+        text: h.div.class("flex flex-wrap items-center gap-x-3 gap-y-2").children(
+          h.span
+            .class("min-w-0 flex-1 basis-48")
+            .children(
+              "Your studies can’t be opened right now. Close other Optio tabs, then try again.",
             ),
-            button(
-              {
-                type: "button",
-                variant: "outline",
-                className: "h-11 text-foreground",
-                onClick: Message.ClickedRetryStore(),
-              },
-              "Try again",
-              h,
-            ),
-          ],
+          button(
+            {
+              type: "button",
+              variant: "outline",
+              className: "h-11 text-foreground",
+              onClick: Message.ClickedRetryStore(),
+            },
+            "Try again",
+            h,
+          ),
         ),
       },
       h,

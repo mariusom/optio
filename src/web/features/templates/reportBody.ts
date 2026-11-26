@@ -1,5 +1,5 @@
-// Effect UI port of the template time report body (reportSheet.ts renders the
-// FoldKit version). It owns its data: the report and read failure live in its
+// Standalone Effect UI component for the template time report body
+// (reportSheet.ts renders the same report from the root Model). It owns its data: the report and read failure live in its
 // own Model, fed by its own Subscription, instead of the root Model. The sheet
 // frame and its open state (`templateReportFor`) stay with the page.
 // @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview; every API here is experimental.

@@ -1,10 +1,10 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 /** Upstream keys label disabling on a native peer-disabled sibling variant
- *  and `group-data-[disabled=true]`, neither of which matches under foldkit
+ *  and `group-data-[disabled=true]`, neither of which matches in Optio's markup
  *  (no `.peer` sibling; `data-disabled` is emitted empty). Re-keyed onto a
  *  live `group` ancestor carrying data-disabled — e.g. the fieldset compound
  *  or switch wrapper. */
@@ -14,16 +14,9 @@ export const labelClass =
 type LabelConfig = Readonly<{ forId?: string; className?: string }>;
 
 /** Styled label. Mirrors the shadcn v4 `label.tsx` (no Radix primitive). */
-export const label = <M>(
-  config: LabelConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.label(
-    [
-      h.Class(cn(labelClass, config.className)),
-      h.DataAttribute("slot", "label"),
-      ...(config.forId === undefined ? [] : [h.For(config.forId)]),
-    ],
-    children,
-  );
+export const label = <M>(config: LabelConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.label
+    .class(cn(labelClass, config.className))
+    .attr("data-slot", "label")
+    .attr("for", config.forId)
+    .children(children);

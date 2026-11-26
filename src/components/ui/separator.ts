@@ -1,4 +1,6 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { Separator } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 
 import { cn } from "@/lib/utils";
 
@@ -12,15 +14,13 @@ type SeparatorConfig = Readonly<{
   className?: string;
 }>;
 
-/** Styled separator — a `role="separator"` divider. */
-export const separator = <M>(config: SeparatorConfig, h: HtmlBuilder<M>): Html => {
+/** Styled separator on the @effect/ui-kit Separator view function (role,
+ *  aria-orientation, data-orientation); `data-horizontal`/`data-vertical`
+ *  key the Foldcn classes. */
+export const separator = <M>(config: SeparatorConfig, h: H<M>): Ui => {
   const orientation = config.orientation ?? "horizontal";
-  return h.div([
-    h.Class(cn(separatorClass, config.className)),
-    h.Role("separator"),
-    h.AriaOrientation(orientation),
-    h.DataAttribute("slot", "separator"),
-    h.DataAttribute("orientation", orientation),
-    h.DataAttribute(orientation, ""),
-  ]);
+  return Separator(h, { props: { orientation } })
+    .class(cn(separatorClass, config.className))
+    .attr("data-slot", "separator")
+    .attr(`data-${orientation}`, "");
 };

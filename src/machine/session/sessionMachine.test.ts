@@ -340,6 +340,19 @@ describe("sessionMachine task selection + edit", () => {
     expect(runner!.currentTaskId).toBe("task-2");
   });
 
+  it("keeps an answer typed before the store confirms edit mode", () => {
+    const selected = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
+    const typed = plan(selected.runner, {
+      _tag: "FieldChanged",
+      taskFieldId: "f-note",
+      value: "Typed at once",
+    });
+    expect(typed.runner!.tasks[1]!.sections[0]!.value).toBe("Typed at once");
+    expect(typed.emissions).toEqual([
+      { _tag: "CommitFieldValues", writes: [{ taskFieldId: "f-note", value: "Typed at once" }] },
+    ]);
+  });
+
   it("select → sync → change → sync → reselect → cancel requests rollback of the edited task", () => {
     const selected = plan(liveRunner(), { _tag: "TaskSelected", taskId: "task-2" });
     const editing = data({

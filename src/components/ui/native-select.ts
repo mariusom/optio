@@ -1,5 +1,4 @@
-import { Select as FoldkitSelect } from "@foldkit/ui";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { icon } from "@/lib/icons";
 import { ChevronDown } from "lucide";
@@ -44,16 +43,15 @@ export type NativeSelectConfig<M> = Readonly<{
   isAutofocus?: boolean;
   name?: string;
   /** `<option>` elements — pass prebuilt markup, e.g.
-   *  `cities.map((city) => h.option([], [city]))`. */
-  options: ReadonlyArray<Html | string>;
+   *  `cities.map((city) => h.option.children(city))`. */
+  options: ReadonlyArray<Ui | string>;
   className?: string;
   labelClass?: string;
   descriptionClass?: string;
   wrapperClass?: string;
 }>;
 
-/** Styled native select with label, chevron and optional description, built
- *  on the @foldkit/ui Select helper. Mirrors the shadcn v4 `native-select.tsx`:
+/** Styled native select with label, chevron and optional description. Mirrors the shadcn v4 `native-select.tsx`:
  *  an `appearance-none` select whose chevron overlays the control at its right
  *  edge. Pass `<option>` markup via `options`.
  *
@@ -65,99 +63,81 @@ export type NativeSelectConfig<M> = Readonly<{
  *      id: 'fruit',
  *      label: 'Fruit',
  *      onChange: (value) => Message.PickedFruit({ value }),
- *      options: fruits.map((fruit) => h.option([h.Value(fruit)], [fruit])),
+ *      options: fruits.map((fruit) => h.option.attr('value', fruit).children(fruit)),
  *    },
  *    h,
  *  )
  *  ``` */
-export const nativeSelect = <M>(config: NativeSelectConfig<M>, h: HtmlBuilder<M>): Html =>
-  FoldkitSelect.view<M>(
-    {
-      id: config.id,
-      hasDescription: config.description !== undefined,
-      onChange: config.onChange,
-      value: config.value,
-      isDisabled: config.isDisabled,
-      isInvalid: config.isInvalid,
-      isAutofocus: config.isAutofocus,
+export const nativeSelect = <M>(config: NativeSelectConfig<M>, h: H<M>): Ui => {
+  const isDisabled = config.isDisabled === true;
+  const descriptionId = `${config.id}-description`;
+  const onChange = config.onChange;
+  const control = h.select
+    .id(config.id)
+    .attrs({
       name: config.name,
-      toView: (attributes) =>
-        h.div(
-          [h.Class(cn(nativeSelectFieldWrapperClass, config.wrapperClass))],
-          [
-            h.label(
-              [...attributes.label, h.Class(cn(nativeSelectLabelClass, config.labelClass))],
-              [config.label],
-            ),
-            h.div(
-              [
-                h.Class(cn(nativeSelectWrapperClass)),
-                h.DataAttribute("slot", "native-select-wrapper"),
-                h.DataAttribute("size", config.size ?? "default"),
-              ],
-              [
-                h.select(
-                  [
-                    ...attributes.select,
-                    h.DataAttribute("slot", "native-select"),
-                    h.DataAttribute("size", config.size ?? "default"),
-                    h.Class(cn(nativeSelectClass, config.className)),
-                  ],
-                  config.options,
-                ),
-                h.span(
-                  [
-                    h.DataAttribute("slot", "native-select-icon"),
-                    h.Class(cn(nativeSelectIconClass)),
-                    h.AriaHidden(true),
-                  ],
-                  [nativeSelectChevron(h)],
-                ),
-              ],
-            ),
-            config.description === undefined
-              ? h.empty
-              : h.span(
-                  [
-                    ...attributes.description,
-                    h.Class(cn(nativeSelectDescriptionClass, config.descriptionClass)),
-                  ],
-                  [config.description],
-                ),
-          ],
-        ),
-    },
-    h,
+      "data-disabled": isDisabled ? "" : undefined,
+      "aria-invalid": config.isInvalid === true ? "true" : undefined,
+      "data-invalid": config.isInvalid === true ? "" : undefined,
+      "aria-describedby": config.description === undefined ? undefined : descriptionId,
+      autofocus: config.isAutofocus === true ? "" : undefined,
+      "data-slot": "native-select",
+      "data-size": config.size ?? "default",
+    })
+    .disabled(isDisabled)
+    .class(cn(nativeSelectClass, config.className))
+    .children(config.options);
+  const valued = config.value === undefined ? control : control.value(config.value);
+  return h.div.class(cn(nativeSelectFieldWrapperClass, config.wrapperClass)).children(
+    h.label
+      .attr("for", config.id)
+      .class(cn(nativeSelectLabelClass, config.labelClass))
+      .children(config.label),
+    h.div
+      .class(cn(nativeSelectWrapperClass))
+      .attr("data-slot", "native-select-wrapper")
+      .attr("data-size", config.size ?? "default")
+      .children(
+        onChange === undefined || isDisabled
+          ? valued
+          : valued.on("change", ({ value }) => onChange(value)),
+        h.span
+          .attr("data-slot", "native-select-icon")
+          .class(cn(nativeSelectIconClass))
+          .attr("aria-hidden", "true")
+          .children(nativeSelectChevron(h)),
+      ),
+    config.description === undefined
+      ? null
+      : h.span
+          .id(descriptionId)
+          .class(cn(nativeSelectDescriptionClass, config.descriptionClass))
+          .children(config.description),
   );
+};
 
-export const nativeSelectChevron = <M>(h: HtmlBuilder<M>): Html => icon(h, ChevronDown, "size-4");
+export const nativeSelectChevron = <M>(h: H<M>): Ui => icon(h, ChevronDown, "size-4");
 
 /** Helper to render an `<option>` with correct data-slot and Canvas colors. */
 export const nativeSelectOption = <M>(
   config: Readonly<{ value: string; label: string; isDisabled?: boolean; className?: string }>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.option(
-    [
-      h.Value(config.value),
-      h.DataAttribute("slot", "native-select-option"),
-      h.Class(cn(nativeSelectOptionClass, config.className)),
-      ...(config.isDisabled === true ? [h.Disabled(true)] : []),
-    ],
-    [config.label],
-  );
+  h: H<M>,
+): Ui =>
+  h.option
+    .attr("value", config.value)
+    .attr("data-slot", "native-select-option")
+    .class(cn(nativeSelectOptionClass, config.className))
+    .disabled(config.isDisabled === true && true)
+    .children(config.label);
 
 /** Helper to render an `<optgroup>` with correct data-slot and Canvas colors. */
 export const nativeSelectOptGroup = <M>(
   config: Readonly<{ label: string; className?: string }>,
-  children: ReadonlyArray<Html | string>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.optgroup(
-    [
-      h.DataAttribute("slot", "native-select-optgroup"),
-      h.Class(cn(nativeSelectOptGroupClass, config.className)),
-      h.Attribute("label", config.label),
-    ],
-    [...children],
-  );
+  children: ReadonlyArray<Ui | string>,
+  h: H<M>,
+): Ui =>
+  h.optgroup
+    .attr("data-slot", "native-select-optgroup")
+    .class(cn(nativeSelectOptGroupClass, config.className))
+    .attr("label", config.label)
+    .children(children);

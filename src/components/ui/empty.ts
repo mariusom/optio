@@ -1,7 +1,7 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export const emptyClass =
   "gap-4 rounded-xl border-dashed p-6 flex w-full min-w-0 flex-1 flex-col items-center justify-center text-center text-balance";
@@ -31,71 +31,39 @@ type StyleConfig = Readonly<{ className?: string }>;
 
 type EmptyMediaConfig = Readonly<{ variant?: EmptyMediaVariant; className?: string }>;
 
-const emptyContainer = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div([h.Class(cn(emptyClass, config.className)), h.DataAttribute("slot", "empty")], children);
+const emptyContainer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div.class(cn(emptyClass, config.className)).attr("data-slot", "empty").children(children);
 
-const emptyHeader = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(emptyHeaderClass, config.className)), h.DataAttribute("slot", "empty-header")],
-    children,
-  );
+const emptyHeader = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(emptyHeaderClass, config.className))
+    .attr("data-slot", "empty-header")
+    .children(children);
 
-const emptyMedia = <M>(
-  config: EmptyMediaConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(
-        cn(emptyMediaClass, emptyMediaVariants[config.variant ?? "default"], config.className),
-      ),
-      h.DataAttribute("slot", "empty-icon"),
-      h.DataAttribute("variant", config.variant ?? "default"),
-    ],
-    children,
-  );
+const emptyMedia = <M>(config: EmptyMediaConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(emptyMediaClass, emptyMediaVariants[config.variant ?? "default"], config.className))
+    .attr("data-slot", "empty-icon")
+    .attr("data-variant", config.variant ?? "default")
+    .children(children);
 
-const emptyTitle = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(emptyTitleClass, config.className)), h.DataAttribute("slot", "empty-title")],
-    children,
-  );
+const emptyTitle = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(emptyTitleClass, config.className))
+    .attr("data-slot", "empty-title")
+    .children(children);
 
-const emptyDescription = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(emptyDescriptionClass, config.className)),
-      h.DataAttribute("slot", "empty-description"),
-    ],
-    children,
-  );
+const emptyDescription = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(emptyDescriptionClass, config.className))
+    .attr("data-slot", "empty-description")
+    .children(children);
 
-const emptyContent = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(emptyContentClass, config.className)), h.DataAttribute("slot", "empty-content")],
-    children,
-  );
+const emptyContent = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(emptyContentClass, config.className))
+    .attr("data-slot", "empty-content")
+    .children(children);
 
 /** Styled empty state — `Empty.header`, `Empty.media`, `Empty.title`,
  *  `Empty.description`, `Empty.content` sub-builders. Mirrors the shadcn v4

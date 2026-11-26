@@ -1,4 +1,4 @@
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import { button } from "@/components/ui/button";
 
@@ -18,7 +18,7 @@ export type ActionGroupConfig<M> = Readonly<{
 }>;
 
 /** Destructive action left; Cancel then confirmation right, in visual and tab order. */
-export const actionGroup = <M>(config: ActionGroupConfig<M>, h: HtmlBuilder<M>) => {
+export const actionGroup = <M>(config: ActionGroupConfig<M>, h: H<M>) => {
   const action = (value: Action<M>, variant: "destructive" | "secondary" | "default") =>
     button(
       {
@@ -26,28 +26,24 @@ export const actionGroup = <M>(config: ActionGroupConfig<M>, h: HtmlBuilder<M>) 
         size: "lg",
         onClick: value.onClick,
         isDisabled: value.isDisabled,
-        attributes: [
-          h.AriaLabel(value.ariaLabel ?? value.label),
-          ...(value.keyShortcuts === undefined ? [] : [h.AriaKeyshortcuts(value.keyShortcuts)]),
-        ],
+        attrs: {
+          "aria-label": value.ariaLabel ?? value.label,
+          "aria-keyshortcuts": !(value.keyShortcuts === undefined) ? value.keyShortcuts : undefined,
+        },
       },
       value.label,
       h,
     );
-  return h.div(
-    [
-      h.Class("flex w-full flex-wrap items-center justify-between gap-3"),
-      h.DataAttribute("slot", "action-group"),
-    ],
-    [
-      ...(config.destructive === undefined ? [] : [action(config.destructive, "destructive")]),
-      h.div(
-        [h.Class("ml-auto flex flex-wrap items-center justify-end gap-2")],
-        [
-          ...(config.cancel === undefined ? [] : [action(config.cancel, "secondary")]),
-          ...(config.confirm === undefined ? [] : [action(config.confirm, "default")]),
-        ],
-      ),
-    ],
-  );
+  return h.div
+    .class("flex w-full flex-wrap items-center justify-between gap-3")
+    .attr("data-slot", "action-group")
+    .children(
+      config.destructive === undefined ? [] : [action(config.destructive, "destructive")],
+      h.div
+        .class("ml-auto flex flex-wrap items-center justify-end gap-2")
+        .children(
+          config.cancel === undefined ? [] : [action(config.cancel, "secondary")],
+          config.confirm === undefined ? [] : [action(config.confirm, "default")],
+        ),
+    );
 };

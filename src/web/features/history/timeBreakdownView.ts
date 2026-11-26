@@ -1,5 +1,5 @@
 import { Array } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { groupedList } from "@/components/app";
 import { Message } from "../../../messages";
@@ -33,77 +33,67 @@ const fillClass = (segment: BreakdownSegment): string =>
   segment.slot === null ? unansweredClass : (slotClasses[segment.slot] ?? unansweredClass);
 
 /** Decorative: the list below carries the same data for every reader. */
-const stackedBar = (question: QuestionBreakdown, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [
-      h.Class("flex h-2.5 w-full gap-0.5 overflow-hidden rounded-sm forced-color-adjust-none"),
-      h.AriaHidden(true),
-    ],
-    Array.map(question.segments, (segment) =>
-      h.keyed("span")(segment.key, [
-        h.Class(`block h-full min-w-0.5 ${fillClass(segment)}`),
-        h.Style({ flex: `${segment.durationMs} 1 0%` }),
-      ]),
-    ),
-  );
+const stackedBar = (question: QuestionBreakdown, h: H<Message>): Ui =>
+  h.div
+    .class("flex h-2.5 w-full gap-0.5 overflow-hidden rounded-sm forced-color-adjust-none")
+    .attr("aria-hidden", String(true))
+    .children(
+      Array.map(question.segments, (segment) =>
+        h.span
+          .key(segment.key)
+          .class(`block h-full min-w-0.5 ${fillClass(segment)}`)
+          .style({ flex: `${segment.durationMs} 1 0%` }),
+      ),
+    );
 
-const legendItem = (segment: BreakdownSegment, h: HtmlBuilder<Message>): Html =>
-  h.keyed("li")(
-    segment.key,
-    [h.Class("flex items-baseline gap-2 text-sm")],
-    [
-      h.span([
-        h.Class(
+const legendItem = (segment: BreakdownSegment, h: H<Message>): Ui =>
+  h.li
+    .key(segment.key)
+    .class("flex items-baseline gap-2 text-sm")
+    .children(
+      h.span
+        .class(
           `size-2.5 shrink-0 self-center rounded-[2px] forced-color-adjust-none ${fillClass(segment)}`,
-        ),
-        h.AriaHidden(true),
-      ]),
-      h.span(
-        [
-          h.Class(
-            `min-w-0 flex-1 break-words ${segment.kind === "answer" ? "text-foreground" : "text-muted-foreground"}`,
-          ),
-          h.Dir("auto"),
-        ],
-        [segment.label],
-      ),
-      h.span(
-        [h.Class("shrink-0 text-right tabular text-muted-foreground")],
-        [`${formatDurationHms(segment.durationMs)} · ${formatShare(segment)}`],
-      ),
-    ],
-  );
+        )
+        .attr("aria-hidden", String(true)),
+      h.span
+        .class(
+          `min-w-0 flex-1 break-words ${segment.kind === "answer" ? "text-foreground" : "text-muted-foreground"}`,
+        )
+        .attr("dir", "auto")
+        .children(segment.label),
+      h.span
+        .class("shrink-0 text-right tabular text-muted-foreground")
+        .children(`${formatDurationHms(segment.durationMs)} · ${formatShare(segment)}`),
+    );
 
-const questionBlock = (question: QuestionBreakdown, h: HtmlBuilder<Message>): Html =>
-  h.keyed("div")(
-    question.key,
-    [h.Class("flex flex-col gap-3 px-4 py-3")],
-    [
-      h.h3(
-        [h.Class("flex items-baseline gap-2 text-sm font-medium text-foreground")],
-        [
-          h.span([h.Class("min-w-0 flex-1 break-words"), h.Dir("auto")], [question.question]),
-          h.span(
-            [h.Class("shrink-0 font-normal tabular text-muted-foreground")],
-            [formatDurationHms(question.totalMs)],
-          ),
-        ],
-      ),
+const questionBlock = (question: QuestionBreakdown, h: H<Message>): Ui =>
+  h.div
+    .key(question.key)
+    .class("flex flex-col gap-3 px-4 py-3")
+    .children(
+      h.h3
+        .class("flex items-baseline gap-2 text-sm font-medium text-foreground")
+        .children(
+          h.span
+            .class("min-w-0 flex-1 break-words")
+            .attr("dir", "auto")
+            .children(question.question),
+          h.span
+            .class("shrink-0 font-normal tabular text-muted-foreground")
+            .children(formatDurationHms(question.totalMs)),
+        ),
       stackedBar(question, h),
-      h.ul(
-        [h.Class("flex flex-col gap-1.5"), h.AriaLabel(`Time by answer to ${question.question}`)],
-        Array.map(question.segments, (segment) => legendItem(segment, h)),
-      ),
-    ],
-  );
+      h.ul
+        .class("flex flex-col gap-1.5")
+        .attr("aria-label", `Time by answer to ${question.question}`)
+        .children(Array.map(question.segments, (segment) => legendItem(segment, h))),
+    );
 
 type BreakdownTasks = Parameters<typeof timeBreakdown>[0];
 
 /** "Where did the time go?" — nothing when no choice question was answered. */
-export const timeBreakdownSection = (
-  tasks: BreakdownTasks,
-  h: HtmlBuilder<Message>,
-): Html | null => {
+export const timeBreakdownSection = (tasks: BreakdownTasks, h: H<Message>): Ui | null => {
   const breakdown = timeBreakdown(tasks);
   if (breakdown.length === 0) return null;
   return groupedList(

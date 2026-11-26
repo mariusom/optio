@@ -1,10 +1,9 @@
-import { Fieldset as FoldkitFieldset } from "@foldkit/ui";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { Array } from "effect";
 import { cn } from "@/lib/utils";
 import { separatorClass } from "./separator";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export const fieldsetClass =
   "gap-4 has-[>[data-slot=checkbox-group]]:gap-3 has-[>[data-slot=radio-group]]:gap-3 flex flex-col group/field-set";
@@ -31,8 +30,8 @@ export type FieldOrientation = keyof typeof fieldOrientationClasses;
 export const fieldContentClass = "gap-0.5 group/field-content flex flex-1 flex-col leading-snug";
 
 /** Upstream keys label disabling on a native peer-disabled sibling variant
- *  (no foldkit `.peer` sibling exists) and `group-data-[disabled=true]`
- *  (foldkit emits `data-disabled=""`, never "true"). Re-keyed onto the
+ *  (no `.peer` sibling exists) and `group-data-[disabled=true]`
+ *  (Optio emits `data-disabled=""`, never "true"). Re-keyed onto the
  *  fieldset wrapper's live group + data-disabled signal. */
 export const labelClass =
   "gap-2 text-sm leading-none font-medium group-data-[disabled]:opacity-50 flex items-center select-none group-data-[disabled]/field-set:pointer-events-none group-data-[disabled]/field-set:cursor-not-allowed group-data-[disabled]/field-set:opacity-50";
@@ -59,165 +58,126 @@ export const fieldErrorClass = "text-destructive text-sm font-normal";
 type StyleConfig = Readonly<{ className?: string }>;
 
 /** Outermost fieldset wrapper. */
-export const fieldSet = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.fieldset(
-    [h.DataAttribute("slot", "field-set"), h.Class(cn(fieldsetClass, config.className))],
-    children,
-  );
+export const fieldSet = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.fieldset
+    .attr("data-slot", "field-set")
+    .class(cn(fieldsetClass, config.className))
+    .children(children);
 
 /** Legend naming the fieldset. `variant` toggles legend vs label sizing. */
 export const fieldLegend = <M>(
   config: StyleConfig & Readonly<{ variant?: "legend" | "label" }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.legend(
-    [
-      h.DataAttribute("slot", "field-legend"),
-      h.DataAttribute("variant", config.variant ?? "legend"),
-      h.Class(cn(fieldsetLegendClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  h.legend
+    .attr("data-slot", "field-legend")
+    .attr("data-variant", config.variant ?? "legend")
+    .class(cn(fieldsetLegendClass, config.className))
+    .children(children);
 
 /** Groups a set of fields; provides the container context the responsive
  *  field orientation reacts to. */
-export const fieldGroup = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "field-group"), h.Class(cn(fieldGroupClass, config.className))],
-    children,
-  );
+export const fieldGroup = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attr("data-slot", "field-group")
+    .class(cn(fieldGroupClass, config.className))
+    .children(children);
 
 /** A single field row: label + content + description + error. */
 export const field = <M>(
   config: StyleConfig & Readonly<{ orientation?: FieldOrientation; isInvalid?: boolean }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui => {
   const orientation = config.orientation ?? "vertical";
-  return h.div(
-    [
-      h.Role("group"),
-      h.DataAttribute("slot", "field"),
-      h.DataAttribute("orientation", orientation),
-      ...(config.isInvalid === true ? [h.DataAttribute("invalid", "true")] : []),
-      h.Class(cn(fieldBaseClass, fieldOrientationClasses[orientation], config.className)),
-    ],
-    children,
-  );
+  return h.div
+    .attr("role", "group")
+    .attr("data-slot", "field")
+    .attr("data-orientation", orientation)
+    .attr("data-invalid", config.isInvalid === true ? "true" : undefined)
+    .class(cn(fieldBaseClass, fieldOrientationClasses[orientation], config.className))
+    .children(children);
 };
 
 /** Content column of a field (the control plus its description/error). */
-export const fieldContent = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "field-content"), h.Class(cn(fieldContentClass, config.className))],
-    children,
-  );
+export const fieldContent = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attr("data-slot", "field-content")
+    .class(cn(fieldContentClass, config.className))
+    .children(children);
 
 /** Standalone label (drop-in for `label.tsx`'s `Label`). */
-export const label = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.label([h.DataAttribute("slot", "label"), h.Class(cn(labelClass, config.className))], children);
+export const label = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.label.attr("data-slot", "label").class(cn(labelClass, config.className)).children(children);
 
 /** Label for a field; optionally associates with its control via `for`. */
 export const fieldLabel = <M>(
   config: StyleConfig & Readonly<{ for?: string }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.label(
-    [
-      ...(config.for === undefined ? [] : [h.For(config.for)]),
-      h.DataAttribute("slot", "field-label"),
-      h.Class(cn(labelClass, fieldLabelClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  h.label
+    .attr("for", config.for)
+    .attr("data-slot", "field-label")
+    .class(cn(labelClass, fieldLabelClass, config.className))
+    .children(children);
 
 /** Non-interactive title for a field group. */
-export const fieldTitle = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "field-label"), h.Class(cn(fieldTitleClass, config.className))],
-    children,
-  );
+export const fieldTitle = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attr("data-slot", "field-label")
+    .class(cn(fieldTitleClass, config.className))
+    .children(children);
 
 /** Field description / helper text. */
 export const fieldDescription = <M>(
   config: StyleConfig,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.p(
-    [
-      h.DataAttribute("slot", "field-description"),
-      h.Class(cn(fieldDescriptionClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  h.p
+    .attr("data-slot", "field-description")
+    .class(cn(fieldDescriptionClass, config.className))
+    .children(children);
 
 /** Divider between fields, with optional centered content. */
 export const fieldSeparator = <M>(
   config: StyleConfig,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui => {
   const hasContent = children.length > 0;
-  return h.div(
-    [
-      h.DataAttribute("slot", "field-separator"),
-      h.DataAttribute("content", hasContent ? "true" : "false"),
-      h.Class(cn(fieldSeparatorClass, config.className)),
-    ],
-    [
-      h.div([
-        h.Role("separator"),
-        h.DataAttribute("horizontal", ""),
-        h.Class(cn(separatorClass, fieldSeparatorLineClass)),
-      ]),
-      ...(hasContent
+  return h.div
+    .attr("data-slot", "field-separator")
+    .attr("data-content", hasContent ? "true" : "false")
+    .class(cn(fieldSeparatorClass, config.className))
+    .children(
+      h.div
+        .attr("role", "separator")
+        .attr("data-horizontal", "")
+        .class(cn(separatorClass, fieldSeparatorLineClass)),
+      hasContent
         ? [
-            h.span(
-              [
-                h.DataAttribute("slot", "field-separator-content"),
-                h.Class(cn(fieldSeparatorContentClass)),
-              ],
-              children,
-            ),
+            h.span
+              .attr("data-slot", "field-separator-content")
+              .class(cn(fieldSeparatorContentClass))
+              .children(children),
           ]
-        : []),
-    ],
-  );
+        : [],
+    );
 };
 
 /** Field error, alerting for explicit children or a list of unique error
- *  messages. Renders nothing when there is no content. */
+ *  messages. Returns `null` when there is no content. */
 export const fieldError = <M>(
   config: StyleConfig &
     Readonly<{
       children?: ReadonlyArray<Child>;
       errors?: ReadonlyArray<{ message?: string } | undefined>;
     }>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui | null => {
   const hasChildren = config.children !== undefined && config.children.length > 0;
   const uniqueErrors =
     config.errors === undefined
@@ -234,25 +194,21 @@ export const fieldError = <M>(
     content = [uniqueErrors[0]!.message!];
   } else if (uniqueErrors.length > 1) {
     content = [
-      h.ul(
-        [h.Class("ml-4 flex list-disc flex-col gap-1")],
-        Array.map(uniqueErrors, (error) => h.li([], [error!.message!])),
-      ),
+      h.ul
+        .class("ml-4 flex list-disc flex-col gap-1")
+        .children(Array.map(uniqueErrors, (error) => h.li.children(error!.message!))),
     ];
   }
 
   if (content === undefined) {
-    return h.empty;
+    return null;
   }
 
-  return h.div(
-    [
-      h.Role("alert"),
-      h.DataAttribute("slot", "field-error"),
-      h.Class(cn(fieldErrorClass, config.className)),
-    ],
-    content,
-  );
+  return h.div
+    .attr("role", "alert")
+    .attr("data-slot", "field-error")
+    .class(cn(fieldErrorClass, config.className))
+    .children(content);
 };
 
 export type FieldsetConfig = Readonly<{
@@ -267,51 +223,39 @@ export type FieldsetConfig = Readonly<{
   children: ReadonlyArray<Child>;
 }>;
 
-/** Styled fieldset with legend, optional description and grouped fields,
- *  built on the @foldkit/ui Fieldset helper for native fieldset/legend
- *  semantics plus id / aria-describedby / disabled wiring. */
-export const fieldset = <M>(config: FieldsetConfig, h: HtmlBuilder<M>): Html =>
-  FoldkitFieldset.view<M>(
-    {
-      id: config.id,
-      hasDescription: config.description !== undefined,
-      isDisabled: config.isDisabled,
-      toView: (attributes) =>
-        h.fieldset(
-          [
-            ...attributes.fieldset,
-            h.DataAttribute("slot", "field-set"),
-            h.Class(cn(fieldsetClass, config.className)),
-          ],
-          [
-            h.legend(
-              [
-                ...attributes.legend,
-                h.DataAttribute("slot", "field-legend"),
-                h.DataAttribute("variant", "legend"),
-                h.Class(cn(fieldsetLegendClass, config.legendClass)),
-              ],
-              [config.legend],
-            ),
-            config.description === undefined
-              ? h.empty
-              : h.p(
-                  [
-                    ...attributes.description,
-                    h.DataAttribute("slot", "field-description"),
-                    h.Class(cn(fieldDescriptionClass, config.descriptionClass)),
-                  ],
-                  [config.description],
-                ),
-            h.div(
-              [
-                h.DataAttribute("slot", "field-group"),
-                h.Class(cn(fieldGroupClass, config.contentClass)),
-              ],
-              config.children,
-            ),
-          ],
-        ),
-    },
-    h,
-  );
+/** Styled fieldset with legend, optional description and grouped fields:
+ *  native fieldset/legend semantics plus id / aria-describedby / disabled
+ *  wiring. `data-disabled` drives the label classes' `group/field-set`
+ *  variants. */
+export const fieldset = <M>(config: FieldsetConfig, h: H<M>): Ui => {
+  const isDisabled = config.isDisabled === true;
+  const descriptionId = `${config.id}-description`;
+  return h.fieldset
+    .id(config.id)
+    .attrs({
+      "aria-describedby": config.description === undefined ? undefined : descriptionId,
+      "data-disabled": isDisabled ? "" : undefined,
+      "data-slot": "field-set",
+    })
+    .disabled(isDisabled)
+    .class(cn(fieldsetClass, config.className))
+    .children(
+      h.legend
+        .id(`${config.id}-legend`)
+        .attr("data-slot", "field-legend")
+        .attr("data-variant", "legend")
+        .class(cn(fieldsetLegendClass, config.legendClass))
+        .children(config.legend),
+      config.description === undefined
+        ? null
+        : h.p
+            .id(descriptionId)
+            .attr("data-slot", "field-description")
+            .class(cn(fieldDescriptionClass, config.descriptionClass))
+            .children(config.description),
+      h.div
+        .attr("data-slot", "field-group")
+        .class(cn(fieldGroupClass, config.contentClass))
+        .children(config.children),
+    );
+};

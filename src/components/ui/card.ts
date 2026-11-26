@@ -1,9 +1,9 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
-// Card is a pure layout primitive (no @foldkit/ui backing — there is no
+// Card is a pure layout primitive (no @effect/ui-kit backing — there is no
 // headless Card). `Card` itself is the container; sub-builders are attached
 // as properties: Card.header, Card.title, Card.description, Card.action,
 // Card.content, Card.footer.
@@ -34,88 +34,54 @@ type StyleConfig = Readonly<{ className?: string }>;
 type CardConfig = Readonly<{ className?: string; size?: CardSize }>;
 
 /** Outermost card surface. */
-const cardContainer = <M>(
-  config: CardConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(cardClass, config.className)),
-      h.DataAttribute("slot", "card"),
-      h.DataAttribute("size", config.size ?? "default"),
-    ],
-    children,
-  );
+const cardContainer = <M>(config: CardConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardClass, config.className))
+    .attr("data-slot", "card")
+    .attr("data-size", config.size ?? "default")
+    .children(children);
 
 /** Header wrapper — positions title, description and action via CSS grid. */
-const cardHeader = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(cardHeaderClass, config.className)), h.DataAttribute("slot", "card-header")],
-    children,
-  );
+const cardHeader = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardHeaderClass, config.className))
+    .attr("data-slot", "card-header")
+    .children(children);
 
 /** Card title. */
-const cardTitle = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(cardTitleClass, config.className)), h.DataAttribute("slot", "card-title")],
-    children,
-  );
+const cardTitle = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardTitleClass, config.className))
+    .attr("data-slot", "card-title")
+    .children(children);
 
 /** Card description text. */
-const cardDescription = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(cardDescriptionClass, config.className)),
-      h.DataAttribute("slot", "card-description"),
-    ],
-    children,
-  );
+const cardDescription = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardDescriptionClass, config.className))
+    .attr("data-slot", "card-description")
+    .children(children);
 
 /** Action area pinned to the top-right of the header. */
-const cardAction = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(cardActionClass, config.className)), h.DataAttribute("slot", "card-action")],
-    children,
-  );
+const cardAction = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardActionClass, config.className))
+    .attr("data-slot", "card-action")
+    .children(children);
 
 /** Main content area. */
-const cardContent = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(cardContentClass, config.className)), h.DataAttribute("slot", "card-content")],
-    children,
-  );
+const cardContent = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardContentClass, config.className))
+    .attr("data-slot", "card-content")
+    .children(children);
 
 /** Footer area. */
-const cardFooter = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(cardFooterClass, config.className)), h.DataAttribute("slot", "card-footer")],
-    children,
-  );
+const cardFooter = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(cardFooterClass, config.className))
+    .attr("data-slot", "card-footer")
+    .children(children);
 
 /** Composable card — `Card` is the container, with sub-builders as
  *  properties: `Card.header`, `Card.title`, `Card.description`,

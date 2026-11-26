@@ -1,21 +1,23 @@
-import { Duration, Effect, Option, Schedule } from "effect";
+import { Duration, Effect, Option, Queue, Stream } from "effect";
 
-import type { StoreAccess } from "../livestore/access";
-
-/** The global event number of a LiveStore head such as "e12" or "e12.3". */
-const headNumber = (head: string): number => Number(/^e(\d+)/.exec(head)?.[1] ?? Number.NaN);
+import type { StoreAccess } from "../store/access";
 
 /**
- * True once the leader (which writes to disk) has confirmed every event this
- * session had committed when called; false if that takes longer than
- * `timeout`. Commit updates `localHead` synchronously; `upstreamHead` follows
- * the leader. A reload before confirmation loses those events.
+ * True once no write is still being saved; false if that takes longer than
+ * `timeout`. Each write resolves once its journal entry is saved, so this
+ * only waits for writes other commands have started.
  */
-export const confirmedOnDisk = (store: StoreAccess["store"], timeout: Duration.Input) => {
-  const target = headNumber(store.syncStatus().localHead);
-  return Effect.sync(() => headNumber(store.syncStatus().upstreamHead) >= target).pipe(
-    Effect.repeat({ until: (confirmed) => confirmed, schedule: Schedule.spaced("100 millis") }),
+export const writesSaved = (store: StoreAccess["store"], timeout: Duration.Input) =>
+  Stream.callback<number>((queue) =>
+    Effect.acquireRelease(
+      Effect.sync(() =>
+        store.subscribeSyncStatus(({ pendingCount }) => Queue.offerUnsafe(queue, pendingCount)),
+      ),
+      (unsubscribe) => Effect.sync(unsubscribe),
+    ).pipe(Effect.andThen(Effect.never)),
+  ).pipe(
+    Stream.filter((pendingCount) => pendingCount === 0),
+    Stream.runHead,
     Effect.timeoutOption(timeout),
     Effect.map(Option.isSome),
   );
-};

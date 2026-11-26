@@ -1,16 +1,14 @@
-import type { AppServices } from "./services";
 import { String } from "effect";
 import { DiscardLiveSession, StartSession } from "../web/features/session/startCommands";
 import { resolveSelectedTemplate } from "../web/features/session/startHelpers";
-import { sessionRunnerRouter } from "../web/routes";
+import { hrefFor, SessionRunner } from "../web/routes";
 import { currentTask } from "../web/features/session/runner";
 import { GeneratePlaceholderName, NavigateInternal, applyPlan } from "./commands";
-import type { Update } from "foldkit";
-import { Message, type MessageHandlers } from "../messages";
-import { AsyncData } from "foldkit";
+import type { MessageHandlers, UpdateResult } from "../messages";
+import * as AsyncData from "@/lib/asyncData";
 import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type SessionHandlers = Pick<
@@ -71,7 +69,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     return {
       model: next,
       commands: [
-        StartSession({
+        StartSession.make({
           id,
           templateId: selected.id,
           templateName: selected.name,
@@ -91,8 +89,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       joinedExistingSession: joinedExisting,
     },
     commands: [
-      GeneratePlaceholderName(),
-      NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId })}` }),
+      GeneratePlaceholderName.make({}),
+      NavigateInternal.make({ url: hrefFor(SessionRunner({ sessionId })) }),
     ],
   }),
   DismissedJoinedSession: () => ({ model: { ...model, joinedExistingSession: false } }),
@@ -102,8 +100,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     return {
       model,
       commands: [
-        NavigateInternal({
-          url: `#${sessionRunnerRouter({ sessionId: active.id })}`,
+        NavigateInternal.make({
+          url: hrefFor(SessionRunner({ sessionId: active.id })),
         }),
       ],
     };
@@ -115,7 +113,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     if (active === null) return { model: { ...model, pendingDiscardSession: false } };
     return {
       model: { ...model, pendingDiscardSession: false },
-      commands: [DiscardLiveSession({ sessionId: active.id })],
+      commands: [DiscardLiveSession.make({ sessionId: active.id })],
     };
   },
   SessionDiscarded: () => ({
@@ -125,7 +123,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       pendingDiscardSession: false,
       lastError: null,
     },
-    commands: [GeneratePlaceholderName()],
+    commands: [GeneratePlaceholderName.make({})],
   }),
   FailedSessionOp: ({ error }) => ({
     model: { ...model, lastError: error, pendingDiscardSession: false },
@@ -138,7 +136,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     if (data === null && model.route._tag === "SessionRunner" && planned.model.runner === null) {
       return {
         model: planned.model,
-        commands: [...(planned.commands ?? []), NavigateInternal({ url: "#/start" })],
+        commands: [...(planned.commands ?? []), NavigateInternal.make({ url: "#/start" })],
       };
     }
     return planned;
@@ -173,8 +171,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       model: planned.model,
       commands: [
         ...(planned.commands ?? []),
-        GeneratePlaceholderName(),
-        NavigateInternal({ url: "#/start" }),
+        GeneratePlaceholderName.make({}),
+        NavigateInternal.make({ url: "#/start" }),
       ],
     };
   },

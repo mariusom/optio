@@ -1,13 +1,12 @@
-import { Option } from "effect";
-import { Scene } from "foldkit/test";
-import { fromString } from "foldkit/url";
+import { HtmlLocator } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
 import { describe, expect, it } from "vite-plus/test";
 
-import { init, subscriptions, update, view, type Model } from "../main";
+import { init, subscriptions, update, type Model } from "../main";
+import { appScene } from "./appScene";
 import { Message } from "../messages";
 
-const at = (hash: string) =>
-  init(Option.getOrThrow(fromString(`https://optio.test/#${hash}`))).model;
+const at = (hash: string) => init(`#${hash}`).model;
 
 /** Applies store emissions the way subscriptions deliver them. */
 const receive = (model: Model, ...messages: ReadonlyArray<Message>) =>
@@ -32,70 +31,57 @@ const active = {
   completedCount: 2,
 };
 
-// Renders the whole app so the test covers the page composition, not one page.
-const showing = (model: Model, ...steps: ReadonlyArray<Scene.SceneStep<Model, Message, never>>) =>
-  Scene.scene(
-    {
-      update: (current: Model, _message: Message) => ({ model: current }),
-      view: (current: Model, h) => view(current, h).body,
-    },
-    Scene.given(model),
-    ...steps,
-  );
-
 describe("first load before the store has answered", () => {
   it("shows a loading state instead of an empty Start page", () =>
-    showing(
-      at("/start"),
-      Scene.expect(Scene.text("Opening your studies…")).toExist(),
-      Scene.expect(Scene.text("Start with a template")).toBeAbsent(),
-    ));
+    void appScene(at("/start"))
+      .expect(Locator.text("Opening your studies…"))
+      .toExist()
+      .expect(Locator.text("Start with a template"))
+      .toBeAbsent());
 
   it("waits for both the open session and the templates before choosing a Start view", () => {
     const templatesOnly = receive(at("/start"), Message.GotTemplates({ templates: [template] }));
-    showing(
-      templatesOnly,
-      Scene.expect(Scene.text("Opening your studies…")).toExist(),
-      Scene.expect(Scene.text("New session")).toBeAbsent(),
-    );
-    showing(
-      receive(templatesOnly, Message.GotActiveSession({ activeSession: active })),
-      Scene.expect(Scene.text("In progress")).toExist(),
-      Scene.expect(Scene.text("New session")).toBeAbsent(),
-    );
+    appScene(templatesOnly)
+      .expect(Locator.text("Opening your studies…"))
+      .toExist()
+      .expect(Locator.text("New session"))
+      .toBeAbsent();
+    appScene(receive(templatesOnly, Message.GotActiveSession({ activeSession: active })))
+      .expect(Locator.text("In progress"))
+      .toExist()
+      .expect(Locator.text("New session"))
+      .toBeAbsent();
   });
 
   it("shows empty states only once the store reports no rows", () => {
-    showing(
-      at("/templates"),
-      Scene.expect(Scene.text("No templates yet")).toBeAbsent(),
-      Scene.expect(Scene.text("Opening your studies…")).toExist(),
-    );
-    showing(
-      receive(at("/templates"), Message.GotTemplates({ templates: [] })),
-      Scene.expect(Scene.text("No templates yet")).toExist(),
-    );
-    showing(
-      at("/history"),
-      Scene.expect(Scene.text("No sessions yet")).toBeAbsent(),
-      Scene.expect(Scene.text("Opening your studies…")).toExist(),
-    );
-    showing(
-      receive(at("/history"), Message.GotHistory({ history: [] })),
-      Scene.expect(Scene.text("No sessions yet")).toExist(),
-    );
+    appScene(at("/templates"))
+      .expect(Locator.text("No templates yet"))
+      .toBeAbsent()
+      .expect(Locator.text("Opening your studies…"))
+      .toExist();
+    appScene(receive(at("/templates"), Message.GotTemplates({ templates: [] })))
+      .expect(Locator.text("No templates yet"))
+      .toExist();
+    appScene(at("/history"))
+      .expect(Locator.text("No sessions yet"))
+      .toBeAbsent()
+      .expect(Locator.text("Opening your studies…"))
+      .toExist();
+    appScene(receive(at("/history"), Message.GotHistory({ history: [] })))
+      .expect(Locator.text("No sessions yet"))
+      .toExist();
   });
 
   it("leaves the page to the storage notice when the store cannot open", () =>
-    showing(
-      receive(at("/start"), Message.StoreUnavailable()),
-      Scene.expect(Scene.text("Opening your studies…")).toBeAbsent(),
-      Scene.expect(Scene.role("button", { name: "Try again" })).toExist(),
-    ));
+    void appScene(receive(at("/start"), Message.StoreUnavailable()))
+      .expect(Locator.text("Opening your studies…"))
+      .toBeAbsent()
+      .expect(HtmlLocator.role("button", { name: "Try again" }))
+      .toExist());
 });
 
 const seedChecked = (model: Model) =>
-  subscriptions.templates.modelToDependencies(model).seedChecked;
+  subscriptions(model).some((subscription) => subscription && subscription.name === "templates");
 
 describe("first-run sample templates", () => {
   it("reads templates only after the startup seed check, so the first list is never pre-seed", () => {
@@ -112,17 +98,23 @@ describe("first-run sample templates", () => {
   });
 });
 
-const attempt = (model: Model) => subscriptions.history.modelToDependencies(model).attempt;
+const historyKey = (model: Model) => {
+  const history = subscriptions(model).find(
+    (subscription) => subscription && subscription.name === "history",
+  );
+  return history === undefined || history === false ? undefined : history.key;
+};
 
 describe("a list that cannot be read", () => {
   it("offers to read it again instead of loading forever", () => {
     const failed = receive(at("/templates"), Message.FailedListRead({ list: "templates" }));
-    showing(
-      failed,
-      Scene.expect(Scene.text("Opening your studies…")).toBeAbsent(),
-      Scene.expect(Scene.role("alert")).toExist(),
-      Scene.expect(Scene.role("button", { name: "Try again" })).toExist(),
-    );
+    appScene(failed)
+      .expect(Locator.text("Opening your studies…"))
+      .toBeAbsent()
+      .expect(HtmlLocator.role("alert"))
+      .toExist()
+      .expect(HtmlLocator.role("button", { name: "Try again" }))
+      .toExist();
   });
 
   it("keeps rows it already shows", () => {
@@ -131,7 +123,7 @@ describe("a list that cannot be read", () => {
       Message.GotTemplates({ templates: [template] }),
       Message.FailedListRead({ list: "templates" }),
     );
-    showing(shown, Scene.expect(Scene.text("Assembly line")).toExist());
+    appScene(shown).expect(Locator.text("Assembly line")).toExist();
   });
 
   it("blocks Start until the failed list is read again, then restarts the reads", () => {
@@ -140,15 +132,18 @@ describe("a list that cannot be read", () => {
       Message.GotTemplates({ templates: [template] }),
       Message.FailedListRead({ list: "activeSession" }),
     );
-    showing(failed, Scene.expect(Scene.role("button", { name: "Try again" })).toExist());
+    appScene(failed)
+      .expect(HtmlLocator.role("button", { name: "Try again" }))
+      .toExist();
 
     const retried = receive(failed, Message.ClickedRetryListRead());
-    expect(attempt(retried)).toBe(attempt(failed) + 1);
-    showing(
-      retried,
-      Scene.expect(Scene.text("Opening your studies…")).toExist(),
-      Scene.expect(Scene.role("button", { name: "Try again" })).toBeAbsent(),
-    );
+    // A new key restarts the read.
+    expect(historyKey(retried)).not.toBe(historyKey(failed));
+    appScene(retried)
+      .expect(Locator.text("Opening your studies…"))
+      .toExist()
+      .expect(HtmlLocator.role("button", { name: "Try again" }))
+      .toBeAbsent();
     // Lists that were read keep their rows through the retry.
     expect(retried.templates).toEqual(failed.templates);
   });

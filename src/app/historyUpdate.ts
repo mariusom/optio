@@ -1,18 +1,16 @@
-import type { AppServices } from "./services";
 import { Array, Option, String } from "effect";
 import {
   DeleteHistorySession,
   ExportSessionCsv,
   RenameHistorySession,
 } from "../web/features/history/historyCommands";
-import { historyRouter, sessionDetailRouter } from "../web/routes";
+import { hrefFor, HistoryTab, SessionDetail } from "../web/routes";
 import { NavigateInternal } from "./commands";
-import type { Update } from "foldkit";
-import { Message, type MessageHandlers } from "../messages";
-import { AsyncData } from "foldkit";
+import type { MessageHandlers, UpdateResult } from "../messages";
+import * as AsyncData from "@/lib/asyncData";
 import { historyOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type HistoryHandlers = Pick<
@@ -53,7 +51,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
         },
         commands:
           model.route._tag === "SessionDetail"
-            ? [NavigateInternal({ url: `#${historyRouter()}` })]
+            ? [NavigateInternal.make({ url: hrefFor(HistoryTab()) })]
             : [],
       };
     return {
@@ -69,7 +67,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
   },
   ClickedHistoryRow: ({ id }) => ({
     model,
-    commands: [NavigateInternal({ url: `#${sessionDetailRouter({ sessionId: id })}` })],
+    commands: [NavigateInternal.make({ url: hrefFor(SessionDetail({ sessionId: id })) })],
   }),
   RequestedHistoryDelete: ({ id, displayName }) => {
     const session = Array.findFirst(historyOf(model), (candidate) => candidate.id === id);
@@ -96,7 +94,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
       : {
           // Keep pending until HistoryDeleted arrives so we know which was deleted
           model,
-          commands: [DeleteHistorySession({ id: model.pendingHistoryDelete.id })],
+          commands: [DeleteHistorySession.make({ id: model.pendingHistoryDelete.id })],
         },
   HistoryDeleted: () => {
     const deletedId = model.pendingHistoryDelete?.id ?? null;
@@ -116,7 +114,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
           showEditHistoryName: false,
           editHistoryNameInput: "",
         },
-        commands: [NavigateInternal({ url: "#/history" })],
+        commands: [NavigateInternal.make({ url: "#/history" })],
       };
     }
     return { model: { ...model, pendingHistoryDelete: null } };
@@ -147,7 +145,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     return {
       model: { ...model, showEditHistoryName: false },
       commands: [
-        RenameHistorySession({ id: model.selectedHistorySession.id, sessionName: trimmed }),
+        RenameHistorySession.make({ id: model.selectedHistorySession.id, sessionName: trimmed }),
       ],
     };
   },
@@ -159,7 +157,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
   DismissedHistoryTask: () => ({ model: { ...model, selectedHistoryTaskId: null } }),
   ClickedExportHistoryCsv: ({ sessionId, spreadsheetSafe = false }) => ({
     model: { ...model, historyError: null, historyActionsFor: null },
-    commands: [ExportSessionCsv({ sessionId, spreadsheetSafe })],
+    commands: [ExportSessionCsv.make({ sessionId, spreadsheetSafe })],
   }),
   CsvExported: () => ({ model }),
   FailedCsvExport: ({ error }) => ({ model: { ...model, historyError: error } }),

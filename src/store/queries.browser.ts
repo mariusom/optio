@@ -1,9 +1,9 @@
-import { afterEach, expect, it } from "vite-plus/test";
-import { createStorePromise } from "@livestore/livestore";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
+import { expect, it } from "vite-plus/test";
+import { commitNow, openMemoryStore } from "./testStore";
+import { tables } from "./tables";
 
 import type { FieldDef } from "../domain/fields";
-import { events, schema, tables } from "./schema";
+import { events } from "./schema";
 import * as queries from "./queries";
 
 const fields: FieldDef[] = ["Activity", "Notes"].map((name, sortOrder) => ({
@@ -17,19 +17,7 @@ const fields: FieldDef[] = ["Activity", "Notes"].map((name, sortOrder) => ({
   exclusiveOptions: [],
 }));
 
-const stores: Array<{ shutdownPromise: () => Promise<unknown> }> = [];
-const openStore = async () => {
-  const store = await createStorePromise({
-    schema,
-    storeId: `queries-${crypto.randomUUID()}`,
-    adapter: makeInMemoryAdapter(),
-  });
-  stores.push(store);
-  return store;
-};
-afterEach(async () => {
-  await Promise.all(stores.splice(0).map((store) => store.shutdownPromise()));
-});
+const openStore = openMemoryStore;
 
 const start = (id: string, now: number) => [
   events.sessionStarted({
@@ -44,7 +32,7 @@ const start = (id: string, now: number) => [
 
 it("keeps one live session when two tabs start at once", async () => {
   const store = await openStore();
-  store.commit(...start("first", 1000), ...start("second", 2000));
+  await commitNow(store, ...start("first", 1000), ...start("second", 2000));
   expect(store.query(tables.sessions.select()).map((row) => row.id)).toEqual(["first"]);
   expect(store.query(tables.sessionTasks.select()).map((row) => row.sessionId)).toEqual(["first"]);
   expect(store.query(queries.activeSession)).toMatchObject({ id: "first", completedCount: 0 });
@@ -52,7 +40,8 @@ it("keeps one live session when two tabs start at once", async () => {
 
 it("keeps the first finish time when a task is recorded twice", async () => {
   const store = await openStore();
-  store.commit(
+  await commitNow(
+    store,
     ...start("s", 1000),
     events.taskFinished({ id: "s-1", endedAt: new Date(2000) }),
     events.taskFinished({ id: "s-1", endedAt: new Date(3000) }),
@@ -75,7 +64,7 @@ const seed = (suffix: string) =>
 it("seeds sample templates once with one default when two tabs seed an empty store", async () => {
   const store = await openStore();
 
-  store.commit(seed("a"), seed("b"));
+  await commitNow(store, seed("a"), seed("b"));
   const templates = store.query(queries.templateSummaries);
   expect(templates.map((row) => row.id).toSorted()).toEqual(["Assembly line-a", "Ward round-a"]);
   expect(templates.filter((row) => row.isDefault === 1)).toHaveLength(1);
@@ -84,14 +73,15 @@ it("seeds sample templates once with one default when two tabs seed an empty sto
 
 it("emits one consistent runner result when a task is recorded", async () => {
   const store = await openStore();
-  store.commit(...start("s", 1000));
+  await commitNow(store, ...start("s", 1000));
   const results: Array<{ tasks: number; fields: number }> = [];
   const unsubscribe = store.subscribe(queries.runnerRows("s"), (value) =>
     results.push({ tasks: value.tasks.length, fields: value.fields.length }),
   );
   try {
     results.length = 0;
-    store.commit(
+    await commitNow(
+      store,
       events.taskFinished({ id: "s-1", endedAt: new Date(2000) }),
       events.taskSpawned({ sessionId: "s", id: "s-2", orderIndex: 2, fields }),
     );
@@ -118,7 +108,8 @@ const archivedTask = (taskIdNumber: number) => ({
 it("reads one session's archive with answers in question order", async () => {
   const store = await openStore();
   for (const id of ["a", "b"]) {
-    store.commit(
+    await commitNow(
+      store,
       ...start(id, id === "a" ? 1000 : 5000),
       events.taskFinished({ id: `${id}-1`, endedAt: new Date(2000) }),
       events.sessionEnded({
@@ -150,7 +141,11 @@ it("reads one session's archive with answers in question order", async () => {
 
 it("updates archived and active sessions as a session ends", async () => {
   const store = await openStore();
-  store.commit(...start("s", 1000), events.taskFinished({ id: "s-1", endedAt: new Date(2000) }));
+  await commitNow(
+    store,
+    ...start("s", 1000),
+    events.taskFinished({ id: "s-1", endedAt: new Date(2000) }),
+  );
   const archived: Array<number> = [];
   const active: Array<string | null> = [];
   const unsubscribes = [
@@ -158,7 +153,8 @@ it("updates archived and active sessions as a session ends", async () => {
     store.subscribe(queries.activeSession, (row) => active.push(row?.id ?? null)),
   ];
   try {
-    store.commit(
+    await commitNow(
+      store,
       events.sessionEnded({ id: "s", endedAt: new Date(3000), records: [archivedTask(1)] }),
       events.sessionLiveGraphCleared({ sessionId: "s" }),
     );
@@ -199,10 +195,10 @@ const endWithTasks = (id: string, endedAt: number, tasks: number) => [
 it("reads a template's report from its finished sessions only", async () => {
   const store = await openStore();
   // Sessions end one at a time: only one can be live.
-  store.commit(reportSession("a", "t", 1000), ...endWithTasks("a", 4000, 2));
-  store.commit(reportSession("other", "x", 5000), ...endWithTasks("other", 6000, 1));
-  store.commit(reportSession("b", "t", 7000), ...endWithTasks("b", 9000, 1));
-  store.commit(reportSession("live", "t", 10_000));
+  await commitNow(store, reportSession("a", "t", 1000), ...endWithTasks("a", 4000, 2));
+  await commitNow(store, reportSession("other", "x", 5000), ...endWithTasks("other", 6000, 1));
+  await commitNow(store, reportSession("b", "t", 7000), ...endWithTasks("b", 9000, 1));
+  await commitNow(store, reportSession("live", "t", 10_000));
 
   const { summary, records, sections } = store.query(queries.templateReportRows("t"));
   expect(summary).toEqual({ sessionCount: 2, totalMs: 5000 });
@@ -216,7 +212,8 @@ it("reads a template's report from its finished sessions only", async () => {
 
 it("restores a backup once, keeping what is already present and the default", async () => {
   const store = await openStore();
-  store.commit(
+  await commitNow(
+    store,
     events.templateCreated({ id: "mine", name: "Mine", isDefault: true, now: new Date(1) }),
     events.fieldsReplaced({ templateId: "mine", fields }),
   );
@@ -239,8 +236,8 @@ it("restores a backup once, keeping what is already present and the default", as
       },
     ],
   });
-  store.commit(backup);
-  store.commit(backup);
+  await commitNow(store, backup);
+  await commitNow(store, backup);
 
   const templates = store.query(queries.templateSummaries);
   expect(templates.map((row) => [row.id, row.name, row.isDefault, row.fieldCount])).toEqual(
@@ -269,7 +266,8 @@ it("survives a restore that repeats IDs, inserting each once", async () => {
     endedAt: new Date(2000),
     records: [archivedTask(1), archivedTask(1)],
   };
-  store.commit(
+  await commitNow(
+    store,
     events.backupRestored({
       now: new Date(3),
       // Same template twice, a second template reusing its question IDs, and
@@ -283,6 +281,9 @@ it("survives a restore that repeats IDs, inserting each once", async () => {
     expect.objectContaining({ id: "dup", taskCount: 1 }),
   ]);
   // The store keeps working afterwards.
-  store.commit(events.templateCreated({ id: "x", name: "X", isDefault: false, now: new Date(4) }));
+  await commitNow(
+    store,
+    events.templateCreated({ id: "x", name: "X", isDefault: false, now: new Date(4) }),
+  );
   expect(store.query(queries.templateSummaries)).toHaveLength(2);
 });

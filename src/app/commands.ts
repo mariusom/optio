@@ -1,8 +1,8 @@
-import type { AppServices } from "./services";
 import { Array, Effect, Match, Schema } from "effect";
-import { Command, Navigation, Port, Update } from "foldkit";
-import { Message } from "../messages";
-import { AgentPortReply, agentPorts } from "../agents/actions";
+import { Command, Component } from "@effect/ui";
+import { Message, type AppCommand, type UpdateResult } from "../messages";
+import { AgentPortReply } from "../agents/actions";
+import { CurrentAgentBridge } from "../agents/bridge";
 import {
   changeAccent,
   changeControlSize,
@@ -33,114 +33,99 @@ import {
 } from "../machine/session/sessionMachine";
 import type { Model } from "./model";
 
-const NavigateInternal = Command.define("NavigateInternal", {
-  args: { url: Schema.String },
-  messages: [Message.Navigated],
-  execute: ({ url }) => Effect.map(Navigation.pushUrl(url), () => Message.Navigated()),
-});
+/** Same-document hash navigation; the `hashchange` subscription reports the new route. */
+const NavigateInternal = Command.make(
+  "NavigateInternal",
+  { args: { url: Schema.String } },
+  ({ url }) =>
+    Effect.sync(() => {
+      location.href = url;
+    }).pipe(Effect.as(Component.noop)),
+);
 
-const SaveTheme = Command.define("SaveTheme", {
-  args: { theme: Theme },
-  messages: [Message.ThemeSaveFinished],
-  execute: ({ theme }) =>
-    Effect.map(saveThemeChoice(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
-});
+const SaveTheme = Command.make("SaveTheme", { args: { theme: Theme } }, ({ theme }) =>
+  Effect.map(saveThemeChoice(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
+);
 
-const ApplyColorScheme = Command.define("ApplyColorScheme", {
-  args: { dark: Schema.Boolean },
-  messages: [Message.AppliedColorScheme],
-  execute: ({ dark }) => Effect.as(applyColorScheme(dark), Message.AppliedColorScheme()),
-});
+const ApplyColorScheme = Command.make(
+  "ApplyColorScheme",
+  { args: { dark: Schema.Boolean } },
+  ({ dark }) => Effect.as(applyColorScheme(dark), Message.AppliedColorScheme()),
+);
 
-const SaveStyle = Command.define("SaveStyle", {
-  args: { style: FoldcnStyle },
-  messages: [Message.StyleSaveFinished, Message.SupersededStyleSave],
-  execute: ({ style }) =>
-    Effect.map(changeStyle(style), (result) =>
-      result === null
-        ? Message.SupersededStyleSave()
-        : Message.StyleSaveFinished({ style, ...result }),
-    ),
-});
+const SaveStyle = Command.make("SaveStyle", { args: { style: FoldcnStyle } }, ({ style }) =>
+  Effect.map(changeStyle(style), (result) =>
+    result === null
+      ? Message.SupersededStyleSave()
+      : Message.StyleSaveFinished({ style, ...result }),
+  ),
+);
 
-const SaveFont = Command.define("SaveFont", {
-  args: { font: Font },
-  messages: [Message.FontSaveFinished],
-  execute: ({ font }) =>
-    Effect.map(changeFont(font), (saved) => Message.FontSaveFinished({ font, saved })),
-});
+const SaveFont = Command.make("SaveFont", { args: { font: Font } }, ({ font }) =>
+  Effect.map(changeFont(font), (saved) => Message.FontSaveFinished({ font, saved })),
+);
 
-const SaveIconLibrary = Command.define("SaveIconLibrary", {
-  args: { library: IconLibrary },
-  messages: [Message.IconLibrarySaveFinished],
-  execute: ({ library }) =>
+const SaveIconLibrary = Command.make(
+  "SaveIconLibrary",
+  { args: { library: IconLibrary } },
+  ({ library }) =>
     Effect.map(changeIconLibrary(library), (saved) =>
       Message.IconLibrarySaveFinished({ library, saved }),
     ),
-});
+);
 
-const SaveAccent = Command.define("SaveAccent", {
-  args: { accent: Accent },
-  messages: [Message.AccentSaveFinished],
-  execute: ({ accent }) =>
-    Effect.map(changeAccent(accent), (saved) => Message.AccentSaveFinished({ accent, saved })),
-});
+const SaveAccent = Command.make("SaveAccent", { args: { accent: Accent } }, ({ accent }) =>
+  Effect.map(changeAccent(accent), (saved) => Message.AccentSaveFinished({ accent, saved })),
+);
 
-const SaveLook = Command.define("SaveLook", {
-  args: { look: Look },
-  messages: [Message.LookSaveFinished],
-  execute: ({ look }) =>
-    Effect.map(changeLook(look), (saved) => Message.LookSaveFinished({ look, saved })),
-});
+const SaveLook = Command.make("SaveLook", { args: { look: Look } }, ({ look }) =>
+  Effect.map(changeLook(look), (saved) => Message.LookSaveFinished({ look, saved })),
+);
 
-const SaveControlSize = Command.define("SaveControlSize", {
-  args: { controlSize: ControlSize },
-  messages: [Message.ControlSizeSaveFinished],
-  execute: ({ controlSize }) =>
+const SaveControlSize = Command.make(
+  "SaveControlSize",
+  { args: { controlSize: ControlSize } },
+  ({ controlSize }) =>
     Effect.map(changeControlSize(controlSize), (saved) =>
       Message.ControlSizeSaveFinished({ controlSize, saved }),
     ),
-});
+);
 
-const NavigateExternal = Command.define("NavigateExternal", {
-  args: { href: Schema.String },
-  messages: [Message.Navigated],
-  execute: ({ href }) => Effect.map(Navigation.load(href), () => Message.Navigated()),
-});
+const GeneratePlaceholderName = Command.make("GeneratePlaceholderName", { args: {} }, () =>
+  Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
+);
 
-const GeneratePlaceholderName = Command.define("GeneratePlaceholderName", {
-  messages: [Message.GotPlaceholderName],
-  execute: Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
-});
+const ReplyToAgent = Command.make(
+  "ReplyToAgent",
+  { args: { reply: AgentPortReply } },
+  ({ reply }) =>
+    Effect.gen(function* () {
+      const bridge = yield* CurrentAgentBridge;
+      yield* bridge.reply(reply);
+      return Component.noop;
+    }),
+);
 
-const ReplyToAgent = Command.define("ReplyToAgent", {
-  args: { reply: AgentPortReply },
-  messages: [Message.CompletedReplyToAgent],
-  execute: ({ reply }) =>
-    Port.emit(agentPorts.outbound.agentReply, reply).pipe(
-      Effect.as(Message.CompletedReplyToAgent()),
-    ),
-});
+// ── Session planner bridge (pure reducer → Effect UI commands) ─────────────
 
-// ── Session planner bridge (pure reducer → FoldKit commands) ─────────────
-
-const emissionToCommand = (emission: SessionEmission): Update.Commands<Message, AppServices> =>
+const emissionToCommand = (emission: SessionEmission): ReadonlyArray<AppCommand> =>
   Match.valueTags(emission, {
-    CommitFieldValues: ({ writes }) => [UpdateFieldValues({ writes })],
-    CommitCounterAdjustment: ({ taskFieldId, delta }) => [AdjustCounter({ taskFieldId, delta })],
-    CommitRecord: ({ sessionId, taskId }) => [RecordTask({ sessionId, currentTaskId: taskId })],
-    ConfirmRecorded: () => [VibrateRecorded()],
-    CommitSelectTask: ({ sessionId, taskId }) => [SelectTask({ sessionId, taskId })],
-    CommitCancelEdit: ({ taskId }) => [CancelEdit({ taskId })],
-    CommitSaveEdit: ({ taskId }) => [SaveEdit({ taskId })],
-    CommitEndSession: ({ sessionId }) => [EndSession({ sessionId })],
+    CommitFieldValues: ({ writes }) => [UpdateFieldValues.make({ writes })],
+    CommitCounterAdjustment: ({ taskFieldId, delta }) => [
+      AdjustCounter.make({ taskFieldId, delta }),
+    ],
+    CommitRecord: ({ sessionId, taskId }) => [
+      RecordTask.make({ sessionId, currentTaskId: taskId }),
+    ],
+    ConfirmRecorded: () => [VibrateRecorded.make({})],
+    CommitSelectTask: ({ sessionId, taskId }) => [SelectTask.make({ sessionId, taskId })],
+    CommitCancelEdit: ({ taskId }) => [CancelEdit.make({ taskId })],
+    CommitSaveEdit: ({ taskId }) => [SaveEdit.make({ taskId })],
+    CommitEndSession: ({ sessionId }) => [EndSession.make({ sessionId })],
   });
 
 /** Plan a session event; merge the result into model + commands. */
-const applyPlan = (
-  model: Model,
-  event: SessionEvent,
-): Update.Return<Model, Message, AppServices> => {
+const applyPlan = (model: Model, event: SessionEvent): UpdateResult<Model> => {
   const plan = planSession({ runner: model.runner, now: model.now }, event);
   // The planner returns the same runner reference for events that don't apply.
   if (plan.runner === model.runner && plan.emissions.length === 0) return { model };
@@ -153,7 +138,6 @@ const applyPlan = (
 export {
   ApplyColorScheme,
   GeneratePlaceholderName,
-  NavigateExternal,
   NavigateInternal,
   ReplyToAgent,
   SaveAccent,

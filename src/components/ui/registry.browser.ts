@@ -1,9 +1,10 @@
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { afterEach, expect, it } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
-import { Option, Schema } from "effect";
-import { Runtime } from "foldkit";
-import type { Html, HtmlBuilder } from "foldkit/html";
-import * as RadioGroup from "./radio-group";
+import { BrowserHost, Html } from "@effect/ui/html";
+import { Effect, Exit, Option, Schema, Scope } from "effect";
+import type { H, Ui } from "@/lib/view";
+import { radioGroup } from "./radio-group";
 import { notice } from "../app/feedback";
 import { input } from "./input";
 import { checkbox } from "./checkbox";
@@ -12,39 +13,36 @@ import { spinner } from "./spinner";
 import { foldcnStyles, setCurrentStyle } from "@/web/style";
 import "../../index.css";
 
-const Model = Schema.Struct({ radio: RadioGroup.Model, selected: Schema.String });
-type Model = typeof Model.Type;
-const group = RadioGroup.create();
-let handle: ReturnType<typeof Runtime.embed> | undefined;
+/** Messages are the selected radio value, or "noop" for inert actions. */
+type Model = Readonly<{ selected: string }>;
+let scope: Scope.Closeable | undefined;
 let container: HTMLDivElement | undefined;
-const update = (model: Model, message: RadioGroup.Message) => {
-  const next = group.update(model.radio, message);
-  return {
-    model: { radio: next.model, selected: next.outMessage?.value ?? model.selected },
-    commands: next.commands,
-  };
-};
-const mount = (view: (model: Model, h: HtmlBuilder<RadioGroup.Message>) => Html) => {
+
+const mount = async (view: (model: Model, h: H<string>) => Ui) => {
   container = document.createElement("div");
-  container.id = `registry-${crypto.randomUUID()}`;
   container.className = "p-4";
   document.body.append(container);
   const target = document.createElement("div");
-  target.id = `${container.id}-root`;
   container.append(target);
-  handle = Runtime.embed(
-    Runtime.makeElement({
-      Model,
-      container: target,
-      init: () => ({ model: { radio: RadioGroup.init({ id: "choices" }), selected: "Observe" } }),
-      update,
-      view,
-    }),
+  const Registry = Html.component({
+    name: "Registry",
+    model: Schema.Struct({ selected: Schema.String }),
+    message: Schema.String,
+  }).make({
+    init: () => ({ selected: "Observe" }),
+    update: ($, message) => (message === "noop" ? $.model : { selected: message }),
+    view: (h, model) => h.div.children(view(model, h)),
+  });
+  const opened = Scope.makeUnsafe();
+  scope = opened;
+  await Effect.runPromise(
+    BrowserHost.mountEffect(Registry, {}, target).pipe(Scope.provide(opened)),
   );
 };
 
 afterEach(async () => {
-  handle?.dispose();
+  if (scope !== undefined) await Effect.runPromise(Scope.close(scope, Exit.void));
+  scope = undefined;
   container?.remove();
   document.documentElement.classList.remove("dark");
   await setCurrentStyle("nova");
@@ -53,9 +51,8 @@ afterEach(async () => {
 it.each(foldcnStyles)("%s fieldset labels reflect native disabled state", async (style) => {
   await page.viewport(390, 844);
   await setCurrentStyle(style);
-  mount((_, h) =>
-    h.div(
-      [h.Class("space-y-6")],
+  await mount((_, h) =>
+    h.div.class("space-y-6").children(
       [false, true].map((isDisabled) =>
         fieldset(
           {
@@ -63,8 +60,8 @@ it.each(foldcnStyles)("%s fieldset labels reflect native disabled state", async 
             legend: isDisabled ? "Disabled fields" : "Enabled fields",
             isDisabled,
             children: [
-              label({}, ["Observer", h.input([h.Type("text")])], h),
-              fieldLabel({}, ["Notes", h.input([h.Type("text")])], h),
+              label({}, ["Observer", h.input.attr("type", "text")], h),
+              fieldLabel({}, ["Notes", h.input.attr("type", "text")], h),
             ],
           },
           h,
@@ -94,26 +91,22 @@ it.each(["default", "field", "choice-card"] as const)(
   "%s radios preserve descriptions, invalid/disabled states and keyboard selection",
   async (optionLayout) => {
     await page.viewport(390, 844);
-    mount((model, h) =>
-      h.submodel({
-        slotId: "choices",
-        model: model.radio,
-        view: group.view,
-        toParentMessage: (message) => message,
-        viewInputs: RadioGroup.styledViewInputs(
-          {
-            options: ["Unavailable", "Observe", "Assist"],
-            selectedValue: Option.some(model.selected),
-            ariaLabel: "Activity",
-            name: "activity",
-            optionLayout,
-            isInvalid: true,
-            isOptionDisabled: (value) => value === "Unavailable",
-            optionDescription: (value) => `${value} description`,
-          },
-          h,
-        ),
-      }),
+    await mount((model, h) =>
+      radioGroup(
+        {
+          id: "choices",
+          options: ["Unavailable", "Observe", "Assist"],
+          selectedValue: Option.some(model.selected),
+          onSelect: (value) => value,
+          ariaLabel: "Activity",
+          name: "activity",
+          optionLayout,
+          isInvalid: true,
+          isOptionDisabled: (value) => value === "Unavailable",
+          optionDescription: (value) => `${value} description`,
+        },
+        h,
+      ),
     );
     const disabled = page.getByRole("radio", { name: "Unavailable", exact: true });
     const observe = page.getByRole("radio", { name: "Observe", exact: true });
@@ -127,9 +120,9 @@ it.each(["default", "field", "choice-card"] as const)(
     await userEvent.keyboard("{ArrowDown}");
     await expect.element(assist).toBeChecked();
     await expect.element(assist).toHaveFocus();
-    expect(container!.querySelector<HTMLInputElement>('input[name="activity"]')!.value).toBe(
-      "Assist",
-    );
+    expect(
+      container!.querySelector<HTMLInputElement>('input[name="activity"]:checked')!.value,
+    ).toBe("Assist");
     await userEvent.keyboard("{ArrowDown}");
     await expect.element(observe).toHaveFocus();
     expect(container!.scrollWidth).toBeLessThanOrEqual(390);
@@ -144,49 +137,46 @@ it.each([
   await page.viewport(width, 900);
   await setCurrentStyle(style);
   document.documentElement.classList.toggle("dark", dark);
-  mount((_, h) =>
-    h.div(
-      [h.Class("mx-auto max-w-xl space-y-6 bg-background p-4 text-foreground")],
-      [
-        notice({ tone: "info", text: "Observations stay on this device." }, h),
-        notice(
-          {
-            tone: "error",
-            text: "Could not save this observation. Check available storage and try again.",
-            onDismiss: RadioGroup.Message.CompletedFocusOption(),
-          },
-          h,
-        ),
-        input(
-          { id: "observer", label: "Observer", description: "Use an anonymous observer code." },
-          h,
-        ),
-        fieldset(
-          {
-            id: "options",
-            legend: "Options",
-            description: "Choose how to record.",
-            children: [
-              checkbox(
-                {
-                  id: "required",
-                  label: "Required",
-                  description: "Answer before recording.",
-                  isChecked: true,
-                  onToggle: () => RadioGroup.Message.CompletedFocusOption(),
-                },
-                h,
-              ),
-            ],
-          },
-          h,
-        ),
-        h.p(
-          [h.Role("status"), h.Class("flex items-center gap-2")],
-          [spinner({}, h), "Loading session…"],
-        ),
-      ],
-    ),
+  await mount((_, h) =>
+    h.div.class("mx-auto max-w-xl space-y-6 bg-background p-4 text-foreground").children([
+      notice({ tone: "info", text: "Observations stay on this device." }, h),
+      notice(
+        {
+          tone: "error",
+          text: "Could not save this observation. Check available storage and try again.",
+          onDismiss: "noop",
+        },
+        h,
+      ),
+      input(
+        { id: "observer", label: "Observer", description: "Use an anonymous observer code." },
+        h,
+      ),
+      fieldset(
+        {
+          id: "options",
+          legend: "Options",
+          description: "Choose how to record.",
+          children: [
+            checkbox(
+              {
+                id: "required",
+                label: "Required",
+                description: "Answer before recording.",
+                isChecked: true,
+                onToggle: () => "noop",
+              },
+              h,
+            ),
+          ],
+        },
+        h,
+      ),
+      h.p
+        .attr("role", "status")
+        .class("flex items-center gap-2")
+        .children(spinner({}, h), "Loading session…"),
+    ]),
   );
   await expect
     .element(page.getByRole("textbox", { name: "Observer" }))

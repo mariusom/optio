@@ -1,5 +1,5 @@
 import { Array, Option } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import {
   ChartBar,
@@ -49,25 +49,22 @@ type TemplatesModel = {
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
 
 /** Phones hide the count columns; the name cell repeats them under the name. */
-const nameCell = (template: TemplateSummary, h: HtmlBuilder<Message>) =>
-  h.span(
-    [h.Class("flex min-w-0 flex-col items-start gap-0.5")],
-    [
-      h.span(
-        [h.Class("flex max-w-full min-w-0 items-center gap-2")],
-        [
-          h.span([h.Class("truncate")], [template.name]),
-          ...(template.isDefault ? [statusPill({ tone: "primary" }, ["Default"], h)] : []),
-        ],
-      ),
-      h.span(
-        [h.Class("truncate text-xs font-normal text-muted-foreground sm:hidden")],
-        [questionSummaryLine(template.fieldCount, template.requiredCount)],
-      ),
-    ],
-  );
+const nameCell = (template: TemplateSummary, h: H<Message>) =>
+  h.span
+    .class("flex min-w-0 flex-col items-start gap-0.5")
+    .children(
+      h.span
+        .class("flex max-w-full min-w-0 items-center gap-2")
+        .children(
+          h.span.class("truncate").children(template.name),
+          template.isDefault ? [statusPill({ tone: "primary" }, ["Default"], h)] : [],
+        ),
+      h.span
+        .class("truncate text-xs font-normal text-muted-foreground sm:hidden")
+        .children(questionSummaryLine(template.fieldCount, template.requiredCount)),
+    );
 
-const templatesGrid = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
+const templatesGrid = (model: TemplatesModel, h: H<Message>) =>
   dataGrid(
     {
       id: "templates",
@@ -123,13 +120,13 @@ const templatesGrid = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
     h,
   );
 
-const addSamplesButton = (h: HtmlBuilder<Message>) =>
+const addSamplesButton = (h: H<Message>) =>
   button(
     {
       variant: "link",
       className: "mx-auto",
       onClick: Message.ClickedAddSampleTemplates(),
-      attributes: [h.AriaLabel("Add sample templates")],
+      attrs: { "aria-label": "Add sample templates" },
     },
     "Add sample templates",
     h,
@@ -138,11 +135,7 @@ const addSamplesButton = (h: HtmlBuilder<Message>) =>
 // ── Sheets ─────────────────────────────────────────────────────────────────
 
 /** Starts a session with this template, or resumes the one already running. */
-const startAction = (
-  template: TemplateSummary,
-  liveSession: ActiveSession | null,
-  h: HtmlBuilder<Message>,
-) =>
+const startAction = (template: TemplateSummary, liveSession: ActiveSession | null, h: H<Message>) =>
   liveSession === null
     ? [
         sheetAction(
@@ -163,18 +156,17 @@ const startAction = (
           },
           h,
         ),
-        h.p(
-          [h.Class("-mt-1 pb-1 pl-7 text-xs text-muted-foreground")],
-          [
+        h.p
+          .class("-mt-1 pb-1 pl-7 text-xs text-muted-foreground")
+          .children(
             `“${displaySessionName(liveSession.sessionName, liveSession.templateName)}” is still recording. End it to start another session.`,
-          ],
-        ),
+          ),
       ];
 
 const actionsSheet = (
   template: TemplateSummary,
   liveSession: ActiveSession | null,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) =>
   sheet(
     {
@@ -187,57 +179,51 @@ const actionsSheet = (
       },
     },
     [
-      h.div(
-        [h.Class("flex flex-col gap-1")],
-        [
-          ...startAction(template, liveSession, h),
-          ...(template.isDefault
-            ? []
-            : [
-                sheetAction(
-                  {
-                    label: "Set as default",
-                    leading: icon(h, Star),
-                    onClick: Message.ClickedSetDefaultTemplate({ id: template.id }),
-                  },
-                  h,
-                ),
-              ]),
-          sheetAction(
-            {
-              label: "Time report",
-              leading: icon(h, ChartBar),
-              onClick: Message.OpenedTemplateReport({ id: template.id }),
-            },
-            h,
-          ),
-          sheetAction(
-            {
-              label: "Duplicate",
-              leading: icon(h, Copy),
-              onClick: Message.ClickedDuplicateTemplate({ id: template.id }),
-            },
-            h,
-          ),
-          sheetAction(
-            {
-              label: "Delete",
-              leading: icon(h, Trash2),
-              destructive: true,
-              onClick: Message.RequestedDeleteTemplate({ id: template.id, name: template.name }),
-            },
-            h,
-          ),
-        ],
+      h.div.class("flex flex-col gap-1").children(
+        startAction(template, liveSession, h),
+        template.isDefault
+          ? []
+          : [
+              sheetAction(
+                {
+                  label: "Set as default",
+                  leading: icon(h, Star),
+                  onClick: Message.ClickedSetDefaultTemplate({ id: template.id }),
+                },
+                h,
+              ),
+            ],
+        sheetAction(
+          {
+            label: "Time report",
+            leading: icon(h, ChartBar),
+            onClick: Message.OpenedTemplateReport({ id: template.id }),
+          },
+          h,
+        ),
+        sheetAction(
+          {
+            label: "Duplicate",
+            leading: icon(h, Copy),
+            onClick: Message.ClickedDuplicateTemplate({ id: template.id }),
+          },
+          h,
+        ),
+        sheetAction(
+          {
+            label: "Delete",
+            leading: icon(h, Trash2),
+            destructive: true,
+            onClick: Message.RequestedDeleteTemplate({ id: template.id, name: template.name }),
+          },
+          h,
+        ),
       ),
     ],
     h,
   );
 
-const deleteSheet = (
-  pending: { readonly id: string; readonly name: string },
-  h: HtmlBuilder<Message>,
-) =>
+const deleteSheet = (pending: { readonly id: string; readonly name: string }, h: H<Message>) =>
   confirmSheet(
     {
       id: "delete-template",
@@ -255,7 +241,7 @@ const deleteSheet = (
 
 // ── Public entry ───────────────────────────────────────────────────────────
 
-export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) => {
+export const templatesPage = (model: TemplatesModel, h: H<Message>) => {
   const openFor =
     model.templateActionsFor === undefined || model.templateActionsFor === null
       ? null
@@ -274,25 +260,22 @@ export const templatesPage = (model: TemplatesModel, h: HtmlBuilder<Message>) =>
             icon: LayoutTemplate,
             title: "No templates yet",
             description: "A template is the short list of questions you answer for each task.",
-            action: h.div(
-              [h.Class("flex flex-col items-center gap-1")],
-              [
-                button(
-                  {
-                    size: "lg",
-                    onClick: Message.ClickedNewTemplate(),
-                    attributes: [h.AriaLabel("Create template")],
-                  },
-                  "Create template",
-                  h,
-                ),
-                addSamplesButton(h),
-              ],
+            action: h.div.class("flex flex-col items-center gap-1").children(
+              button(
+                {
+                  size: "lg",
+                  onClick: Message.ClickedNewTemplate(),
+                  attrs: { "aria-label": "Create template" },
+                },
+                "Create template",
+                h,
+              ),
+              addSamplesButton(h),
             ),
           },
           h,
         )
-      : h.div([h.Class("flex flex-col gap-3")], [templatesGrid(model, h), addSamplesButton(h)]);
+      : h.div.class("flex flex-col gap-3").children(templatesGrid(model, h), addSamplesButton(h));
 
   return page(
     { wide: true },

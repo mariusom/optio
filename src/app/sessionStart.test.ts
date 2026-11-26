@@ -1,16 +1,11 @@
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { init, update } from "../main";
 import { Message } from "../messages";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
-
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 const start = {
-  ...init(Option.getOrThrow(fromString("https://optio.test/#/start"))).model,
+  ...init("#/start").model,
   sessionNameInput: "Race B",
 };
 

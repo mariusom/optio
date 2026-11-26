@@ -2,9 +2,8 @@ import { Effect } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import { afterEach, beforeEach, vi } from "vite-plus/test";
 
-import { appServices } from "../../../app/services";
-import { getStore, type AppStore } from "../../../livestore/client";
-import { events } from "../../../livestore/schema";
+import { getStore, type AppStore } from "../../../store/client";
+import { events } from "../../../store/schema";
 import { Message } from "../../../messages";
 import { SaveTemplate } from "./editorCommands";
 import {
@@ -15,7 +14,7 @@ import {
   sampleTemplates,
 } from "./commands";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
 const query = vi.fn();
 const commit = vi.fn();
@@ -24,6 +23,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => {});
   query.mockReturnValue([]);
+  commit.mockReturnValue(Effect.void);
   vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 });
 
@@ -34,42 +34,44 @@ const seededTemplates = () => commit.mock.calls[0]?.[0]?.args?.templates ?? [];
 describe.each([
   [
     "create",
-    () => CreateTemplate({ id: "new", name: "Study" }),
+    () => CreateTemplate.make({ id: "new", name: "Study" }),
     Message.TemplateCreated(),
     "Couldn't create that. Please try again.",
   ],
   [
     "set default",
-    () => SetDefaultTemplate({ id: "existing" }),
+    () => SetDefaultTemplate.make({ id: "existing" }),
     Message.TemplateOpDone(),
     "Couldn't save that. Please try again.",
   ],
   [
     "seed",
-    () => EnsureTemplatesSeeded(),
+    () => EnsureTemplatesSeeded.make({}),
     Message.TemplatesSeededCheck(),
     "Couldn't create that. Please try again.",
   ],
   [
     "add samples",
-    () => AddSampleTemplates(),
+    () => AddSampleTemplates.make({}),
     Message.SampleTemplatesAdded(),
     "Couldn't create that. Please try again.",
   ],
 ] as const)("%s template persistence", (_name, command, success, failure) => {
   it.effect("reports success only after committing", () =>
     Effect.gen(function* () {
-      expect(yield* command().effect).toEqual(success);
+      const message = yield* command().effect;
+      expect(message).toEqual(success);
       expect(commit).toHaveBeenCalledOnce();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("reports a rejected store open in plain language, never a stack trace", () =>
     Effect.gen(function* () {
       vi.mocked(getStore).mockRejectedValue(new Error("Store unavailable"));
-      expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
+      const message = yield* command().effect;
+      expect(message).toEqual(Message.FailedTemplateOp({ error: failure }));
       expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("reports a synchronous persistence failure in plain language", () =>
@@ -77,8 +79,9 @@ describe.each([
       commit.mockImplementation(() => {
         throw new Error("Persistence failed");
       });
-      expect(yield* command().effect).toEqual(Message.FailedTemplateOp({ error: failure }));
-    }).pipe(Effect.provide(appServices)),
+      const message = yield* command().effect;
+      expect(message).toEqual(Message.FailedTemplateOp({ error: failure }));
+    }),
   );
 });
 
@@ -100,15 +103,14 @@ describe("CreateTemplate", () => {
             exclusiveOptions: [],
           },
         ];
-        expect(
-          yield* SaveTemplate({
-            id: "new",
-            name: "  Study  ",
-            isNew: true,
-            isDefault: false,
-            fields,
-          }).effect,
-        ).toEqual(Message.TemplateSaved());
+        const message = yield* SaveTemplate.make({
+          id: "new",
+          name: "  Study  ",
+          isNew: true,
+          isDefault: false,
+          fields,
+        }).effect;
+        expect(message).toEqual(Message.TemplateSaved());
         expect(commit).toHaveBeenCalledExactlyOnceWith(
           {
             name: "v3.TemplateCreated",
@@ -127,9 +129,8 @@ describe("CreateTemplate", () => {
     "trims the committed name while reporting success and making the first template default",
     () =>
       Effect.gen(function* () {
-        expect(yield* CreateTemplate({ id: "new", name: "  Study  " }).effect).toEqual(
-          Message.TemplateCreated(),
-        );
+        const message = yield* CreateTemplate.make({ id: "new", name: "  Study  " }).effect;
+        expect(message).toEqual(Message.TemplateCreated());
         expect(commit).toHaveBeenCalledWith({
           name: "v3.TemplateCreated",
           args: { id: "new", name: "Study", isDefault: true, now: expect.any(Date) },
@@ -176,39 +177,42 @@ describe("sampleTemplates", () => {
 
 describe("template queries", () => {
   it.effect.each([
-    () => CreateTemplate({ id: "new", name: "Study" }),
-    () => EnsureTemplatesSeeded(),
-    () => AddSampleTemplates(),
+    () => CreateTemplate.make({ id: "new", name: "Study" }),
+    () => EnsureTemplatesSeeded.make({}),
+    () => AddSampleTemplates.make({}),
   ])("reports query failures without committing", (command) =>
     Effect.gen(function* () {
       query.mockImplementation(() => {
         throw new Error("Query failed");
       });
-      expect(yield* command().effect).toMatchObject({
+      const message = yield* command().effect;
+      expect(message).toMatchObject({
         _tag: "FailedTemplateOp",
       });
       expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("seeds the four sample templates when the app is empty", () =>
     Effect.gen(function* () {
-      expect(yield* EnsureTemplatesSeeded().effect).toEqual(Message.TemplatesSeededCheck());
+      const message = yield* EnsureTemplatesSeeded.make({}).effect;
+      expect(message).toEqual(Message.TemplatesSeededCheck());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Ward round",
         "Warehouse pick",
         "Packing measurements",
       ]);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("skips seeding when templates already exist", () =>
     Effect.gen(function* () {
       query.mockReturnValue([{ id: "existing" }]);
-      expect(yield* EnsureTemplatesSeeded().effect).toEqual(Message.TemplatesSeededCheck());
+      const message = yield* EnsureTemplatesSeeded.make({}).effect;
+      expect(message).toEqual(Message.TemplatesSeededCheck());
       expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 });
 
@@ -216,14 +220,15 @@ describe("AddSampleTemplates", () => {
   it.effect("adds only the samples whose names are missing and keeps the current default", () =>
     Effect.gen(function* () {
       query.mockReturnValue([{ name: "Ward round" }, { name: "My own study" }]);
-      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
+      const message = yield* AddSampleTemplates.make({}).effect;
+      expect(message).toEqual(Message.SampleTemplatesAdded());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Warehouse pick",
         "Packing measurements",
       ]);
       expect(seededTemplates().every((t: { isDefault: boolean }) => !t.isDefault)).toBe(true);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("commits nothing when every sample is already there", () =>
@@ -231,20 +236,22 @@ describe("AddSampleTemplates", () => {
       query.mockReturnValue(
         sampleTemplates(() => crypto.randomUUID()).map((template) => ({ name: template.name })),
       );
-      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
+      const message = yield* AddSampleTemplates.make({}).effect;
+      expect(message).toEqual(Message.SampleTemplatesAdded());
       expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("makes the first sample the default when the app has no templates", () =>
     Effect.gen(function* () {
-      expect(yield* AddSampleTemplates().effect).toEqual(Message.SampleTemplatesAdded());
+      const message = yield* AddSampleTemplates.make({}).effect;
+      expect(message).toEqual(Message.SampleTemplatesAdded());
       expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
         true,
         false,
         false,
         false,
       ]);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 });

@@ -1,33 +1,31 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
-import { Scene } from "foldkit/test";
-import { describe, expect, it } from "vite-plus/test";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
+import { Html } from "@effect/ui/html";
+import { HtmlScene } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { assert, describe, it } from "@effect/vitest";
+import { Effect, Schema } from "effect";
 
+import type { H, Ui } from "@/lib/view";
 import { planSession } from "../../../machine/session/sessionMachine";
 import { Message } from "../../../messages";
 import type { RunnerData, RunnerState } from "./runner";
 import { sessionTimerView } from "./runnerStatus";
 
-const render = (view: (h: HtmlBuilder<Message>) => Html): Html => {
-  let rendered: Html = null;
-  Scene.scene(
-    { update: (model: null, _message: Message) => ({ model }), view: (_model: null, h) => view(h) },
-    Scene.given(null),
-    (simulation: Scene.SceneSimulation<null, Message>) => {
-      rendered = simulation.html;
-      return simulation;
-    },
-  );
-  return rendered;
-};
-
-const text = (node: Html | string): string => {
-  if (typeof node === "string") return node;
-  if (node === null) return "";
-  return [node.text ?? "", ...(node.children ?? []).map((child) => text(child as Html | string))]
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-};
+/** The rendered text of a fixed view, words joined by single spaces. */
+const renderedText = (view: (h: H<Message>) => Ui) =>
+  Effect.gen(function* () {
+    const Static = Html.component({ name: "Static", model: Schema.Null, message: Message }).make({
+      init: () => null,
+      update: ($) => $.model,
+      view: (h) => view(h),
+    });
+    const s = yield* HtmlScene.make(Static, {});
+    const words = (node: Locator.Node): string =>
+      node.tag === undefined && node.text !== undefined
+        ? node.text
+        : (node.children ?? []).map(words).join(" ");
+    return words(s.root).replace(/\s+/g, " ").trim();
+  });
 
 const startedAt = 1_700_000_000_000;
 const data = (firstAnswerAt: number | null): RunnerData => ({
@@ -67,13 +65,19 @@ const runnerAt = (firstAnswerAt: number | null, now: number): RunnerState =>
     .runner as RunnerState;
 
 describe("runner clock", () => {
-  it("reads 00:00 for a task with no answer yet, not the session's time", () => {
-    const clock = text(render((h) => sessionTimerView(runnerAt(null, startedAt + 95_000), h)));
-    expect(clock).toBe("Task 2 00:00");
-  });
+  it.effect("reads 00:00 for a task with no answer yet, not the session's time", () =>
+    Effect.gen(function* () {
+      const runner = runnerAt(null, startedAt + 95_000);
+      const text = yield* renderedText((h) => sessionTimerView(runner, h));
+      assert.strictEqual(text, "Task 2 00:00");
+    }),
+  );
 
-  it("times the task from its first answer", () => {
-    const runner = runnerAt(startedAt + 60_000, startedAt + 95_000);
-    expect(text(render((h) => sessionTimerView(runner, h)))).toBe("Task 2 00:35");
-  });
+  it.effect("times the task from its first answer", () =>
+    Effect.gen(function* () {
+      const runner = runnerAt(startedAt + 60_000, startedAt + 95_000);
+      const text = yield* renderedText((h) => sessionTimerView(runner, h));
+      assert.strictEqual(text, "Task 2 00:35");
+    }),
+  );
 });

@@ -1,18 +1,9 @@
-import { Option, pipe, Schema, String } from "effect";
-import {
-  defineRouteUnion,
-  literal,
-  mapTo,
-  oneOf,
-  parseUrlWithFallback,
-  slash,
-  string,
-} from "foldkit/route";
-import type { Url } from "foldkit/url";
+import { UiSchema } from "@effect/ui";
+import { Array, Schema, String, pipe } from "effect";
 
 // ROUTE VALUES — tagged schemas, usable as Model fields and Message payloads
 
-export const RouteSchema = defineRouteUnion({
+export const RouteSchema = UiSchema.TaggedEnum({
   StartTab: {},
   HistoryTab: {},
   TemplatesTab: {},
@@ -29,70 +20,62 @@ export const { StartTab, HistoryTab, TemplatesTab, SessionRunner, TemplateEditor
 
 export type Route = typeof RouteSchema.Type;
 
-// ROUTERS — bidirectional: parse URL segments AND build href strings
+// PARSE — the URL fragment (hash-driven; offline/GH-Pages friendly) → Route
 
-const startRouter = mapTo(StartTab)(literal("start"));
-const settingsRouter = mapTo(RouteSchema.SettingsTab)(literal("settings"));
-const agentHelpRouter = mapTo(RouteSchema.AgentHelp)(literal("use-with-ai"));
-const aboutRouter = mapTo(RouteSchema.About)(literal("about"));
-export const historyRouter = mapTo(HistoryTab)(literal("history"));
-export const templatesRouter = mapTo(TemplatesTab)(literal("templates"));
-export const sessionRunnerRouter = pipe(
-  literal("session"),
-  slash(string("sessionId")),
-  mapTo(SessionRunner),
-);
-export const templateEditorRouter = pipe(
-  literal("templates"),
-  slash(string("templateId")),
-  mapTo(TemplateEditor),
-);
-export const sessionDetailRouter = pipe(
-  literal("history"),
-  slash(string("sessionId")),
-  mapTo(SessionDetail),
-);
+/**
+ * Parse a URL fragment such as `#/history/s-9` into a Route. Empty segments
+ * are ignored, IDs keep their encoding, and anything unrecognized lands on Start.
+ */
+export const parseRoute = (hash: string): Route => {
+  const segments = pipe(
+    hash,
+    String.replace(/^#/, ""),
+    String.split("/"),
+    Array.filter(String.isNonEmpty),
+  );
+  const [first, id, ...rest] = segments;
+  if (rest.length > 0) return StartTab();
+  if (id === undefined) {
+    switch (first) {
+      case "settings":
+        return RouteSchema.SettingsTab();
+      case "use-with-ai":
+        return RouteSchema.AgentHelp();
+      case "about":
+        return RouteSchema.About();
+      case "history":
+        return HistoryTab();
+      case "templates":
+        return TemplatesTab();
+      default:
+        return StartTab();
+    }
+  }
+  switch (first) {
+    case "session":
+      return SessionRunner({ sessionId: id });
+    case "templates":
+      return TemplateEditor({ templateId: id });
+    case "history":
+      return SessionDetail({ sessionId: id });
+    default:
+      return StartTab();
+  }
+};
 
-const router = oneOf(
-  settingsRouter,
-  agentHelpRouter,
-  aboutRouter,
-  startRouter,
-  historyRouter,
-  templatesRouter,
-  sessionRunnerRouter,
-  templateEditorRouter,
-  sessionDetailRouter,
-);
-
-// PARSE — Url (hash-driven; offline/GH-Pages friendly) → Route
-
-const parsePath = parseUrlWithFallback(router, { make: () => StartTab() });
-
-/** Parse a foldkit Url into a Route; anything unrecognized lands on Start. */
-export const parseRoute = (url: Url): Route =>
-  parsePath({
-    ...url,
-    pathname: pipe(
-      Option.getOrElse(url.hash, () => ""),
-      String.replace(/^#/, ""),
-    ),
-    search: Option.none(),
-  });
-
-// PRINT — Route → href string for anchors
+// PRINT — Route → href string for anchors and navigation
 
 export const hrefFor = (route: Route): string =>
   `#${RouteSchema.match(route, {
-    AgentHelp: () => agentHelpRouter(),
-    About: () => aboutRouter(),
-    SettingsTab: () => settingsRouter(),
-    HistoryTab: () => historyRouter(),
-    TemplatesTab: () => templatesRouter(),
-    SessionRunner: ({ sessionId }) => sessionRunnerRouter({ sessionId }),
-    TemplateEditor: ({ templateId }) => templateEditorRouter({ templateId }),
-    SessionDetail: ({ sessionId }) => sessionDetailRouter({ sessionId }),
-    StartTab: () => startRouter(),
+    AgentHelp: () => "/use-with-ai",
+    About: () => "/about",
+    SettingsTab: () => "/settings",
+    HistoryTab: () => "/history",
+    TemplatesTab: () => "/templates",
+    SessionRunner: ({ sessionId }) => `/session/${sessionId}`,
+    TemplateEditor: ({ templateId }) => `/templates/${templateId}`,
+    SessionDetail: ({ sessionId }) => `/history/${sessionId}`,
+    StartTab: () => "/start",
   })}`;
 
 /** Routes where the bottom tab bar is hidden (full-screen pages). */

@@ -1,38 +1,25 @@
-import { Dialog as FoldkitDialog } from "@foldkit/ui";
-import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { Button } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
-// Re-export the @foldkit/ui Dialog submodel surface. An alert dialog is a
-// Dialog variant: same headless behavior, destructive-confirm styling.
+// An alert dialog is a modal native <dialog> with destructive-confirm styling
+// and role="alertdialog". Plain Effect UI view: the caller's Model owns
+// `isOpen`.
 //
-// foldcn gaps vs upstream: no Media part slot wiring in styledViewInputs
-// (use AlertDialog.media inside content), and Action/Cancel compose Button
-// tokens instead of rendering the Button component.
+// foldcn gaps vs upstream: no Media part slot wiring in `view` (use
+// AlertDialog.media inside content), and Action/Cancel compose Button tokens
+// instead of rendering the Button component.
 
-export const Model = FoldkitDialog.Model;
-export type Model = typeof Model.Type;
+/** The alert dialog's title element id, derived from its base id. */
+export const titleId = (id: string): string => `${id}-dialog-title`;
 
-export const Message = FoldkitDialog.Message;
-export type Message = typeof Message.Type;
+/** The alert dialog's description element id, derived from its base id. */
+export const descriptionId = (id: string): string => `${id}-dialog-description`;
 
-export const OutMessage = FoldkitDialog.OutMessage;
-export type OutMessage = typeof OutMessage.Type;
-
-export const init = (config: InitConfig): Model =>
-  FoldkitDialog.init({ isAnimated: true, ...config });
-export const update = FoldkitDialog.update;
-export const open = FoldkitDialog.open;
-export const close = FoldkitDialog.close;
-export const titleId = FoldkitDialog.titleId;
-export const descriptionId = FoldkitDialog.descriptionId;
-export const view = FoldkitDialog.view;
-
-export type InitConfig = FoldkitDialog.InitConfig;
-export type RenderInfo = FoldkitDialog.RenderInfo;
-
-/** foldkit delta: host <dialog> element chrome (upstream Root renders
+/** Delta from upstream: host <dialog> element chrome (upstream Root renders
  *  nothing). See dialog.ts. */
 export const alertDialogClass = "bg-transparent p-0 open:flex items-center justify-center";
 
@@ -72,141 +59,92 @@ export const alertDialogActionClass =
 export const alertDialogCloseButtonClass =
   "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 active:not-aria-[haspopup]:translate-y-px [&_svg:not([class*='size-'])]:size-4 group/button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-all outline-none select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50 hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 aria-expanded:bg-muted aria-expanded:text-foreground size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg";
 
-type StyleConfig<M> = Readonly<{
+type StyleConfig = Readonly<{
   className?: string;
-  /** Submodel-provided attributes (from the `styledViewInputs` content
-   *  callback render bundle) to merge onto the element. */
-  attributes?: ReadonlyArray<Attribute<M> | ChildAttribute>;
+  /** Extra attributes on the element (ids, ARIA). */
+  attrs?: Readonly<Record<string, string | undefined>>;
 }>;
 
+type ButtonConfig<M> = StyleConfig & Readonly<{ onClick?: M }>;
+
 /** Alert dialog header wrapper. */
-export const header = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.DataAttribute("slot", "alert-dialog-header"),
-      h.Class(cn(alertDialogHeaderClass, config.className)),
-    ],
-    children,
-  );
+export const header = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "alert-dialog-header" })
+    .class(cn(alertDialogHeaderClass, config.className))
+    .children(children);
 
 /** Media slot — icon/media area above the title (upstream AlertDialogMedia). */
-export const media = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.DataAttribute("slot", "alert-dialog-media"),
-      h.Class(cn(alertDialogMediaClass, config.className)),
-    ],
-    children,
-  );
+export const media = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "alert-dialog-media" })
+    .class(cn(alertDialogMediaClass, config.className))
+    .children(children);
 
-/** Alert dialog title — merges with the submodel's title attributes. */
-export const title = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.h2(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "alert-dialog-title"),
-      h.Class(cn(alertDialogTitleClass, config.className)),
-    ],
-    children,
-  );
+/** Alert dialog title — pass `attrs: { id: render.titleId }`. */
+export const title = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.h2
+    .attrs({ ...config.attrs, "data-slot": "alert-dialog-title" })
+    .class(cn(alertDialogTitleClass, config.className))
+    .children(children);
 
-/** Alert dialog description — merges with the submodel's description attributes. */
-export const description = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.p(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "alert-dialog-description"),
-      h.Class(cn(alertDialogDescriptionClass, config.className)),
-    ],
-    children,
-  );
+/** Alert dialog description — pass `attrs: { id: render.descriptionId }`. */
+export const description = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.p
+    .attrs({ ...config.attrs, "data-slot": "alert-dialog-description" })
+    .class(cn(alertDialogDescriptionClass, config.className))
+    .children(children);
 
 /** Alert dialog footer wrapper. */
-export const footer = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.DataAttribute("slot", "alert-dialog-footer"),
-      h.Class(cn(alertDialogFooterClass, config.className)),
-    ],
-    children,
-  );
+export const footer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "alert-dialog-footer" })
+    .class(cn(alertDialogFooterClass, config.className))
+    .children(children);
 
-/** Close button — merges with the submodel's closeButton attributes. */
+/** A footer button builder for one slot and its classes. */
+const dialogButton =
+  (slot: string, className: string) =>
+  <M>(config: ButtonConfig<M>, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+    Button(h, config.onClick === undefined ? {} : { onPress: config.onClick })
+      .attrs({ ...config.attrs, "data-slot": slot })
+      .class(cn(className, config.className))
+      .children(children);
+
+/** Close button on the @effect/ui-kit Button. */
 export const closeButton = <M>(
-  config: StyleConfig<M>,
+  config: ButtonConfig<M>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.button(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "alert-dialog-close"),
-      h.Class(cn(alertDialogCloseButtonClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui => dialogButton("alert-dialog-close", alertDialogCloseButtonClass)(config, children, h);
 
-/** Destructive action button. Pass the submodel's `closeButton` attributes
- *  via `attributes` so a confirm also dismisses the dialog. */
+/** Destructive action button. Its `onClick` should confirm and close. */
 export const actionButton = <M>(
-  config: StyleConfig<M>,
+  config: ButtonConfig<M>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.button(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "alert-dialog-action"),
-      h.Class(cn(alertDialogActionClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui => dialogButton("alert-dialog-action", alertDialogActionClass)(config, children, h);
 
 /** Secondary cancel button. */
 export const cancelButton = <M>(
-  config: StyleConfig<M>,
+  config: ButtonConfig<M>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.button(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "alert-dialog-cancel"),
-      h.Class(cn(alertDialogCancelClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui => dialogButton("alert-dialog-cancel", alertDialogCancelClass)(config, children, h);
 
-export type AlertDialogContent<M> = Readonly<{
-  closeButton: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  title: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  description: ReadonlyArray<Attribute<M> | ChildAttribute>;
-}>;
+/** Ids the content callback wires onto its title and description. */
+export type AlertDialogContent = Readonly<{ titleId: string; descriptionId: string }>;
 
-export type StyledViewInputs<M> = Readonly<{
-  /** Set when content renders the description element. */
+export type ViewConfig<M> = Readonly<{
+  /** DOM id of the <dialog>; the title and description ids derive from it. */
+  id: string;
+  /** Shows the alert dialog as a modal while true. */
+  isOpen: boolean;
+  /** Sent on a close request (Escape) or a backdrop tap. */
+  onClose?: M;
+  /** Set when content renders the description element; adds aria-describedby. */
   hasDescription?: boolean;
-  content: (render: AlertDialogContent<M>, h: HtmlBuilder<M>) => ReadonlyArray<Child>;
+  content: (render: AlertDialogContent, h: H<M>) => ReadonlyArray<Child>;
   className?: string;
   backdropClass?: string;
   panelClass?: string;
@@ -215,52 +153,35 @@ export type StyledViewInputs<M> = Readonly<{
   size?: "default" | "sm";
 }>;
 
-/** Build styled `Dialog.ViewInputs` for an alert dialog. Pass your view's `h`
- *  so the content callback can dispatch your own messages. */
-export const styledViewInputs = <M>(
-  viewInputs: StyledViewInputs<M>,
-  h: HtmlBuilder<M>,
-): FoldkitDialog.ViewInputs => ({
-  hasDescription: viewInputs.hasDescription,
-  toView: ({
-    dialog,
-    backdrop,
-    panel,
-    closeButton: closeAttributes,
-    title: titleAttributes,
-    description: descriptionAttributes,
-    isVisible,
-  }) =>
-    h.dialog(
-      [
-        ...dialog,
-        h.DataAttribute("slot", "alert-dialog"),
-        h.Class(cn(alertDialogClass, viewInputs.className)),
-      ],
-      isVisible
-        ? [
-            h.div([
-              ...backdrop,
-              h.DataAttribute("slot", "alert-dialog-overlay"),
-              h.Class(cn(alertDialogBackdropClass, viewInputs.backdropClass)),
-            ]),
-            h.div(
-              [
-                ...panel,
-                h.DataAttribute("slot", "alert-dialog-content"),
-                h.DataAttribute("size", viewInputs.size ?? "default"),
-                h.Class(cn(alertDialogPanelClass, viewInputs.panelClass)),
-              ],
-              viewInputs.content(
-                {
-                  closeButton: closeAttributes,
-                  title: titleAttributes,
-                  description: descriptionAttributes,
-                },
-                h,
-              ),
-            ),
-          ]
-        : [],
-    ),
-});
+/** Styled alert dialog on a native modal <dialog>. */
+export const view = <M>(config: ViewConfig<M>, h: H<M>): Ui => {
+  const render: AlertDialogContent = {
+    titleId: titleId(config.id),
+    descriptionId: descriptionId(config.id),
+  };
+  const dialog = h.dialog
+    .id(config.id)
+    .modal(config.isOpen)
+    .attrs({
+      role: "alertdialog",
+      "aria-labelledby": render.titleId,
+      "aria-describedby": config.hasDescription === true ? render.descriptionId : undefined,
+      "data-slot": "alert-dialog",
+    })
+    .class(cn(alertDialogClass, config.className));
+  const backdrop = h.div
+    .attr("data-slot", "alert-dialog-overlay")
+    .class(cn(alertDialogBackdropClass, config.backdropClass));
+  return (config.onClose === undefined ? dialog : dialog.on("cancel", config.onClose)).children(
+    config.isOpen
+      ? [
+          config.onClose === undefined ? backdrop : backdrop.on("click", config.onClose),
+          h.div
+            .attr("data-slot", "alert-dialog-content")
+            .attr("data-size", config.size ?? "default")
+            .class(cn(alertDialogPanelClass, config.panelClass))
+            .children(config.content(render, h)),
+        ]
+      : [],
+  );
+};

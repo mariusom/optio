@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import {
   confirmSheet as appConfirmSheet,
@@ -6,20 +6,18 @@ import {
   type ConfirmConfig,
   type SheetConfig,
 } from "@/components/app";
-import { Message } from "../messages";
+import type { Message } from "../messages";
 
 export { sheetAction } from "@/components/app";
 
-type Child = Html | string;
+type Child = Ui | string;
 
-/** App sheet: lifecycle acknowledgements go to the no-op `SettledSheet`. */
+/** App sheet, typed to the app's messages. */
 export const sheet = (
-  config: Omit<SheetConfig<Message>, "onSettled">,
+  config: SheetConfig<Message>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<Message>,
-): Html => appSheet({ ...config, onSettled: Message.SettledSheet() }, children, h);
+  h: H<Message>,
+): Ui => appSheet(config, children, h);
 
-export const confirmSheet = (
-  config: Omit<ConfirmConfig<Message>, "onSettled">,
-  h: HtmlBuilder<Message>,
-): Html => appConfirmSheet({ ...config, onSettled: Message.SettledSheet() }, h);
+export const confirmSheet = (config: ConfirmConfig<Message>, h: H<Message>): Ui =>
+  appConfirmSheet(config, h);

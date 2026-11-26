@@ -1,15 +1,13 @@
-import { Effect, Schema } from "effect";
-import { DEVTOOLS_HOST_ID } from "foldkit/devtools-host";
-import * as Dom from "foldkit/dom";
-import type { Html, HtmlBuilder } from "foldkit/html";
-import * as Mount from "foldkit/mount";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { Mount } from "@effect/ui";
+import { Effect, Schema, Stream } from "effect";
+import type { H, Ui } from "@/lib/view";
 
 import { button } from "@/components/ui/button";
-import * as Dialog from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { actionGroup, type ActionGroupConfig } from "./actionGroup";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export type SheetConfig<M> = Readonly<{
   /** Unique DOM id of the dialog; its title and description ids derive from it. */
@@ -18,8 +16,6 @@ export type SheetConfig<M> = Readonly<{
   description?: Child;
   /** Message sent when the backdrop is tapped or Escape is pressed. */
   onDismiss: M;
-  /** No-op acknowledgement for the sheet's lifecycle effects (show, unmount). */
-  onSettled: M;
   /** Standard destructive / cancel / confirm action groups. */
   footer?: ActionGroupConfig<M>;
   /** Wider panel on large screens (forms). */
@@ -32,179 +28,205 @@ export type SheetConfig<M> = Readonly<{
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 //
 // A sheet is open exactly while its page renders it, so the page model stays
-// the only open/closed state. Mounting the <dialog> shows it through FoldKit's
-// dialog helpers (focus entry, Tab trap, topmost-only Escape, scroll lock);
-// unmounting releases them. Focus returns to whatever opened the first sheet
-// once the last one closes: one render can swap sheets (actions →
-// confirmation), and Mount releases run asynchronously, so the opener is kept
-// for the whole run of open sheets rather than per dialog.
+// the only open/closed state. The <dialog> is rendered with `modal(true)`:
+// the browser host shows it with `showModal()` at the commit that inserts it
+// (top layer, inert page) and closes it before removing it.
+// Escape arrives as `cancel`, which the page answers with `onDismiss`.
+//
+// The mount below adds what the host leaves to the app: focus entry
+// (`[autofocus]`, else the first control), Tab wrapping inside the sheet (a
+// modal dialog lets Tab leave for the browser's own controls), a page scroll lock (the `main`
+// scroller stops through its `has-[[data-slot=sheet]]` class), and focus
+// restoration to whatever opened the first of consecutive sheets once the
+// last one closes. One render can swap sheets (actions → confirmation) and
+// mount releases run after the commit, so the opener is kept for the whole
+// run of open sheets rather than per dialog.
 
 let openSheets = 0;
 let opener: HTMLElement | null = null;
+let savedOverflow = "";
+let savedPaddingRight = "";
 
-const ShowedSheet = Schema.TaggedStruct("ShowedSheet", {});
+const controls =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-// Mounted on the sheet's <dialog>, whose id the Dialog view sets.
-export const ShowSheet = Mount.define("ShowSheet", {
-  messages: [ShowedSheet],
-  execute: ({ element: { id } }) =>
-    Effect.acquireRelease(
-      Effect.gen(function* () {
-        const active = document.activeElement;
-        if (openSheets === 0) {
-          opener = active instanceof HTMLElement && active !== document.body ? active : null;
-        }
-        openSheets += 1;
-        // Dom.showDialog would record and later refocus the active element;
-        // focus restoration is owned above, so give it nothing to record.
-        if (active instanceof HTMLElement) active.blur();
-        yield* Dom.lockScroll;
-        yield* Dom.showDialog(`#${CSS.escape(id)}`, {
-          focusSelector: "[autofocus]",
-          isModal: true,
-          allowedOutsideSelectors: [`#${DEVTOOLS_HOST_ID}`],
-        }).pipe(Effect.catch(() => Dom.unlockScroll));
-      }),
-      () =>
-        Dom.releaseDialogResources(id).pipe(
-          Effect.andThen(
-            Effect.sync(() => {
-              openSheets = Math.max(0, openSheets - 1);
-              if (openSheets > 0) return;
-              const target = opener;
-              opener = null;
-              if (target !== null && target.isConnected) target.focus({ preventScroll: true });
-            }),
-          ),
-        ),
-    ).pipe(Effect.as(ShowedSheet.make({}))),
-});
+const lockScroll = () => {
+  const { documentElement } = document;
+  const { style } = documentElement;
+  savedOverflow = style.overflow;
+  savedPaddingRight = style.paddingRight;
+  const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+  style.overflow = "hidden";
+  if (scrollbarWidth > 0) style.paddingRight = `${scrollbarWidth}px`;
+};
+
+const unlockScroll = () => {
+  const { style } = document.documentElement;
+  style.overflow = savedOverflow;
+  style.paddingRight = savedPaddingRight;
+};
+
+const focusEntry = (node: HTMLDialogElement) => {
+  const active = document.activeElement;
+  // The browser already focused the [autofocus] control or the first one.
+  if (active instanceof HTMLElement && active !== node && node.contains(active)) return;
+  const target =
+    node.querySelector<HTMLElement>("[autofocus]") ?? node.querySelector<HTMLElement>(controls);
+  target?.focus({ preventScroll: true });
+};
+
+/** Wraps Tab and Shift+Tab at the sheet's first and last control. */
+const wrapTab = (event: KeyboardEvent) => {
+  if (event.key !== "Tab" || !(event.currentTarget instanceof HTMLElement)) return;
+  const all = [...event.currentTarget.querySelectorAll<HTMLElement>(controls)];
+  const first = all[0];
+  const last = all.at(-1);
+  if (first === undefined || last === undefined) return;
+  const edge = event.shiftKey ? first : last;
+  if (document.activeElement !== edge && event.currentTarget.contains(document.activeElement))
+    return;
+  event.preventDefault();
+  (event.shiftKey ? last : first).focus();
+};
+
+const openSheet = (node: HTMLDialogElement) => {
+  if (openSheets === 0) {
+    // `showModal()` has usually moved focus inside already, and the browser
+    // returns it on close; this keeps the opener for the run of consecutive
+    // sheets when focus was still outside.
+    const active = document.activeElement;
+    opener =
+      active instanceof HTMLElement && active !== document.body && !node.contains(active)
+        ? active
+        : null;
+    lockScroll();
+  }
+  openSheets += 1;
+  node.addEventListener("keydown", wrapTab);
+  focusEntry(node);
+};
+
+const closeSheet = (node: HTMLDialogElement) => {
+  node.removeEventListener("keydown", wrapTab);
+  openSheets = Math.max(0, openSheets - 1);
+  if (openSheets > 0) return;
+  unlockScroll();
+  const target = opener;
+  opener = null;
+  const active = document.activeElement;
+  const lost = active === null || active === document.body || !active.isConnected;
+  if (lost && target !== null && target.isConnected) target.focus({ preventScroll: true });
+};
+
+/**
+ * Mounted on every sheet's <dialog>: focus entry, Tab wrapping, scroll lock,
+ * focus return.
+ * A stream that never emits, so its Scope, and the release, lasts exactly as
+ * long as the <dialog> element. `id` is the sheet's, naming it in logs and tests.
+ */
+export const ShowSheet = Mount.makeStream(
+  "ShowSheet",
+  { args: { id: Schema.String } },
+  (node: HTMLDialogElement) => {
+    const close = Effect.sync(() => closeSheet(node));
+    return Stream.callback<never>(() =>
+      Effect.acquireRelease(
+        Effect.sync(() => openSheet(node)),
+        () => close,
+      ),
+    );
+  },
+);
 
 // ── View ───────────────────────────────────────────────────────────────────
 
 /**
  * Modal sheet: slides up from the bottom on phones, centered card on larger
- * screens (SwiftUI `.sheet` / `.confirmationDialog`). Rendered through the
- * @foldkit/ui Dialog view on a native <dialog>; open while rendered.
+ * screens (SwiftUI `.sheet` / `.confirmationDialog`). A native modal
+ * <dialog>, open while rendered.
  */
-export const sheet = <M>(
-  config: SheetConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.submodel({
-    slotId: config.id,
-    // Open while rendered: the Mount below shows it, so no open Commands run.
-    model: { ...Dialog.init({ id: config.id, isAnimated: false }), isOpen: true },
-    view: Dialog.view,
-    toParentMessage: (message) =>
-      message._tag === "RequestedClose" ? config.onDismiss : config.onSettled,
-    viewInputs: {
-      hasDescription: config.description !== undefined,
+export const sheet = <M>(config: SheetConfig<M>, children: ReadonlyArray<Child>, h: H<M>): Ui => {
+  const titleId = `${config.id}-title`;
+  const descriptionId = `${config.id}-description`;
+  return (
+    h.dialog
       // Keyed by id: two sheets in the same slot (actions → confirmation) are
       // different dialogs, each shown and released on its own.
-      toView: (render) =>
-        h.keyed("dialog")(
-          config.id,
-          [
-            ...render.dialog,
-            h.AriaModal(true),
-            h.DataAttribute("slot", "sheet"),
-            h.Class(
-              cn(
-                "m-0 overflow-hidden bg-transparent p-0 text-foreground open:flex",
-                config.placement === "side"
-                  ? "items-stretch justify-end"
-                  : "items-end justify-center sm:items-center",
-              ),
-            ),
-            h.OnMount(Mount.mapMessage(ShowSheet(), () => config.onSettled)),
-          ],
-          [
-            h.div([
-              ...render.backdrop,
-              h.DataAttribute("slot", "sheet-overlay"),
-              h.Class(
-                "modal-backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150",
-              ),
-            ]),
-            h.div(
-              [
-                ...render.panel,
-                h.DataAttribute("slot", "sheet-content"),
-                h.Class(
-                  cn(
-                    "relative flex flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl",
-                    config.placement === "side"
-                      ? "h-full w-[min(22rem,calc(100vw-3rem))] rounded-l-lg border-l border-border pt-safe pb-safe animate-in slide-in-from-right-8 fade-in-0 duration-200"
-                      : cn(
-                          "w-full max-h-[calc(100dvh-3rem)] rounded-t-lg pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
-                          "sm:rounded-lg sm:border sm:border-border sm:zoom-in-95 sm:slide-in-from-bottom-0",
-                          config.size === "md" ? "sm:max-w-lg" : "sm:max-w-sm",
-                        ),
-                    config.className,
+      .key(config.id)
+      .id(config.id)
+      .modal(true)
+      .attrs({
+        "aria-modal": "true",
+        "aria-labelledby": titleId,
+        "aria-describedby": config.description === undefined ? undefined : descriptionId,
+        "data-slot": "sheet",
+      })
+      .class(
+        // Fill the viewport: the browser's modal dialog styles cap its size and
+        // `m-0` drops their centring, so the overlay and panel lay out inside.
+        "m-0 size-full max-h-none max-w-none overflow-hidden bg-transparent p-0 text-foreground open:flex",
+        config.placement === "side"
+          ? "items-stretch justify-end"
+          : "items-end justify-center sm:items-center",
+      )
+      .on("cancel", () => config.onDismiss, { preventDefault: true })
+      .onMount(ShowSheet({ id: config.id }))
+      .children(
+        h.div
+          .attr("data-slot", "sheet-overlay")
+          .class(
+            "modal-backdrop absolute inset-0 bg-black/30 backdrop-blur-[2px] animate-in fade-in-0 duration-150",
+          )
+          .on("click", config.onDismiss),
+        h.div
+          .attr("data-slot", "sheet-content")
+          .class(
+            cn(
+              "relative flex flex-col overflow-hidden bg-popover text-popover-foreground shadow-xl",
+              config.placement === "side"
+                ? "h-full w-[min(22rem,calc(100vw-3rem))] rounded-l-lg border-l border-border pt-safe pb-safe animate-in slide-in-from-right-8 fade-in-0 duration-200"
+                : cn(
+                    "w-full max-h-[calc(100dvh-3rem)] rounded-t-lg pb-safe animate-in slide-in-from-bottom-4 fade-in-0 duration-200",
+                    "sm:rounded-lg sm:border sm:border-border sm:zoom-in-95 sm:slide-in-from-bottom-0",
+                    config.size === "md" ? "sm:max-w-lg" : "sm:max-w-sm",
                   ),
-                ),
-              ],
-              [
-                ...(config.placement === "side"
-                  ? []
-                  : [
-                      h.div([
-                        h.Class(
-                          "mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden",
-                        ),
-                        h.AriaHidden(true),
-                      ]),
-                    ]),
-                h.div(
-                  [h.Class("flex flex-col gap-2 p-6 text-left")],
-                  [
-                    h.h2(
-                      [
-                        ...render.title,
-                        h.Class("text-lg font-semibold tracking-tight"),
-                        h.Dir("auto"),
-                      ],
-                      [config.title],
-                    ),
-                    ...(config.description === undefined
-                      ? []
-                      : [
-                          h.p(
-                            [
-                              ...render.description,
-                              h.Class("text-sm leading-snug text-muted-foreground"),
-                            ],
-                            [config.description],
-                          ),
-                        ]),
-                  ],
-                ),
-                // Confirmations have no body: their actions follow the description.
-                ...(children.length === 0
-                  ? []
-                  : [
-                      // Keep outer Card rings inside the scrollport instead of clipping their top/bottom edges.
-                      h.div(
-                        [h.Class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-1")],
-                        children,
-                      ),
-                    ]),
-                ...(config.footer === undefined
-                  ? [h.div([h.Class("h-6")])]
-                  : [
-                      h.div(
-                        [h.Class(children.length === 0 ? "px-6 pt-2 pb-6" : "p-6")],
-                        [actionGroup(config.footer, h)],
-                      ),
-                    ]),
-              ],
+              config.className,
             ),
-          ],
-        ),
-    },
-  });
+          )
+          .children(
+            config.placement !== "side" &&
+              h.div
+                .class("mx-auto mt-2 h-1 w-9 rounded-full bg-muted-foreground/30 sm:hidden")
+                .attr("aria-hidden", "true"),
+            h.div
+              .class("flex flex-col gap-2 p-6 text-left")
+              .children(
+                h.h2
+                  .id(titleId)
+                  .class("text-lg font-semibold tracking-tight")
+                  .attr("dir", "auto")
+                  .children(config.title),
+                config.description !== undefined &&
+                  h.p
+                    .id(descriptionId)
+                    .class("text-sm leading-snug text-muted-foreground")
+                    .children(config.description),
+              ),
+            // Confirmations have no body: their actions follow the description.
+            children.length > 0 &&
+              // Keep outer Card rings inside the scrollport instead of clipping their top/bottom edges.
+              h.div
+                .class("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-1")
+                .children(children),
+            config.footer === undefined
+              ? h.div.class("h-6")
+              : h.div
+                  .class(children.length === 0 ? "px-6 pt-2 pb-6" : "p-6")
+                  .children(actionGroup(config.footer, h)),
+          ),
+      )
+  );
+};
 
 export type ConfirmConfig<M> = Readonly<{
   id: string;
@@ -213,7 +235,6 @@ export type ConfirmConfig<M> = Readonly<{
   confirmLabel: string;
   onConfirm: M;
   onCancel: M;
-  onSettled: M;
   cancelLabel?: string;
   destructive?: boolean;
   isConfirmDisabled?: boolean;
@@ -222,14 +243,13 @@ export type ConfirmConfig<M> = Readonly<{
 }>;
 
 /** Two-choice confirmation (iOS action sheet / alert). */
-export const confirmSheet = <M>(config: ConfirmConfig<M>, h: HtmlBuilder<M>): Html =>
+export const confirmSheet = <M>(config: ConfirmConfig<M>, h: H<M>): Ui =>
   sheet(
     {
       id: config.id,
       title: config.title,
       description: config.message,
       onDismiss: config.onCancel,
-      onSettled: config.onSettled,
       footer: {
         [config.destructive === true ? "destructive" : "confirm"]: {
           label: config.confirmLabel,
@@ -258,12 +278,12 @@ export const sheetAction = <M>(
     label: string;
     onClick: M;
     destructive?: boolean;
-    leading?: Html;
+    leading?: Ui;
     isDisabled?: boolean;
     ariaLabel?: string;
   }>,
-  h: HtmlBuilder<M>,
-): Html =>
+  h: H<M>,
+): Ui =>
   button(
     {
       variant: "ghost",
@@ -275,7 +295,7 @@ export const sheetAction = <M>(
       ),
       isDisabled: config.isDisabled,
       onClick: config.onClick,
-      attributes: [h.AriaLabel(config.ariaLabel ?? config.label)],
+      attrs: { "aria-label": config.ariaLabel ?? config.label },
     },
     [...(config.leading === undefined ? [] : [config.leading]), config.label],
     h,

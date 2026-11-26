@@ -7,7 +7,7 @@ const url = process.argv[2];
 assert.ok(url, "Pass the dev app URL (including /optio/)");
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
-  // Isolate OPFS and workers from existing user data. Mocks miss dev RPC module mismatches.
+  // Isolate IndexedDB from existing user data. Mocks miss dev RPC module mismatches.
   const context = await browser.newContext();
   const page = await context.newPage();
   page.setDefaultTimeout(10_000);

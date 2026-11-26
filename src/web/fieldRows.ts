@@ -1,5 +1,5 @@
 /**
- * Shared LiveStore row → domain-value helpers.
+ * Shared store row → domain-value helpers.
  *
  * The template/task field rows are JSON-string-encoded for the options
  * columns; every command module previously re-implemented the same
@@ -26,7 +26,7 @@ const isFieldKind = Schema.is(FieldKind);
  */
 export const toFieldKind = (kind: string): FieldKind => (isFieldKind(kind) ? kind : "textInput");
 
-/** A template-field row as returned by LiveStore (options in JSON columns). */
+/** A template-field row as the store returns it (options as JSON strings). */
 export type FieldRow = {
   readonly id: string;
   readonly name: string;

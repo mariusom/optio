@@ -3,17 +3,18 @@ import { SecureRandom } from "effect/crypto";
 import { describe, expect, it } from "@effect/vitest";
 import { afterEach, vi } from "vite-plus/test";
 
-import { appServices } from "../../../app/services";
-import { getStore, type AppStore } from "../../../livestore/client";
-import { events } from "../../../livestore/schema";
+import { getStore, type AppStore } from "../../../store/client";
+import { events } from "../../../store/schema";
+import type { Select } from "../../../store/tables";
 import { Message } from "../../../messages";
+import { IdRandom } from "../../../lib/ids";
 import { DiscardLiveSession, StartSession } from "./startCommands";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
 /** Secure randomness drawing all-zero bytes, so every UUID is predictable. */
 const zeroCrypto = Layer.succeed(
-  SecureRandom.SecureRandom,
+  IdRandom,
   SecureRandom.make((size) => new Uint8Array(size)),
 );
 
@@ -38,14 +39,14 @@ describe.each(["start", "discard"] as const)("%s session failures", (operation) 
       }
       const command =
         operation === "start"
-          ? StartSession({
+          ? StartSession.make({
               id: "s",
               templateId: null,
               templateName: "",
               sessionName: "S",
               fields: [],
             })
-          : DiscardLiveSession({ sessionId: "s" });
+          : DiscardLiveSession.make({ sessionId: "s" });
       const result = yield* command.effect;
       expect(result).toMatchObject({
         _tag: "FailedSessionOp",
@@ -62,7 +63,7 @@ describe.each(["start", "discard"] as const)("%s session failures", (operation) 
         expect.stringContaining("Persistence unavailable"),
       );
       if (failure === "open") expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 });
 
@@ -73,12 +74,11 @@ describe("DiscardLiveSession live-session guard", () => {
   ])("acknowledges a %s session without writing", ([_label, sessions]) =>
     Effect.gen(function* () {
       const query = vi.fn(() => sessions);
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-      expect(yield* DiscardLiveSession({ sessionId: "s" }).effect).toEqual(
-        Message.SessionDiscarded(),
-      );
+      const message = yield* DiscardLiveSession.make({ sessionId: "s" }).effect;
+      expect(message).toEqual(Message.SessionDiscarded());
       expect(query).toHaveBeenCalledTimes(1);
       expect(commit).not.toHaveBeenCalled();
     }),
@@ -87,12 +87,11 @@ describe("DiscardLiveSession live-session guard", () => {
   it.effect("deletes a live session", () =>
     Effect.gen(function* () {
       const query = vi.fn(() => [{ endedAt: null }]);
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-      expect(yield* DiscardLiveSession({ sessionId: "s" }).effect).toEqual(
-        Message.SessionDiscarded(),
-      );
+      const message = yield* DiscardLiveSession.make({ sessionId: "s" }).effect;
+      expect(message).toEqual(Message.SessionDiscarded());
       expect(query).toHaveBeenCalledTimes(1);
       expect(commit).toHaveBeenCalledWith(
         events.sessionLiveGraphCleared({ sessionId: "s" }),
@@ -107,10 +106,11 @@ describe("DiscardLiveSession live-session guard", () => {
       const query = vi.fn(() => {
         throw new Error("Query unavailable");
       });
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-      expect(yield* DiscardLiveSession({ sessionId: "s" }).effect).toMatchObject({
+      const message = yield* DiscardLiveSession.make({ sessionId: "s" }).effect;
+      expect(message).toMatchObject({
         _tag: "FailedSessionOp",
         error: "Couldn't delete that. Please try again.",
       });
@@ -147,18 +147,19 @@ describe("StartSession template resolution", () => {
               exclusiveOptionsJson: "[]",
             },
           ]);
-        const commit = vi.fn();
+        const commit = vi.fn(() => Effect.void);
         vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-        expect(
-          yield* StartSession({
-            id: "session",
-            templateId: "empty",
-            templateName: "Shared name",
-            sessionName: "Session",
-            fields: [],
-          }).effect,
-        ).toEqual(Message.SessionStarted({ sessionId: "session", joinedExisting: false }));
+        const message = yield* StartSession.make({
+          id: "session",
+          templateId: "empty",
+          templateName: "Shared name",
+          sessionName: "Session",
+          fields: [],
+        }).effect;
+        expect(message).toEqual(
+          Message.SessionStarted({ sessionId: "session", joinedExisting: false }),
+        );
         expect(query).toHaveBeenCalledTimes(4);
         expect(commit).toHaveBeenCalledWith(
           {
@@ -207,47 +208,48 @@ describe("StartSession active-session guard", () => {
       const sessions: Array<{ id: string; endedAt: Date | null }> = [];
       const commit = vi.fn(() => {
         sessions.push({ id: "first", endedAt: null });
+        return Effect.void;
       });
       const query = vi.fn(() => sessions);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       const [first, second] = yield* Effect.all(
-        [StartSession(args("first")).effect, StartSession(args("second")).effect],
+        [StartSession.make(args("first")).effect, StartSession.make(args("second")).effect],
         { concurrency: "unbounded" },
       );
 
       expect(first).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: false }));
       expect(second).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: true }));
       expect(commit).toHaveBeenCalledTimes(1);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("does not let ended sessions block a new start", () =>
     Effect.gen(function* () {
       // Only live sessions are read; an ended one never reaches the guard.
-      const query = vi.fn((input: unknown) =>
-        String(input).includes("IS NULL") ? [] : [{ id: "ended", endedAt: new Date() }],
+      const query = vi.fn((input: Select<unknown>) =>
+        "endedAt" in input.filters ? [] : [{ id: "ended", endedAt: new Date() }],
       );
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-      expect(yield* StartSession(args("new")).effect).toEqual(
-        Message.SessionStarted({ sessionId: "new", joinedExisting: false }),
-      );
+      const message = yield* StartSession.make(args("new")).effect;
+      expect(message).toEqual(Message.SessionStarted({ sessionId: "new", joinedExisting: false }));
       expect(commit).toHaveBeenCalledTimes(1);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect("acknowledges an active session without writing", () =>
     Effect.gen(function* () {
       const query = vi.fn(() => [{ id: "active", endedAt: null }]);
-      const commit = vi.fn();
+      const commit = vi.fn(() => Effect.void);
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
-      expect(yield* StartSession(args("new")).effect).toEqual(
+      const message = yield* StartSession.make(args("new")).effect;
+      expect(message).toEqual(
         Message.SessionStarted({ sessionId: "active", joinedExisting: true }),
       );
       expect(commit).not.toHaveBeenCalled();
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 });

@@ -1,9 +1,9 @@
 import { Array, Effect, Option, Order, Schema, String, pipe } from "effect";
 import { Tool, Toolkit } from "effect/ai";
 
-import type { AppStore } from "../livestore/client";
-import { archivedSessions } from "../livestore/queries";
-import { tables } from "../livestore/schema";
+import type { AppStore } from "../store/client";
+import { archivedSessions } from "../store/queries";
+import { tables } from "../store/tables";
 import { AgentAction, AgentResult } from "./actions";
 import type { AgentApplication } from "./connection";
 

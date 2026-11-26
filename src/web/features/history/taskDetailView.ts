@@ -1,5 +1,5 @@
 import { Array, pipe } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import { groupedList, row } from "@/components/app";
 import { sheet } from "../../sheets";
@@ -37,7 +37,7 @@ const whenText = (startedAt: number | null, endedAt: number | null): string | un
     : range;
 };
 
-export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) => {
+export const taskDetailView = (model: TaskDetailModel, h: H<Message>) => {
   const task = model.task;
   const when = whenText(task.startedAt, task.endedAt);
 
@@ -52,10 +52,9 @@ export const taskDetailView = (model: TaskDetailModel, h: HtmlBuilder<Message>) 
     },
     [
       task.sections.length === 0
-        ? h.p(
-            [h.Class("px-1 py-6 text-center text-sm text-muted-foreground")],
-            ["Nothing was answered for this task."],
-          )
+        ? h.p
+            .class("px-1 py-6 text-center text-sm text-muted-foreground")
+            .children("Nothing was answered for this task.")
         : groupedList(
             { header: "Answers" },
             Array.map(task.sections, (section) =>

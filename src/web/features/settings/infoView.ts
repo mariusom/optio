@@ -1,12 +1,12 @@
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 import { controlRow, groupedList, navBar, page, row } from "@/components/app";
-import { button } from "@/components/ui/button";
+import { buttonClass } from "@/components/ui/button";
 import type { Model } from "../../../app/model";
 import type { Message } from "../../../messages";
 import { hrefFor } from "../../routes";
 import { version } from "../../../../package.json";
 
-const aboutContent = (h: HtmlBuilder<Message>) => [
+const aboutContent = (h: H<Message>) => [
   groupedList(
     { header: "Time & motion studies" },
     [
@@ -40,7 +40,7 @@ const aboutContent = (h: HtmlBuilder<Message>) => [
         {
           title: "Source code & feedback",
           href: "https://github.com/mariusom/optio",
-          attributes: [h.Target("_blank"), h.Rel("noopener noreferrer")],
+          attrs: { target: "_blank", rel: "noopener noreferrer" },
           subtitle: "Opens in a new tab",
         },
         h,
@@ -49,7 +49,7 @@ const aboutContent = (h: HtmlBuilder<Message>) => [
         {
           title: "MIT licence",
           href: "https://github.com/mariusom/optio/blob/main/LICENSE",
-          attributes: [h.Target("_blank"), h.Rel("noopener noreferrer")],
+          attrs: { target: "_blank", rel: "noopener noreferrer" },
           subtitle: "Opens in a new tab",
         },
         h,
@@ -58,7 +58,7 @@ const aboutContent = (h: HtmlBuilder<Message>) => [
         {
           title: "Third-party notices",
           href: `${import.meta.env.BASE_URL}THIRD_PARTY_NOTICES.txt`,
-          attributes: [h.Target("_blank"), h.Rel("noopener noreferrer")],
+          attrs: { target: "_blank", rel: "noopener noreferrer" },
           subtitle: "Opens in a new tab",
         },
         h,
@@ -68,41 +68,31 @@ const aboutContent = (h: HtmlBuilder<Message>) => [
   ),
 ];
 
-const agentContent = (access: Model["assistantAccess"], h: HtmlBuilder<Message>) => [
+const agentContent = (access: Model["assistantAccess"], h: H<Message>) => [
   groupedList(
     { header: "Assistant tools in this tab" },
     [
       access === "unavailable"
-        ? controlRow([h.p([], ["WebMCP isn’t available in this browser."])], h)
+        ? controlRow([h.p.children("WebMCP isn’t available in this browser.")], h)
         : controlRow(
             [
-              h.p(
-                [],
-                [
-                  access === "approved"
-                    ? "You’ve approved assistant access to studies in this tab."
-                    : "A WebMCP assistant can read, change and delete studies if you approve. Its provider may receive study data. Deletion needs separate confirmation.",
-                ],
+              h.p.children(
+                access === "approved"
+                  ? "You’ve approved assistant access to studies in this tab."
+                  : "A WebMCP assistant can read, change and delete studies if you approve. Its provider may receive study data. Deletion needs separate confirmation.",
               ),
-              // A native GET loads a new document so the startup consent gate runs.
-              h.form(
-                [h.Action(`${import.meta.env.BASE_URL}${hrefFor({ _tag: "TemplatesTab" })}`)],
-                [
-                  button(
-                    {
-                      type: "submit",
-                      variant: access === "off" ? "default" : "outline",
-                      attributes: access === "off" ? [h.Name("agentTools"), h.Value("1")] : [],
-                    },
-                    access === "off" ? "Enable assistant tools" : "Turn off assistant tools",
-                    h,
-                  ),
-                ],
-              ),
-              h.p(
-                [h.Class("text-sm text-muted-foreground")],
-                ["This reloads the tab. Save any drafts first."],
-              ),
+              // A new query string loads a new document, so the startup consent
+              // gate runs. (Effect UI cancels every form submit, so this is a link.)
+              h.a
+                .attr(
+                  "href",
+                  `${import.meta.env.BASE_URL}${access === "off" ? "?agentTools=1" : ""}${hrefFor({ _tag: "TemplatesTab" })}`,
+                )
+                .class(buttonClass({ variant: access === "off" ? "default" : "outline" }))
+                .children(access === "off" ? "Enable assistant tools" : "Turn off assistant tools"),
+              h.p
+                .class("text-sm text-muted-foreground")
+                .children("This reloads the tab. Save any drafts first."),
             ],
             h,
           ),
@@ -119,7 +109,7 @@ const agentContent = (access: Model["assistantAccess"], h: HtmlBuilder<Message>)
         {
           title: "Agent guide",
           href: `${import.meta.env.BASE_URL}agent-guide.md`,
-          attributes: [h.Target("_blank"), h.Rel("noopener noreferrer")],
+          attrs: { target: "_blank", rel: "noopener noreferrer" },
           subtitle: "Markdown · Opens in a new tab",
         },
         h,
@@ -131,19 +121,16 @@ const agentContent = (access: Model["assistantAccess"], h: HtmlBuilder<Message>)
 
 export const infoPage = (
   kind: "AgentHelp" | "About",
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
   access: Model["assistantAccess"],
 ) =>
-  h.div(
-    [h.DataAttribute("help-page", kind)],
-    [
-      navBar(
-        {
-          title: kind === "About" ? "About Optio" : "Use with AI",
-          back: { label: "Settings", href: hrefFor({ _tag: "SettingsTab" }) },
-        },
-        h,
-      ),
-      page({}, kind === "About" ? aboutContent(h) : agentContent(access, h), h),
-    ],
+  h.div.attr("data-help-page", kind).children(
+    navBar(
+      {
+        title: kind === "About" ? "About Optio" : "Use with AI",
+        back: { label: "Settings", href: hrefFor({ _tag: "SettingsTab" }) },
+      },
+      h,
+    ),
+    page({}, kind === "About" ? aboutContent(h) : agentContent(access, h), h),
   );

@@ -1,4 +1,3 @@
-import type { AppServices } from "./services";
 import { Array, Option, String } from "effect";
 import {
   AddSampleTemplates,
@@ -9,14 +8,13 @@ import {
 } from "../web/features/templates/commands";
 import { StartSession } from "../web/features/session/startCommands";
 import { effectiveTemplateId } from "../web/features/session/startHelpers";
-import { sessionRunnerRouter, templateEditorRouter } from "../web/routes";
+import { hrefFor, SessionRunner, TemplateEditor } from "../web/routes";
 import { GeneratePlaceholderName, NavigateInternal } from "./commands";
-import type { Update } from "foldkit";
-import { Message, type MessageHandlers } from "../messages";
-import { AsyncData } from "foldkit";
+import type { MessageHandlers, UpdateResult } from "../messages";
+import * as AsyncData from "@/lib/asyncData";
 import { activeSessionOf, takeId, templatesOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type TemplateHandlers = Pick<
@@ -95,7 +93,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
         templates: AsyncData.succeed(templates),
         selectedTemplateId: nextSelected,
       },
-      commands: needsPlaceholder ? [GeneratePlaceholderName()] : [],
+      commands: needsPlaceholder ? [GeneratePlaceholderName.make({})] : [],
     };
   },
   ClickedNewTemplate: () => {
@@ -126,7 +124,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     const name = String.trim(model.newName);
     if (name === "") return { model };
     const [id, next] = takeId(model);
-    return { model: next, commands: [CreateTemplate({ id, name })] };
+    return { model: next, commands: [CreateTemplate.make({ id, name })] };
   },
   TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "", editor: null } }),
   CanceledCreateTemplate: () => ({
@@ -134,11 +132,11 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
   }),
   ClickedTemplateRow: ({ id }) => ({
     model,
-    commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
+    commands: [NavigateInternal.make({ url: hrefFor(TemplateEditor({ templateId: id })) })],
   }),
   DuplicatedTemplate: ({ id }) => ({
     model,
-    commands: [NavigateInternal({ url: `#${templateEditorRouter({ templateId: id })}` })],
+    commands: [NavigateInternal.make({ url: hrefFor(TemplateEditor({ templateId: id })) })],
   }),
   RequestedDeleteTemplate: ({ id }) => {
     const template = Array.findFirst(templatesOf(model), (candidate) => candidate.id === id);
@@ -159,20 +157,20 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
       ? { model }
       : {
           model: { ...model, pendingDelete: null },
-          commands: [DeleteTemplate({ id: model.pendingDelete.id })],
+          commands: [DeleteTemplate.make({ id: model.pendingDelete.id })],
         },
   ClickedSetDefaultTemplate: ({ id }) => ({
     model: { ...model, templateActionsFor: null },
-    commands: [SetDefaultTemplate({ id })],
+    commands: [SetDefaultTemplate.make({ id })],
   }),
   ClickedDuplicateTemplate: ({ id }) => ({
     model: { ...model, templateActionsFor: null },
-    commands: [DuplicateTemplate({ id })],
+    commands: [DuplicateTemplate.make({ id })],
   }),
   // The sheet's "Start session" names the session like the Session tab does.
   OpenedTemplateActions: ({ id }) => ({
     model: { ...model, templateActionsFor: id },
-    commands: model.placeholderName === "" ? [GeneratePlaceholderName()] : [],
+    commands: model.placeholderName === "" ? [GeneratePlaceholderName.make({})] : [],
   }),
   ClosedTemplateActions: () => ({ model: { ...model, templateActionsFor: null } }),
   ...reportHandlers(model),
@@ -186,14 +184,16 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     if (active !== null) {
       return {
         model: closed,
-        commands: [NavigateInternal({ url: `#${sessionRunnerRouter({ sessionId: active.id })}` })],
+        commands: [
+          NavigateInternal.make({ url: hrefFor(SessionRunner({ sessionId: active.id })) }),
+        ],
       };
     }
     const [sessionId, next] = takeId(closed);
     return {
       model: { ...next, selectedTemplateId: id },
       commands: [
-        StartSession({
+        StartSession.make({
           id: sessionId,
           templateId: id,
           templateName: template.name,
@@ -205,7 +205,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
   },
   ClickedAddSampleTemplates: () => ({
     model: { ...model, lastError: null },
-    commands: [AddSampleTemplates()],
+    commands: [AddSampleTemplates.make({})],
   }),
   SampleTemplatesAdded: () => ({ model }),
   TemplateOpDone: () => ({ model }),

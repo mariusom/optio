@@ -1,5 +1,5 @@
 import { Array, Option, Order } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import {
   Download,
@@ -42,28 +42,26 @@ type HistoryModel = {
 // ── Table ─────────────────────────────────────────────────────────────────
 
 /** "<template> · 4 tasks"; the template name is isolated so right-to-left names keep the order. */
-const summaryFor = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
-  h.span([], [h.bdi([], [session.templateName]), ` · ${taskCountLabel(session.taskCount)}`]);
+const summaryFor = (session: HistorySession, h: H<Message>): Ui =>
+  h.span.children(h.bdi.children(session.templateName), ` · ${taskCountLabel(session.taskCount)}`);
 
 const durationOf = (session: HistorySession): number => session.endedAt - session.startedAt;
 
 /** Phones hide the template, duration and task columns; the name cell repeats them. */
-const nameCell = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
-  h.span(
-    [h.Class("flex min-w-0 flex-col")],
-    [
-      h.span([h.Class("truncate")], [session.displayName]),
-      h.span(
-        [h.Class("truncate text-xs font-normal text-muted-foreground md:hidden")],
-        [
+const nameCell = (session: HistorySession, h: H<Message>): Ui =>
+  h.span
+    .class("flex min-w-0 flex-col")
+    .children(
+      h.span.class("truncate").children(session.displayName),
+      h.span
+        .class("truncate text-xs font-normal text-muted-foreground md:hidden")
+        .children(
           summaryFor(session, h),
-          h.span([h.Class("sm:hidden")], [` · ${formatDurationShort(durationOf(session))}`]),
-        ],
-      ),
-    ],
-  );
+          h.span.class("sm:hidden").children(` · ${formatDurationShort(durationOf(session))}`),
+        ),
+    );
 
-const historyGrid = (model: HistoryModel, h: HtmlBuilder<Message>): Html =>
+const historyGrid = (model: HistoryModel, h: H<Message>): Ui =>
   dataGrid(
     {
       id: "history",
@@ -89,7 +87,7 @@ const historyGrid = (model: HistoryModel, h: HtmlBuilder<Message>): Html =>
           id: "template",
           header: "Template",
           value: (session) => session.templateName,
-          cell: (session) => h.bdi([], [session.templateName]),
+          cell: (session) => h.bdi.children(session.templateName),
           from: "md",
           searchable: true,
         },
@@ -140,7 +138,7 @@ const historyGrid = (model: HistoryModel, h: HtmlBuilder<Message>): Html =>
 
 // ── Action sheet: Export / Delete ─────────────────────────────────────────
 
-const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): Html =>
+const historyActionsSheet = (session: HistorySession, h: H<Message>): Ui =>
   sheet(
     {
       id: "history-actions",
@@ -156,36 +154,33 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
       },
     },
     [
-      h.div(
-        [h.Class("flex flex-col gap-1")],
-        [
-          sheetAction(
-            {
-              label: "Export CSV",
-              leading: icon(h, Download, "size-5"),
-              isDisabled: session.taskCount === 0,
-              onClick: Message.ClickedExportHistoryCsv({
-                sessionId: session.id,
-                spreadsheetSafe: true,
-              }),
-              // Named by its visible label, "Export CSV"; the sheet title names the session.
-            },
-            h,
-          ),
-          sheetAction(
-            {
-              label: "Delete",
-              leading: icon(h, Trash2, "size-5"),
-              destructive: true,
-              onClick: Message.RequestedHistoryDelete({
-                id: session.id,
-                displayName: session.displayName,
-              }),
-              ariaLabel: `Delete ${session.displayName}`,
-            },
-            h,
-          ),
-        ],
+      h.div.class("flex flex-col gap-1").children(
+        sheetAction(
+          {
+            label: "Export CSV",
+            leading: icon(h, Download, "size-5"),
+            isDisabled: session.taskCount === 0,
+            onClick: Message.ClickedExportHistoryCsv({
+              sessionId: session.id,
+              spreadsheetSafe: true,
+            }),
+            // Named by its visible label, "Export CSV"; the sheet title names the session.
+          },
+          h,
+        ),
+        sheetAction(
+          {
+            label: "Delete",
+            leading: icon(h, Trash2, "size-5"),
+            destructive: true,
+            onClick: Message.RequestedHistoryDelete({
+              id: session.id,
+              displayName: session.displayName,
+            }),
+            ariaLabel: `Delete ${session.displayName}`,
+          },
+          h,
+        ),
       ),
     ],
     h,
@@ -193,27 +188,24 @@ const historyActionsSheet = (session: HistorySession, h: HtmlBuilder<Message>): 
 
 // ── Empty state ───────────────────────────────────────────────────────────
 
-const noSessionsView = (h: HtmlBuilder<Message>) =>
+const noSessionsView = (h: H<Message>) =>
   emptyState(
     {
       icon: History,
       title: "No sessions yet",
       description: "Finished sessions appear here and can be exported as a spreadsheet.",
-      action: h.a(
-        [
-          h.Class(buttonClass({ size: "lg" })),
-          h.Href(hrefFor({ _tag: "StartTab" })),
-          h.AriaLabel("Start a session"),
-        ],
-        ["Start a session"],
-      ),
+      action: h.a
+        .class(buttonClass({ size: "lg" }))
+        .attr("href", hrefFor({ _tag: "StartTab" }))
+        .attr("aria-label", "Start a session")
+        .children("Start a session"),
     },
     h,
   );
 
 // ── Page ──────────────────────────────────────────────────────────────────
 
-export const historyPage = (model: HistoryModel, h: HtmlBuilder<Message>) => {
+export const historyPage = (model: HistoryModel, h: H<Message>) => {
   const openActions =
     model.historyActionsFor === null
       ? null

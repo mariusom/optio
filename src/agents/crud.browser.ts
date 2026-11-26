@@ -1,14 +1,13 @@
 import { expect, it, vi } from "vite-plus/test";
-import { Runtime } from "foldkit";
 import { Effect, Exit, Schema, Scope } from "effect";
-import { createStorePromise } from "@livestore/livestore";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
+import { openMemoryStore } from "../store/testStore";
+import { tables } from "../store/tables";
 
-import { applicationConfig } from "../application";
+import { mountApp } from "../app/testMount";
 import { Model, update } from "../main";
 import { Message } from "../messages";
-import { getStore } from "../livestore/client";
-import { schema, tables } from "../livestore/schema";
+import { getStore } from "../store/client";
+
 import { EndSession } from "../web/features/session/runnerCommands";
 import { AgentResult, type AgentAction } from "./actions";
 import { connectAgentApplication } from "./connection";
@@ -16,39 +15,34 @@ import { makeToolHandlers } from "./tools";
 import { registerWebMcp, type ModelContext } from "./webmcp";
 import "../index.css";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 
-// Real Foldkit runtime, commands, SQLite queries/materializers, with LiveStore's
-// in-memory adapter. This verifies mutations, not worker/OPFS persistence.
+// Real Effect UI runtime, commands, queries and event handlers, on an in-memory
+// journal. This verifies mutations, not IndexedDB persistence.
 it("operates template/field CRUD and the full record → edit → archive → delete workflow", async () => {
-  const store = await createStorePromise({
-    schema,
-    storeId: `agent-test-${crypto.randomUUID()}`,
-    adapter: makeInMemoryAdapter(),
-  });
+  const store = await openMemoryStore();
   vi.mocked(getStore).mockResolvedValue(store);
   const container = document.createElement("div");
   container.id = `agent-test-${crypto.randomUUID()}`;
   document.body.append(container);
-  const handle = Runtime.embed(
-    Runtime.makeApplication({ ...applicationConfig, container, slow: false }),
+  const mounted = await mountApp(
     {
-      flags: Effect.succeed({
-        assistantAccess: "approved",
-        theme: "auto",
-        style: "nova",
-        font: "sans",
-        iconLibrary: "hugeicons",
-        accent: "default",
-        look: "classic",
-        controlSize: "standard",
-        now: Date.now(),
-        idSeed: "agent-test",
-      } as const),
+      assistantAccess: "approved",
+      theme: "auto",
+      style: "nova",
+      font: "sans",
+      iconLibrary: "hugeicons",
+      accent: "default",
+      look: "classic",
+      controlSize: "standard",
+      now: Date.now(),
+      idSeed: "agent-test",
     },
+    container,
   );
+  const ports = mounted.bridge.handles;
   const confirm = vi.fn(() => true);
-  const connection = connectAgentApplication(handle.ports, confirm);
+  const connection = connectAgentApplication(ports, confirm);
   const tools = new Map<string, Parameters<ModelContext["registerTool"]>[0]>();
   const scope = await Effect.runPromise(Scope.make());
   await Effect.runPromise(
@@ -73,7 +67,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
   const readInternalModel = () =>
     new Promise<Model>((resolve, reject) => {
       const requestId = crypto.randomUUID();
-      const unsubscribe = handle.ports.agentReply.subscribe((reply) => {
+      const unsubscribe = ports.agentReply.subscribe((reply) => {
         if (reply.requestId !== requestId) return;
         unsubscribe();
         try {
@@ -82,7 +76,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
           reject(error);
         }
       });
-      const sent = handle.ports.agentRequest.send({ requestId, action: null });
+      const sent = ports.agentRequest.send({ requestId, action: null });
       if (Exit.isFailure(sent)) {
         unsubscribe();
         reject(new Error("Could not read the internal model."));
@@ -140,11 +134,11 @@ it("operates template/field CRUD and the full record → edit → archive → de
       const raceConfirm = vi.fn(() => true);
       const racing = connectAgentApplication(
         {
-          ...handle.ports,
+          ...ports,
           agentReply: {
-            ...handle.ports.agentReply,
+            ...ports.agentReply,
             subscribe: (listener) =>
-              handle.ports.agentReply.subscribe((reply) => {
+              ports.agentReply.subscribe((reply) => {
                 if (!held) {
                   held = true;
                   release = () => listener(reply);
@@ -234,13 +228,15 @@ it("operates template/field CRUD and the full record → edit → archive → de
       error: { message: expect.stringContaining("Only the active session") },
     });
     // Protect against stale state and direct deep links too, not just agent routes.
-    expect(await Effect.runPromise(EndSession({ sessionId }).effect)).toMatchObject({
+    expect(await Effect.runPromise(EndSession.make({ sessionId }).effect)).toMatchObject({
       _tag: "FailedRunnerOp",
       error: "This session has already ended.",
     });
-    expect(await Effect.runPromise(EndSession({ sessionId: "missing" }).effect)).toMatchObject({
-      _tag: "FailedRunnerOp",
-    });
+    expect(await Effect.runPromise(EndSession.make({ sessionId: "missing" }).effect)).toMatchObject(
+      {
+        _tag: "FailedRunnerOp",
+      },
+    );
     expect(await invoke("optio_get_session_summary", { sessionId })).toMatchObject({
       taskCount: 1,
     });
@@ -319,8 +315,7 @@ it("operates template/field CRUD and the full record → edit → archive → de
     ).resolves.toEqual({ isError: true, error: { message: "Invalid tool input." } });
   } finally {
     await Effect.runPromise(Scope.close(scope, Exit.void));
-    await handle.disposeAsync();
-    await Effect.runPromise(store.shutdown());
+    await mounted.dispose();
     container.remove();
   }
 }, 60_000);

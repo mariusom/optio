@@ -12,16 +12,17 @@ The dev server uses port 60001 and the `/optio/` path.
 
 Use normal `pnpm dev` for remote previews: it opts into Vite's experimental
 bundled-dev mode to avoid source-module request waterfalls. Source edits currently
-full-reload without preserving FoldKit's in-memory Model, so unsaved input can
+full-reload without preserving the in-memory Model, so unsaved input can
 be lost. Use `pnpm dev --mode test` for the slower unbundled pipeline when testing
-model-preserving reloads or plugin behavior. This uses the same pipeline as the
+plugin behavior. This uses the same pipeline as the
 tests; it does not substitute mock study data. See the measured alternatives and
 upstream discussions in [bundling research](dev-bundling-research.md).
-The dev server also shows the FoldKit DevTools panel (from `@foldkit/devtools`,
-a dev dependency, so production builds omit it). `Tick` is excluded from its
-history. Do not give DevTools the Message schema or an MCP port: that would let
-outside tools dispatch Messages without the consent described in
-[agent access](agent-access.md).
+The dev server also shows the Effect UI DevTools overlay (`DevTools.layer` from
+`@effect/ui-devtools`, a dev dependency provided only under `import.meta.env.DEV`,
+so production builds omit it). `Tick` is excluded from its history. Its WebMCP
+tools are off (`webMcp: false`), and do not add its Vite plugin, MCP server or
+`dispatch` option: those would let outside tools send Messages without the
+consent described in [agent access](agent-access.md).
 A dev-only middleware works around Vite's non-root-base
 lazy-import bug ([#23216](https://github.com/vitejs/vite/issues/23216)); remove it
 when the upstream fix is available and the real dev-store check passes.
@@ -53,16 +54,16 @@ Other commands are in `package.json`.
 
 ## Lint limits and module size
 
-`pnpm check` runs Vite+ format checking and type-aware Oxlint through the Effect
-wrapper. For lint only, use `pnpm exec effect-tsgo vp lint`. It includes
-[`@foldkit/oxlint-plugin`](https://www.npmjs.com/package/@foldkit/oxlint-plugin)'s
-recommended rules (pure update, exhaustive `match`, Effect module names, keyed
-rows), minus five listed in `vite.config.ts` that assume child Submodels or
-Option-only Models, which Optio does not use. Tests, entry files and Node
-scripts get the plugin's own exemptions. Hand-maintained production code
+`pnpm check` runs Vite+ format checking, type-aware Oxlint with the Effect rules
+and the TSRS type check, all through the Effect wrapper (see
+[Effect diagnostics](#effect-diagnostics)). For lint only, use
+`pnpm exec effect-tsgo vp lint`. Effect UI ships
+no lint plugin, so the FoldKit plugin's rules (pure update, keyed rows) are now
+review conventions. Hand-maintained production code
 is limited to 500 lines per file, 150 lines per function (both exclude blanks
 and comments), 25 statements per function, complexity 15, nesting depth 4,
-three parameters and three nested callbacks. Imports must come first, be unique
+three parameters and three nested callbacks (four in feature command files,
+where `Command.make` takes the command body as a call argument). Imports must come first, be unique
 and avoid cycles; side-effect imports are restricted to CSS and font assets.
 
 Split by responsibility and pass related configuration as an object. Do not
@@ -72,20 +73,20 @@ fragments just to meet limits. Keep stateful subscription ownership explicit.
 Tests and stories are exempt from size/complexity limits, including this repo's
 `.browser.ts` and `.e2e.mjs` tests; all other rules still apply. The generated
 style table is exempt only from file length. Effect's `_tag` discriminator is
-allowed, and `openStore.ts` is exempt from `import/default` because Vite creates
-the default constructors for its worker query imports. No blanket source or
+allowed. No blanket source or
 registry-component exclusions are used.
 
 `pnpm lint:dead` runs [fallow](https://docs.fallow.tools) with
 [.fallowrc.json](../.fallowrc.json) and fails on unused files, exports and
 dependencies, and duplicate export names. The config lists the real entry points
-(the app entry, the LiveStore worker, tests and scripts). It exempts exports of
+(the app entry, tests and scripts). It exempts exports of
 the Foldcn registry copies in `src/components/ui`, and ignores the generated style table
 and the retained registry item without a consumer (label;
-see [interface conventions](interface.md)). `src/livestore/modules.ts` and
+see [interface conventions](interface.md)). `src/store/modules.ts` and
 `queries.ts` are exempt because they are read through the lazily imported module
 namespace, which static analysis cannot follow. Packages loaded only by tools or
-at runtime (`@livestore/wa-sqlite`, `@foldkit/devtools`) are
+at runtime (`@effect/ui-devtools`, which the entry imports only for
+development) are
 ignored as dependencies, as is `@effect/language-service`: fallow 3.41+ reads
 `tsconfig.json` plugin names as packages, but that name is served by the
 Effect-patched checker, not by a package of its own. Prefer deleting an unused
@@ -93,61 +94,76 @@ export over adding an exemption.
 
 ## Effect diagnostics
 
-`pnpm typecheck` runs the Effect-patched TSRS compiler. `pnpm check` wraps Vite+
-so its type-aware Oxlint uses the matching TSRS backend. Both use the builds
-shipped by `@effect/tsgo` without modifying `node_modules`. Effect diagnostics
-remain in `tsconfig.json`; warnings fail the standalone type check.
-Vitest uses the local `tsrs` executable for `src/**/*.test-d.ts` type tests;
+TSRS is the only type checker: there is no `typescript` or `tsgo` dependency
+(the `typescript` in the lockfile is an optional peer of Vite+). `pnpm check`
+wraps Vite+ so its Oxlint runs the type-aware rules, the Effect ones included,
+and the type check (`typeAware` and `typeCheck` in `vite.config.ts`) on the
+Effect-patched TSRS; a type error fails it. `pnpm typecheck` runs the same
+compiler on its own. Both use the builds shipped by `@effect/tsgo` without
+modifying `node_modules`. Vitest uses the local `tsrs` executable for `src/**/*.test-d.ts` type tests;
 normal runtime tests use Vite's transform. Editors
 that support a custom language server can launch
 `pnpm exec effect-tsgo tsrs --lsp --stdio` for Effect diagnostics. The patched
 TSRS/Oxlint builds require glibc on Linux.
 
-Configuration choices, all in `tsconfig.json`:
+The Effect rules come from Oxlint's `effecttsgo` plugin, not from compiler
+diagnostics: the `tsconfig.json` plugin entry sets `diagnostics: false` and
+keeps only `allowedUnstableApis`. `vite.config.ts` turns on every rule of every
+`@effect/tsgo/oxlint-presets` preset as an error, except:
 
-- `missingPipeableSignature` is off: dual (pipeable) signatures are for library
+- `experimental-api-usage` and `api-stability-leak` (maintainers preset): Effect
+  UI is a public preview, so both flag every use of it.
+- `missing-pipeable-signature`: dual (pipeable) signatures are for library
   APIs, and Optio's exported helpers are application code.
-- `allowedUnstableApis` lists the unstable modules Optio deliberately uses:
-  `@effect/vitest`, `effect/ai` (agent tools), the key-value stores, the browser
-  runtime and `effect/crypto`.
+
+`allowedUnstableApis` lists the unstable modules Optio deliberately uses:
+`@effect/vitest`, `effect/ai` (agent tools), the key-value stores, the browser
+runtime and `effect/crypto`. Lint overrides:
+
 - Tests and `vite.config.ts` turn off the effect-native rules for platform
   globals and native helpers (clock, IDs, promises, timers, console, Node
-  built-ins, native Array/String/Object methods, synchronous Schema calls),
-  matching the lint exemptions for test files.
-- `schemaNumber` is off in `src/livestore/schema.ts`: its event and table
-  schemas are persisted contracts.
+  built-ins, native Array/String/Object methods, synchronous Schema calls) and
+  `strict-effect-provide`, since a test is the entry point of what it runs.
+- `scripts/` turns off every Effect rule: they are plain Node scripts outside
+  the TypeScript project.
+- `schema-number` is off in `src/store/schema.ts`: its event schemas are
+  persisted contracts.
+
+The `effecttsgo` plugin name is cast in `vite.config.ts` because only
+`effect-tsgo patch` adds it to Oxlint's config types; without it in `plugins`,
+the Effect rules silently do not run.
 
 Prefer fixing a diagnostic over suppressing it. When a native method must keep
 its exact semantics, suppress that line with
 `// @effect-diagnostics-next-line <rule>:off` and a reason. Random IDs come from
-Effect's `SecureRandom` service (`src/lib/ids.ts`), which FoldKit provides to Commands
-through the application's `resources` layer (`src/app/services.ts`); code
-outside the runtime provides `appServices` itself.
+`IdRandom` (`src/lib/ids.ts`), a `Context.Reference` holding a `SecureRandom`
+over Web Crypto. A Reference adds no requirement, so Commands draw IDs without
+a services layer; tests provide a deterministic one.
 
 ## What tests establish
 
 `pnpm test` runs the `unit` and `browser` (Chromium component) Vitest projects
 from `vite.config.ts` concurrently; `pnpm test:unit` and `pnpm test:browser` run
 one of them. Session browser tests use the production
-view and update loop but mock the LiveStore client. Agent CRUD tests use SQLite
-with LiveStore's in-memory adapter and substitute browser registration and human
-confirmation. Neither proves OPFS persistence, reload recovery, or native agent
-compatibility. Test runtimes pass `slow: false`: FoldKit's development timing
-warnings print whole Models and are dominated by test-machine load.
+view and update loop but mock the store client. Agent CRUD tests use the real
+store on an in-memory journal (`src/store/testStore.ts`) and substitute browser
+registration and human confirmation. Neither proves IndexedDB persistence, reload recovery, or native agent
+compatibility. Browser tests mount through `src/app/testMount.ts` (the whole
+app, or one view with the real update), and view tests render through
+`HtmlScene` (`src/app/appScene.ts`, `src/web/features/viewScene.ts`).
 
 `pnpm test:e2e` serves the production build on a temporary local port and uses
-a disposable Chromium profile with real OPFS storage and workers. It records a
+a disposable Chromium profile with real IndexedDB storage. It records a
 session, restarts the browser during an edit, cancels the edit, reloads offline,
-ends the session and checks the downloaded CSV. It also refuses OPFS in a
-fresh context, in the page and in LiveStore's workers (their scripts are
-prefixed on the way in), checks the in-memory storage warning, and confirms
-nothing reached OPFS. No stored user data or
+ends the session and checks the downloaded CSV. It also refuses IndexedDB in a
+fresh context, checks the in-memory storage warning, and confirms nothing
+reached IndexedDB. No stored user data or
 deployed service is used. Before restarting during an edit, it waits for the
-answer and rollback backup in SQLite and for worker persistence to finish;
+answer and rollback backup in the store and for its writes to be saved;
 an input's DOM value alone does not prove durability. Page-leaving flushes
 are best effort, so this journey does not promise immediate-reload durability.
 Unit tests separately check deterministic event
-replay; `src/livestore/*.browser.ts` check materializer guards and queries
+replay; `src/store/*.browser.ts` check event-handler guards and queries
 against a real in-memory store. The local production preview checks native WebMCP
 discovery after declining, approving and revoking access with Chromium’s testing
 flag. This does not exercise a hosted assistant or the origin-bound trial token.
@@ -176,7 +192,7 @@ pnpm dlx lighthouse@13.4.1 http://localhost:60002/optio/ --output=html --output-
 Set `CHROME_PATH` if Chrome is not discovered automatically.
 Compare the same URL, browser and mobile throttling settings across repeated
 cold runs; scores vary with host load. Startup changes must also preserve real
-OPFS data across reloads and work offline after service-worker installation.
+IndexedDB data across reloads and work offline after service-worker installation.
 
 For repeatable application measurements, run:
 
@@ -198,7 +214,7 @@ record a task. Eager store loading and store-module preloading worsened cold
 readiness to about 2.4 s; preloading Workbox did not reliably improve it. Those
 experiments were reverted. On 2026-09-29, measured side by side on one host
 against the previous `main`: first render stayed about 0.68 s and usable
-controls about 2.1–2.2 s when the browser already had the compiled SQLite Wasm
+controls about 2.1–2.2 s when the browser already had the former store's compiled SQLite Wasm
 (the previous build measured 2.07–2.25 s the same way); a run that downloads
 the 619 kB Wasm takes about 2.7–3.0 s at 250 ms latency. Unthrottled cold
 readiness was about 1.2 s (previously 1.24–1.31 s), controlled reloads about
@@ -215,31 +231,32 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 
 ## Dependencies and generated assets
 
-- FoldKit, UI and DevTools are aligned at 0.171.0; the Vite plugin is 0.29.1.
-  FoldKit 0.170+ supports Effect 4.1, including its split crypto services. It retains
-  the controlled-input, IME and portal fixes from 0.169. The custom Record/Save shortcut
-  also ignores `keyCode` 229 when an IME clears `isComposing` too early.
-- `@effect/ui` (Effect UI, the successor to FoldKit 0.x) is a public preview
-  with no npm release, installed as a dev dependency from the pkg.pr.new
-  snapshot of Effect-TS/ui commit `77dcd92`, pinned by URL and lockfile hash.
-  Only the migration spike `web/features/templates/reportBody.ts` and its
-  test import it; the app does not render it, so it ships in no bundle and
-  needs no license inventory entry. Fallow reports it as a dev dependency used
-  in production; move it to `dependencies` when the app first renders it.
-  Bump it by replacing the short SHA in `package.json`.
+- The UI runs on Effect UI (`@effect/ui`, `@effect/ui-kit`; DevTools
+  `@effect/ui-devtools`), the successor to FoldKit 0.x, which it replaced. It
+  is a public preview with no npm release: all three install from the
+  pkg.pr.new snapshot of Effect-TS/ui commit `77dcd92`, pinned by URL and
+  lockfile hash. `pnpm-workspace.yaml` overrides `@effect/ui` and
+  `@effect/ui-kit` to the same URLs, because ui-devtools peer-depends on
+  them and they are not on npm. Bump all of them together by replacing the
+  short SHA in `package.json` and `pnpm-workspace.yaml`, then run every check
+  in this file: preview APIs can change between snapshots. Effect UI cancels
+  every form `submit`, so a control that must load a new document is a link.
+  The custom Record/Save shortcut ignores `keyCode` 229 when an IME clears
+  `isComposing` too early. `web/features/templates/reportBody.ts` is the
+  earlier standalone-component spike of the template report; the app renders
+  the report from the root Model, and only its test mounts the spike.
 - `@tanstack/table-core` 9.3.1 (MIT) derives the sorted and filtered rows of
   the History and Templates grids. v9 needs `coreReactivityFeature:
   storeReactivityBindings()` in its feature registry; only the sorting,
   column-filter and global-filter features are registered.
-- LiveStore packages now use stable 0.5.0 instead of the October 5 snapshot.
-  It fixes interrupted state rebuild recovery, restores snapshot heads and drains
-  admitted events on orderly shutdown. Its first open rematerializes derived
-  state from the existing event log; retain `optio-v3` and the event schemas.
-  Hard crashes can still lose unacknowledged writes. On any LiveStore change,
-  run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove OPFS persistence.
-- The Effect cohort is pinned to 4.1.5 across the app and workers, within
-  FoldKit's `~4.1.0` peers. UUIDs use `SecureRandom.uuidV4` from `effect/crypto`
-  and only `BrowserCrypto.layerSecureRandom`, not the full crypto layer.
+- Storage is `effect/eventlog` from Effect itself (see
+  [architecture](architecture.md#storage-and-timing-constraints)); it is
+  marked unstable and listed in `allowedUnstableApis`. On any Effect update,
+  run `pnpm test:e2e` and `scripts/test-dev-store.mjs` to prove IndexedDB
+  persistence.
+- The Effect cohort is pinned to 4.1.5 across the app, within
+  Effect UI's `^4.1.4` peers. UUIDs use `SecureRandom.uuidV4` from `effect/crypto`
+  over Web Crypto's `getRandomValues`, not the full crypto layer.
   JSON boundaries use `Schema.fromJsonString`, preserving backup milliseconds,
   pretty printing and tolerant stored-option decoding. Verify runtime, browser
   and persistence tests before changing the cohort; companion packages must not
@@ -258,13 +275,9 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
   use explicit suffix patterns for task-count-prefixed sidebar buttons and an
   explicit partial match for the guide link with its subtitle. Keep the
   release-age guard without exemptions.
-- LiveStore's OpenTelemetry API peer is a direct dependency so Vite can resolve
-  it from optimized browser modules. Exclude it from the shared vendor group to
-  avoid a circular import between its external entry and that group. Version
-  1.9.1 satisfies the installed SDK's `<1.10` peer range; keep it until the SDK
-  accepts API 1.10.
-- The Nano ID override (`@livestore/utils>nanoid`) is still required: stable
-  LiveStore 0.5.0 continues to pin vulnerable 5.0.9. Keep 5.1.16 or later.
+- `@opentelemetry/api` is a dev dependency, included in `optimizeDeps`, because
+  Vitest's browser runner imports this optional peer from the optimized graph.
+  It stays out of the shared vendor group to avoid a circular import.
 - `@effect/tsgo` 0.73.2 supports Vite+ 1.7.0's Oxlint 1.94.0 and
   `tsrs@7.1.0-beta.tsrs2` (see [Effect diagnostics](#effect-diagnostics)). Keep
   the direct TSRS pin aligned with Vite+ and check the Effect support matrix
@@ -315,15 +328,15 @@ deployment trigger. The `/optio/` base path and service-worker settings live in
 [vite.config.ts](../vite.config.ts).
 
 For a fresh repository, set **Settings → Pages → Build and deployment → Source
-→ GitHub Actions**. Optio uses [FoldKit's browser-only SPA build](https://foldkit.dev/get-started#quick-start): upload `dist`,
-not the `dist/client` and server entry used by SSR. Routes use URL fragments,
+→ GitHub Actions**. Optio is a browser-only SPA (`BrowserHost.mount`, no
+server rendering): upload `dist`. Routes use URL fragments,
 so refreshing `/optio/#/history` requests `/optio/` and needs no Pages rewrite.
 
 Deployment relies on [branch protection](#maintainer-security-and-releases):
 the push trigger also deploys direct pushes, without running the PR checks.
 Keep contributor builds on `pull_request`, not privileged `pull_request_target`.
 
-The current pre-release starts a fresh `optio-v3` store and does not migrate
+The current pre-release starts a fresh `optio` journal and does not migrate
 older stores. Export any wanted pre-release results using the old build before
 updating. Once data compatibility is promised, treat event and table changes as
 migrations rather than renaming the store.

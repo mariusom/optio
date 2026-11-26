@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { Effect, Exit, Scope } from "effect";
 
-import type { AppStore } from "../livestore/client";
+import type { AppStore } from "../store/client";
 import { makeToolHandlers } from "./tools";
-import { archivedSessions } from "../livestore/queries";
+import { archivedSessions } from "../store/queries";
 import { registerWebMcp as registration, type ModelContext } from "./webmcp";
 
 type WebTool = Parameters<ModelContext["registerTool"]>[0];
@@ -50,15 +50,14 @@ const archived = {
 
 const fixture = () => {
   const query = vi.fn((input: unknown) => {
-    // The shared archived-session query counts tasks and excludes live sessions in SQL.
+    // The shared archived-session query counts tasks and excludes live sessions.
     if (input === archivedSessions) return [archived];
-    const sql = String(input);
-    if (sql.includes("'templates'"))
+    if ((input as { readonly table?: string }).table === "templates")
       return [
         { id: "b", name: "Zebra", isDefault: 0 },
         { id: "a", name: "Alpha", isDefault: 1 },
       ];
-    throw new Error(`Unexpected query: ${sql}`);
+    throw new Error(`Unexpected query: ${String(input)}`);
   });
   const open = vi.fn(async () => ({ query }) as unknown as Pick<AppStore, "query">);
   return { query, open, handlers: makeToolHandlers(open) };

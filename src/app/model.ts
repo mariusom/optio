@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { AsyncData } from "foldkit";
+import * as AsyncData from "@/lib/asyncData";
 import { FieldDef, FieldKind } from "../domain/fields";
 import { RunnerStateSchema } from "../web/features/session/runner";
 import { RouteSchema, type Route } from "../web/routes";
@@ -77,7 +77,7 @@ const ReadFailed = Schema.Literal("ReadFailed");
  * A store that cannot open is reported through `storage`; a read that fails
  * becomes `Failure`, so its page offers a retry instead of loading forever.
  */
-const fromStore = <A, I>(data: Schema.Codec<A, I>) => AsyncData.Schema(data, ReadFailed).schema;
+const fromStore = <A, I>(data: Schema.Codec<A, I>) => AsyncData.Schema(data, ReadFailed);
 
 export const AssistantAccess = Schema.Literals(["unavailable", "off", "approved"]);
 

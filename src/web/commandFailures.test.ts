@@ -1,10 +1,9 @@
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
 import { describe, expect, it } from "@effect/vitest";
-import * as Scene from "foldkit/scene";
+import { HtmlLocator } from "@effect/ui/html/testing";
 import { beforeEach, vi } from "vite-plus/test";
 
-import { appServices } from "../app/services";
-import { getStore, type AppStore } from "../livestore/client";
+import { getStore, type AppStore } from "../store/client";
 import { init, update, type Model } from "../main";
 import { Message } from "../messages";
 import {
@@ -24,8 +23,10 @@ import {
 import { DeleteTemplate, DuplicateTemplate } from "./features/templates/commands";
 import { SaveTemplate } from "./features/templates/editorCommands";
 import { templateEditorPage } from "./features/templates/editorView";
+import { viewScene } from "./features/viewScene";
+import { runCommand } from "../app/testSubscriptions";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 
 const query = vi.fn();
 const commit = vi.fn();
@@ -37,13 +38,14 @@ const saveArgs = { id: "template", name: "Edited study", isDefault: false, field
 
 beforeEach(() => {
   vi.resetAllMocks();
+  commit.mockReturnValue(Effect.void);
   vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 });
 
 const cases = [
   {
     name: "UpdateFieldValues",
-    command: () => UpdateFieldValues({ writes: [{ taskFieldId: "field", value: "x" }] }),
+    command: () => UpdateFieldValues.make({ writes: [{ taskFieldId: "field", value: "x" }] }),
     rows: [[{ id: "field", taskId: "task" }], [task]],
     success: "UpdatedFieldValue",
     failure: "FailedRunnerOp",
@@ -51,7 +53,7 @@ const cases = [
   },
   {
     name: "RecordTask",
-    command: () => RecordTask({ sessionId: "session", currentTaskId: "task" }),
+    command: () => RecordTask.make({ sessionId: "session", currentTaskId: "task" }),
     rows: [[task], []],
     success: "TaskRecorded",
     failure: "FailedRunnerOp",
@@ -59,7 +61,7 @@ const cases = [
   },
   {
     name: "EndSession empty",
-    command: () => EndSession({ sessionId: "session" }),
+    command: () => EndSession.make({ sessionId: "session" }),
     rows: [[liveSession], [task]],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
@@ -67,7 +69,7 @@ const cases = [
   },
   {
     name: "EndSession archive",
-    command: () => EndSession({ sessionId: "session" }),
+    command: () => EndSession.make({ sessionId: "session" }),
     rows: [[liveSession], [finishedTask], []],
     success: "SessionEnded",
     failure: "FailedRunnerOp",
@@ -75,7 +77,7 @@ const cases = [
   },
   {
     name: "SelectTask finished",
-    command: () => SelectTask({ sessionId: "session", taskId: "task" }),
+    command: () => SelectTask.make({ sessionId: "session", taskId: "task" }),
     rows: [[finishedTask]],
     success: "TaskEditStarted",
     failure: "FailedRunnerOp",
@@ -83,7 +85,7 @@ const cases = [
   },
   {
     name: "SelectTask current",
-    command: () => SelectTask({ sessionId: "session", taskId: "task" }),
+    command: () => SelectTask.make({ sessionId: "session", taskId: "task" }),
     rows: [[task, { ...finishedTask, id: "edited", isBeingEdited: 1 }], []],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",
@@ -91,7 +93,7 @@ const cases = [
   },
   {
     name: "CancelEdit",
-    command: () => CancelEdit({ taskId: "task" }),
+    command: () => CancelEdit.make({ taskId: "task" }),
     rows: [],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",
@@ -99,7 +101,7 @@ const cases = [
   },
   {
     name: "SaveEdit",
-    command: () => SaveEdit({ taskId: "task" }),
+    command: () => SaveEdit.make({ taskId: "task" }),
     rows: [[]],
     success: "TaskEditFinished",
     failure: "FailedRunnerOp",
@@ -107,7 +109,7 @@ const cases = [
   },
   {
     name: "RenameHistorySession",
-    command: () => RenameHistorySession({ id: "session", sessionName: "Edited" }),
+    command: () => RenameHistorySession.make({ id: "session", sessionName: "Edited" }),
     rows: [],
     success: "HistoryNameUpdated",
     failure: "FailedHistoryOp",
@@ -115,7 +117,7 @@ const cases = [
   },
   {
     name: "DeleteHistorySession",
-    command: () => DeleteHistorySession({ id: "session" }),
+    command: () => DeleteHistorySession.make({ id: "session" }),
     rows: [],
     success: "HistoryDeleted",
     failure: "FailedHistoryOp",
@@ -123,7 +125,7 @@ const cases = [
   },
   {
     name: "ExportSessionCsv",
-    command: () => ExportSessionCsv({ sessionId: "session" }),
+    command: () => ExportSessionCsv.make({ sessionId: "session" }),
     // One combined read of the session, its records and their answers.
     rows: [
       {
@@ -138,7 +140,7 @@ const cases = [
   },
   {
     name: "SaveTemplate",
-    command: () => SaveTemplate(saveArgs),
+    command: () => SaveTemplate.make(saveArgs),
     rows: [],
     success: "TemplateSaved",
     failure: "FailedTemplateOp",
@@ -146,7 +148,7 @@ const cases = [
   },
   {
     name: "SaveTemplate default",
-    command: () => SaveTemplate({ ...saveArgs, isDefault: true }),
+    command: () => SaveTemplate.make({ ...saveArgs, isDefault: true }),
     rows: [],
     success: "TemplateSaved",
     failure: "FailedTemplateOp",
@@ -154,7 +156,7 @@ const cases = [
   },
   {
     name: "DuplicateTemplate",
-    command: () => DuplicateTemplate({ id: "template" }),
+    command: () => DuplicateTemplate.make({ id: "template" }),
     rows: [[template], []],
     success: "DuplicatedTemplate",
     failure: "FailedTemplateOp",
@@ -162,7 +164,7 @@ const cases = [
   },
   {
     name: "DeleteTemplate",
-    command: () => DeleteTemplate({ id: "template" }),
+    command: () => DeleteTemplate.make({ id: "template" }),
     rows: [[template]],
     success: "TemplateOpDone",
     failure: "FailedTemplateOp",
@@ -177,12 +179,13 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
 
   it.effect("returns its success message after store operations", () =>
     Effect.gen(function* () {
-      expect(yield* command().effect).toMatchObject({
+      const message = yield* command().effect;
+      expect(message).toMatchObject({
         _tag: success,
       });
       expect(query).toHaveBeenCalledTimes(rows.length);
       expect(commit).toHaveBeenCalledTimes(writes ? 1 : 0);
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 
   it.effect.each(["open", ...(writes ? ["commit"] : []), ...rows.map((_, index) => index)])(
@@ -213,7 +216,7 @@ describe.each(cases)("$name persistence", ({ command, rows, success, failure, wr
         expect(reported).not.toContain("Error");
         expect(commit).toHaveBeenCalledTimes(stage === "commit" ? 1 : 0);
         if (stage === "open") expect(query).not.toHaveBeenCalled();
-      }).pipe(Effect.provide(appServices)),
+      }),
   );
 });
 
@@ -224,9 +227,10 @@ describe("field writes", () => {
   ] as const)("late input on a %s task", ([, row, commits]) =>
     Effect.gen(function* () {
       query.mockReturnValueOnce([{ id: "field", taskId: "task" }]).mockReturnValueOnce([row]);
-      expect(
-        yield* UpdateFieldValues({ writes: [{ taskFieldId: "field", value: "late" }] }).effect,
-      ).toMatchObject({ _tag: "UpdatedFieldValue" });
+      const message = yield* UpdateFieldValues.make({
+        writes: [{ taskFieldId: "field", value: "late" }],
+      }).effect;
+      expect(message).toMatchObject({ _tag: "UpdatedFieldValue" });
       expect(commit).toHaveBeenCalledTimes(commits);
     }),
   );
@@ -240,7 +244,7 @@ describe("batched field writes", () => {
         .mockReturnValueOnce([task])
         .mockReturnValueOnce([{ id: "closed", taskId: "done" }])
         .mockReturnValueOnce([{ ...finishedTask, id: "done" }]);
-      const result = yield* UpdateFieldValues({
+      const result = yield* UpdateFieldValues.make({
         writes: [
           { taskFieldId: "open", value: "Observed" },
           { taskFieldId: "closed", value: "Late" },
@@ -263,20 +267,24 @@ describe("counter writes", () => {
       ]);
       commit.mockImplementation((event) => {
         value = event.args.value;
+        return Effect.void;
       });
       yield* Effect.all(
-        Array.from({ length: 12 }, () => AdjustCounter({ taskFieldId: "field", delta: 1 }).effect),
+        Array.from(
+          { length: 12 },
+          () => AdjustCounter.make({ taskFieldId: "field", delta: 1 }).effect,
+        ),
         { concurrency: "unbounded" },
       );
       expect(value).toBe("19");
-      yield* AdjustCounter({ taskFieldId: "field", delta: -1 }).effect;
+      yield* AdjustCounter.make({ taskFieldId: "field", delta: -1 }).effect;
       expect(value).toBe("18");
     }),
   );
   it.effect.each(["0", "-1", "2.5"])("does not decrement invalid or zero value %s", (value) =>
     Effect.gen(function* () {
       query.mockReturnValue([{ taskId: "task", kind: "counter", value, ...task }]);
-      yield* AdjustCounter({ taskFieldId: "field", delta: -1 }).effect;
+      yield* AdjustCounter.make({ taskFieldId: "field", delta: -1 }).effect;
       expect(commit).not.toHaveBeenCalled();
     }),
   );
@@ -290,7 +298,10 @@ describe("SaveEdit required field validation", () => {
   ])("rejects invalid optional %s", ([kind, value]) =>
     Effect.gen(function* () {
       query.mockReturnValueOnce([{ kind, value, isRequired: 0 }]);
-      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({ _tag: "FailedRunnerOp" });
+      const message = yield* SaveEdit.make({ taskId: "task" }).effect;
+      expect(message).toMatchObject({
+        _tag: "FailedRunnerOp",
+      });
       expect(commit).not.toHaveBeenCalled();
     }),
   );
@@ -298,7 +309,8 @@ describe("SaveEdit required field validation", () => {
     Effect.gen(function* () {
       query.mockReturnValueOnce([{ isRequired: 1, value: "" }]);
 
-      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({
+      const message = yield* SaveEdit.make({ taskId: "task" }).effect;
+      expect(message).toMatchObject({
         _tag: "FailedRunnerOp",
         error: "Complete required questions and correct invalid answers first.",
       });
@@ -313,7 +325,8 @@ describe("SaveEdit required field validation", () => {
         { isRequired: 1, value: "complete" },
       ]);
 
-      expect(yield* SaveEdit({ taskId: "task" }).effect).toMatchObject({
+      const message = yield* SaveEdit.make({ taskId: "task" }).effect;
+      expect(message).toMatchObject({
         _tag: "TaskEditFinished",
       });
       expect(commit).toHaveBeenCalledTimes(1);
@@ -332,19 +345,19 @@ describe("EndSession idempotency", () => {
       for (const target of [task, { ...finishedTask, id: "other" }]) {
         query.mockReturnValueOnce([target, { ...finishedTask, id: "edited", isBeingEdited: 1 }]);
         query.mockReturnValueOnce([field]);
-        expect(yield* SelectTask({ sessionId: "session", taskId: target.id }).effect).toMatchObject(
-          {
-            _tag: "FailedRunnerOp",
-            error: expect.stringContaining("correct invalid answers"),
-          },
-        );
+        const message = yield* SelectTask.make({ sessionId: "session", taskId: target.id }).effect;
+        expect(message).toMatchObject({
+          _tag: "FailedRunnerOp",
+          error: expect.stringContaining("correct invalid answers"),
+        });
         expect(commit).not.toHaveBeenCalled();
       }
       query
         .mockReturnValueOnce([liveSession])
         .mockReturnValueOnce([finishedTask])
         .mockReturnValueOnce([field]);
-      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+      const message = yield* EndSession.make({ sessionId: "session" }).effect;
+      expect(message).toMatchObject({
         _tag: "FailedRunnerOp",
         error: expect.stringContaining("correct invalid answers"),
       });
@@ -359,7 +372,8 @@ describe("EndSession idempotency", () => {
     Effect.gen(function* () {
       query.mockReturnValueOnce(sessionRows);
 
-      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+      const message = yield* EndSession.make({ sessionId: "session" }).effect;
+      expect(message).toMatchObject({
         _tag: "FailedRunnerOp",
         error: "This session has already ended.",
       });
@@ -376,10 +390,12 @@ describe("EndSession idempotency", () => {
         .mockReturnValueOnce([])
         .mockReturnValueOnce([{ ...liveSession, endedAt: new Date(2000) }]);
 
-      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+      const first = yield* EndSession.make({ sessionId: "session" }).effect;
+      expect(first).toMatchObject({
         _tag: "SessionEnded",
       });
-      expect(yield* EndSession({ sessionId: "session" }).effect).toMatchObject({
+      const second = yield* EndSession.make({ sessionId: "session" }).effect;
+      expect(second).toMatchObject({
         _tag: "FailedRunnerOp",
       });
 
@@ -392,14 +408,7 @@ describe("EndSession idempotency", () => {
 describe("template save failure recovery", () => {
   it.effect.each(["open", "commit"])("resets saving and retains edits after %s failure", (stage) =>
     Effect.gen(function* () {
-      const initial = init({
-        protocol: "https:",
-        host: "example.com",
-        port: Option.none(),
-        pathname: "/optio/",
-        search: Option.none(),
-        hash: Option.some("#/templates/template"),
-      }).model;
+      const initial = init("#/templates/template").model;
       const model: Model = {
         ...initial,
         editor: {
@@ -426,11 +435,9 @@ describe("template save failure recovery", () => {
       };
       const saving = update(model, Message.ClickedSaveTemplate());
       expect(saving.model.editor?.isSaving).toBe(true);
-      Scene.scene(
-        { view: templateEditorPage, update },
-        Scene.given(saving.model),
-        Scene.expect(Scene.role("button", { name: "Save template" })).toBeDisabled(),
-      );
+      (yield* viewScene((h) => templateEditorPage(saving.model, h)))
+        .expect(HtmlLocator.role("button", { name: "Save template" }))
+        .toBeDisabled();
       const error = new Error("Save unavailable");
       if (stage === "open") vi.mocked(getStore).mockRejectedValue(error);
       else
@@ -438,21 +445,19 @@ describe("template save failure recovery", () => {
           throw error;
         });
       const command = saving.commands?.[0];
-      expect(command).toBeDefined();
-      const message = yield* command!.effect;
-      expect(message._tag).toBe("FailedTemplateOp");
+      // A failed save reports a Message, never a no-op.
+      const message = (yield* runCommand(command!)) as Message;
+      expect(message).toMatchObject({ _tag: "FailedTemplateOp" });
       const recovered = update(saving.model, message);
       expect(recovered.model.editor).toEqual(model.editor);
       expect(recovered.model.lastError).toBe("Couldn't save that. Please try again.");
       expect(recovered.commands ?? []).toEqual([]);
-      Scene.scene(
-        { view: templateEditorPage, update },
-        Scene.given(recovered.model),
-        Scene.expect(Scene.role("button", { name: "Save template" })).toBeEnabled(),
-      );
+      (yield* viewScene((h) => templateEditorPage(recovered.model, h)))
+        .expect(HtmlLocator.role("button", { name: "Save template" }))
+        .toBeDisabled(false);
       expect(update(recovered.model, Message.ClickedSaveTemplate()).model.editor?.isSaving).toBe(
         true,
       );
-    }).pipe(Effect.provide(appServices)),
+    }),
   );
 });

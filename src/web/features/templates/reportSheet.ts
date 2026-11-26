@@ -1,5 +1,5 @@
 import { Array } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { Message } from "../../../messages";
 import { formatDurationShort } from "../../format";
@@ -13,18 +13,21 @@ import { timeBreakdownSection } from "../history/timeBreakdownView";
 
 const sessionsLabel = (count: number) => `${count} session${count === 1 ? "" : "s"}`;
 
-const note = (text: string, h: HtmlBuilder<Message>): Html =>
-  h.p([h.Class("text-sm text-muted-foreground")], [text]);
+const note = (text: string, h: H<Message>): Ui =>
+  h.p.class("text-sm text-muted-foreground").children(text);
 
-const reportBody = (report: TemplateReport | "failed" | null, h: HtmlBuilder<Message>): Html => {
+const reportBody = (report: TemplateReport | "failed" | null, h: H<Message>): Ui => {
   if (report === "failed") {
-    return h.p(
-      [h.Role("alert"), h.Class("text-sm text-destructive")],
-      ["Couldn't load the report right now. Close it and try again."],
-    );
+    return h.p
+      .attr("role", "alert")
+      .class("text-sm text-destructive")
+      .children("Couldn't load the report right now. Close it and try again.");
   }
   if (report === null) {
-    return h.p([h.Role("status"), h.Class("text-sm text-muted-foreground")], ["Loading report…"]);
+    return h.p
+      .attr("role", "status")
+      .class("text-sm text-muted-foreground")
+      .children("Loading report…");
   }
   if (report.sessionCount === 0) {
     return note(
@@ -33,27 +36,21 @@ const reportBody = (report: TemplateReport | "failed" | null, h: HtmlBuilder<Mes
     );
   }
   const breakdown = timeBreakdownSection(report.tasks, h);
-  return h.div(
-    [h.Class("flex flex-col gap-4")],
-    [
-      h.p(
-        [
-          h.Class("text-sm font-medium text-foreground tabular"),
-          h.DataAttribute("slot", "report-totals"),
-        ],
-        [
-          Array.join(
-            [
-              sessionsLabel(report.sessionCount),
-              taskCountLabel(report.tasks.length),
-              formatDurationShort(report.totalMs),
-            ],
-            " · ",
-          ),
-        ],
+  return h.div.class("flex flex-col gap-4").children(
+    h.p
+      .class("text-sm font-medium text-foreground tabular")
+      .attr("data-slot", "report-totals")
+      .children(
+        Array.join(
+          [
+            sessionsLabel(report.sessionCount),
+            taskCountLabel(report.tasks.length),
+            formatDurationShort(report.totalMs),
+          ],
+          " · ",
+        ),
       ),
-      breakdown ?? note("No single-choice or yes/no answers to break down yet.", h),
-    ],
+    breakdown ?? note("No single-choice or yes/no answers to break down yet.", h),
   );
 };
 
@@ -61,8 +58,8 @@ const reportBody = (report: TemplateReport | "failed" | null, h: HtmlBuilder<Mes
 export const templateReportSheet = (
   template: TemplateSummary,
   report: TemplateReport | "failed" | null,
-  h: HtmlBuilder<Message>,
-): Html =>
+  h: H<Message>,
+): Ui =>
   sheet(
     {
       id: "template-report",

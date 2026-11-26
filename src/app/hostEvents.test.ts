@@ -1,15 +1,16 @@
-import { Effect, Option, Stream } from "effect";
-import { Scene } from "foldkit/test";
-import { fromString } from "foldkit/url";
+import { Effect, Stream } from "effect";
+import { HtmlLocator } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
 import { describe, expect, it } from "vite-plus/test";
 
-import { init, update, view, type Model } from "../main";
+import { init, update, type Model } from "../main";
+import { appScene } from "./appScene";
 import { Message } from "../messages";
 import { appUpdates } from "../web/appUpdate";
 import { planSession } from "../machine/session/sessionMachine";
 import { signalUpdateReady } from "../web/updateSignal";
 
-const start = init(Option.getOrThrow(fromString("https://optio.test/#/settings"))).model;
+const start = init("#/settings").model;
 
 const commandsOf = (model: Model, message: Message) =>
   (update(model, message).commands ?? []).map((command) => ({
@@ -47,20 +48,9 @@ describe("system color scheme", () => {
   });
 });
 
-// Renders the whole app view for a Model.
-const showing = (model: Model, ...steps: ReadonlyArray<Scene.SceneStep<Model, Message, never>>) =>
-  Scene.scene(
-    {
-      update: (current: Model, _message: Message) => ({ model: current }),
-      view: (current: Model, h) => view(current, h).body,
-    },
-    Scene.given(model),
-    ...steps,
-  );
-
 describe("app update prompt", () => {
   it("stays hidden until a new version is ready", () =>
-    showing(start, Scene.expect(Scene.text("Update ready. Tap to refresh.")).toBeAbsent()));
+    void appScene(start).expect(Locator.text("Update ready. Tap to refresh.")).toBeAbsent());
 
   it("writes typed answers still waiting for the idle write before reloading", () => {
     const runner = planSession(
@@ -114,23 +104,21 @@ describe("app update prompt", () => {
     // The answer batch is dispatched first; the reload queues behind it.
     expect(commandsOf(typing, Message.ClickedApplyUpdate())).toEqual([
       { name: "UpdateFieldValues", args: { writes: [{ taskFieldId: "f", value: "Base extra" }] } },
-      { name: "ReloadForUpdate", args: undefined },
+      { name: "ReloadForUpdate", args: {} },
     ]);
   });
 
   it("reloads once on tap and ignores further taps", () => {
     const ready = update(start, Message.AppUpdateReady()).model;
-    showing(
-      ready,
-      Scene.expect(Scene.role("button", { name: "Update ready. Tap to refresh." })).toExist(),
-    );
+    appScene(ready)
+      .expect(HtmlLocator.role("button", { name: "Update ready. Tap to refresh." }))
+      .toExist();
 
     const applying = update(ready, Message.ClickedApplyUpdate());
     expect(applying.commands?.map((command) => command.name)).toEqual(["ReloadForUpdate"]);
-    showing(
-      applying.model,
-      Scene.expect(Scene.role("button", { name: "Loading update…" })).toBeDisabled(),
-    );
+    appScene(applying.model)
+      .expect(HtmlLocator.role("button", { name: "Loading update…" }))
+      .toBeDisabled();
     expect(update(applying.model, Message.ClickedApplyUpdate()).commands ?? []).toEqual([]);
   });
 });

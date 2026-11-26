@@ -1,5 +1,5 @@
-import { Array, Option, Order, pipe, String } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import { Array, Order, pipe, String } from "effect";
+import type { H } from "@/lib/view";
 
 import {
   FileText,
@@ -36,115 +36,104 @@ const resumeView = (
     /** Ticked Model time, not the clock: views render time from the Model. */
     now: number;
   }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const { active, templates, pendingDiscard, now } = options;
   const missing = isTemplateMissing(templates, active);
   const name = displaySessionName(active.sessionName, active.templateName);
   const taskCount = `${active.completedCount} task${active.completedCount === 1 ? "" : "s"}`;
 
-  return h.div(
-    [h.Class("flex flex-col gap-6")],
-    [
-      groupedList(
-        {
-          header: "In progress",
-          footer: missing
-            ? "This session’s template was deleted. You can still finish and keep what you recorded, or discard it."
-            : "This session is still open. Pick up where you left off.",
-        },
-        [
-          row(
-            {
-              title: name,
-              subtitle: active.templateName,
-              trailing: statusPill(
-                { tone: missing ? "warning" : "success" },
-                [
-                  h.span([
-                    h.Class(
-                      cn(
-                        "size-1.5 rounded-full",
-                        missing ? "bg-warning-content" : "bg-success animate-pulse",
-                      ),
-                    ),
-                  ]),
-                  h.span([], [taskCount]),
-                ],
-                h,
-              ),
-            },
-            h,
-          ),
-          row({ title: "Started", value: formatTimeOnly(active.startedAt) }, h),
-          row({ title: "Elapsed", value: formatDurationHm(now - active.startedAt) }, h),
-        ],
-        h,
-      ),
-      h.div(
-        [h.Class("flex flex-col gap-2")],
-        [
-          button(
-            {
-              size: "lg",
-              className: "w-full",
-              onClick: Message.ClickedResumeSession(),
-              attributes: [h.AriaLabel(missing ? "Finish Session" : "Resume Session")],
-            },
-            [icon(h, Play, "size-4 fill-current"), missing ? "Finish session" : "Resume session"],
-            h,
-          ),
-          button(
-            {
-              variant: "destructive",
-              size: "lg",
-              className: "w-full",
-              onClick: Message.ClickedDiscardSession(),
-              attributes: [h.AriaLabel("Discard Session")],
-            },
-            "Discard session",
-            h,
-          ),
-        ],
-      ),
-      ...(pendingDiscard
-        ? [
-            confirmSheet(
-              {
-                id: "discard-session",
-                title: "Discard this session?",
-                message: `${taskCount} recorded so far will be deleted. This can’t be undone.`,
-                confirmLabel: "Discard",
-                confirmAriaLabel: "Confirm discard session",
-                cancelAriaLabel: "Cancel discard",
-                destructive: true,
-                onConfirm: Message.ConfirmedDiscardSession(),
-                onCancel: Message.CanceledDiscardSession(),
-              },
+  return h.div.class("flex flex-col gap-6").children(
+    groupedList(
+      {
+        header: "In progress",
+        footer: missing
+          ? "This session’s template was deleted. You can still finish and keep what you recorded, or discard it."
+          : "This session is still open. Pick up where you left off.",
+      },
+      [
+        row(
+          {
+            title: name,
+            subtitle: active.templateName,
+            trailing: statusPill(
+              { tone: missing ? "warning" : "success" },
+              [
+                h.span.class(
+                  cn(
+                    "size-1.5 rounded-full",
+                    missing ? "bg-warning-content" : "bg-success animate-pulse",
+                  ),
+                ),
+                h.span.children(taskCount),
+              ],
               h,
             ),
-          ]
-        : []),
-    ],
+          },
+          h,
+        ),
+        row({ title: "Started", value: formatTimeOnly(active.startedAt) }, h),
+        row({ title: "Elapsed", value: formatDurationHm(now - active.startedAt) }, h),
+      ],
+      h,
+    ),
+    h.div.class("flex flex-col gap-2").children(
+      button(
+        {
+          size: "lg",
+          className: "w-full",
+          onClick: Message.ClickedResumeSession(),
+          attrs: { "aria-label": missing ? "Finish Session" : "Resume Session" },
+        },
+        [icon(h, Play, "size-4 fill-current"), missing ? "Finish session" : "Resume session"],
+        h,
+      ),
+      button(
+        {
+          variant: "destructive",
+          size: "lg",
+          className: "w-full",
+          onClick: Message.ClickedDiscardSession(),
+          attrs: { "aria-label": "Discard Session" },
+        },
+        "Discard session",
+        h,
+      ),
+    ),
+    pendingDiscard
+      ? [
+          confirmSheet(
+            {
+              id: "discard-session",
+              title: "Discard this session?",
+              message: `${taskCount} recorded so far will be deleted. This can’t be undone.`,
+              confirmLabel: "Discard",
+              confirmAriaLabel: "Confirm discard session",
+              cancelAriaLabel: "Cancel discard",
+              destructive: true,
+              onConfirm: Message.ConfirmedDiscardSession(),
+              onCancel: Message.CanceledDiscardSession(),
+            },
+            h,
+          ),
+        ]
+      : [],
   );
 };
 
 // ── First run ─────────────────────────────────────────────────────────────
 
-const noTemplatesView = (h: HtmlBuilder<Message>) =>
+const noTemplatesView = (h: H<Message>) =>
   emptyState(
     {
       icon: FileText,
       title: "Start with a template",
       description: "A template is the list of things you note down for each task.",
-      action: h.a(
-        [
-          h.Class(buttonClass({ size: "lg" })),
-          h.Href(hrefFor({ _tag: "TemplatesTab" })),
-          h.AriaLabel("Create Template"),
-        ],
-        ["Create a template"],
-      ),
+      action: h.a
+        .class(buttonClass({ size: "lg" }))
+        .attr("href", hrefFor({ _tag: "TemplatesTab" }))
+        .attr("aria-label", "Create Template")
+        .children("Create a template"),
     },
     h,
   );
@@ -159,7 +148,7 @@ const byName = Order.mapInput(
 const templatePicker = (
   templates: ReadonlyArray<TemplateSummary>,
   selectedId: string | null,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const sorted = Array.sort(templates, byName);
   return nativeSelect(
@@ -171,56 +160,51 @@ const templatePicker = (
       onChange: (id) => Message.SelectedTemplate({ id }),
       options: [
         ...(selectedId === null
-          ? [h.option([h.Value(""), h.Disabled(true)], ["Choose a template"])]
+          ? [h.option.attr("value", "").disabled(true).children("Choose a template")]
           : []),
         // The default template is preselected; a suffix would truncate on phones.
-        ...Array.map(sorted, (template) => h.option([h.Value(template.id)], [template.name])),
+        ...Array.map(sorted, (template) =>
+          h.option.attr("value", template.id).children(template.name),
+        ),
       ],
     },
     h,
   );
 };
 
-const sessionNameField = (placeholderName: string, value: string, h: HtmlBuilder<Message>) =>
-  h.div(
-    [h.Class(cn("group/field w-full", inlineFieldClass))],
-    [
-      h.label([h.For("session-name"), h.Class(cn(inputLabelClass))], ["Session name"]),
-      h.div(
-        [h.Class("relative")],
-        [
-          h.input([
-            h.Id("session-name"),
-            h.Type("text"),
-            h.Class(cn(inputClass, "pr-11")),
-            h.Value(value),
-            h.Placeholder(placeholderName),
-            h.Autocomplete("off"),
-            h.Autocapitalize("words"),
-            h.EnterKeyHint("go"),
-            h.OnInput((text) => Message.ChangedSessionNameInput({ text })),
-            h.OnKeyDownPreventDefault((key) =>
-              key === "Enter" ? Option.some(Message.ClickedStartSession()) : Option.none(),
+const sessionNameField = (placeholderName: string, value: string, h: H<Message>) =>
+  h.div.class(cn("group/field w-full", inlineFieldClass)).children(
+    h.label.attr("for", "session-name").class(cn(inputLabelClass)).children("Session name"),
+    h.div.class("relative").children(
+      h.input
+        .id("session-name")
+        .attr("type", "text")
+        .class(cn(inputClass, "pr-11"))
+        .value(value)
+        .attr("placeholder", placeholderName)
+        .attr("autocomplete", "off")
+        .attr("autocapitalize", "words")
+        .attr("enterkeyhint", "go")
+        .on("input", ({ value: text }) => Message.ChangedSessionNameInput({ text }))
+        .on("keydown", ({ key }) => (key === "Enter" ? Message.ClickedStartSession() : undefined), {
+          preventDefault: true,
+        }),
+      value.length > 0
+        ? [
+            button(
+              {
+                variant: "ghost",
+                size: "icon",
+                className: "absolute inset-y-0 right-0 my-auto",
+                onClick: Message.ChangedSessionNameInput({ text: "" }),
+                attrs: { "aria-label": "Clear session name" },
+              },
+              [icon(h, X, "size-4")],
+              h,
             ),
-          ]),
-          ...(value.length > 0
-            ? [
-                button(
-                  {
-                    variant: "ghost",
-                    size: "icon",
-                    className: "absolute inset-y-0 right-0 my-auto",
-                    onClick: Message.ChangedSessionNameInput({ text: "" }),
-                    attributes: [h.AriaLabel("Clear session name")],
-                  },
-                  [icon(h, X, "size-4")],
-                  h,
-                ),
-              ]
-            : []),
-        ],
-      ),
-    ],
+          ]
+        : [],
+    ),
   );
 
 const newSessionView = (
@@ -230,45 +214,39 @@ const newSessionView = (
     placeholderName: string;
     sessionNameInput: string;
   }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const { templates, selectedTemplateId, placeholderName, sessionNameInput } = options;
   const canStart =
     selectedTemplateId !== null && Array.some(templates, (t) => t.id === selectedTemplateId);
-  return h.div(
-    [h.Class("flex flex-col gap-6")],
-    [
-      groupedList(
+  return h.div.class("flex flex-col gap-6").children(
+    groupedList(
+      {
+        header: "New session",
+        footer: `Leave the name empty to call it “${placeholderName}”.`,
+        surface: "plain",
+        className: "gap-4 divide-y-0",
+      },
+      [
+        templatePicker(templates, selectedTemplateId, h),
+        sessionNameField(placeholderName, sessionNameInput, h),
+      ],
+      h,
+    ),
+    h.div.class("flex flex-col gap-2").children(
+      button(
         {
-          header: "New session",
-          footer: `Leave the name empty to call it “${placeholderName}”.`,
-          surface: "plain",
-          className: "gap-4 divide-y-0",
+          size: "lg",
+          className: "w-full",
+          isDisabled: !canStart,
+          onClick: Message.ClickedStartSession(),
+          attrs: { "aria-label": "Start Session" },
         },
-        [
-          templatePicker(templates, selectedTemplateId, h),
-          sessionNameField(placeholderName, sessionNameInput, h),
-        ],
+        [icon(h, Play, "size-4 fill-current"), "Start session"],
         h,
       ),
-      h.div(
-        [h.Class("flex flex-col gap-2")],
-        [
-          button(
-            {
-              size: "lg",
-              className: "w-full",
-              isDisabled: !canStart,
-              onClick: Message.ClickedStartSession(),
-              attributes: [h.AriaLabel("Start Session")],
-            },
-            [icon(h, Play, "size-4 fill-current"), "Start session"],
-            h,
-          ),
-          ...(canStart ? [] : [hint("Choose a template to start.", h)]),
-        ],
-      ),
-    ],
+      canStart ? [] : [hint("Choose a template to start.", h)],
+    ),
   );
 };
 
@@ -285,7 +263,7 @@ type StartModel = {
   readonly lastError?: string | null;
 };
 
-export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
+export const startView = (model: StartModel, h: H<Message>) =>
   page(
     {},
     [
@@ -315,18 +293,15 @@ export const startView = (model: StartModel, h: HtmlBuilder<Message>) =>
             ),
       ...(model.activeSession === null
         ? [
-            h.a(
-              [
-                h.Class(
-                  buttonClass({
-                    variant: "link",
-                    className: "min-h-11 self-center text-muted-foreground",
-                  }),
-                ),
-                h.Href(hrefFor({ _tag: "AgentHelp" })),
-              ],
-              ["Use with AI"],
-            ),
+            h.a
+              .class(
+                buttonClass({
+                  variant: "link",
+                  className: "min-h-11 self-center text-muted-foreground",
+                }),
+              )
+              .attr("href", hrefFor({ _tag: "AgentHelp" }))
+              .children("Use with AI"),
           ]
         : []),
     ],

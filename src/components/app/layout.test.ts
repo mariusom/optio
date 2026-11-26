@@ -1,100 +1,134 @@
-import { inertHtml, type HtmlBuilder } from "foldkit/html";
-import * as Scene from "foldkit/scene";
-import { describe, expect, it } from "vite-plus/test";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
+import { Html } from "@effect/ui/html";
+import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { assert, describe, it } from "@effect/vitest";
+import { Effect, Schema } from "effect";
 
+import type { H, Ui } from "@/lib/view";
 import { choiceRows, row } from "./layout";
 
-type Msg = { readonly pick: string };
-const h = inertHtml as unknown as HtmlBuilder<Msg>;
-type Node = NonNullable<ReturnType<typeof h.div>>;
+const Msg = Schema.Struct({ pick: Schema.String });
+type Msg = typeof Msg.Type;
 
-const nodes = (node: Node | null): Node[] =>
-  node === null
-    ? []
-    : [node, ...(node.children ?? []).flatMap((c) => (typeof c === "object" ? nodes(c) : []))];
-
-describe("choiceRows", () => {
-  const view = choiceRows(
+const appearance = (selected: string, h: H<Msg>) =>
+  choiceRows(
     {
       label: "Appearance",
       choices: ["Light", "Dark", "Automatic"].map((label) => ({
         label,
-        selected: label === "Dark",
+        selected: label === selected,
         onSelect: { pick: label },
       })),
     },
     h,
   );
-  const all = nodes(view);
-  const radios = all.filter((n) => n.data?.attrs?.role === "radio");
 
-  it("names the group and marks exactly one choice checked", () => {
-    const group = all.find((n) => n.data?.attrs?.role === "radiogroup");
-    expect(group?.data?.attrs?.["aria-label"]).toBe("Appearance");
-    expect(radios).toHaveLength(3);
-    expect(radios.map((n) => n.data?.attrs?.["aria-checked"])).toEqual(["false", "true", "false"]);
+/** The appearance picker, holding the picked choice as its Model. */
+const Picker = Html.component({
+  name: "Picker",
+  props: Schema.Struct({ initial: Schema.String }),
+  model: Schema.String,
+  message: Msg,
+}).make({
+  init: ($) => $.props.initial,
+  update: (_, message) => message.pick,
+  view: (h, model) => appearance(model, h),
+});
+
+/** Renders a fixed view, for structural assertions. */
+const Static = (render: (h: H<Msg>) => Ui) =>
+  Html.component({ name: "Static", model: Schema.Null, message: Msg }).make({
+    init: () => null,
+    update: ($) => $.model,
+    view: (h) => render(h),
   });
 
-  it("keeps one tab stop on the selected choice", () => {
-    expect(radios.map((n) => n.data?.props?.tabIndex)).toEqual([-1, 0, -1]);
-  });
+/** The tag of a fixed view's outermost element. */
+const tagOf = function* (render: (h: H<Msg>) => Ui) {
+  const s = yield* HtmlScene.make(Static(render), {});
+  return Locator.elements(s.root)[0]?.tag;
+};
 
-  it("moves the selection with arrow keys and wraps", () => {
-    const config = {
-      view: (selected: string, builder: HtmlBuilder<Msg>) =>
-        choiceRows(
-          {
-            label: "Appearance",
-            choices: ["Light", "Dark", "Automatic"].map((label) => ({
-              label,
-              selected: label === selected,
-              onSelect: { pick: label },
-            })),
-          },
-          builder,
-        ),
-      update: (_selected: string, message: Msg) => ({ model: message.pick, outMessage: message }),
-    };
-    for (const [from, key, to] of [
-      ["Dark", "ArrowRight", "Automatic"],
-      ["Automatic", "ArrowDown", "Light"],
-      ["Dark", "ArrowLeft", "Light"],
-      ["Light", "ArrowUp", "Automatic"],
-      ["Dark", "Home", "Light"],
-      ["Light", "End", "Automatic"],
-    ] as const) {
-      Scene.scene(
-        config,
-        Scene.given(from),
-        Scene.keydown(Scene.role("radio", { name: from }), key),
-        Scene.expectHandled(),
-        Scene.expectOutMessage({ pick: to }),
-        Scene.expect(Scene.role("radio", { name: to })).toHaveAttr("aria-checked", "true"),
-        Scene.expect(Scene.role("radio", { name: from })).toHaveAttr("aria-checked", "false"),
+const radio = (name: string) => HtmlLocator.role("radio", { name });
+const radios = Locator.attr("role", "radio");
+
+describe("choiceRows", () => {
+  it.effect("names the group and marks exactly one choice checked", () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(Picker, { initial: "Dark" });
+      assert.strictEqual(
+        s.get(Locator.attr("role", "radiogroup")).attrs?.["aria-label"],
+        "Appearance",
       );
-    }
-    Scene.scene(
-      config,
-      Scene.given("Dark"),
-      Scene.keydown(Scene.role("radio", { name: "Dark" }), "Tab"),
-      Scene.expectIgnored(),
-      Scene.expectNoOutMessage(),
-      Scene.expect(Scene.role("radio", { name: "Dark" })).toHaveAttr("aria-checked", "true"),
+      assert.deepStrictEqual(
+        s.all(radios).map((n) => n.attrs?.["aria-checked"]),
+        ["false", "true", "false"],
+      );
+    }),
+  );
+
+  it.effect("keeps one tab stop on the selected choice", () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(Picker, { initial: "Dark" });
+      assert.deepStrictEqual(
+        s.all(radios).map((n) => n.attrs?.tabindex),
+        ["-1", "0", "-1"],
+      );
+    }),
+  );
+
+  for (const [from, key, to] of [
+    ["Dark", "ArrowRight", "Automatic"],
+    ["Automatic", "ArrowDown", "Light"],
+    ["Dark", "ArrowLeft", "Light"],
+    ["Light", "ArrowUp", "Automatic"],
+    ["Dark", "Home", "Light"],
+    ["Light", "End", "Automatic"],
+  ] as const) {
+    it.effect(`${key} moves the selection from ${from} to ${to}`, () =>
+      Effect.gen(function* () {
+        const s = yield* HtmlScene.make(Picker, { initial: from });
+        s.keydown(radio(from), key);
+        assert.isTrue(s.defaultPrevented);
+        assert.strictEqual(s.get(radio(to)).attrs?.["aria-checked"], "true");
+        assert.strictEqual(s.get(radio(from)).attrs?.["aria-checked"], "false");
+      }),
     );
-  });
+  }
+
+  it.effect("ignores other keys", () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(Picker, { initial: "Dark" });
+      s.keydown(radio("Dark"), "Tab").expectIgnored();
+      assert.isFalse(s.defaultPrevented);
+      assert.strictEqual(s.get(radio("Dark")).attrs?.["aria-checked"], "true");
+    }),
+  );
 });
 
 describe("row", () => {
-  it("renders a link when given an href and a button when given a click", () => {
-    expect(row({ title: "Go", href: "#x" }, h)?.sel).toBe("a");
-    expect(row({ title: "Do", onClick: { pick: "x" } }, h)?.sel).toBe("button");
-    expect(row({ title: "Info" }, h)?.sel).toBe("div");
-  });
+  it.effect("renders a link when given an href and a button when given a click", () =>
+    Effect.gen(function* () {
+      const link = yield* tagOf((h) => row({ title: "Go", href: "#x" }, h));
+      assert.strictEqual(link, "a");
+      const button = yield* tagOf((h) => row({ title: "Do", onClick: { pick: "x" } }, h));
+      assert.strictEqual(button, "button");
+      const plain = yield* tagOf((h) => row({ title: "Info" }, h));
+      assert.strictEqual(plain, "div");
+    }),
+  );
 
-  it("lets long values wrap when asked", () => {
-    const value = nodes(row({ title: "Notes", value: "a very long answer", wrap: true }, h)).find(
-      (n) => Object.keys(n.data?.class ?? {}).includes("whitespace-pre-wrap"),
-    );
-    expect(value).toBeDefined();
-  });
+  it.effect("lets long values wrap when asked", () =>
+    Effect.gen(function* () {
+      const s = yield* HtmlScene.make(
+        Static((h) => row({ title: "Notes", value: "a very long answer", wrap: true }, h)),
+        {},
+      );
+      const value = Locator.elements(s.root).find((n) =>
+        (n.attrs?.class ?? "").split(" ").includes("whitespace-pre-wrap"),
+      );
+      assert.isDefined(value);
+    }),
+  );
 });

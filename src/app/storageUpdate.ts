@@ -1,11 +1,10 @@
-import type { AppServices } from "./services";
-import { AsyncData, type Update } from "foldkit";
+import * as AsyncData from "@/lib/asyncData";
 
-import { Message, type MessageHandlers } from "../messages";
+import type { MessageHandlers, UpdateResult } from "../messages";
 import { RetryStore } from "../web/storageNotice";
 import type { Model, StoreList } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type StorageHandlers = Pick<
@@ -55,7 +54,7 @@ export const storageHandlers = (model: Model): StorageHandlers => ({
   StoreUnavailable: () => ({ model: { ...model, storage: "unavailable" } }),
   ClickedRetryStore: () => ({
     model: { ...model, storage: "opening" },
-    commands: [RetryStore()],
+    commands: [RetryStore.make({})],
   }),
   AcknowledgedMemoryStorage: () => ({ model: { ...model, memoryStorageAcknowledged: true } }),
   FailedListRead: ({ list }) => ({ model: failList(model, list) }),

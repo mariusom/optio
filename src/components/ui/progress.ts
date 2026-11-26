@@ -1,8 +1,7 @@
-import { Progress } from "@foldkit/ui";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export const progressClass = "flex flex-wrap gap-3";
 
@@ -27,69 +26,71 @@ type ProgressConfig = Readonly<{
   children?: ReadonlyArray<Child>;
 }>;
 
-/** FoldKit owns range and accessibility; the wrapper owns Foldcn styling. */
-export const progress = <M>(config: ProgressConfig, h: HtmlBuilder<M>): Html =>
-  Progress.view(
-    {
-      ...config,
-      toView: ({ progress: root, track, indicator }) =>
-        h.div(
-          [
-            ...root,
-            h.Class(cn(progressClass, config.className)),
-            h.DataAttribute("slot", "progress"),
-          ],
-          [
-            ...(config.children ?? []),
-            h.div(
-              [
-                ...track,
-                h.Class(cn(progressTrackClass)),
-                h.DataAttribute("slot", "progress-track"),
-                ...(config.segments === undefined
-                  ? []
-                  : [
-                      h.Style({
-                        maskImage: `repeating-linear-gradient(to right, black 0 calc(100% / ${config.segments} - 3px), transparent 0 calc(100% / ${config.segments}))`,
-                      }),
-                    ]),
-              ],
-              [
-                h.div([
-                  ...indicator,
-                  h.Class(cn(progressIndicatorClass)),
-                  h.DataAttribute("slot", "progress-indicator"),
-                ]),
-              ],
-            ),
-          ],
+/** Native `role="progressbar"` markup over a 0–100 range (the kit's Progress
+ *  is a headless Component instance); the wrapper owns Foldcn styling. */
+export const progress = <M>(config: ProgressConfig, h: H<M>): Ui => {
+  const value = Math.min(100, Math.max(0, config.value));
+  const state = value >= 100 ? "complete" : "loading";
+  const dataAttributes = {
+    "data-value": String(value),
+    "data-min": "0",
+    "data-max": "100",
+    "data-state": state,
+  };
+  return h.div
+    .id(config.id)
+    .attrs({
+      role: "progressbar",
+      "aria-valuemin": "0",
+      "aria-valuemax": "100",
+      "aria-valuenow": String(value),
+      "aria-valuetext": config.valueText,
+      "aria-label": config.ariaLabel,
+      ...dataAttributes,
+      "data-slot": "progress",
+    })
+    .class(cn(progressClass, config.className))
+    .children(
+      config.children ?? [],
+      h.div
+        .attr("data-state", state)
+        .attr("data-slot", "progress-track")
+        .class(cn(progressTrackClass))
+        .style(
+          config.segments === undefined
+            ? {}
+            : {
+                maskImage: `repeating-linear-gradient(to right, black 0 calc(100% / ${config.segments} - 3px), transparent 0 calc(100% / ${config.segments}))`,
+              },
+        )
+        .children(
+          h.div
+            .attrs({ ...dataAttributes, "data-slot": "progress-indicator" })
+            .class(cn(progressIndicatorClass))
+            .style({ width: `${value}%` }),
         ),
-    },
-    h,
-  );
+    );
+};
 
 /** Static label for the bar (consumer-owned text). */
 export const progressLabel = <M>(
   config: StyleConfig & Readonly<{ id?: string }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.span(
-    [
-      h.Class(cn(progressLabelClass, config.className)),
-      h.DataAttribute("slot", "progress-label"),
-      ...(config.id === undefined ? [] : [h.Id(config.id)]),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  h.span
+    .class(cn(progressLabelClass, config.className))
+    .attr("data-slot", "progress-label")
+    .attr("id", config.id)
+    .children(children);
 
 /** Static value readout (consumer-owned text, e.g. "3 of 5"). */
 export const progressValue = <M>(
   config: StyleConfig,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.span(
-    [h.Class(cn(progressValueClass, config.className)), h.DataAttribute("slot", "progress-value")],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  h.span
+    .class(cn(progressValueClass, config.className))
+    .attr("data-slot", "progress-value")
+    .children(children);

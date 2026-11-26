@@ -1,8 +1,8 @@
 import { Array, DateTime, Effect, Option, Schema } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
-import { withStore, type StoreAccess } from "../../../livestore/access";
+import { withStore, type StoreAccess } from "../../../store/access";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
@@ -45,12 +45,14 @@ const isPersistedFieldEditable = (
 // ── UpdateFieldValues → taskFieldValueChanged (COALESCE startDate) ─────────
 
 /** Commits a batch of answers together; each keeps its first-write time. */
-export const UpdateFieldValues = Command.define("UpdateFieldValues", {
-  args: {
-    writes: Schema.Array(Schema.Struct({ taskFieldId: Schema.String, value: Schema.String })),
+export const UpdateFieldValues = Command.make(
+  "UpdateFieldValues",
+  {
+    args: {
+      writes: Schema.Array(Schema.Struct({ taskFieldId: Schema.String, value: Schema.String })),
+    },
   },
-  messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
-  execute: ({ writes }) =>
+  ({ writes }) =>
     withStore((access) =>
       Effect.gen(function* () {
         const committedAt = yield* now;
@@ -59,7 +61,7 @@ export const UpdateFieldValues = Command.define("UpdateFieldValues", {
           isPersistedFieldEditable(access, taskFieldId),
         );
         if (editable.length > 0) {
-          access.store.commit(
+          yield* access.store.commit(
             ...Array.map(editable, ({ taskFieldId, value }) =>
               access.events.taskFieldValueChanged({ id: taskFieldId, value, now: committedAt }),
             ),
@@ -68,14 +70,14 @@ export const UpdateFieldValues = Command.define("UpdateFieldValues", {
         return Message.UpdatedFieldValue();
       }),
     ).pipe(serialized, reportFailure("save", failed)),
-});
+);
 
 /** Read and commit synchronously after opening the store: rapid taps must not
  * derive their next value from a stale rendered snapshot. */
-export const AdjustCounter = Command.define("AdjustCounter", {
-  args: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) },
-  messages: [Message.UpdatedFieldValue, Message.FailedRunnerOp],
-  execute: ({ taskFieldId, delta }) =>
+export const AdjustCounter = Command.make(
+  "AdjustCounter",
+  { args: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) } },
+  ({ taskFieldId, delta }) =>
     withStore((access) =>
       Effect.gen(function* () {
         const { store, tables, events } = access;
@@ -90,20 +92,20 @@ export const AdjustCounter = Command.define("AdjustCounter", {
         if (!isPersistedFieldEditable(access, taskFieldId)) return Message.UpdatedFieldValue();
         const value = Number(field.value) + delta;
         if (value < 0 || !Number.isSafeInteger(value)) return Message.UpdatedFieldValue();
-        store.commit(
+        yield* store.commit(
           events.taskFieldValueChanged({ id: taskFieldId, value: String(value), now: committedAt }),
         );
         return Message.UpdatedFieldValue();
       }),
     ).pipe(serialized, reportFailure("save", failed)),
-});
+);
 
 // ── RecordTask → taskFinished + taskSpawned ─────────────────────────────────
 
-export const RecordTask = Command.define("RecordTask", {
-  args: { sessionId: Schema.String, currentTaskId: Schema.String },
-  messages: [Message.TaskRecorded, Message.FailedRunnerOp],
-  execute: ({ sessionId, currentTaskId }) =>
+export const RecordTask = Command.make(
+  "RecordTask",
+  { args: { sessionId: Schema.String, currentTaskId: Schema.String } },
+  ({ sessionId, currentTaskId }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const endedAt = yield* now;
@@ -129,7 +131,7 @@ export const RecordTask = Command.define("RecordTask", {
         // The next task starts from the current task's questions and defaults.
         const nextFields = yield* withFreshIds(fieldRowsToDefs(fieldRows));
         const nextTaskId = yield* randomUuid;
-        store.commit(
+        yield* store.commit(
           events.taskFinished({ id: currentTaskId, endedAt }),
           events.taskSpawned({
             sessionId,
@@ -141,14 +143,14 @@ export const RecordTask = Command.define("RecordTask", {
         return Message.TaskRecorded({ taskId: currentTaskId, fresh: true });
       }),
     ).pipe(serialized, reportFailure("record", failed)),
-});
+);
 
 // ── EndSession → archive or delete then clear live graph, navigate ─────────
 
-export const EndSession = Command.define("EndSession", {
-  args: { sessionId: Schema.String },
-  messages: [Message.SessionEnded, Message.FailedRunnerOp],
-  execute: ({ sessionId }) =>
+export const EndSession = Command.make(
+  "EndSession",
+  { args: { sessionId: Schema.String } },
+  ({ sessionId }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const endedAt = yield* now;
@@ -165,7 +167,7 @@ export const EndSession = Command.define("EndSession", {
 
         if (finished.length === 0) {
           // No tasks saved → delete live graph + session entirely
-          store.commit(
+          yield* store.commit(
             events.sessionLiveGraphCleared({ sessionId }),
             events.sessionDeleted({ id: sessionId }),
           );
@@ -189,23 +191,23 @@ export const EndSession = Command.define("EndSession", {
         }
 
         // Archive order follows the live task list (queried by orderIndex).
-        store.commit(
+        yield* store.commit(
           events.sessionEnded({ id: sessionId, endedAt, records }),
           events.sessionLiveGraphCleared({ sessionId }),
         );
         return Message.SessionEnded();
       }),
     ).pipe(serialized, reportFailure("end", failed)),
-});
+);
 
 // ── SelectTask → taskEditStarted / taskEditFinished ─────────────────────────
 
-export const SelectTask = Command.define("SelectTask", {
-  args: { sessionId: Schema.String, taskId: Schema.String },
-  messages: [Message.TaskEditStarted, Message.TaskEditFinished, Message.FailedRunnerOp],
-  execute: ({ sessionId, taskId }) =>
+export const SelectTask = Command.make(
+  "SelectTask",
+  { args: { sessionId: Schema.String, taskId: Schema.String } },
+  ({ sessionId, taskId }) =>
     withStore(({ store, tables, events }) =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         const taskRows = store.query(tables.sessionTasks.select().where({ sessionId }));
         const target = Array.findFirst(taskRows, (r) => r.id === taskId);
         if (Option.isNone(target)) return Message.TaskEditStarted({ taskId });
@@ -223,39 +225,40 @@ export const SelectTask = Command.define("SelectTask", {
         }
 
         if (target.value.endDate !== null) {
-          store.commit(events.taskEditStarted({ sessionId, id: taskId }));
+          yield* store.commit(events.taskEditStarted({ sessionId, id: taskId }));
           return Message.TaskEditStarted({ taskId });
         }
         // Selecting current (unfinished) → clear any editing
-        if (Option.isSome(edited)) store.commit(events.taskEditFinished({ id: edited.value.id }));
+        if (Option.isSome(edited))
+          yield* store.commit(events.taskEditFinished({ id: edited.value.id }));
         return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("load", failed)),
-});
+);
 
-export const CancelEdit = Command.define("CancelEdit", {
-  args: { taskId: Schema.String },
-  messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
-  execute: ({ taskId }) =>
+export const CancelEdit = Command.make(
+  "CancelEdit",
+  { args: { taskId: Schema.String } },
+  ({ taskId }) =>
     withStore(({ store, events }) =>
-      Effect.sync(() => {
-        store.commit(events.taskEditCancelled({ id: taskId }));
+      Effect.gen(function* () {
+        yield* store.commit(events.taskEditCancelled({ id: taskId }));
         return Message.TaskEditFinished({ savedTaskId: null });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
-});
+);
 
-export const SaveEdit = Command.define("SaveEdit", {
-  args: { taskId: Schema.String },
-  messages: [Message.TaskEditFinished, Message.FailedRunnerOp],
-  execute: ({ taskId }) =>
+export const SaveEdit = Command.make(
+  "SaveEdit",
+  { args: { taskId: Schema.String } },
+  ({ taskId }) =>
     withStore(({ store, tables, events }) =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         const fieldRows = store.query(tables.sessionTaskFields.select().where({ taskId }));
         if (Array.some(fieldRows, isIncomplete))
           return failed("Complete required questions and correct invalid answers first.");
-        store.commit(events.taskEditFinished({ id: taskId }));
+        yield* store.commit(events.taskEditFinished({ id: taskId }));
         return Message.TaskEditFinished({ savedTaskId: taskId });
       }),
     ).pipe(serialized, reportFailure("save", failed)),
-});
+);

@@ -3,7 +3,7 @@ import { storeStream } from "./managedStream";
 import { Message } from "../messages";
 import { fieldRowsToDefs } from "../web/fieldRows";
 import { groupSectionsByRecord } from "../web/features/history/helpers";
-import type { TaskSectionRow } from "../livestore/queries";
+import type { TaskSectionRow } from "../store/queries";
 import type { TemplateReport } from "../web/types";
 
 export const templatesStream: Stream.Stream<Message> = storeStream(
@@ -62,7 +62,7 @@ const toReportTask =
 
 /**
  * Every finished session of one template, for its time report, as the caller's
- * messages: the FoldKit app's and the Effect UI report component's.
+ * messages: the app's and the standalone ReportBody component's.
  */
 export const templateReports = <M>(
   templateId: string,

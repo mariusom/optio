@@ -1,5 +1,5 @@
-import { Array, Option, pipe, String } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import { Array, pipe, String } from "effect";
+import type { H } from "@/lib/view";
 
 import { X, actionGroup, controlRow, groupedList, hint, icon, rowAction } from "@/components/app";
 import { button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ const draftHint = (draft: Editor["draft"] & object): string => {
   return "Finish the question to save it.";
 };
 
-const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
+const answerTypeList = (kind: FieldKind, h: H<Message>) =>
   nativeSelect(
     {
       id: "answer-type",
@@ -37,7 +37,7 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
       value: kind,
       onChange: (value) => Message.ChangedFieldKind({ kind: value }),
       options: Array.map(ANSWER_TYPES, (candidate) =>
-        h.option([h.Value(candidate)], [answerTypeName(candidate)]),
+        h.option.attr("value", candidate).children(answerTypeName(candidate)),
       ),
     },
     h,
@@ -46,34 +46,28 @@ const answerTypeList = (kind: FieldKind, h: HtmlBuilder<Message>) =>
 /** Compact "Clears others" toggle: a 44px target around a small labelled chip. */
 const exclusiveToggle = (
   config: Readonly<{ option: string; index: number; isExclusive: boolean }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) =>
-  h.button(
-    [
-      h.Type("button"),
-      h.Class(
-        "group/exclusive flex h-auto min-h-11 shrink-0 items-center self-stretch px-1 outline-none focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-ring",
-      ),
-      h.AriaPressed(globalThis.String(config.isExclusive)),
-      h.AriaLabel(`${config.option} clears others`),
-      h.OnClick(Message.ToggledExclusiveOption({ index: config.index })),
-    ],
-    [
-      h.span(
-        [
-          h.Class(
-            cn(
-              "rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors motion-reduce:transition-none",
-              config.isExclusive
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground group-hover/exclusive:border-foreground/30 group-hover/exclusive:text-foreground",
-            ),
+  h.button
+    .attr("type", "button")
+    .class(
+      "group/exclusive flex h-auto min-h-11 shrink-0 items-center self-stretch px-1 outline-none focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-ring",
+    )
+    .attr("aria-pressed", globalThis.String(config.isExclusive))
+    .attr("aria-label", `${config.option} clears others`)
+    .on("click", Message.ToggledExclusiveOption({ index: config.index }))
+    .children(
+      h.span
+        .class(
+          cn(
+            "rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-colors motion-reduce:transition-none",
+            config.isExclusive
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border text-muted-foreground group-hover/exclusive:border-foreground/30 group-hover/exclusive:text-foreground",
           ),
-        ],
-        ["Clears others"],
-      ),
-    ],
-  );
+        )
+        .children("Clears others"),
+    );
 
 /** One line per choice: name, then compact controls (toggle, reorder, remove). */
 const choiceRow = (
@@ -84,18 +78,17 @@ const choiceRow = (
     isExclusive: boolean;
     showExclusive: boolean;
   }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const { option, index, total, isExclusive, showExclusive } = options;
-  return h.keyed("div")(
-    option,
-    [h.Class("flex min-h-11 w-full items-stretch")],
-    [
-      h.span(
-        [h.Class("ml-3 flex min-w-0 flex-1 items-center py-2.5 pr-1 text-sm break-words")],
-        [h.span([h.Class("min-w-0 break-words")], [option])],
-      ),
-      ...(showExclusive ? [exclusiveToggle({ option, index, isExclusive }, h)] : []),
+  return h.div
+    .key(option)
+    .class("flex min-h-11 w-full items-stretch")
+    .children(
+      h.span
+        .class("ml-3 flex min-w-0 flex-1 items-center py-2.5 pr-1 text-sm break-words")
+        .children(h.span.class("min-w-0 break-words").children(option)),
+      showExclusive ? [exclusiveToggle({ option, index, isExclusive }, h)] : [],
       reorderButtons(
         {
           subject: `choice ${option}`,
@@ -110,20 +103,15 @@ const choiceRow = (
         {
           className: "text-destructive/80 hover:bg-destructive/10 hover:text-destructive",
           onClick: Message.ClickedDeleteOption({ index }),
-          attributes: [h.AriaLabel(`Remove choice ${option}`)],
+          attrs: { "aria-label": `Remove choice ${option}` },
         },
         [icon(h, X, "size-4")],
         h,
       ),
-    ],
-  );
+    );
 };
 
-const choicesSection = (
-  draft: NonNullable<Editor["draft"]>,
-  kind: FieldKind,
-  h: HtmlBuilder<Message>,
-) => {
+const choicesSection = (draft: NonNullable<Editor["draft"]>, kind: FieldKind, h: H<Message>) => {
   const trimmed = String.trim(draft.newOptionText);
   const hasComma = kind === "checkbox" && pipe(draft.newOptionText, String.includes(","));
   const canAdd = trimmed !== "" && !hasComma && !draft.options.includes(trimmed);
@@ -149,45 +137,43 @@ const choicesSection = (
       ),
       controlRow(
         [
-          h.div(
-            [h.Class("flex items-center gap-2")],
-            [
-              h.label([h.For(newChoiceInputId), h.Class("sr-only")], ["New choice"]),
-              h.input([
-                h.Id(newChoiceInputId),
-                h.Type("text"),
-                h.Class(cn(inputClass)),
-                h.Value(draft.newOptionText),
-                h.Placeholder("Add a choice"),
-                h.AriaLabel("New choice"),
-                h.Autocomplete("off"),
-                h.Autocapitalize("sentences"),
-                h.EnterKeyHint("done"),
-                h.Attribute("aria-invalid", globalThis.String(hasComma)),
-                h.OnInput((value) => Message.ChangedNewOptionText({ text: value })),
-                // Enter always goes to update, which validates the latest text:
-                // `canAdd` here is from the last render and lags fast typing or paste.
-                h.OnKeyDownPreventDefault((key) =>
-                  key === "Enter" ? Option.some(Message.ConfirmedAddOption()) : Option.none(),
-                ),
-              ]),
-              button(
-                {
-                  size: "lg",
-                  className: "shrink-0",
-                  isDisabled: !canAdd,
-                  onClick: Message.ConfirmedAddOption(),
-                  attributes: [h.AriaLabel("Add choice")],
-                },
-                "Add",
-                h,
+          h.div.class("flex items-center gap-2").children(
+            h.label.attr("for", newChoiceInputId).class("sr-only").children("New choice"),
+            h.input
+              .id(newChoiceInputId)
+              .attr("type", "text")
+              .class(cn(inputClass))
+              .value(draft.newOptionText)
+              .attr("placeholder", "Add a choice")
+              .attr("aria-label", "New choice")
+              .attr("autocomplete", "off")
+              .attr("autocapitalize", "sentences")
+              .attr("enterkeyhint", "done")
+              .attr("aria-invalid", globalThis.String(hasComma))
+              .on("input", ({ value }) => Message.ChangedNewOptionText({ text: value }))
+              .on(
+                "keydown",
+                ({ key }) => (key === "Enter" ? Message.ConfirmedAddOption() : undefined),
+                { preventDefault: true },
               ),
-            ],
+            button(
+              {
+                size: "lg",
+                className: "shrink-0",
+                isDisabled: !canAdd,
+                onClick: Message.ConfirmedAddOption(),
+                attrs: { "aria-label": "Add choice" },
+              },
+              "Add",
+              h,
+            ),
           ),
           ...(hasComma ? [hint("Choices can’t contain commas.", h)] : []),
         ],
         h,
-      ),
+        // Keyed like the choice rows above it, so adding a choice keeps this
+        // input (and its focus) instead of re-creating it.
+      ).key("new-choice-row"),
     ],
     h,
   );
@@ -196,7 +182,7 @@ const choicesSection = (
 const defaultAnswerSection = (
   draft: NonNullable<Editor["draft"]>,
   kind: FieldKind,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   if (kind === "boolean") {
     return groupedList(
@@ -216,7 +202,7 @@ const defaultAnswerSection = (
                     ["true", "Yes"],
                     ["false", "No"],
                   ],
-                  ([value, label]) => h.option([h.Value(value!)], [label!]),
+                  ([value, label]) => h.option.attr("value", value!).children(label!),
                 ),
               },
               h,
@@ -237,39 +223,40 @@ const defaultAnswerSection = (
     [
       controlRow(
         [
-          h.label([h.For("question-default"), h.Class(cn(inputLabelClass))], ["Default answer"]),
+          h.label
+            .attr("for", "question-default")
+            .class(cn(inputLabelClass))
+            .children("Default answer"),
           kind === "textArea"
-            ? h.textarea([
-                h.Id("question-default"),
-                h.Class(cn(textareaClass)),
-                h.Value(draft.defaultValue),
-                h.Placeholder("Leave empty for none"),
-                h.Autocapitalize("sentences"),
-                h.OnInput((value) => Message.ChangedFieldDefaultValue({ text: value })),
-              ])
-            : h.input([
-                h.Id("question-default"),
-                h.Type("text"),
-                h.Class(cn(inputClass)),
-                h.Value(draft.defaultValue),
-                h.Placeholder("Leave empty for none"),
-                h.Autocomplete("off"),
-                h.Autocapitalize("sentences"),
-                h.EnterKeyHint("done"),
-                h.Attribute(
+            ? h.textarea
+                .id("question-default")
+                .class(cn(textareaClass))
+                .value(draft.defaultValue)
+                .attr("placeholder", "Leave empty for none")
+                .attr("autocapitalize", "sentences")
+                .on("input", ({ value }) => Message.ChangedFieldDefaultValue({ text: value }))
+            : h.input
+                .id("question-default")
+                .attr("type", "text")
+                .class(cn(inputClass))
+                .value(draft.defaultValue)
+                .attr("placeholder", "Leave empty for none")
+                .attr("autocomplete", "off")
+                .attr("autocapitalize", "sentences")
+                .attr("enterkeyhint", "done")
+                .attr(
                   "inputmode",
                   kind === "number"
                     ? "decimal"
                     : kind === "counter" || kind === "rating"
                       ? "numeric"
                       : "text",
-                ),
-                h.Attribute(
+                )
+                .attr(
                   "aria-invalid",
                   globalThis.String(!isScalarAnswerValid(kind, draft.defaultValue)),
-                ),
-                h.OnInput((value) => Message.ChangedFieldDefaultValue({ text: value })),
-              ]),
+                )
+                .on("input", ({ value }) => Message.ChangedFieldDefaultValue({ text: value })),
           ...(kind === "number"
             ? [hint("A number, including decimals. Put any unit in the question label.", h)]
             : []),
@@ -291,9 +278,9 @@ const defaultAnswerSection = (
   );
 };
 
-export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
+export const questionForm = (editor: Editor, h: H<Message>) => {
   const draft = editor.draft;
-  if (draft === null) return h.div([]);
+  if (draft === null) return h.div;
   const isEditing = editor.editingFieldId !== null;
   const kind = draft.kind;
   const valid = isDraftValid(draft);
@@ -321,73 +308,69 @@ export const questionForm = (editor: Editor, h: HtmlBuilder<Message>) => {
     },
     h,
   );
-  return h.section(
-    [
-      h.Id("question-editor"),
-      h.Class("flex min-w-0 scroll-mt-16 flex-col gap-4"),
-      h.AriaLabel(isEditing ? "Edit question" : "New question"),
-    ],
-    [
-      h.div(
-        [h.Class("flex flex-col gap-4 pb-2")],
-        [
-          groupedList(
-            { surface: "plain" },
-            [
-              controlRow(
-                [
-                  h.label([h.For("question-name"), h.Class(cn(inputLabelClass))], ["Question"]),
-                  h.input([
-                    h.Id("question-name"),
-                    h.Type("text"),
-                    h.Class(cn(inputClass)),
-                    h.Value(draft.name),
-                    h.Placeholder("What are you recording?"),
-                    h.Autocomplete("off"),
-                    h.Autocapitalize("sentences"),
-                    h.EnterKeyHint("done"),
-                    h.OnInput((value) => Message.ChangedFieldName({ text: value })),
-                  ]),
-                ],
-                h,
-                cn("p-0", inlineFieldClass),
-              ),
-            ],
-            h,
-          ),
-          answerTypeList(kind, h),
-          groupedList(
-            {
-              surface: "plain",
-              footer: "The task can’t be recorded until this is answered.",
-            },
-            [
-              controlRow(
-                [
-                  switch_(
-                    {
-                      id: "question-required",
-                      isChecked: draft.isRequired,
-                      onToggle: () => Message.ToggledFieldRequired(),
-                      label: "Must be answered",
-                      className: "after:inset-x-0",
-                      wrapperClass: "flex-row-reverse justify-end gap-3",
-                    },
-                    h,
-                  ),
-                ],
-                h,
-                "p-0",
-              ),
-            ],
-            h,
-          ),
-          ...(hasOptions(kind) ? [choicesSection(draft, kind, h)] : []),
-          ...(hasOptions(kind) ? [] : [defaultAnswerSection(draft, kind, h)]),
-          ...(valid ? [] : [hint(draftHint(draft), h)]),
-        ],
+  return h.section
+    .id("question-editor")
+    .class("flex min-w-0 scroll-mt-16 flex-col gap-4")
+    .attr("aria-label", isEditing ? "Edit question" : "New question")
+    .children(
+      h.div.class("flex flex-col gap-4 pb-2").children(
+        groupedList(
+          { surface: "plain" },
+          [
+            controlRow(
+              [
+                h.label
+                  .attr("for", "question-name")
+                  .class(cn(inputLabelClass))
+                  .children("Question"),
+                h.input
+                  .id("question-name")
+                  .attr("type", "text")
+                  .class(cn(inputClass))
+                  .value(draft.name)
+                  .attr("placeholder", "What are you recording?")
+                  .attr("autocomplete", "off")
+                  .attr("autocapitalize", "sentences")
+                  .attr("enterkeyhint", "done")
+                  .on("input", ({ value }) => Message.ChangedFieldName({ text: value })),
+              ],
+              h,
+              cn("p-0", inlineFieldClass),
+            ),
+          ],
+          h,
+        ),
+        answerTypeList(kind, h),
+        groupedList(
+          {
+            surface: "plain",
+            footer: "The task can’t be recorded until this is answered.",
+          },
+          [
+            controlRow(
+              [
+                switch_(
+                  {
+                    id: "question-required",
+                    isChecked: draft.isRequired,
+                    onToggle: () => Message.ToggledFieldRequired(),
+                    label: "Must be answered",
+                    className: "after:inset-x-0",
+                    wrapperClass: "flex-row-reverse justify-end gap-3",
+                  },
+                  h,
+                ),
+              ],
+              h,
+              "p-0",
+            ),
+          ],
+          h,
+        ),
+        hasOptions(kind) ? [choicesSection(draft, kind, h)] : [],
+        hasOptions(kind) ? [] : [defaultAnswerSection(draft, kind, h)],
+        valid ? [] : [hint(draftHint(draft), h)],
       ),
-      h.div([h.Class("border-t border-border pt-4")], [actions]),
-    ],
-  );
+      h.div.class("border-t border-border pt-4").children(actions),
+    );
 };

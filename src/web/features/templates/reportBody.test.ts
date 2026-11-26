@@ -8,7 +8,7 @@ import { vi } from "vite-plus/test";
 import type { TemplateReport } from "../../types";
 import { ReportBody, ReportBodyMessage } from "./reportBody";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
 const task = (ms: number, type: string) => ({
   startedAt: 0,

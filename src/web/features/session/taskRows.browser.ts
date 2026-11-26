@@ -1,6 +1,7 @@
 import { afterEach, expect, it } from "vite-plus/test";
-import { Schema } from "effect";
-import { Port, Runtime, Subscription } from "foldkit";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { BrowserHost, Html } from "@effect/ui/html";
+import { Effect, Exit, Schema, Scope } from "effect";
 
 import { Message } from "../../../messages";
 import type { RunnerState, RunnerTask } from "./runner";
@@ -40,35 +41,31 @@ const taskButton = (index: number) =>
   ) ?? null;
 const firstTask = () => taskButton(1);
 
-const ports = { inbound: { recorded: Port.inbound(Schema.Number) } };
-let handle: Runtime.EmbedHandle<typeof ports> | undefined;
+let scope: Scope.Closeable | undefined;
 
-afterEach(() => {
-  handle?.dispose();
-  handle = undefined;
+afterEach(async () => {
+  if (scope !== undefined) await Effect.runPromise(Scope.close(scope, Exit.void));
+  scope = undefined;
+});
+
+/** The task list for `count` tasks; Tick stands in for the store snapshot that follows recording one. */
+const TaskRows = Html.component({
+  name: "TaskRows",
+  model: Schema.Struct({ count: Schema.Number }),
+  message: Message,
+}).make({
+  init: () => ({ count: 2 }),
+  update: ($, message) => (message._tag === "Tick" ? { count: message.now } : $.model),
+  view: (h, model) => h.div.children(...taskRows(runnerWith(model.count), h)),
 });
 
 it("keeps keyboard focus on the same task when a newer task is added above it", async () => {
   const container = document.createElement("div");
   container.id = `task-rows-${crypto.randomUUID()}`;
   document.body.append(container);
-  handle = Runtime.embed(
-    Runtime.makeElement({
-      Model: Schema.Struct({ count: Schema.Number }),
-      container,
-      ports,
-      slow: false,
-      init: () => ({ model: { count: 2 } }),
-      // Tick stands in for the store snapshot that follows recording a task.
-      update: (model, message: Message) =>
-        message._tag === "Tick" ? { model: { count: message.now } } : { model },
-      view: (model, h) => h.div([], taskRows(runnerWith(model.count), h)),
-      subscriptions: Subscription.make<{ readonly count: number }, Message>()(() => ({
-        recorded: Port.subscriptionEntry(ports.inbound.recorded, (count) =>
-          Message.Tick({ now: count }),
-        ),
-      })),
-    }),
+  scope = Scope.makeUnsafe();
+  const root = await Effect.runPromise(
+    BrowserHost.mountEffect(TaskRows, {}, container).pipe(Scope.provide(scope)),
   );
 
   await expect.poll(firstTask).not.toBeNull();
@@ -76,7 +73,7 @@ it("keeps keyboard focus on the same task when a newer task is added above it", 
   const focused = document.activeElement;
   expect(focused?.textContent).toMatch(/^Task 1(?!\d).*Done$/);
 
-  handle.ports.recorded.send(3);
+  root.send(Message.Tick({ now: 3 }));
   await expect.poll(() => taskButton(3)).not.toBeNull();
 
   expect(document.activeElement).toBe(focused);

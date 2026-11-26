@@ -1,6 +1,8 @@
-import { Cause, Clock, Duration, Effect, Stream, Schema } from "effect";
-import { Dom, Port, Subscription } from "foldkit";
-import { agentPorts } from "../agents/actions";
+import { Subscription } from "@effect/ui";
+import { Cause, Clock, Duration, Effect, Option, Stream, String, pipe } from "effect";
+import { CurrentAgentBridge } from "../agents/bridge";
+import { fromEvent, fromEventPreventingDefault, fromMediaQuery } from "@/lib/domEvents";
+import { parseRoute } from "../web/routes";
 import { Message } from "../messages";
 import { activeSessionOf, type Model, type StoreList } from "./model";
 import { historyDetailStream, historyStream } from "./historyStreams";
@@ -26,11 +28,7 @@ const documentVisibility: Stream.Stream<boolean> =
     ? Stream.succeed(true)
     : Stream.concat(
         Stream.suspend(() => Stream.succeed(isDocumentVisible())),
-        Dom.streamFromEvent({
-          target: document,
-          type: "visibilitychange",
-          mapEvent: isDocumentVisible,
-        }),
+        fromEvent(document, "visibilitychange", isDocumentVisible),
       ).pipe(Stream.changes);
 
 // Reads the time through Effect's Clock, so a test runtime can supply it, and
@@ -58,13 +56,11 @@ const pageLeaving: Stream.Stream<unknown> =
     ? Stream.empty
     : Stream.mergeAll(
         [
-          Dom.streamFromEvent({ target: window, type: "beforeunload", mapEvent: () => "leaving" }),
-          Dom.streamFromEvent({ target: window, type: "pagehide", mapEvent: () => "leaving" }),
-          Dom.streamFromEvent({
-            target: document,
-            type: "visibilitychange",
-            mapEvent: () => document.visibilityState,
-          }).pipe(Stream.filter((state) => state === "hidden")),
+          fromEvent(window, "beforeunload", () => "leaving"),
+          fromEvent(window, "pagehide", () => "leaving"),
+          fromEvent(document, "visibilitychange", () => document.visibilityState).pipe(
+            Stream.filter((state) => state === "hidden"),
+          ),
         ],
         { concurrency: "unbounded" },
       );
@@ -154,153 +150,122 @@ const tickRate = (model: Model): "off" | "second" | "minute" =>
 const runnerShortcutsActive = (model: Model): boolean =>
   model.route._tag === "SessionRunner" && model.runner !== null && !model.runner.showEndConfirm;
 
-export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
-  agentRequest: Port.subscriptionEntry(agentPorts.inbound.agentRequest, Message.AgentRequest),
-  storage: Subscription.persistentEntry(storageStatusStream),
-  saveStall: Subscription.persistentEntry(saveStallStream),
-  appUpdates: Subscription.persistentEntry(appUpdates),
-  systemColorScheme: Subscription.persistentEntry(
-    Dom.streamFromMediaQuery({
-      query: "(prefers-color-scheme: dark)",
-      mapMatches: (prefersDark) => Message.ChangedSystemColorScheme({ prefersDark }),
-    }),
+/** Agent requests from the connection, while assistant access is approved. */
+const agentRequests: Stream.Stream<Message> = Stream.unwrap(
+  Effect.gen(function* () {
+    const bridge = yield* CurrentAgentBridge;
+    return Stream.map(bridge.requests, (request) => Message.AgentRequest(request));
+  }),
+);
+
+/** The hash route after back, forward, a typed URL or a navigation command. */
+const routeChanges: Stream.Stream<Message> =
+  typeof window === "undefined"
+    ? Stream.empty
+    : fromEvent(window, "hashchange", () => Message.GotRoute({ route: parseRoute(location.hash) }));
+
+/**
+ * Same-document links (`href="#/..."`) go through update first, so the
+ * template editor can ask before leaving unsaved changes. Modified clicks and
+ * links that open elsewhere keep the browser's behaviour.
+ */
+const linkClicks: Stream.Stream<Message> =
+  typeof document === "undefined"
+    ? Stream.empty
+    : fromEventPreventingDefault<MouseEvent, Message>(document, "click", (event) => {
+        if (event.defaultPrevented || event.button !== 0) return Option.none();
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return Option.none();
+        const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+        const href = link?.getAttribute("href");
+        if (
+          href == null ||
+          !pipe(href, String.startsWith("#/")) ||
+          link?.hasAttribute("target") === true
+        )
+          return Option.none();
+        return Option.some(Message.ClickedLink({ url: href }));
+      });
+
+/** Store reads and the live timer for the page the Model shows. */
+const pageSubscriptions = (model: Model) => {
+  const fieldWriteRevision =
+    model.runner === null || model.runner.fieldWrites.pending.length === 0
+      ? null
+      : model.runner.fieldWrites.revision;
+  const onRunner = model.route._tag === "SessionRunner";
+  return [
+    // The templates read waits for the sample-template check (see Model).
+    model.templatesSeedChecked &&
+      Subscription.make("templates", model.listReadAttempt, () =>
+        reportingListFailure("templates")(templatesStream),
+      ),
+    Subscription.make("history", model.listReadAttempt, () =>
+      reportingListFailure("history")(historyStream),
+    ),
+    Subscription.make("activeSession", model.listReadAttempt, () =>
+      reportingListFailure("activeSession")(activeSessionStream),
+    ),
+    model.route._tag === "SessionDetail" &&
+      Subscription.make("historyDetail", model.route.sessionId, (sessionId) =>
+        reportingDetailFailure(historyDetailStream(sessionId)),
+      ),
+    model.route._tag === "TemplateEditor" &&
+      Subscription.make("templateDetail", model.route.templateId, (templateId) =>
+        reportingDetailFailure(templateDetailStream(templateId)),
+      ),
+    model.templateReportFor !== null &&
+      Subscription.make("templateReport", model.templateReportFor, reportingReportFailure),
+    model.route._tag === "SessionRunner" &&
+      Subscription.make("runner", model.route.sessionId, (sessionId) =>
+        loggingFailure(runnerStream(sessionId)),
+      ),
+    runnerShortcutsActive(model) && Subscription.make("runnerShortcuts", primaryShortcutPresses),
+    fieldWriteRevision !== null &&
+      Subscription.make("fieldWriteFlush", [fieldWriteRevision, onRunner], () =>
+        onRunner
+          ? fieldWritesDue
+          : // Leaving the runner writes what it still holds.
+            Stream.succeed(Message.SettledFieldInput()),
+      ),
+    tickRate(model) !== "off" &&
+      Subscription.make("ticker", tickRate(model), (rate) =>
+        tickStream(rate === "second" ? Duration.seconds(1) : Duration.minutes(1)),
+      ),
+  ];
+};
+
+/** Focus and scroll effects that follow the Model's focus targets. */
+const focusSubscriptions = (model: Model) => {
+  const helpPage =
+    model.route._tag === "AgentHelp" || model.route._tag === "About" ? model.route._tag : null;
+  return [
+    helpPage !== null && Subscription.make("helpPageEntry", helpPage, focusHelpPage),
+    model.editor?.draft != null &&
+      Subscription.make("editorDraftFocus", model.editor.draft.id, focusEditorDraft),
+    model.runner?.focusedSectionId != null &&
+      Subscription.make("focusedSectionScroll", model.runner.focusedSectionId, scrollToSection),
+    model.runner?.currentTaskId != null &&
+      Subscription.make("currentTaskScroll", model.runner.currentTaskId, scrollToCurrentTask),
+  ];
+};
+
+/**
+ * The streams the app runs for a Model; `false` entries are off. A
+ * subscription restarts when its deps change and stops when it disappears.
+ */
+export const subscriptions = (model: Model) => [
+  model.assistantAccess === "approved" && Subscription.make("agentRequest", agentRequests),
+  Subscription.make("route", routeChanges),
+  Subscription.make("links", linkClicks),
+  Subscription.make("storage", storageStatusStream),
+  Subscription.make("saveStall", saveStallStream),
+  Subscription.make("appUpdates", appUpdates),
+  Subscription.make(
+    "systemColorScheme",
+    fromMediaQuery("(prefers-color-scheme: dark)", (prefersDark) =>
+      Message.ChangedSystemColorScheme({ prefersDark }),
+    ),
   ),
-  templates: entry(
-    { seedChecked: Schema.Boolean, attempt: Schema.Finite },
-    {
-      modelToDependencies: (model) => ({
-        seedChecked: model.templatesSeedChecked,
-        attempt: model.listReadAttempt,
-      }),
-      dependenciesToStream: ({ seedChecked }) =>
-        seedChecked ? reportingListFailure("templates")(templatesStream) : Stream.empty,
-    },
-  ),
-  history: entry(
-    { attempt: Schema.Finite },
-    {
-      modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
-      dependenciesToStream: () => reportingListFailure("history")(historyStream),
-    },
-  ),
-  historyDetail: entry(
-    { sessionId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({
-        sessionId: model.route._tag === "SessionDetail" ? model.route.sessionId : null,
-      }),
-      dependenciesToStream: ({ sessionId }) =>
-        sessionId === null ? Stream.empty : reportingDetailFailure(historyDetailStream(sessionId)),
-    },
-  ),
-  templateDetail: entry(
-    { templateId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({
-        templateId: model.route._tag === "TemplateEditor" ? model.route.templateId : null,
-      }),
-      dependenciesToStream: ({ templateId }) =>
-        templateId === null
-          ? Stream.empty
-          : reportingDetailFailure(templateDetailStream(templateId)),
-    },
-  ),
-  templateReport: entry(
-    { templateId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({ templateId: model.templateReportFor }),
-      dependenciesToStream: ({ templateId }) =>
-        templateId === null ? Stream.empty : reportingReportFailure(templateId),
-    },
-  ),
-  activeSession: entry(
-    { attempt: Schema.Finite },
-    {
-      modelToDependencies: (model) => ({ attempt: model.listReadAttempt }),
-      dependenciesToStream: () => reportingListFailure("activeSession")(activeSessionStream),
-    },
-  ),
-  runner: entry(
-    { sessionId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({
-        sessionId: model.route._tag === "SessionRunner" ? model.route.sessionId : null,
-      }),
-      dependenciesToStream: ({ sessionId }) =>
-        sessionId === null ? Stream.empty : loggingFailure(runnerStream(sessionId)),
-    },
-  ),
-  runnerShortcuts: entry(
-    { active: Schema.Boolean },
-    {
-      modelToDependencies: (model) => ({ active: runnerShortcutsActive(model) }),
-      dependenciesToStream: ({ active }) => (active ? primaryShortcutPresses : Stream.empty),
-    },
-  ),
-  fieldWriteFlush: entry(
-    { revision: Schema.Union([Schema.Null, Schema.Finite]), onRunner: Schema.Boolean },
-    {
-      modelToDependencies: (model) => ({
-        revision:
-          model.runner === null || model.runner.fieldWrites.pending.length === 0
-            ? null
-            : model.runner.fieldWrites.revision,
-        onRunner: model.route._tag === "SessionRunner",
-      }),
-      dependenciesToStream: ({ revision, onRunner }) =>
-        revision === null
-          ? Stream.empty
-          : onRunner
-            ? fieldWritesDue
-            : // Leaving the runner writes what it still holds.
-              Stream.succeed(Message.SettledFieldInput()),
-    },
-  ),
-  ticker: entry(
-    { rate: Schema.Literals(["off", "second", "minute"]) },
-    {
-      modelToDependencies: (model) => ({ rate: tickRate(model) }),
-      dependenciesToStream: ({ rate }) =>
-        rate === "off"
-          ? Stream.empty
-          : tickStream(rate === "second" ? Duration.seconds(1) : Duration.minutes(1)),
-    },
-  ),
-  helpPageEntry: entry(
-    { page: Schema.Union([Schema.Null, Schema.Literals(["AgentHelp", "About"])]) },
-    {
-      modelToDependencies: (model) => ({
-        page:
-          model.route._tag === "AgentHelp" || model.route._tag === "About"
-            ? model.route._tag
-            : null,
-      }),
-      dependenciesToStream: ({ page }) => focusHelpPage(page),
-    },
-  ),
-  editorDraftFocus: entry(
-    { draftId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({ draftId: model.editor?.draft?.id ?? null }),
-      dependenciesToStream: ({ draftId }) => focusEditorDraft(draftId),
-    },
-  ),
-  focusedSectionScroll: entry(
-    { focusedSectionId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({
-        focusedSectionId: model.runner?.focusedSectionId ?? null,
-      }),
-      dependenciesToStream: ({ focusedSectionId }) => scrollToSection(focusedSectionId),
-    },
-  ),
-  currentTaskScroll: entry(
-    { currentTaskId: Schema.Union([Schema.Null, Schema.String]) },
-    {
-      modelToDependencies: (model) => ({
-        currentTaskId: model.runner?.currentTaskId ?? null,
-      }),
-      dependenciesToStream: ({ currentTaskId }) => scrollToCurrentTask(currentTaskId),
-    },
-  ),
-}));
+  ...pageSubscriptions(model),
+  ...focusSubscriptions(model),
+];

@@ -1,4 +1,4 @@
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import { notice } from "@/components/app";
 import { Message } from "../../../messages";
@@ -17,7 +17,7 @@ type SessionModel = {
 };
 
 /** Starting found another tab's live session; only one can record at a time. */
-const joinedNotice = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
+const joinedNotice = (runner: RunnerState | null, h: H<Message>) =>
   notice(
     {
       tone: "info",
@@ -34,36 +34,29 @@ const joinedNotice = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
     h,
   );
 
-export const sessionView = (model: SessionModel, h: HtmlBuilder<Message>) => {
+export const sessionView = (model: SessionModel, h: H<Message>) => {
   const storage =
     storageNotice(model, h, { recording: true }) ??
     (model.joinedExistingSession ? joinedNotice(model.runner, h) : null);
-  return h.div(
-    [h.Class("flex w-full h-full flex-col"), h.DataAttribute("runner-layout", "")],
-    [
-      ...(storage === null
+  return h.div
+    .class("flex w-full h-full flex-col")
+    .attr("data-runner-layout", "")
+    .children(
+      storage === null
         ? []
         : [
-            h.div(
-              [h.Class("shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6")],
-              [storage],
-            ),
-          ]),
-      h.div(
-        [
-          h.Class("flex md:hidden w-full min-h-0 flex-1 flex-col"),
-          h.DataAttribute("runner-layout", ""),
-        ],
-        [runnerView(model as Parameters<typeof runnerView>[0], h)],
-      ),
-      h.div(
-        [
-          h.Class("hidden md:flex w-full min-h-0 flex-1 flex-col"),
-          h.DataAttribute("runner-layout", ""),
-        ],
-        [sessionTabletView(model.runner, h)],
-      ),
-      ...runnerSheets(model.runner, h),
-    ],
-  );
+            h.div
+              .class("shrink-0 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-6")
+              .children(storage),
+          ],
+      h.div
+        .class("flex md:hidden w-full min-h-0 flex-1 flex-col")
+        .attr("data-runner-layout", "")
+        .children(runnerView(model as Parameters<typeof runnerView>[0], h)),
+      h.div
+        .class("hidden md:flex w-full min-h-0 flex-1 flex-col")
+        .attr("data-runner-layout", "")
+        .children(sessionTabletView(model.runner, h)),
+      runnerSheets(model.runner, h),
+    );
 };

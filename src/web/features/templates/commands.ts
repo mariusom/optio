@@ -1,8 +1,8 @@
 import { Array, DateTime, Effect, Option, pipe, Schema, String } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
-import { withStore } from "../../../livestore/access";
+import { withStore } from "../../../store/access";
 import type { FieldDef } from "../../../domain/fields";
 import { reportFailure } from "../../errors";
 import { fieldRowsToDefs } from "../../fieldRows";
@@ -11,19 +11,19 @@ import { randomUuid, withFreshIds, withRandomUuids } from "../../../lib/ids";
 
 const failedTemplateOp = (error: string) => Message.FailedTemplateOp({ error });
 
-// Commands for the Templates tab. Each awaits the store handle (FoldKit has
+// Commands for the Templates tab. Each awaits the store handle (the app has
 // no store hook), commits events, and reports back through a message.
 
-export const CreateTemplate = Command.define("CreateTemplate", {
-  args: { id: Schema.String, name: Schema.String },
-  messages: [Message.TemplateCreated, Message.FailedTemplateOp],
-  execute: ({ id, name }) =>
+export const CreateTemplate = Command.make(
+  "CreateTemplate",
+  { args: { id: Schema.String, name: Schema.String } },
+  ({ id, name }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const now = yield* DateTime.nowAsDate;
         // First template ever becomes the default automatically
         const existing = store.query(tables.templates.select());
-        store.commit(
+        yield* store.commit(
           events.templateCreated({
             id,
             name: String.trim(name),
@@ -34,24 +34,24 @@ export const CreateTemplate = Command.define("CreateTemplate", {
         return Message.TemplateCreated();
       }),
     ).pipe(reportFailure("create", failedTemplateOp)),
-});
+);
 
-export const SetDefaultTemplate = Command.define("SetDefaultTemplate", {
-  args: { id: Schema.String },
-  messages: [Message.TemplateOpDone, Message.FailedTemplateOp],
-  execute: ({ id }) =>
+export const SetDefaultTemplate = Command.make(
+  "SetDefaultTemplate",
+  { args: { id: Schema.String } },
+  ({ id }) =>
     withStore(({ store, events }) =>
-      Effect.sync(() => {
-        store.commit(events.templateDefaultSet({ id }));
+      Effect.gen(function* () {
+        yield* store.commit(events.templateDefaultSet({ id }));
         return Message.TemplateOpDone();
       }),
     ).pipe(reportFailure("save", failedTemplateOp)),
-});
+);
 
-export const DuplicateTemplate = Command.define("DuplicateTemplate", {
-  args: { id: Schema.String },
-  messages: [Message.DuplicatedTemplate, Message.FailedTemplateOp],
-  execute: ({ id }) =>
+export const DuplicateTemplate = Command.make(
+  "DuplicateTemplate",
+  { args: { id: Schema.String } },
+  ({ id }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const now = yield* DateTime.nowAsDate;
@@ -68,21 +68,21 @@ export const DuplicateTemplate = Command.define("DuplicateTemplate", {
           source.name,
           Array.map(templates, (t) => t.name),
         );
-        store.commit(
+        yield* store.commit(
           events.templateCreated({ id: copyId, name: copyName, isDefault: false, now }),
           events.fieldsReplaced({ templateId: copyId, fields }),
         );
         return Message.DuplicatedTemplate({ id: copyId });
       }),
     ).pipe(reportFailure("duplicate", failedTemplateOp)),
-});
+);
 
-export const DeleteTemplate = Command.define("DeleteTemplate", {
-  args: { id: Schema.String },
-  messages: [Message.TemplateOpDone, Message.FailedTemplateOp],
-  execute: ({ id }) =>
+export const DeleteTemplate = Command.make(
+  "DeleteTemplate",
+  { args: { id: Schema.String } },
+  ({ id }) =>
     withStore(({ store, tables, events }) =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         const templates = store.query(tables.templates.select());
         const target = Array.findFirst(templates, (t) => t.id === id);
         if (Option.isNone(target)) return Message.TemplateOpDone();
@@ -99,11 +99,11 @@ export const DeleteTemplate = Command.define("DeleteTemplate", {
                 }),
               ]
             : [];
-        store.commit(...promote, events.templateDeleted({ id }));
+        yield* store.commit(...promote, events.templateDeleted({ id }));
         return Message.TemplateOpDone();
       }),
     ).pipe(reportFailure("delete", failedTemplateOp)),
-});
+);
 
 // ── Sample templates ───────────────────────────────────────────────────────
 
@@ -245,27 +245,25 @@ export const sampleTemplates = (newId: () => string): ReadonlyArray<SampleTempla
 };
 
 /** Seeds the sample templates exactly once, when zero templates exist. */
-export const EnsureTemplatesSeeded = Command.define("EnsureTemplatesSeeded", {
-  messages: [Message.TemplatesSeededCheck, Message.FailedTemplateOp],
-  execute: withStore(({ store, tables, events }) =>
+export const EnsureTemplatesSeeded = Command.make("EnsureTemplatesSeeded", { args: {} }, () =>
+  withStore(({ store, tables, events }) =>
     Effect.gen(function* () {
       const now = yield* DateTime.nowAsDate;
       const existing = store.query(tables.templates.select());
       if (existing.length > 0) return Message.TemplatesSeededCheck();
       const templates = yield* withRandomUuids(sampleTemplates);
-      store.commit(events.templatesSeeded({ templates, now }));
+      yield* store.commit(events.templatesSeeded({ templates, now }));
       return Message.TemplatesSeededCheck();
     }),
   ).pipe(reportFailure("create", failedTemplateOp)),
-});
+);
 
 /**
  * Adds the sample templates the user doesn't have yet, by name. Never changes
  * which template is the default unless the app has none at all.
  */
-export const AddSampleTemplates = Command.define("AddSampleTemplates", {
-  messages: [Message.SampleTemplatesAdded, Message.FailedTemplateOp],
-  execute: withStore(({ store, tables, events }) =>
+export const AddSampleTemplates = Command.make("AddSampleTemplates", { args: {} }, () =>
+  withStore(({ store, tables, events }) =>
     Effect.gen(function* () {
       const now = yield* DateTime.nowAsDate;
       const existing = store.query(tables.templates.select());
@@ -279,8 +277,9 @@ export const AddSampleTemplates = Command.define("AddSampleTemplates", {
           isDefault: existing.length === 0 && index === 0,
         })),
       );
-      if (missing.length > 0) store.commit(events.templatesSeeded({ templates: missing, now }));
+      if (missing.length > 0)
+        yield* store.commit(events.templatesSeeded({ templates: missing, now }));
       return Message.SampleTemplatesAdded();
     }),
   ).pipe(reportFailure("create", failedTemplateOp)),
-});
+);

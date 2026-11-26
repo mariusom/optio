@@ -1,7 +1,11 @@
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
+import { HtmlLocator } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { it as effectIt } from "@effect/vitest";
 import { describe, expect, it, vi } from "vite-plus/test";
-import * as Scene from "foldkit/scene";
 
 import { Message } from "../../../messages";
+import { viewScene } from "../viewScene";
 import { startView } from "./startView";
 import { Effect } from "effect";
 import { randomSessionName } from "../../random-name";
@@ -35,54 +39,48 @@ describe("Foldcn session launcher", () => {
     pendingDiscardSession: false,
     now: 1_700_000_000_000,
   };
-  const config = {
-    view: startView,
-    update: (currentModel: Parameters<typeof startView>[0], message: Message) => ({
-      model: currentModel,
-      outMessage: message,
+  type StartModel = Parameters<typeof startView>[0];
+  const showing = (current: StartModel) => viewScene((h) => startView(current, h));
+  const select = HtmlLocator.role("combobox", { name: "Study template" });
+  const start = HtmlLocator.role("button", { name: "Start Session" });
+
+  effectIt.effect("announces persistence errors even before templates have loaded", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({ ...model, templates: [], lastError: "Store unavailable" });
+      s.expect(HtmlLocator.role("alert"))
+        .toExist()
+        .expect(Locator.text("Store unavailable"))
+        .toExist();
     }),
-  };
+  );
 
-  it("announces persistence errors even before templates have loaded", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, templates: [], lastError: "Store unavailable" }),
-      Scene.expect(Scene.role("alert")).toExist(),
-      Scene.expect(Scene.text("Store unavailable")).toExist(),
-    );
-  });
+  effectIt.effect("labels the native select and emits the selected template", () =>
+    Effect.gen(function* () {
+      const s = yield* showing(model);
+      s.expect(select)
+        .toHaveValue("a")
+        .change(select, "b")
+        .emitted(Message.SelectedTemplate({ id: "b" }));
+    }),
+  );
 
-  it("labels the native select and emits the selected template", () => {
-    Scene.scene(
-      config,
-      Scene.given(model),
-      Scene.expect(Scene.role("combobox", { name: "Study template" })).toHaveValue("a"),
-      Scene.change(Scene.role("combobox", { name: "Study template" }), "b"),
-      Scene.expectOutMessage(Message.SelectedTemplate({ id: "b" })),
-    );
-  });
+  effectIt.effect("dispatches start through the Foldcn button", () =>
+    Effect.gen(function* () {
+      const s = yield* showing(model);
+      s.click(start).emitted(Message.ClickedStartSession());
+    }),
+  );
 
-  it("dispatches start through the Foldcn button", () => {
-    Scene.scene(
-      config,
-      Scene.given(model),
-      Scene.click(Scene.role("button", { name: "Start Session" })),
-      Scene.expectOutMessage(Message.ClickedStartSession()),
-    );
-  });
+  effectIt.effect("disables starting without a selected template", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({ ...model, selectedTemplateId: null });
+      s.expect(start).toBeDisabled();
+    }),
+  );
 
-  it("disables starting without a selected template", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, selectedTemplateId: null }),
-      Scene.expect(Scene.role("button", { name: "Start Session" })).toBeDisabled(),
-    );
-  });
-
-  it("shows elapsed time from the Model's ticked now, not the wall clock", () => {
-    Scene.scene(
-      config,
-      Scene.given({
+  effectIt.effect("shows elapsed time from the Model's ticked now, not the wall clock", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({
         ...model,
         activeSession: {
           id: "session-1",
@@ -93,10 +91,10 @@ describe("Foldcn session launcher", () => {
           completedCount: 2,
         },
         now: 1_000 + 90 * 60_000,
-      }),
-      Scene.expect(Scene.text("1h 30m")).toExist(),
-    );
-  });
+      });
+      s.expect(Locator.text("1h 30m")).toExist();
+    }),
+  );
 });
 
 describe("randomSessionName", () => {

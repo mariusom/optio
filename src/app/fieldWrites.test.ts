@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect, Fiber, Option, Stream } from "effect";
+import { Effect, Fiber, Stream } from "effect";
 import { TestClock } from "effect/testing";
-import { fromString } from "foldkit/url";
 import { vi } from "vite-plus/test";
 
 import { init, subscriptions, update } from "../main";
@@ -9,15 +8,36 @@ import type { Model } from "../main";
 import { Message } from "../messages";
 import type { RunnerState } from "../web/features/session/runner";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 
-const flushAfter = (deps: { revision: number | null; onRunner: boolean }) =>
-  subscriptions.fieldWriteFlush.dependenciesToStream(deps).pipe(Stream.runCollect);
+/** What the flush subscription sends for a runner holding answers at `revision`. */
+const flushAfter = (deps: { revision: number | null; onRunner: boolean }) => {
+  const model: Model = {
+    ...init(deps.onRunner ? "#/session/s1" : "#/history").model,
+    runner: {
+      ...runner,
+      fieldWrites:
+        deps.revision === null
+          ? { revision: 0, pending: [] }
+          : {
+              revision: deps.revision,
+              pending: [{ taskFieldId: "notes", value: "Note", committed: false }],
+            },
+    },
+  };
+  const flush = subscriptions(model).find(
+    (subscription) => subscription && subscription.name === "fieldWriteFlush",
+  );
+  return flush === undefined || flush === false
+    ? Effect.succeed([])
+    : Stream.runCollect(flush.stream);
+};
 
 describe("field write flush subscription", () => {
   it.effect("stays idle without pending answers", () =>
     Effect.gen(function* () {
-      expect(yield* flushAfter({ revision: null, onRunner: true })).toEqual([]);
+      const flushed = yield* flushAfter({ revision: null, onRunner: true });
+      expect(flushed).toEqual([]);
     }),
   );
 
@@ -27,15 +47,15 @@ describe("field write flush subscription", () => {
       yield* TestClock.adjust("499 millis");
       expect(fiber.pollUnsafe()).toBeUndefined();
       yield* TestClock.adjust("1 millis");
-      expect(yield* Fiber.join(fiber)).toEqual([Message.SettledFieldInput()]);
+      const messages = yield* Fiber.join(fiber);
+      expect(messages).toEqual([Message.SettledFieldInput()]);
     }),
   );
 
   it.effect("writes pending answers at once after leaving the runner", () =>
     Effect.gen(function* () {
-      expect(yield* flushAfter({ revision: 3, onRunner: false })).toEqual([
-        Message.SettledFieldInput(),
-      ]);
+      const flushed = yield* flushAfter({ revision: 3, onRunner: false });
+      expect(flushed).toEqual([Message.SettledFieldInput()]);
     }),
   );
 });
@@ -81,7 +101,7 @@ const runner: RunnerState = {
 };
 
 const onRunner = (): Model => ({
-  ...init(Option.getOrThrow(fromString("https://optio.test/#/session/s1"))).model,
+  ...init("#/session/s1").model,
   runner,
 });
 

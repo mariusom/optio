@@ -1,9 +1,9 @@
 import { Array, Effect, Option, Stream } from "effect";
-import { Render } from "foldkit";
+import { afterCommit as committed, afterPaint } from "@/lib/domEvents";
 
 /** Runs a DOM effect once the render that caused it has committed. */
 const afterCommit = (action: () => void): Stream.Stream<never> =>
-  Stream.fromEffect(Effect.andThen(Render.afterCommit, Effect.sync(action))).pipe(Stream.drain);
+  Stream.fromEffect(Effect.andThen(committed, Effect.sync(action))).pipe(Stream.drain);
 
 /** Responsive copies share content under different IDs; target the rendered one. */
 const visibleElement = (ids: ReadonlyArray<string>): Option.Option<HTMLElement> =>
@@ -54,7 +54,7 @@ export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream
   if (page === null) return Stream.empty;
   return Stream.fromEffect(
     Effect.andThen(
-      Render.afterPaint,
+      afterPaint,
       Effect.sync(() => {
         const content = document.querySelector(`[data-help-page="${page}"]`);
         const main = content?.closest("main");

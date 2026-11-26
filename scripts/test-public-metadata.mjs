@@ -22,7 +22,7 @@ async function checkAssistantConsent(page) {
       location.hash = "/use-with-ai";
     });
   };
-  const enable = page.getByRole("button", { name: "Enable assistant tools" });
+  const enable = page.getByRole("link", { name: "Enable assistant tools" });
   const templates = page.getByRole("heading", { name: "Templates", exact: true }).first();
   assert.equal(await tools(), 0);
   for (const decision of [false, true]) {
@@ -36,7 +36,7 @@ async function checkAssistantConsent(page) {
   for (let i = 0; i < 100 && (await tools()) !== 5; i++) await delay(50);
   assert.equal(await tools(), 5, "all five tools register after approval");
   await openHelp();
-  await page.getByRole("button", { name: "Turn off assistant tools" }).click();
+  await page.getByRole("link", { name: "Turn off assistant tools" }).click();
   await templates.waitFor();
   assert.equal(await tools(), 0);
   assert.equal(prompts, 2);

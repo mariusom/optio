@@ -1,20 +1,18 @@
 import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 import { Effect, Stream } from "effect";
-import { AsyncData } from "foldkit";
+import * as AsyncData from "@/lib/asyncData";
 
 import { Message } from "../../../messages";
-import { subscriptions, update } from "../../../main";
+import { update } from "../../../main";
 import type { Model } from "../../../main";
-import { getStore } from "../../../livestore/client";
+import { getStore } from "../../../store/client";
 import { isFullScreenRoute, SessionRunner, StartTab } from "../../routes";
+import { streamAt } from "../../../app/testSubscriptions";
 
-vi.mock("../../../livestore/client", () => ({
+vi.mock("../../../store/client", () => ({
   getStore: vi.fn(),
 }));
-
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
 
 // helper to make a minimal runner state matching Model.runner shape
 const makeRunner = (
@@ -136,9 +134,10 @@ describe("runner dead links", () => {
         },
       } as unknown as Awaited<ReturnType<typeof getStore>>);
 
-      const messages = yield* subscriptions.runner
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamAt("#/session/s1", "runner").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
 
       expect(messages[0]).toMatchObject({ _tag: "GotRunnerData", data: expectedData });
     }),

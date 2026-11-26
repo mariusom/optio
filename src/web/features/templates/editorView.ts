@@ -1,5 +1,5 @@
 import { Array } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import {
   Plus,
@@ -34,13 +34,13 @@ const guardedBackLink = { ...backLink, onClick: Message.ClickedCancelEditTemplat
 
 const questionRow = (
   options: Readonly<{ field: FieldDef; index: number; total: number; isDisabled: boolean }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const { field, index, total, isDisabled } = options;
-  return h.keyed("div")(
-    field.id,
-    [h.Class("lazy-row flex w-full items-stretch")],
-    [
+  return h.div
+    .key(field.id)
+    .class("lazy-row flex w-full items-stretch")
+    .children(
       row(
         {
           title: field.name === "" ? "Untitled question" : field.name,
@@ -64,33 +64,31 @@ const questionRow = (
         },
         h,
       ),
-    ],
-  );
+    );
 };
 
 // ── Template details ───────────────────────────────────────────────────────
 
-const nameRow = (editor: Editor, h: HtmlBuilder<Message>) =>
+const nameRow = (editor: Editor, h: H<Message>) =>
   controlRow(
     [
-      h.label([h.For("template-name"), h.Class(cn(inputLabelClass))], ["Name"]),
-      h.input([
-        h.Id("template-name"),
-        h.Type("text"),
-        h.Class(cn(inputClass)),
-        h.Value(editor.name),
-        h.Placeholder("Morning observations"),
-        h.Autocomplete("off"),
-        h.Autocapitalize("sentences"),
-        h.EnterKeyHint("done"),
-        h.OnInput((value) => Message.ChangedEditorName({ text: value })),
-      ]),
+      h.label.attr("for", "template-name").class(cn(inputLabelClass)).children("Name"),
+      h.input
+        .id("template-name")
+        .attr("type", "text")
+        .class(cn(inputClass))
+        .value(editor.name)
+        .attr("placeholder", "Morning observations")
+        .attr("autocomplete", "off")
+        .attr("autocapitalize", "sentences")
+        .attr("enterkeyhint", "done")
+        .on("input", ({ value }) => Message.ChangedEditorName({ text: value })),
     ],
     h,
     inlineFieldClass,
   );
 
-const defaultRow = (editor: Editor, h: HtmlBuilder<Message>) =>
+const defaultRow = (editor: Editor, h: H<Message>) =>
   controlRow(
     [
       switch_(
@@ -108,33 +106,30 @@ const defaultRow = (editor: Editor, h: HtmlBuilder<Message>) =>
     h,
   );
 
-const loadingView = (lastError: string | null, loadFailed: boolean, h: HtmlBuilder<Message>) =>
-  h.div(
-    [h.Class("template-editor flex min-h-full flex-col")],
-    [
-      navBar({ title: "Template", back: backLink }, h),
-      page(
-        {},
-        [
-          ...(lastError === null ? [] : [notice({ tone: "error", text: lastError }, h)]),
-          loadFailed
-            ? notice(
-                {
-                  tone: "error",
-                  text: "This template couldn’t be opened. Go back to Templates and try again.",
-                },
-                h,
-              )
-            : hint("Opening the template…", h),
-        ],
-        h,
-      ),
-    ],
+const loadingView = (lastError: string | null, loadFailed: boolean, h: H<Message>) =>
+  h.div.class("template-editor flex min-h-full flex-col").children(
+    navBar({ title: "Template", back: backLink }, h),
+    page(
+      {},
+      [
+        ...(lastError === null ? [] : [notice({ tone: "error", text: lastError }, h)]),
+        loadFailed
+          ? notice(
+              {
+                tone: "error",
+                text: "This template couldn’t be opened. Go back to Templates and try again.",
+              },
+              h,
+            )
+          : hint("Opening the template…", h),
+      ],
+      h,
+    ),
   );
 
 const editorNavBar = (
   options: Readonly<{ editor: Editor; showCreate?: boolean; canSave: boolean }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const { editor, showCreate, canSave } = options;
   return navBar(
@@ -178,7 +173,7 @@ const editorNavBar = (
   );
 };
 
-const questionsList = (editor: Editor, h: HtmlBuilder<Message>) =>
+const questionsList = (editor: Editor, h: H<Message>) =>
   groupedList(
     {
       header: "2. Questions",
@@ -189,20 +184,16 @@ const questionsList = (editor: Editor, h: HtmlBuilder<Message>) =>
     },
     [
       ...Array.map(editor.fields, (field, index) =>
-        h.keyed("div")(
-          field.id,
-          [],
-          [
-            questionRow(
-              {
-                field,
-                index,
-                total: editor.fields.length,
-                isDisabled: editor.draft !== null || editor.isSaving,
-              },
-              h,
-            ),
-          ],
+        h.div.key(field.id).children(
+          questionRow(
+            {
+              field,
+              index,
+              total: editor.fields.length,
+              isDisabled: editor.draft !== null || editor.isSaving,
+            },
+            h,
+          ),
         ),
       ),
       row(
@@ -211,7 +202,7 @@ const questionsList = (editor: Editor, h: HtmlBuilder<Message>) =>
           leading: icon(h, Plus, "size-5 text-primary"),
           onClick: Message.ClickedAddField(),
           isDisabled: editor.draft !== null || editor.isSaving,
-          attributes: [h.AriaLabel("Add question")],
+          attrs: { "aria-label": "Add question" },
         },
         h,
       ),
@@ -219,10 +210,10 @@ const questionsList = (editor: Editor, h: HtmlBuilder<Message>) =>
     h,
   );
 
-const overview = (editor: Editor, saveHint: string | null, h: HtmlBuilder<Message>) => [
-  h.div(
-    [h.Class("grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start")],
-    [
+const overview = (editor: Editor, saveHint: string | null, h: H<Message>) => [
+  h.div
+    .class("grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-start")
+    .children(
       groupedList(
         {
           header: "1. Template details",
@@ -231,13 +222,12 @@ const overview = (editor: Editor, saveHint: string | null, h: HtmlBuilder<Messag
         [nameRow(editor, h), defaultRow(editor, h)],
         h,
       ),
-      h.div([h.Class("flex min-w-0 flex-col gap-4")], [questionsList(editor, h)]),
-    ],
-  ),
+      h.div.class("flex min-w-0 flex-col gap-4").children(questionsList(editor, h)),
+    ),
   ...(saveHint === null ? [] : [hint(saveHint, h)]),
 ];
 
-const discardConfirmation = (editor: Editor, h: HtmlBuilder<Message>) =>
+const discardConfirmation = (editor: Editor, h: H<Message>) =>
   editor.pendingDiscard
     ? [
         confirmSheet(
@@ -258,7 +248,7 @@ const discardConfirmation = (editor: Editor, h: HtmlBuilder<Message>) =>
       ]
     : [];
 
-export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) => {
+export const templateEditorPage = (model: EditorModel, h: H<Message>) => {
   if (model.editor === null)
     return loadingView(model.lastError, model.detailLoadFailed ?? false, h);
 
@@ -268,9 +258,9 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
   const canSave = isValid && changed && !editor.isSaving && editor.draft === null;
   const saveHint = !isValid ? "Give the template a name to save it." : null;
 
-  return h.div(
-    [h.Class("template-editor flex min-h-full flex-col")],
-    [
+  return h.div
+    .class("template-editor flex min-h-full flex-col")
+    .children(
       editorNavBar({ editor, showCreate: model.showCreate, canSave }, h),
       page(
         { wide: true },
@@ -282,7 +272,6 @@ export const templateEditorPage = (model: EditorModel, h: HtmlBuilder<Message>) 
         ],
         h,
       ),
-      ...discardConfirmation(editor, h),
-    ],
-  );
+      discardConfirmation(editor, h),
+    );
 };

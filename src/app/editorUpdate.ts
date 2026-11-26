@@ -1,4 +1,3 @@
-import type { AppServices } from "./services";
 import { Array, Option, Order, String } from "effect";
 import type { FieldDef, FieldKind } from "../domain/fields";
 import { SaveTemplate } from "../web/features/templates/editorCommands";
@@ -19,10 +18,9 @@ import {
   toggleExclusiveOption,
   withKindChanged,
 } from "../web/features/templates/editor";
-import { templatesRouter } from "../web/routes";
+import { hrefFor, TemplatesTab } from "../web/routes";
 import { NavigateInternal } from "./commands";
-import type { Update } from "foldkit";
-import { Message, type MessageHandlers } from "../messages";
+import type { MessageHandlers, UpdateResult } from "../messages";
 import { ClearNewChoice } from "../web/features/templates/choiceInput";
 import { takeId, type Model } from "./model";
 
@@ -31,7 +29,7 @@ const bySortOrder = Order.mapInput(
   (field: { readonly sortOrder: number }) => field.sortOrder,
 );
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type EditorLoadHandlers = Pick<
@@ -49,7 +47,7 @@ export const editorLoadHandlers = (model: Model): EditorLoadHandlers => ({
     if (template === null) {
       return {
         model: { ...model, editor: null, lastError: "Template not found." },
-        commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
+        commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })],
       };
     }
     if (model.editor !== null && model.editor.id === template.id) {
@@ -285,7 +283,7 @@ export const editorFieldHandlers = (model: Model): EditorFieldHandlers => ({
     if (nextDraft === model.editor.draft) return { model };
     return {
       model: { ...model, editor: { ...model.editor, draft: nextDraft } },
-      commands: [ClearNewChoice({ added: String.trim(model.editor.draft.newOptionText) })],
+      commands: [ClearNewChoice.make({ added: String.trim(model.editor.draft.newOptionText) })],
     };
   },
   ClearedNewChoice: () => ({ model }),
@@ -374,7 +372,7 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
     return {
       model: { ...model, editor: { ...model.editor, isSaving: true } },
       commands: [
-        SaveTemplate({
+        SaveTemplate.make({
           id,
           name,
           isDefault,
@@ -388,22 +386,22 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
     if (model.editor === null) return { model };
     if (!hasChanges(model.editor) && model.editor.draft === null) {
       if (model.showCreate) return { model: { ...model, showCreate: false, editor: null } };
-      return { model, commands: [NavigateInternal({ url: `#${templatesRouter()}` })] };
+      return { model, commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })] };
     }
     return {
       model: {
         ...model,
-        pendingNavigationUrl: `#${templatesRouter()}`,
+        pendingNavigationUrl: hrefFor(TemplatesTab()),
         editor: { ...model.editor, pendingDiscard: true },
       },
     };
   },
   TemplateSaved: () => {
     if (model.editor === null)
-      return { model, commands: [NavigateInternal({ url: `#${templatesRouter()}` })] };
+      return { model, commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })] };
     return {
       model: { ...model, showCreate: false, editor: null },
-      commands: [NavigateInternal({ url: `#${templatesRouter()}` })],
+      commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })],
     };
   },
   ShowDiscardConfirm: () => {
@@ -447,7 +445,9 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
         showCreate: false,
         editor: null,
       },
-      commands: [NavigateInternal({ url: model.pendingNavigationUrl ?? `#${templatesRouter()}` })],
+      commands: [
+        NavigateInternal.make({ url: model.pendingNavigationUrl ?? hrefFor(TemplatesTab()) }),
+      ],
     };
   },
 });

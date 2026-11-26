@@ -1,15 +1,10 @@
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { init, update } from "../main";
 import { Message } from "../messages";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
-
-const start = init(Option.getOrThrow(fromString("https://optio.test/#/settings"))).model;
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
+const start = init("#/settings").model;
 const names = (result: ReturnType<typeof update>) =>
   (result.commands ?? []).map((command) => command.name);
 
@@ -33,11 +28,9 @@ describe("backup actions", () => {
       "Restoring… keep Optio open until this finishes.",
     );
     const counts = { templates: 1, sessions: 2, skipped: 0 };
-    const saved = update(restoring.model, Message.BackupRestored({ ...counts, saved: true }));
+    const saved = update(restoring.model, Message.BackupRestored(counts));
     expect(saved.model.backupNotice?.text).toBe("Restored 1 template and 2 sessions.");
     expect(saved.model.backupBusy).toBe(false);
-    const slow = update(restoring.model, Message.BackupRestored({ ...counts, saved: false }));
-    expect(slow.model.backupNotice?.text).toContain("still saving");
   });
 
   it("includes the open session in a backup only while saving has stalled", () => {

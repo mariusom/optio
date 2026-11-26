@@ -1,5 +1,4 @@
-import { Option } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import { sheet } from "../../sheets";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
@@ -14,8 +13,8 @@ type EditModel = {
   } | null;
 };
 
-export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) => {
-  if (!model.showEditHistoryName) return h.div([]);
+export const editSessionNameSheet = (model: EditModel, h: H<Message>) => {
+  if (!model.showEditHistoryName) return h.div;
   const templateName = model.selectedHistorySession?.templateName ?? "";
   return sheet(
     {
@@ -37,35 +36,31 @@ export const editSessionNameSheet = (model: EditModel, h: HtmlBuilder<Message>) 
       },
     },
     [
-      h.div(
-        [h.Class(cn(inlineFieldClass, "py-1"))],
-        [
-          // The sheet itself is #edit-session-name, so the field needs its own ID.
-          h.label([h.For("edit-session-name-input"), h.Class(cn(inputLabelClass))], ["Name"]),
-          h.input([
-            h.Id("edit-session-name-input"),
-            h.Type("text"),
-            h.Class(cn(inputClass)),
-            h.Value(model.editHistoryNameInput),
-            h.Placeholder(templateName === "" ? "Session name" : templateName),
-            h.Autocomplete("off"),
-            h.Autocapitalize("words"),
-            h.EnterKeyHint("done"),
-            h.Autofocus(true),
-            h.OnInput((value) => Message.ChangedEditHistoryName({ text: value })),
-            h.OnKeyDownPreventDefault((key) =>
-              key === "Enter" ? Option.some(Message.ConfirmedEditHistoryName()) : Option.none(),
-            ),
-          ]),
-          h.p(
-            [h.Class("col-span-2 text-xs leading-snug text-muted-foreground")],
-            [
-              templateName === ""
-                ? "Leave it empty to use the template name."
-                : `Leave it empty to call it “${templateName}”.`,
-            ],
+      h.div.class(cn(inlineFieldClass, "py-1")).children(
+        h.label.attr("for", "edit-session-name-input").class(cn(inputLabelClass)).children("Name"),
+        h.input
+          .id("edit-session-name-input")
+          .attr("type", "text")
+          .class(cn(inputClass))
+          .value(model.editHistoryNameInput)
+          .attr("placeholder", templateName === "" ? "Session name" : templateName)
+          .attr("autocomplete", "off")
+          .attr("autocapitalize", "words")
+          .attr("enterkeyhint", "done")
+          .attr("autofocus", "")
+          .on("input", ({ value }) => Message.ChangedEditHistoryName({ text: value }))
+          .on(
+            "keydown",
+            ({ key }) => (key === "Enter" ? Message.ConfirmedEditHistoryName() : undefined),
+            { preventDefault: true },
           ),
-        ],
+        h.p
+          .class("col-span-2 text-xs leading-snug text-muted-foreground")
+          .children(
+            templateName === ""
+              ? "Leave it empty to use the template name."
+              : `Leave it empty to call it “${templateName}”.`,
+          ),
       ),
     ],
     h,

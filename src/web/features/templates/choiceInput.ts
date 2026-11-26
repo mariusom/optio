@@ -1,5 +1,6 @@
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Effect, Schema, String } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 
@@ -14,14 +15,14 @@ export const newChoiceInputId = "new-choice";
  * the next key event, and the field is cleared only while it still holds the
  * text that was added, so nothing typed afterwards is lost.
  */
-export const ClearNewChoice = Command.define("ClearNewChoice", {
-  args: { added: Schema.String },
-  messages: [Message.ClearedNewChoice],
-  execute: ({ added }) =>
+export const ClearNewChoice = Command.make(
+  "ClearNewChoice",
+  { args: { added: Schema.String } },
+  ({ added }) =>
     Effect.sync(() => {
       const input =
         typeof document === "undefined" ? null : document.getElementById(newChoiceInputId);
       if (input instanceof HTMLInputElement && String.trim(input.value) === added) input.value = "";
       return Message.ClearedNewChoice();
     }),
-});
+);

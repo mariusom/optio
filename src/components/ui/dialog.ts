@@ -1,43 +1,28 @@
-import { Dialog as FoldkitDialog } from "@foldkit/ui";
-import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { Button } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
-// Re-export the @foldkit/ui Dialog submodel surface so a foldcn Dialog is a
-// drop-in for wiring `h.submodel`.
+// A plain Effect UI view over a native modal <dialog>: the caller's Model owns
+// `isOpen`, and Escape or a backdrop tap sends `onClose`.
 
-export const Model = FoldkitDialog.Model;
-export type Model = typeof Model.Type;
+/** The dialog's title element id, derived from its base id. */
+export const titleId = (id: string): string => `${id}-dialog-title`;
 
-export const Message = FoldkitDialog.Message;
-export type Message = typeof Message.Type;
+/** The dialog's description element id, derived from its base id. */
+export const descriptionId = (id: string): string => `${id}-dialog-description`;
 
-export const OutMessage = FoldkitDialog.OutMessage;
-export type OutMessage = typeof OutMessage.Type;
-
-export const init = (config: InitConfig): Model =>
-  FoldkitDialog.init({ isAnimated: true, ...config });
-export const update = FoldkitDialog.update;
-export const open = FoldkitDialog.open;
-export const close = FoldkitDialog.close;
-export const titleId = FoldkitDialog.titleId;
-export const descriptionId = FoldkitDialog.descriptionId;
-export const view = FoldkitDialog.view;
-
-export type InitConfig = FoldkitDialog.InitConfig;
-export type RenderInfo = FoldkitDialog.RenderInfo;
-
-/** foldkit delta: the host <dialog> element's own chrome (upstream Root renders
- *  nothing). Backdrop/panel are fixed-position; this only neutralizes the
- *  native dialog box. */
+/** Delta from upstream: the host <dialog> element's own chrome (upstream Root
+ *  renders nothing). Backdrop/panel are fixed-position; this only neutralizes
+ *  the native dialog box. */
 export const dialogClass = "bg-transparent p-0 open:flex items-center justify-center";
 
-// The @foldkit/ui Dialog defers Animation submodel attributes onto the
-// backdrop/panel elements: `data-enter` while entering, `data-leave` while
-// leaving (never `data-state`). The sync script rewrites upstream's
-// `data-open:`/`data-closed:` animation utilities to these windows during token
-// sync; persistent `data-open:` styling passes through untouched.
+// The sync script rewrites upstream's `data-open:`/`data-closed:` animation
+// utilities to `data-enter`/`data-leave` windows during token sync; persistent
+// `data-open:` styling passes through untouched. This view sets neither
+// attribute (no animation state), so the panel shows in its resting state.
 export const dialogBackdropClass =
   "data-enter:animate-in data-leave:animate-out data-leave:fade-out-0 data-enter:fade-in-0 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs fixed inset-0 isolate z-50";
 
@@ -59,159 +44,109 @@ export const dialogHeaderClass = "gap-2 flex flex-col";
 export const dialogFooterClass =
   "bg-muted/50 -mx-4 -mb-4 rounded-b-xl border-t p-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end";
 
-// These abstract away element types, base classes, and attribute spreading.
-// Use inside `styledViewInputs` content callbacks:
+// Every builder follows one shape: `(config, children, h)`. Use them inside
+// the `view` content callback, wiring the ids it hands you:
 //
 //   content: (render, h) => [
 //     Dialog.header({}, [
-//       Dialog.title({ attributes: render.title }, ['Title'], h),
-//       Dialog.description({ attributes: render.description }, ['Subtitle'], h),
+//       Dialog.title({ attrs: { id: render.titleId } }, ['Title'], h),
+//       Dialog.description({ attrs: { id: render.descriptionId } }, ['Subtitle'], h),
 //     ], h),
 //     Dialog.footer({}, [button(...)], h),
 //   ]
-//
-// Every builder follows one shape: `(config, children, h)`. Attribute
-// bundles handed to you by `styledViewInputs` go in `config.attributes`.
 
-type StyleConfig<M> = Readonly<{
+type StyleConfig = Readonly<{
   className?: string;
-  /** Submodel-provided attributes (from the `styledViewInputs` content
-   *  callback render bundle) to merge onto the element. */
-  attributes?: ReadonlyArray<Attribute<M> | ChildAttribute>;
+  /** Extra attributes on the element (ids, ARIA). */
+  attrs?: Readonly<Record<string, string | undefined>>;
 }>;
 
 /** Dialog header wrapper. */
-export const header = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "dialog-header"), h.Class(cn(dialogHeaderClass, config.className))],
-    children,
-  );
+export const header = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "dialog-header" })
+    .class(cn(dialogHeaderClass, config.className))
+    .children(children);
 
-/** Dialog title — merges with the submodel's title attributes. */
-export const title = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.h2(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "dialog-title"),
-      h.Class(cn(dialogTitleClass, config.className)),
-    ],
-    children,
-  );
+/** Dialog title — pass `attrs: { id: render.titleId }`. */
+export const title = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.h2
+    .attrs({ ...config.attrs, "data-slot": "dialog-title" })
+    .class(cn(dialogTitleClass, config.className))
+    .children(children);
 
-/** Dialog description — merges with the submodel's description attributes. */
-export const description = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.p(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "dialog-description"),
-      h.Class(cn(dialogDescriptionClass, config.className)),
-    ],
-    children,
-  );
+/** Dialog description — pass `attrs: { id: render.descriptionId }`. */
+export const description = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.p
+    .attrs({ ...config.attrs, "data-slot": "dialog-description" })
+    .class(cn(dialogDescriptionClass, config.className))
+    .children(children);
 
 /** Dialog footer wrapper. */
-export const footer = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "dialog-footer"), h.Class(cn(dialogFooterClass, config.className))],
-    children,
-  );
+export const footer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "dialog-footer" })
+    .class(cn(dialogFooterClass, config.className))
+    .children(children);
 
-/** Close button — merges with the submodel's closeButton attributes. */
+/** Close button on the @effect/ui-kit Button; `onClick` is usually the
+ *  dialog's `onClose`. */
 export const closeButton = <M>(
-  config: StyleConfig<M>,
+  config: StyleConfig & Readonly<{ onClick?: M }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.button(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "dialog-close"),
-      h.Class(cn(dialogCloseButtonClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  Button(h, config.onClick === undefined ? {} : { onPress: config.onClick })
+    .attrs({ ...config.attrs, "data-slot": "dialog-close" })
+    .class(cn(dialogCloseButtonClass, config.className))
+    .children(children);
 
-export type DialogContent<M> = Readonly<{
-  closeButton: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  title: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  description: ReadonlyArray<Attribute<M> | ChildAttribute>;
-}>;
+/** Ids the content callback wires onto its title and description. */
+export type DialogContent = Readonly<{ titleId: string; descriptionId: string }>;
 
-export type StyledViewInputs<M> = Readonly<{
-  /** Set when content renders the description element. */
+export type ViewConfig<M> = Readonly<{
+  /** DOM id of the <dialog>; the title and description ids derive from it. */
+  id: string;
+  /** Shows the dialog as a modal while true. */
+  isOpen: boolean;
+  /** Sent on a close request (Escape) or a backdrop tap. */
+  onClose?: M;
+  /** Set when content renders the description element; adds aria-describedby. */
   hasDescription?: boolean;
-  /** Panel content. Receives the close-button, title and description
-   *  attribute bundles to spread onto your own elements, or pass to
-   *  Dialog.title / Dialog.description / Dialog.closeButton helpers via
-   *  their `attributes` config field. */
-  content: (render: DialogContent<M>, h: HtmlBuilder<M>) => ReadonlyArray<Child>;
+  content: (render: DialogContent, h: H<M>) => ReadonlyArray<Child>;
   className?: string;
   backdropClass?: string;
   panelClass?: string;
 }>;
 
-/** Build styled `Dialog.ViewInputs`. Pass your view's `h` so the content
- *  callback can dispatch your app's own messages (e.g. a destructive
- *  action button next to the dialog's `closeButton`). */
-export const styledViewInputs = <M>(
-  viewInputs: StyledViewInputs<M>,
-  h: HtmlBuilder<M>,
-): FoldkitDialog.ViewInputs => ({
-  hasDescription: viewInputs.hasDescription,
-  toView: ({
-    dialog,
-    backdrop,
-    panel,
-    closeButton: closeAttributes,
-    title: titleAttributes,
-    description: descriptionAttributes,
-    isVisible,
-  }) =>
-    h.dialog(
-      [
-        ...dialog,
-        h.DataAttribute("slot", "dialog"),
-        h.Class(cn(dialogClass, viewInputs.className)),
-      ],
-      isVisible
-        ? [
-            h.div([
-              ...backdrop,
-              h.DataAttribute("slot", "dialog-overlay"),
-              h.Class(cn(dialogBackdropClass, viewInputs.backdropClass)),
-            ]),
-            h.div(
-              [
-                ...panel,
-                h.DataAttribute("slot", "dialog-content"),
-                h.Class(cn(dialogPanelClass, viewInputs.panelClass)),
-              ],
-              viewInputs.content(
-                {
-                  closeButton: closeAttributes,
-                  title: titleAttributes,
-                  description: descriptionAttributes,
-                },
-                h,
-              ),
-            ),
-          ]
-        : [],
-    ),
-});
+/** Styled modal dialog on a native <dialog>, named by its title and (when
+ *  `hasDescription`) described by its description. */
+export const view = <M>(config: ViewConfig<M>, h: H<M>): Ui => {
+  const render: DialogContent = {
+    titleId: titleId(config.id),
+    descriptionId: descriptionId(config.id),
+  };
+  const dialog = h.dialog
+    .id(config.id)
+    .modal(config.isOpen)
+    .attrs({
+      "aria-labelledby": render.titleId,
+      "aria-describedby": config.hasDescription === true ? render.descriptionId : undefined,
+      "data-slot": "dialog",
+    })
+    .class(cn(dialogClass, config.className));
+  const backdrop = h.div
+    .attr("data-slot", "dialog-overlay")
+    .class(cn(dialogBackdropClass, config.backdropClass));
+  return (config.onClose === undefined ? dialog : dialog.on("cancel", config.onClose)).children(
+    config.isOpen
+      ? [
+          config.onClose === undefined ? backdrop : backdrop.on("click", config.onClose),
+          h.div
+            .attr("data-slot", "dialog-content")
+            .class(cn(dialogPanelClass, config.panelClass))
+            .children(config.content(render, h)),
+        ]
+      : [],
+  );
+};

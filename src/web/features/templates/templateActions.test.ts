@@ -1,7 +1,9 @@
-import { AsyncData } from "foldkit";
-import { Scene } from "foldkit/test";
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
+import * as AsyncData from "@/lib/asyncData";
+import { HtmlLocator } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { it as effectIt } from "@effect/vitest";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { ShowSheet } from "../../../components/app/sheet";
@@ -9,12 +11,10 @@ import { init, update, type Model } from "../../../main";
 import { Message } from "../../../messages";
 import type { TemplateSummary } from "../../types";
 import type { ActiveSession } from "../session/startHelpers";
+import { viewScene } from "../viewScene";
 import { templatesPage } from "./view";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
-
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 // The template action sheet starts a session with that template. Only one
 // session can be live, so with one running the action resumes it instead,
 // matching the Session tab, which shows "Resume session" in place of Start.
@@ -38,9 +38,8 @@ const live: ActiveSession = {
   completedCount: 2,
 };
 
-const url = fromString("http://localhost/optio/#/templates");
 const baseModel = (activeSession: ActiveSession | null): Model => ({
-  ...init(Option.getOrThrow(url)).model,
+  ...init("#/templates").model,
   templates: AsyncData.succeed([template]),
   activeSession: AsyncData.succeed(activeSession),
   templateActionsFor: template.id,
@@ -92,11 +91,11 @@ describe("starting a session from the template action sheet", () => {
 
 type PageModel = Parameters<typeof templatesPage>[0];
 
-/** The open sheet shows through a Mount; acknowledge it. */
-const settleSheets = (simulation: Scene.SceneSimulation<PageModel, Message>) =>
-  Scene.Mount.resolveAll(
-    ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
-  )(simulation);
+/** The open sheet's focus and scroll handling runs as a Mount on its <dialog>. */
+const showing = (model: PageModel, sheet: string = "template-actions") =>
+  viewScene((h) => templatesPage(model, h)).pipe(
+    Effect.tap((s) => Effect.sync(() => s.expectMount(ShowSheet({ id: sheet })))),
+  );
 
 describe("template action sheet", () => {
   const model: PageModel = {
@@ -109,32 +108,24 @@ describe("template action sheet", () => {
     liveSession: null,
     templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
   };
-  const config = {
-    view: templatesPage,
-    update: (current: PageModel, message: Message) => ({ model: current, outMessage: message }),
-  };
+  effectIt.effect("lists Start session first", () =>
+    Effect.gen(function* () {
+      const s = yield* showing(model);
+      s.click(HtmlLocator.role("button", { name: "Start session" })).emitted(
+        Message.ClickedStartTemplateSession({ id: "t1" }),
+      );
+    }),
+  );
 
-  it("lists Start session first", () => {
-    Scene.scene(
-      config,
-      Scene.given(model),
-      settleSheets,
-      Scene.click(Scene.role("button", { name: "Start session" })),
-      Scene.expectOutMessage(Message.ClickedStartTemplateSession({ id: "t1" })),
-    );
-  });
-
-  it("offers to resume the live session and explains why", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, liveSession: live }),
-      settleSheets,
-      Scene.expect(Scene.role("button", { name: "Start session" })).toBeAbsent(),
-      Scene.expect(
-        Scene.text("“Night shift” is still recording. End it to start another session."),
-      ).toExist(),
-      Scene.click(Scene.role("button", { name: "Resume live session" })),
-      Scene.expectOutMessage(Message.ClickedStartTemplateSession({ id: "t1" })),
-    );
-  });
+  effectIt.effect("offers to resume the live session and explains why", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({ ...model, liveSession: live });
+      s.expect(HtmlLocator.role("button", { name: "Start session" }))
+        .toBeAbsent()
+        .expect(Locator.text("“Night shift” is still recording. End it to start another session."))
+        .toExist()
+        .click(HtmlLocator.role("button", { name: "Resume live session" }))
+        .emitted(Message.ClickedStartTemplateSession({ id: "t1" }));
+    }),
+  );
 });

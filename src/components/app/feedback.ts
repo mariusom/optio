@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import type { IconNode } from "lucide";
 
 import { Empty } from "@/components/ui/empty";
@@ -8,7 +8,7 @@ import { spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { CircleAlert, Info, TriangleAlert, X, icon } from "./icons";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 /** Centered empty state: icon, one-line title, short reason, one action. */
 export const emptyState = <M>(
@@ -16,11 +16,11 @@ export const emptyState = <M>(
     icon: IconNode;
     title: string;
     description?: Child;
-    action?: Html;
+    action?: Ui;
     className?: string;
   }>,
-  h: HtmlBuilder<M>,
-): Html =>
+  h: H<M>,
+): Ui =>
   Empty(
     { className: config.className },
     [
@@ -58,8 +58,8 @@ export const notice = <M>(
     className?: string;
     role?: "alert" | "status";
   }>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui => {
   const tone = noticeTones[config.tone ?? "info"];
   return Alert(
     {
@@ -86,7 +86,7 @@ export const notice = <M>(
                     size: "icon",
                     className: "shrink-0",
                     onClick: config.onDismiss,
-                    attributes: [h.AriaLabel(config.dismissLabel ?? "Dismiss")],
+                    attrs: { "aria-label": config.dismissLabel ?? "Dismiss" },
                   },
                   icon(h, X, ""),
                   h,
@@ -101,24 +101,23 @@ export const notice = <M>(
 };
 
 /** Short helper text under a disabled primary action ("Answer the 2 starred questions first"). */
-export const hint = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
-  h.p(
-    [h.Class(cn("text-center text-sm text-muted-foreground", className)), h.Role("status")],
-    [text],
-  );
+export const hint = <M>(text: Child, h: H<M>, className?: string): Ui =>
+  h.p
+    .class(cn("text-center text-sm text-muted-foreground", className))
+    .attr("role", "status")
+    .children(text);
 
 /**
  * Saved data that has not been read yet. It appears only after a short delay
  * (`loading-reveal`), so a fast read goes straight from blank to content
  * instead of flashing a spinner or an empty state.
  */
-export const loadingState = <M>(text: string, h: HtmlBuilder<M>): Html =>
-  h.div(
-    [h.Class("loading-reveal flex h-full min-h-40 items-center justify-center p-8")],
-    [
-      h.p(
-        [h.Class("flex items-center gap-2 text-sm text-muted-foreground"), h.Role("status")],
-        [spinner({}, h), text],
-      ),
-    ],
-  );
+export const loadingState = <M>(text: string, h: H<M>): Ui =>
+  h.div
+    .class("loading-reveal flex h-full min-h-40 items-center justify-center p-8")
+    .children(
+      h.p
+        .class("flex items-center gap-2 text-sm text-muted-foreground")
+        .attr("role", "status")
+        .children(spinner({}, h), text),
+    );

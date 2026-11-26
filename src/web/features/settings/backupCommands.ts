@@ -1,8 +1,8 @@
-import { Array, Clock, DateTime, Duration, Effect, Option, pipe, Schema } from "effect";
-import { Command } from "foldkit";
+import { Array, Clock, DateTime, Effect, Option, pipe, Schema } from "effect";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
-import { withStore, type StoreAccess } from "../../../livestore/access";
+import { withStore, type StoreAccess } from "../../../store/access";
 import {
   backupFilename,
   backupProblem,
@@ -13,7 +13,6 @@ import {
 } from "../../backup";
 import { saveTextFile } from "../../download";
 import { friendlyFailure, reportFailure } from "../../errors";
-import { confirmedOnDisk } from "../../storeDurability";
 import { archiveRecord } from "../session/archiveRecord";
 import { fieldRowsToDefs } from "../../fieldRows";
 
@@ -21,6 +20,14 @@ import { fieldRowsToDefs } from "../../fieldRows";
 // such a file by adding whatever is missing (`v3.BackupRestored`).
 
 const failed = (error: string) => Message.FailedBackup({ error });
+
+/** The browser refused to save the backup file. */
+class BackupDownloadError extends Schema.TaggedError<
+  BackupDownloadError,
+  { readonly brand: unique symbol }
+>()("BackupDownloadError", {
+  cause: Schema.Defect(),
+}) {}
 
 type Access = StoreAccess;
 
@@ -114,10 +121,10 @@ const openSessions = ({ store, tables }: Access, endedAt: Date): BackupFile["ses
     }),
   );
 
-export const DownloadBackup = Command.define("DownloadBackup", {
-  args: { includeOpenSession: Schema.Boolean },
-  messages: [Message.BackupDownloaded, Message.FailedBackup],
-  execute: ({ includeOpenSession }) =>
+export const DownloadBackup = Command.make(
+  "DownloadBackup",
+  { args: { includeOpenSession: Schema.Boolean } },
+  ({ includeOpenSession }) =>
     withStore((access) =>
       Effect.gen(function* () {
         const exportedAt = yield* DateTime.nowAsDate;
@@ -132,9 +139,10 @@ export const DownloadBackup = Command.define("DownloadBackup", {
           ],
         };
         const filename = backupFilename(exportedAt);
-        return yield* Effect.try(() =>
-          saveTextFile(encodeBackup(file), filename, "application/json"),
-        ).pipe(
+        return yield* Effect.try({
+          try: () => saveTextFile(encodeBackup(file), filename, "application/json"),
+          catch: (cause) => BackupDownloadError.make({ cause }),
+        }).pipe(
           Effect.match({
             // Log the thrown value itself, as before; the user sees the backup phrase.
             onFailure: (error) => failed(friendlyFailure("backup", error.cause)),
@@ -143,7 +151,7 @@ export const DownloadBackup = Command.define("DownloadBackup", {
         );
       }),
     ).pipe(reportFailure("backup", failed)),
-});
+);
 
 /** The chosen file's text, clearing the input so the same file can be chosen again. */
 const readChosenFile = (inputId: string) =>
@@ -154,9 +162,6 @@ const readChosenFile = (inputId: string) =>
     input.value = "";
     return file === undefined ? Effect.succeed(null) : Effect.promise(() => file.text());
   });
-
-/** Longest wait for a restore to reach disk before reporting it as still saving. */
-const saveTimeout = Duration.seconds(60);
 
 const restore = (access: Access, file: BackupFile) =>
   Effect.gen(function* () {
@@ -174,31 +179,29 @@ const restore = (access: Access, file: BackupFile) =>
       ),
     });
     const now = yield* DateTime.nowAsDate;
-    store.commit(
+    yield* store.commit(
       events.backupRestored({ now, templates: plan.templates, sessions: plan.sessions }),
     );
-    // Only report success once the restore has reached disk: a reload before
-    // that (seconds for a large backup) would silently lose it.
-    const saved = yield* confirmedOnDisk(store, saveTimeout);
+    // The write resolves once the journal has saved it.
     return Message.BackupRestored({
       templates: plan.templates.length,
       sessions: plan.sessions.length,
       skipped: plan.skipped,
-      saved,
     });
   });
 
-export const RestoreBackup = Command.define("RestoreBackup", {
-  args: { inputId: Schema.String },
-  messages: [Message.BackupRestored, Message.FailedBackup],
-  execute: ({ inputId }) =>
+export const RestoreBackup = Command.make(
+  "RestoreBackup",
+  { args: { inputId: Schema.String } },
+  ({ inputId }) =>
     Effect.gen(function* () {
       const text = yield* readChosenFile(inputId);
       if (text === null) return failed("Choose a backup file to restore.");
       const file = decodeBackup(text);
       if (Option.isNone(file)) return failed("That file isn't an Optio backup.");
-      const problem = backupProblem(file.value, yield* Clock.currentTimeMillis);
+      const now = yield* Clock.currentTimeMillis;
+      const problem = backupProblem(file.value, now);
       if (problem !== null) return failed(problem);
       return yield* withStore((access) => restore(access, file.value));
     }).pipe(reportFailure("restore", failed)),
-});
+);

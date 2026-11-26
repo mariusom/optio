@@ -1,22 +1,19 @@
 packages:
   - "."
 
-# Keep one Effect version across app, worker and LiveStore RPC runtimes.
-# FoldKit 0.171 supports Effect 4.1; align LiveStore's runtime packages with it.
+# Keep one Effect version across the app, Effect UI and its devtools.
 overrides:
   effect: 4.1.5
   "@effect/vitest": 4.1.5
-  "@effect/opentelemetry": 4.1.5
   "@effect/platform-browser": 4.1.5
-  "@effect/platform-bun": 4.1.5
   "@effect/platform-node": 4.1.5
   "@effect/platform-node-shared": 4.1.5
-  # LiveStore still pins vulnerable Nano ID 5.0.9.
-  "@livestore/utils>nanoid": 5.1.16
-  # OpenTelemetry SDK 2.12 requires the API below 1.10.
-  "@opentelemetry/api": 1.9.1
   vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest@*: "catalog:"
+  # Effect UI is a public preview with no npm release: pin its packages to one
+  # pkg.pr.new snapshot of Effect-TS/ui so their cross-references resolve.
+  "@effect/ui": https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92
+  "@effect/ui-kit": https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92
 
 allowBuilds:
   msgpackr-extract: false
@@ -27,7 +24,6 @@ minimumReleaseAge: 1440
 onlyBuiltDependencies:
   - "@tailwindcss/oxide"
   - esbuild
-  - sqlite-wasm
 catalog:
   vitest: 5.1.0
   vite-plus: 1.7.0

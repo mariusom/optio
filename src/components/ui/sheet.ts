@@ -1,38 +1,23 @@
-import { Dialog as FoldkitDialog } from "@foldkit/ui";
-import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
+import { Button } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
-// Re-export the @foldkit/ui Dialog submodel surface. A sheet is a Dialog
-// variant anchored to an edge of the viewport instead of centered.
+// A sheet is a modal native <dialog> anchored to an edge of the viewport
+// instead of centered. Plain Effect UI view: the caller's Model owns `isOpen`.
 
-export const Model = FoldkitDialog.Model;
-export type Model = typeof Model.Type;
+/** The sheet's title element id, derived from its base id. */
+export const titleId = (id: string): string => `${id}-dialog-title`;
 
-export const Message = FoldkitDialog.Message;
-export type Message = typeof Message.Type;
+/** The sheet's description element id, derived from its base id. */
+export const descriptionId = (id: string): string => `${id}-dialog-description`;
 
-export const OutMessage = FoldkitDialog.OutMessage;
-export type OutMessage = typeof OutMessage.Type;
-
-export const init = (config: InitConfig): Model =>
-  FoldkitDialog.init({ isAnimated: true, ...config });
-export const update = FoldkitDialog.update;
-export const open = FoldkitDialog.open;
-export const close = FoldkitDialog.close;
-export const titleId = FoldkitDialog.titleId;
-export const descriptionId = FoldkitDialog.descriptionId;
-export const view = FoldkitDialog.view;
-
-export type InitConfig = FoldkitDialog.InitConfig;
-export type RenderInfo = FoldkitDialog.RenderInfo;
-export type ViewInputs = FoldkitDialog.ViewInputs;
-
-// foldkit delta: upstream keys enter/exit motion on
-// data-starting-style/data-ending-style, which foldkit cannot emit — the
-// equivalent declarations are inlined under data-enter/data-leave,
-// and the panel emits data-side (from the `side` view input).
+// Delta from upstream: upstream keys enter/exit motion on
+// data-starting-style/data-ending-style; the equivalent declarations are
+// inlined under data-enter/data-leave, and the panel emits data-side (from
+// the `side` view input).
 
 export type SheetSide = "top" | "bottom" | "left" | "right";
 
@@ -48,7 +33,8 @@ export const sheetPanelClass: Readonly<Record<SheetSide, string>> = {
 };
 
 /** Upstream motion classes (data-starting-style/data-ending-style variants);
- *  foldkit equivalents are added to the same tokens at style resolution. */
+ *  data-enter/data-leave equivalents are added to the same tokens at style
+ *  resolution. */
 export const sheetMotionClass =
   "data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:data-ending-style:translate-y-[2.5rem] data-[side=bottom]:data-starting-style:translate-y-[2.5rem] data-[side=left]:data-ending-style:translate-x-[-2.5rem] data-[side=left]:data-starting-style:translate-x-[-2.5rem] data-[side=right]:data-ending-style:translate-x-[2.5rem] data-[side=right]:data-starting-style:translate-x-[2.5rem] data-[side=top]:data-ending-style:translate-y-[-2.5rem] data-[side=top]:data-starting-style:translate-y-[-2.5rem]";
 
@@ -67,142 +53,99 @@ export const sheetDescriptionClass = "text-muted-foreground text-sm";
 export const sheetCloseButtonClass =
   "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 border border-transparent bg-clip-padding text-sm font-medium focus-visible:ring-3 aria-invalid:ring-3 active:not-aria-[haspopup]:translate-y-px [&_svg:not([class*='size-'])]:size-4 group/button inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-all outline-none select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50 hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 aria-expanded:bg-muted aria-expanded:text-foreground size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg absolute top-3 right-3";
 
-type StyleConfig<M> = Readonly<{
+type StyleConfig = Readonly<{
   className?: string;
-  /** Submodel-provided attributes (from the `styledViewInputs` content
-   *  callback render bundle) to merge onto the element. */
-  attributes?: ReadonlyArray<Attribute<M> | ChildAttribute>;
+  /** Extra attributes on the element (ids, ARIA). */
+  attrs?: Readonly<Record<string, string | undefined>>;
 }>;
 
-export const header = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "sheet-header"), h.Class(cn(sheetHeaderClass, config.className))],
-    children,
-  );
+export const header = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "sheet-header" })
+    .class(cn(sheetHeaderClass, config.className))
+    .children(children);
 
-export const title = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.h2(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "sheet-title"),
-      h.Class(cn(sheetTitleClass, config.className)),
-    ],
-    children,
-  );
+/** Sheet title — pass `attrs: { id: render.titleId }`. */
+export const title = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.h2
+    .attrs({ ...config.attrs, "data-slot": "sheet-title" })
+    .class(cn(sheetTitleClass, config.className))
+    .children(children);
 
-export const description = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.p(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "sheet-description"),
-      h.Class(cn(sheetDescriptionClass, config.className)),
-    ],
-    children,
-  );
+/** Sheet description — pass `attrs: { id: render.descriptionId }`. */
+export const description = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.p
+    .attrs({ ...config.attrs, "data-slot": "sheet-description" })
+    .class(cn(sheetDescriptionClass, config.className))
+    .children(children);
 
-export const footer = <M>(
-  config: StyleConfig<M>,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.DataAttribute("slot", "sheet-footer"), h.Class(cn(sheetFooterClass, config.className))],
-    children,
-  );
+export const footer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attrs({ ...config.attrs, "data-slot": "sheet-footer" })
+    .class(cn(sheetFooterClass, config.className))
+    .children(children);
 
+/** Close button on the @effect/ui-kit Button; `onClick` is usually the
+ *  sheet's `onClose`. */
 export const closeButton = <M>(
-  config: StyleConfig<M>,
+  config: StyleConfig & Readonly<{ onClick?: M }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.button(
-    [
-      ...(config.attributes ?? []),
-      h.DataAttribute("slot", "sheet-close"),
-      h.Class(cn(sheetCloseButtonClass, config.className)),
-    ],
-    children,
-  );
+  h: H<M>,
+): Ui =>
+  Button(h, config.onClick === undefined ? {} : { onPress: config.onClick })
+    .attrs({ ...config.attrs, "data-slot": "sheet-close" })
+    .class(cn(sheetCloseButtonClass, config.className))
+    .children(children);
 
-export type SheetContent<M> = Readonly<{
-  closeButton: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  title: ReadonlyArray<Attribute<M> | ChildAttribute>;
-  description: ReadonlyArray<Attribute<M> | ChildAttribute>;
-}>;
+/** Ids the content callback wires onto its title and description. */
+export type SheetContent = Readonly<{ titleId: string; descriptionId: string }>;
 
-export type StyledViewInputs<M> = Readonly<{
-  /** Set when content renders the description element. */
+export type ViewConfig<M> = Readonly<{
+  /** DOM id of the <dialog>; the title and description ids derive from it. */
+  id: string;
+  /** Shows the sheet as a modal while true. */
+  isOpen: boolean;
+  /** Sent on a close request (Escape) or a backdrop tap. */
+  onClose?: M;
+  /** Set when content renders the description element; adds aria-describedby. */
   hasDescription?: boolean;
   side?: SheetSide;
-  content: (render: SheetContent<M>, h: HtmlBuilder<M>) => ReadonlyArray<Child>;
+  content: (render: SheetContent, h: H<M>) => ReadonlyArray<Child>;
   className?: string;
   backdropClass?: string;
   panelClass?: string;
   /** Extra attributes merged onto the panel (e.g. data-mobile for sidebar). */
-  panelAttributes?: ReadonlyArray<Attribute<M> | ChildAttribute>;
+  panelAttrs?: Readonly<Record<string, string | undefined>>;
 }>;
 
-/** Build styled `Dialog.ViewInputs` for a sheet. Defaults to a right-side panel. */
-export const styledViewInputs = <M>(
-  viewInputs: StyledViewInputs<M>,
-  h: HtmlBuilder<M>,
-): FoldkitDialog.ViewInputs => {
-  const side = viewInputs.side ?? "right";
-  return {
-    hasDescription: viewInputs.hasDescription,
-    toView: ({
-      dialog,
-      backdrop,
-      panel,
-      closeButton: closeAttributes,
-      title: titleAttributes,
-      description: descriptionAttributes,
-      isVisible,
-    }) =>
-      h.dialog(
-        [
-          ...dialog,
-          h.DataAttribute("slot", "sheet"),
-          h.Class(cn("bg-transparent p-0 open:block", viewInputs.className)),
-        ],
-        isVisible
-          ? [
-              h.div([
-                ...backdrop,
-                h.DataAttribute("slot", "sheet-overlay"),
-                h.Class(cn(sheetBackdropClass, viewInputs.backdropClass)),
-              ]),
-              h.div(
-                [
-                  ...panel,
-                  h.DataAttribute("slot", "sheet-content"),
-                  h.DataAttribute("side", side),
-                  h.Class(cn(sheetPanelClass[side], sheetMotionClass, viewInputs.panelClass)),
-                  ...(viewInputs.panelAttributes ?? []),
-                ],
-                viewInputs.content(
-                  {
-                    closeButton: closeAttributes,
-                    title: titleAttributes,
-                    description: descriptionAttributes,
-                  },
-                  h,
-                ),
-              ),
-            ]
-          : [],
-      ),
+/** Styled sheet on a native modal <dialog>. Defaults to a right-side panel. */
+export const view = <M>(config: ViewConfig<M>, h: H<M>): Ui => {
+  const side = config.side ?? "right";
+  const render: SheetContent = {
+    titleId: titleId(config.id),
+    descriptionId: descriptionId(config.id),
   };
+  const dialog = h.dialog
+    .id(config.id)
+    .modal(config.isOpen)
+    .attrs({
+      "aria-labelledby": render.titleId,
+      "aria-describedby": config.hasDescription === true ? render.descriptionId : undefined,
+      "data-slot": "sheet",
+    })
+    .class(cn("bg-transparent p-0 open:block", config.className));
+  const backdrop = h.div
+    .attr("data-slot", "sheet-overlay")
+    .class(cn(sheetBackdropClass, config.backdropClass));
+  return (config.onClose === undefined ? dialog : dialog.on("cancel", config.onClose)).children(
+    config.isOpen
+      ? [
+          config.onClose === undefined ? backdrop : backdrop.on("click", config.onClose),
+          h.div
+            .attrs({ ...config.panelAttrs, "data-slot": "sheet-content", "data-side": side })
+            .class(cn(sheetPanelClass[side], sheetMotionClass, config.panelClass))
+            .children(config.content(render, h)),
+        ]
+      : [],
+  );
 };

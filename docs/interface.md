@@ -2,8 +2,12 @@
 
 Use [app primitives](../src/components/app) for navigation, grouped lists,
 feedback and sheets. They compose project-owned [registry components](../src/components/ui)
-from [Foldcn](https://foldcn.elianiva.com). Consult upstream documentation for
-component APIs; review local customizations before refreshing a registry item.
+from [Foldcn](https://foldcn.elianiva.com), ported to Effect UI element chains
+(`h.div.class(...).children(...)`) and, where it has a stateless view function,
+[`@effect/ui-kit`](https://ui.effect.website) (button, input, switch,
+separator). Foldcn targets FoldKit, so its upstream APIs no longer apply as is:
+keep its class strings and anatomy, and review local customizations before
+refreshing a registry item.
 
 - Use semantic colors and Tailwind spacing. Primary controls keep 44px touch
   targets (`h-11`); large buttons use `h-12`. Pages control layout, while shared
@@ -30,12 +34,13 @@ component APIs; review local customizations before refreshing a registry item.
   `contentWidth`: tables use the wide column, forms the readable one.
 - Use bottom sheets on phones and centered cards on larger screens, built with
   [sheet.ts](../src/components/app/sheet.ts) (app pages use the
-  [web/sheets.ts](../src/web/sheets.ts) wrappers). Each renders the
-  @foldkit/ui Dialog view on a native `<dialog>` and is open while rendered:
-  mounting shows it with FoldKit's focus entry (`[autofocus]`, else the first
-  control), Tab containment, topmost-only Escape and scroll lock (the delegated
-  `main` scroller stops too); unmounting releases them and returns focus to
-  whatever opened the first of consecutive sheets. Give each sheet a unique
+  [web/sheets.ts](../src/web/sheets.ts) wrappers). Each is a keyed native
+  `<dialog>` rendered with `.modal(true)` and open while rendered: Effect UI
+  shows it with `showModal()` (top layer, inert page), Escape arrives as
+  `cancel`, and its `ShowSheet` Mount adds focus entry (`[autofocus]`, else the
+  first control), Tab wrapping and scroll lock (the delegated `main` scroller
+  stops too); unmounting releases them and returns focus to whatever opened
+  the first of consecutive sheets. Give each sheet a unique
   `id`; render it once, outside responsive copies. Action sheets list every
   action, destructive ones included, as `sheetAction` rows aligned with the
   title, with Cancel in the footer. Destructive actions require confirmation.
@@ -137,7 +142,7 @@ authored component had no upstream change since the September 9 snapshot.
 | button          | Unchanged; retain shared actions and touch sizes.                                                                                                                                        |
 | card            | Unchanged; retain card styling used by app primitives.                                                                                                                                   |
 | checkbox        | Forward description presence; retain wrapper without replacing existing specialized controls.                                                                                            |
-| dialog          | Forward explicit description presence; app sheets render its Dialog view (init/view) on a native dialog.                                                                                 |
+| dialog          | Forward explicit description presence; a `view` function on a native modal dialog. App sheets use their own `<dialog>` (see above).                                                      |
 | empty           | Unchanged; retain app empty states.                                                                                                                                                      |
 | fieldset        | Added for the updated radio field/choice-card anatomy; includes grouped fields and error rendering.                                                                                      |
 | input           | Forward description presence; retain compact label/control layout and mobile sizing.                                                                                                     |
@@ -145,7 +150,7 @@ authored component had no upstream change since the September 9 snapshot.
 | item            | Unchanged; retain shared list-row styling.                                                                                                                                               |
 | label           | Unchanged; retain helper without forcing a migration of app labels.                                                                                                                      |
 | native-select   | Forward description presence; retain native selects.                                                                                                                                     |
-| progress        | FoldKit `Progress.view` supplies the range, fill and accessibility attributes; the local wrapper keeps the Foldcn slots and the runner's required-answer label.                          |
+| progress        | A local `role="progressbar"` view supplies the range, fill and accessibility attributes; it keeps the Foldcn slots and the runner's required-answer label.                               |
 | radio-group     | Add field/choice-card layouts, invalid state and description presence; disabled buttons stay out of tab order. Preserve legacy renderer. Do not replace the runner's native radio grids. |
 | separator       | Unchanged; retained, no new consumer.                                                                                                                                                    |
 | sheet           | Forward explicit description presence; the responsive app sheet keeps its own bottom-sheet/card panel, plus a right-hand side placement for the runner's task list.                      |
@@ -155,9 +160,9 @@ authored component had no upstream change since the September 9 snapshot.
 | switch          | Forward description presence; retain settings toggles and local label layout.                                                                                                            |
 | textarea        | Forward description presence; retain editor sizing.                                                                                                                                      |
 
-The app keeps its explicit native-dialog Mount lifecycle; adopting upstream
-`Dialog.boot` would require a separate review of focus restoration and consecutive
-sheets. The installed FoldKit supports the description APIs used here.
+The app keeps its explicit native-dialog Mount lifecycle. Since the move to
+Effect UI, the registry dialog, sheet and alert-dialog are stateless view
+functions without the upstream enter/leave animations; no page renders them.
 
 The remaining catalog items were evaluated against existing use cases, rather
 than copied without consumers. “New” identifies additions since September 9.

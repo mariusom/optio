@@ -12,7 +12,7 @@ Foldcn registry components and generated style data
 
 Portions of src/components/ui and the style data in
 src/web/componentStyles.generated.ts are copied or adapted from Foldcn registry
-modules. Optio's copies have been translated to FoldKit builders and locally
+modules. Optio's copies have been translated to Effect UI builders and locally
 modified. The generated table contains class strings retrieved from 17 Foldcn
 registry modules in the Nova, Vega, Maia, Lyra, Mira, Luma, Sera, and Rhea
 styles on 2026-10-10.
@@ -79,14 +79,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-
-LiveStore runtime packages
---------------------------
-
-LiveStore's Apache-2.0 runtime packages and the MIT-licensed
-@livestore/wa-sqlite have their full installed license texts included below,
-with hashes recorded in dependency-inventory.json.
-
-Source: https://github.com/livestorejs/livestore
-Copyright 2025 Overengineering Studio

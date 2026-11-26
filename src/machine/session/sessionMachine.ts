@@ -146,6 +146,19 @@ const withCurrentTask = (runner: RunnerState, taskId: string | null): RunnerStat
   currentTaskId: taskId ?? runner.currentTaskId,
 });
 
+/**
+ * The edit mode `CommitSelectTask` persists: only the selected task, and only
+ * if finished. Applied at once, so answers typed before the store confirms
+ * the selection are not dropped as edits to a read-only task.
+ */
+const withSelectedEdit = (runner: RunnerState, taskId: string): RunnerState => ({
+  ...runner,
+  tasks: Array.map(runner.tasks, (task) => {
+    const isBeingEdited = task.id === taskId && task.endDate !== null;
+    return task.isBeingEdited === isBeingEdited ? task : { ...task, isBeingEdited };
+  }),
+});
+
 // ── Field writes ─────────────────────────────────────────────────────────
 //
 // Typed answers update the runner at once but reach the store in batches:
@@ -389,7 +402,11 @@ const collecting: PhaseHandlers = {
       return next({ ...runner, lastError: incompleteEdit });
     }
     return next(
-      { ...withCurrentTask(runner, taskId), focusedSectionId: null, showTaskList: false },
+      {
+        ...withSelectedEdit(withCurrentTask(runner, taskId), taskId),
+        focusedSectionId: null,
+        showTaskList: false,
+      },
       { _tag: "CommitSelectTask", sessionId: runner.sessionId, taskId },
     );
   },
