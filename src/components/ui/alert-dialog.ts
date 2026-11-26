@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Button } from "@effect/ui-kit";
 import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";

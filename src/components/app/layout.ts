@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import type { Html } from "@effect/ui/html";
 import type { H, Ui } from "@/lib/view";
 

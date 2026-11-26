@@ -1,6 +1,6 @@
 import type { H } from "@/lib/view";
 
-import { sheet } from "../../sheets";
+import { sheet } from "@/components/app";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";

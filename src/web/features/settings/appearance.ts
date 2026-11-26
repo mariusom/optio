@@ -1,11 +1,10 @@
 import type { H } from "@/lib/view";
 import { Array, pipe, Schema, String } from "effect";
 
-import { choiceRows, controlRow, groupedList, segmentedControl } from "@/components/app";
+import { choiceRows, controlRow, groupedList, segmentedControl, sheet } from "@/components/app";
 import { cn } from "@/lib/utils";
 import { input } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
-import { sheet } from "../../sheets";
 import { Message } from "../../../messages";
 import {
   HexColour,

@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Effect, Queue, Stream } from "effect";
 import { Command, Component } from "@effect/ui";
 import type { H, Ui } from "@/lib/view";

@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Head } from "@effect/ui";
 import { Html } from "@effect/ui/html";
 
@@ -25,8 +24,7 @@ export const App = Html.component({
   },
   update: ($, message) => {
     const result = update($.model, message);
-    const commands = result.commands ?? [];
-    return commands.length === 0 ? result.model : $.set(result.model).run(...commands);
+    return $.set(result.model).run(...(result.commands ?? []));
   },
   subscriptions: ({ model }) => subscriptions(model),
   head: ({ model }) => [Head.title(documentTitle(model))],

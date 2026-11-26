@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { Mount } from "@effect/ui";
 import { Effect, Schema, Stream } from "effect";
 import type { H, Ui } from "@/lib/view";

@@ -28,7 +28,7 @@ import {
   initializeTheme,
 } from "./browserTheme";
 import { groupedList, navBar, navBarAction, row as appRow } from "../components/app";
-import { confirmSheet } from "./sheets";
+import { confirmSheet } from "@/components/app";
 import { button as uiButton } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Item } from "../components/ui/item";

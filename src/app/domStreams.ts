@@ -20,39 +20,32 @@ const scrollBehavior = (): ScrollBehavior =>
     ? "auto"
     : "smooth";
 
-export const focusEditorDraft = (draftId: string | null): Stream.Stream<never> => {
-  if (draftId === null) return Stream.empty;
-  return afterCommit(() => {
+export const focusEditorDraft = (_draftId: string): Stream.Stream<never> =>
+  afterCommit(() => {
     document.getElementById("question-name")?.focus({ preventScroll: true });
     document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
   });
-};
 
-export const scrollToSection = (sectionId: string | null): Stream.Stream<never> => {
-  if (sectionId === null) return Stream.empty;
-  return afterCommit(() => {
+export const scrollToSection = (sectionId: string): Stream.Stream<never> =>
+  afterCommit(() => {
     Option.map(visibleElement([`mobile-${sectionId}`, `tablet-${sectionId}`]), (element) =>
       element.scrollIntoView({ behavior: scrollBehavior(), block: "center" }),
     );
   });
-};
 
-export const scrollToCurrentTask = (taskId: string | null): Stream.Stream<never> => {
-  if (taskId === null) return Stream.empty;
-  return afterCommit(() => {
+export const scrollToCurrentTask = (_taskId: string): Stream.Stream<never> =>
+  afterCommit(() => {
     Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
       element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
     );
   });
-};
 
 /**
  * Moves screen-reader and keyboard focus to a help page's title once the page
  * has painted. The heading becomes focusable without joining the tab order.
  */
-export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream<never> => {
-  if (page === null) return Stream.empty;
-  return Stream.fromEffect(
+export const focusHelpPage = (page: "AgentHelp" | "About"): Stream.Stream<never> =>
+  Stream.fromEffect(
     Effect.andThen(
       afterPaint,
       Effect.sync(() => {
@@ -67,4 +60,3 @@ export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream
       }),
     ),
   ).pipe(Stream.drain);
-};

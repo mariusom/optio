@@ -39,7 +39,6 @@ const browserFlags = Effect.all(
     look: initializeLook,
     controlSize: initializeControlSize,
     now: Clock.currentTimeMillis,
-    // Flags run outside the Commands runtime, so provide its services here.
     idSeed: randomUuid,
   },
   // In order: each initializer applies its preference to the document.
@@ -68,27 +67,28 @@ const main = Effect.gen(function* () {
   // ReplyToAgent answers through it; the agent connection holds its handles.
   const bridge = makeAgentBridge();
 
-  const registration = Effect.gen(function* () {
-    const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =
-      yield* Effect.all(
-        [
-          Effect.promise(() => import("./agents/webmcp")),
-          Effect.promise(() => import("./agents/tools")),
-          Effect.promise(() => import("./agents/connection")),
-        ],
-        { concurrency: "unbounded" },
+  const register = (context: ModelContext) =>
+    Effect.gen(function* () {
+      const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =
+        yield* Effect.all(
+          [
+            Effect.promise(() => import("./agents/webmcp")),
+            Effect.promise(() => import("./agents/tools")),
+            Effect.promise(() => import("./agents/connection")),
+          ],
+          { concurrency: "unbounded" },
+        );
+      const connection = connectAgentApplication(bridge.handles, (message) =>
+        window.confirm(message),
       );
-    const connection = connectAgentApplication(bridge.handles, (message) =>
-      window.confirm(message),
+      yield* registerWebMcp(context, makeToolHandlers(getStore, connection));
+      return yield* Effect.never;
+    }).pipe(
+      Effect.scoped,
+      Effect.catchCause(() =>
+        Effect.logWarning("Optio agent tools could not be registered. The app remains available."),
+      ),
     );
-    yield* registerWebMcp(modelContext!, makeToolHandlers(getStore, connection));
-    return yield* Effect.never;
-  }).pipe(
-    Effect.scoped,
-    Effect.catchCause(() =>
-      Effect.logWarning("Optio agent tools could not be registered. The app remains available."),
-    ),
-  );
 
   const app = BrowserHost.mount(App, flags, document.getElementById("root")!).pipe(
     Layer.provide(
@@ -100,9 +100,14 @@ const main = Effect.gen(function* () {
     ),
   );
 
-  const program = approved
-    ? Effect.all([Layer.launch(app), registration], { concurrency: "unbounded", discard: true })
-    : Layer.launch(app);
+  // Only a supported context can be approved.
+  const program =
+    approved && modelContext !== undefined
+      ? Effect.all([Layer.launch(app), register(modelContext)], {
+          concurrency: "unbounded",
+          discard: true,
+        })
+      : Layer.launch(app);
   const fiber = yield* Effect.forkDetach(program);
   // HMR dispose is a synchronous callback outside this fiber: run the
   // interruption with the main program's services.

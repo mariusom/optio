@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
 import { HtmlLocator, HtmlScene } from "@effect/ui/html/testing";
 import { Locator } from "@effect/ui/testing";
 import { assert, describe, it } from "@effect/vitest";

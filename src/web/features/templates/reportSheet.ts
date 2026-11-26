@@ -3,7 +3,7 @@ import type { H, Ui } from "@/lib/view";
 
 import { Message } from "../../../messages";
 import { formatDurationShort } from "../../format";
-import { sheet } from "../../sheets";
+import { sheet } from "@/components/app";
 import type { TemplateReport, TemplateSummary } from "../../types";
 import { taskCountLabel } from "../history/helpers";
 import { timeBreakdownSection } from "../history/timeBreakdownView";

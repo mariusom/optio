@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { BrowserHost, Html } from "@effect/ui/html";
 import { Array, Effect, Exit, Scope } from "effect";
 
@@ -57,8 +56,7 @@ export const mountView = ({ model, view, container, ...options }: ViewOptions) =
         init: ($) => $.props,
         update: ($, message) => {
           const result = (options.update ?? update)($.model, message);
-          const commands = result.commands ?? [];
-          return commands.length === 0 ? result.model : $.set(result.model).run(...commands);
+          return $.set(result.model).run(...(result.commands ?? []));
         },
         subscriptions: ({ model: current }) =>
           Array.filter(

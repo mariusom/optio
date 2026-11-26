@@ -13,8 +13,8 @@ import {
   page,
   row,
   statusPill,
+  confirmSheet,
 } from "@/components/app";
-import { confirmSheet } from "../../sheets";
 import { inlineFieldClass, inputClass, inputLabelClass } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";

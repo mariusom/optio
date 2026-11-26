@@ -25,10 +25,8 @@
           "effect/ai",
           "effect/eventlog",
           "effect/persistence/KeyValueStore",
-          "@effect/platform-browser/BrowserKeyValueStore",
           "@effect/platform-browser/BrowserRuntime",
-          "effect/crypto",
-          "@effect/platform-browser/BrowserCrypto"
+          "effect/crypto"
         ]
       }
     ]

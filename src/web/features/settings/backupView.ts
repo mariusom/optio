@@ -1,10 +1,9 @@
 import type { H, Ui } from "@/lib/view";
 
-import { Download, FileText, groupedList, icon, notice } from "@/components/app";
+import { Download, FileText, groupedList, icon, notice, confirmSheet } from "@/components/app";
 import { button, buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Message } from "../../../messages";
-import { confirmSheet } from "../../sheets";
 
 // Settings → Backup: download every template and finished session as a file,
 // or restore such a file. Restoring only adds what is missing.

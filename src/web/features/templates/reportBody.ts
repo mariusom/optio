@@ -2,7 +2,6 @@
 // (reportSheet.ts renders the same report from the root Model). It owns its data: the report and read failure live in its
 // own Model, fed by its own Subscription, instead of the root Model. The sheet
 // frame and its open state (`templateReportFor`) stay with the page.
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview; every API here is experimental.
 import { Subscription, UiSchema } from "@effect/ui";
 import { Html } from "@effect/ui/html";
 import { Array, Cause, Effect, Schema, Stream } from "effect";

@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI testing is a public preview.
 import { Html } from "@effect/ui/html";
 import { HtmlScene } from "@effect/ui/html/testing";
 

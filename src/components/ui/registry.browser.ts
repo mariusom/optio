@@ -1,4 +1,3 @@
-// @effect-diagnostics experimentalApiUsage:off -- Effect UI is a public preview.
 import { afterEach, expect, it } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 import { BrowserHost, Html } from "@effect/ui/html";
