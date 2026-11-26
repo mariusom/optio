@@ -241,11 +241,11 @@ const focusSubscriptions = (model: Model) => {
   return [
     helpPage !== null && Subscription.make("helpPageEntry", helpPage, focusHelpPage),
     model.editor?.draft != null &&
-      Subscription.make("editorDraftFocus", model.editor.draft.id, focusEditorDraft),
+      Subscription.make("editorDraftFocus", model.editor.draft.id, () => focusEditorDraft),
     model.runner?.focusedSectionId != null &&
       Subscription.make("focusedSectionScroll", model.runner.focusedSectionId, scrollToSection),
     model.runner?.currentTaskId != null &&
-      Subscription.make("currentTaskScroll", model.runner.currentTaskId, scrollToCurrentTask),
+      Subscription.make("currentTaskScroll", model.runner.currentTaskId, () => scrollToCurrentTask),
   ];
 };
 

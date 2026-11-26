@@ -203,6 +203,6 @@ export const RestoreBackup = Command.make(
       const now = yield* Clock.currentTimeMillis;
       const problem = backupProblem(file.value, now);
       if (problem !== null) return failed(problem);
-      return yield* withStore((access) => restore(access, file.value));
-    }).pipe(serialized, reportFailure("restore", failed)),
+      return yield* withStore((access) => restore(access, file.value)).pipe(serialized);
+    }).pipe(reportFailure("restore", failed)),
 );

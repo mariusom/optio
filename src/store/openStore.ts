@@ -76,14 +76,17 @@ const payloadCodecs = StoreEvents.events as unknown as Readonly<
 const replay = (log: EventLog.EventLog["Service"], state: StoreState) =>
   Effect.gen(function* () {
     const entries = yield* log.entries;
-    for (const table of Record.values(state)) table.clear();
+    const decoded: globalThis.Array<StoreEvent> = [];
     for (const entry of entries) {
       const codec = payloadCodecs[entry.event];
       // An event this version doesn't know (from a newer version) is skipped.
       if (codec === undefined) continue;
       const args = yield* Schema.decodeEffect(codec.payloadSchemaBinary)(entry.payload);
-      materialize(state, { name: entry.event, args } as StoreEvent);
+      decoded.push({ name: entry.event, args } as StoreEvent);
     }
+    // Rebuild in one synchronous step, so no reader sees half-built tables.
+    for (const table of Record.values(state)) table.clear();
+    for (const event of decoded) materialize(state, event);
   });
 
 /** A store over `journal`, open until the scope closes. */

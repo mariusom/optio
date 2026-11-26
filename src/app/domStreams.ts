@@ -20,11 +20,10 @@ const scrollBehavior = (): ScrollBehavior =>
     ? "auto"
     : "smooth";
 
-export const focusEditorDraft = (_draftId: string): Stream.Stream<never> =>
-  afterCommit(() => {
-    document.getElementById("question-name")?.focus({ preventScroll: true });
-    document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
-  });
+export const focusEditorDraft: Stream.Stream<never> = afterCommit(() => {
+  document.getElementById("question-name")?.focus({ preventScroll: true });
+  document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
+});
 
 export const scrollToSection = (sectionId: string): Stream.Stream<never> =>
   afterCommit(() => {
@@ -33,12 +32,11 @@ export const scrollToSection = (sectionId: string): Stream.Stream<never> =>
     );
   });
 
-export const scrollToCurrentTask = (_taskId: string): Stream.Stream<never> =>
-  afterCommit(() => {
-    Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
-      element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
-    );
-  });
+export const scrollToCurrentTask: Stream.Stream<never> = afterCommit(() => {
+  Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
+    element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
+  );
+});
 
 /**
  * Moves screen-reader and keyboard focus to a help page's title once the page

@@ -3,9 +3,7 @@ import { Command, Component } from "@effect/ui";
 import type { H, Ui } from "@/lib/view";
 
 import { Message } from "../messages";
-import { withStore } from "../store/access";
 import { serialized } from "../store/writeLock";
-import { writesSaved } from "./storeDurability";
 import { cn } from "@/lib/utils";
 import { onUpdateReady } from "./updateSignal";
 
@@ -29,15 +27,14 @@ export const appUpdates: Stream.Stream<Message> = Stream.callback<Message>((queu
 const flushWait = "3 seconds";
 
 /**
- * Reloads into the new version once pending answers are on disk. It queues
- * behind runner writes (the flush update issued just before it), then waits
- * for any other write still being saved; a store that is unavailable or slow never
- * blocks the update beyond the short wait.
+ * Reloads into the new version once pending answers are on disk. Every write
+ * holds the write lock until it is saved, so taking the lock after the flush
+ * update issued just before it waits for them; a slow write never blocks the
+ * update beyond the short wait.
  */
 export const ReloadForUpdate = Command.make("ReloadForUpdate", { args: {} }, () =>
-  withStore(({ store }) => writesSaved(store, flushWait)).pipe(
-    serialized,
-    Effect.catchCause(() => Effect.void),
+  serialized(Effect.void).pipe(
+    Effect.timeoutOption(flushWait),
     Effect.andThen(Effect.sync(() => window.location.reload())),
     Effect.as(Component.noop),
   ),
