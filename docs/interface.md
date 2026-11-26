@@ -44,6 +44,11 @@ refreshing a registry item.
   `id`; render it once, outside responsive copies. Action sheets list every
   action, destructive ones included, as `sheetAction` rows aligned with the
   title, with Cancel in the footer. Destructive actions require confirmation.
+- Keep emphasis quiet: one filled (`default`) button per screen. Alternatives,
+  including destructive ones beside it, use `outline` (with `text-destructive`
+  when destructive), and a disabled primary turns neutral (`index.css`).
+  “Required” is a neutral `statusPill`; colour tones mean a state such as
+  recording, editing or default, never a field’s ordinary requirement.
 - Label fields, explain disabled primary actions, and use plain terms such as
   “question”, “choices” and “must be answered”. Show short errors; send technical
   details to the console.

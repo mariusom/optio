@@ -90,9 +90,9 @@ const resumeView = (
       ),
       button(
         {
-          variant: "destructive",
+          variant: "outline",
           size: "lg",
-          className: "w-full",
+          className: "w-full text-destructive hover:text-destructive",
           onClick: Message.ClickedDiscardSession(),
           attrs: { "aria-label": "Discard Session" },
         },

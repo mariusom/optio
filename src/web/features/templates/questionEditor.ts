@@ -101,7 +101,8 @@ const choiceRow = (
       ),
       rowAction(
         {
-          className: "text-destructive/80 hover:bg-destructive/10 hover:text-destructive",
+          // Quiet like the reorder buttons; red only on hover, so a list of choices is not a column of warnings.
+          className: "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
           onClick: Message.ClickedDeleteOption({ index }),
           attrs: { "aria-label": `Remove choice ${option}` },
         },
