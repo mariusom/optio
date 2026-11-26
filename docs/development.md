@@ -180,6 +180,18 @@ Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,
 results and export states during the production journey. Inspect captures
 before publishing them; use synthetic data only.
 
+The README's motion piece comes from `node scripts/screenshots/promo.mjs docs/images`
+after `pnpm build`. It serves the production build, restores a synthetic
+backup through Settings, then drives the real app inside a branded stage (a
+phone frame for setup and recording, a desktop frame for the time breakdown)
+and encodes `promo.webp` (animated, about 800 kB) and `promo-still.webp`, the
+poster the README shows under `prefers-reduced-motion`. It needs ffmpeg with
+libwebp; the committed capture used Inter as the system sans-serif font. Optio
+holds one tab lock per store, so the script opens the desktop frame only after
+closing the phone frame. Set `OPTIO_PROMO_KEEP=1` to keep the raw frames for
+inspection. Re-run it after visible UI changes and check a contact sheet of
+frames before committing.
+
 `pnpm test:e2e` ends with `pnpm test:a11y`, which also runs on its own after
 `pnpm build`. [accessibility.e2e.mjs](../scripts/accessibility.e2e.mjs) runs
 axe-core's WCAG 2.2 A/AA rules on the start, Templates, History, Settings and
