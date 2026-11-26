@@ -228,7 +228,8 @@ export const statusPill = <M>(
 ): Ui => {
   const tone = config.tone ?? "neutral";
   const tones = {
-    neutral: "bg-muted text-muted-foreground",
+    // Not muted-on-muted: that pair misses 4.5:1 in Classic light.
+    neutral: "bg-muted text-foreground/75",
     primary: "bg-primary/12 text-primary",
     success: "bg-success/12 text-success",
     warning: "bg-warning/25 text-warning-content",

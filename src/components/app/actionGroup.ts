@@ -22,7 +22,10 @@ export const actionGroup = <M>(config: ActionGroupConfig<M>, h: H<M>) => {
   const action = (value: Action<M>, variant: "destructive" | "secondary" | "default") =>
     button(
       {
-        variant,
+        // Destructive stays an outline beside the filled confirmation: one loud action.
+        variant: variant === "destructive" ? "outline" : variant,
+        className:
+          variant === "destructive" ? "text-destructive hover:text-destructive" : undefined,
         size: "lg",
         onClick: value.onClick,
         isDisabled: value.isDisabled,

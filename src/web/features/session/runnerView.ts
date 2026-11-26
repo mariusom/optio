@@ -239,12 +239,12 @@ const taskValue = (task: RunnerTask): string | undefined => {
 
 /**
  * Status pill text with at least 4.5:1 contrast: success text is darkened
- * (lightened in dark mode) on its tint, and neutral text is not muted on muted.
+ * (lightened in dark mode) on its tint. The neutral tone already passes.
  */
 const pillContrast = {
   recording: "text-[color-mix(in_oklab,var(--color-success)_65%,var(--color-foreground))]",
   editing: undefined,
-  done: "text-foreground/75",
+  done: undefined,
 } as const;
 
 /** One row per task; shared by the phone sheet and the tablet sidebar. */

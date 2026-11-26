@@ -45,7 +45,7 @@ const questionRow = (
         {
           title: field.name === "" ? "Untitled question" : field.name,
           subtitle: answerTypeName(field.kind),
-          trailing: field.isRequired ? statusPill({ tone: "primary" }, ["Required"], h) : undefined,
+          trailing: field.isRequired ? statusPill({}, ["Required"], h) : undefined,
           className: "min-w-0 flex-1",
           onClick: Message.ClickedEditField({ id: field.id }),
           isDisabled,

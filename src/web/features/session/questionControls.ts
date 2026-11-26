@@ -302,7 +302,7 @@ const questionView = (section: RunnerSection, scope: string, h: H<Message>) =>
                 .class("min-w-0 max-w-full break-words")
                 .attr("dir", "auto")
                 .children(section.name),
-              section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : [],
+              section.isRequired ? [statusPill({}, ["Required"], h)] : [],
             ),
           textAnswer(section, scope, h),
         )
@@ -316,7 +316,7 @@ const questionView = (section: RunnerSection, scope: string, h: H<Message>) =>
                 .class("min-w-0 text-sm font-semibold tracking-normal")
                 .attr("dir", "auto")
                 .children(section.name),
-              section.isRequired ? [statusPill({ tone: "primary" }, ["Required"], h)] : [],
+              section.isRequired ? [statusPill({}, ["Required"], h)] : [],
               section.kind === "radio" || section.kind === "checkbox"
                 ? [
                     h.span

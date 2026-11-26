@@ -98,6 +98,18 @@ main,
   }
 }
 
+/* ── Quiet disabled actions ────────────────────────────────────────────────
+ * A disabled primary button turns neutral instead of a faded accent, so a
+ * form that is not ready yet (Record before required answers) does not glow
+ * in the look's colour. Its visible label or status line says why. */
+.app-shell [data-slot="button"][data-variant="default"]:disabled {
+  border-color: var(--border);
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  box-shadow: none;
+  opacity: 1;
+}
+
 /* ── App utilities (used by src/components/app primitives) ─────────────── */
 
 @utility pt-safe {
