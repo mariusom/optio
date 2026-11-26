@@ -177,7 +177,10 @@ html[data-look="swiss"]
     [role="radiogroup"] > label:has(> input:checked):not(:has(> input[value=""])),
     [role="group"] > [role="checkbox"][aria-checked="true"]
   ) {
+  /* Indicators invert with the card: the checkbox fills with page colour and
+   * its check mark is ink, or the mark vanishes into its box. */
   --primary: var(--background);
+  --primary-foreground: var(--foreground);
   border-color: var(--foreground);
   background-color: var(--foreground);
   color: var(--background);
@@ -282,6 +285,7 @@ html[data-look="shopfloor"][data-accent="default"]
     [role="group"] > [role="checkbox"][aria-checked="true"]
   ) {
   --primary: var(--look-primary-foreground);
+  --primary-foreground: var(--look-primary);
   border-color: var(--look-primary-foreground);
   background-color: var(--look-primary);
   color: var(--look-primary-foreground);
