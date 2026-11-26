@@ -5,7 +5,7 @@ import type { H, Ui } from "@/lib/view";
 
 import { Message } from "../messages";
 import { withStore } from "../store/access";
-import { serialized } from "./features/session/writeLock";
+import { serialized } from "../store/writeLock";
 import { writesSaved } from "./storeDurability";
 import { cn } from "@/lib/utils";
 import { onUpdateReady } from "./updateSignal";

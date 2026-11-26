@@ -93,6 +93,11 @@ Every change is an event in an Effect
 kept in the IndexedDB database `optio` (`EventJournal.layerIndexedDb`). The
 tables are plain in-memory maps: opening the store replays the journal into
 them, and each write runs the events' handlers before the journal commits it.
+A write the journal refuses (for example, storage is full) rebuilds the tables
+from the journal, so unsaved changes never stay on screen. Every write command
+takes the write lock in `store/writeLock.ts` in dispatch order: a command reads
+the tables and then commits, and without the lock two commands could decide
+from the same state.
 Nothing syncs; the log has a fixed local identity. Data from the former store
 is not migrated.
 
@@ -133,8 +138,8 @@ keystroke at once and keeps unwritten values in `runner.fieldWrites`; the
 (`beforeunload`), the page is hidden, or the runner is left. A blur, and every event that reads or replaces persisted answers (record,
 task selection, edit save or cancel, counter taps, ending), writes them first.
 A field's first answer and discrete choices are written immediately, so
-`startDate` is the first keystroke's time, never the flush time. Runner write
-commands take one lock in dispatch order, so a batch commits before the command
+`startDate` is the first keystroke's time, never the flush time. The write lock
+makes a batch commit before the command
 that follows it. Written values stay in the overlay until the store echoes
 them, so an emission from an earlier write cannot revert a field. Page-leaving
 flushes are best effort: browsers do not wait for asynchronous IndexedDB writes

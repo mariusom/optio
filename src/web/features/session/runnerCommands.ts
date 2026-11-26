@@ -6,7 +6,7 @@ import { withStore, type StoreAccess } from "../../../store/access";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { reportFailure } from "../../errors";
 import { isScalarAnswerValid } from "../../fields";
-import { serialized } from "./writeLock";
+import { serialized } from "../../../store/writeLock";
 import { randomUuid, withFreshIds } from "../../../lib/ids";
 import { archiveRecord } from "./archiveRecord";
 import { isAnswerComplete, isTaskEditable } from "./runner";
@@ -72,8 +72,8 @@ export const UpdateFieldValues = Command.make(
     ).pipe(serialized, reportFailure("save", failed)),
 );
 
-/** Read and commit synchronously after opening the store: rapid taps must not
- * derive their next value from a stale rendered snapshot. */
+/** Reads the stored count under the write lock: rapid taps must not derive
+ * their next value from a stale rendered snapshot. */
 export const AdjustCounter = Command.make(
   "AdjustCounter",
   { args: { taskFieldId: Schema.String, delta: Schema.Literals([-1, 1]) } },

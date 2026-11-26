@@ -5,6 +5,7 @@ import { Message } from "../../../messages";
 import { reportFailure } from "../../errors";
 import type { AppStore } from "../../../store/client";
 import { withStore, type StoreAccess } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import { FieldDef } from "../../../domain/fields";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { randomUuid } from "../../../lib/ids";
@@ -93,7 +94,7 @@ export const StartSession = Command.make(
           ? Message.SessionStarted({ sessionId: id, joinedExisting: false })
           : Message.SessionStarted({ sessionId: live.id, joinedExisting: true });
       }),
-    ).pipe(reportFailure("start", failed)),
+    ).pipe(serialized, reportFailure("start", failed)),
 );
 
 export const DiscardLiveSession = Command.make(
@@ -110,5 +111,5 @@ export const DiscardLiveSession = Command.make(
         );
         return Message.SessionDiscarded();
       }),
-    ).pipe(reportFailure("delete", failed)),
+    ).pipe(serialized, reportFailure("delete", failed)),
 );

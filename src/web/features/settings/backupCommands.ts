@@ -3,6 +3,7 @@ import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 import { withStore, type StoreAccess } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import {
   backupFilename,
   backupProblem,
@@ -203,5 +204,5 @@ export const RestoreBackup = Command.make(
       const problem = backupProblem(file.value, now);
       if (problem !== null) return failed(problem);
       return yield* withStore((access) => restore(access, file.value));
-    }).pipe(reportFailure("restore", failed)),
+    }).pipe(serialized, reportFailure("restore", failed)),
 );

@@ -5,6 +5,7 @@ import { Message } from "../../../messages";
 import { friendlyFailure, reportFailure } from "../../errors";
 import { isBooleanTrue } from "../../fields";
 import { withStore } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import { saveTextFile } from "../../download";
 import {
   buildArchiveCsv,
@@ -50,7 +51,7 @@ export const DeleteHistorySession = Command.make(
         yield* store.commit(events.sessionDeleted({ id }));
         return Message.HistoryDeleted();
       }),
-    ).pipe(reportFailure("delete", failedHistoryOp)),
+    ).pipe(serialized, reportFailure("delete", failedHistoryOp)),
 );
 
 // RenameHistorySession → sessionRenamed
@@ -63,7 +64,7 @@ export const RenameHistorySession = Command.make(
         yield* store.commit(events.sessionRenamed({ id, sessionName }));
         return Message.HistoryNameUpdated();
       }),
-    ).pipe(reportFailure("save", failedHistoryOp)),
+    ).pipe(serialized, reportFailure("save", failedHistoryOp)),
 );
 
 // ExportSessionCsv — archive format only (history is archive)

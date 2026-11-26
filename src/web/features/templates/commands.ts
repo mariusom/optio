@@ -3,6 +3,7 @@ import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 import { withStore } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import type { FieldDef } from "../../../domain/fields";
 import { reportFailure } from "../../errors";
 import { fieldRowsToDefs } from "../../fieldRows";
@@ -33,7 +34,7 @@ export const CreateTemplate = Command.make(
         );
         return Message.TemplateCreated();
       }),
-    ).pipe(reportFailure("create", failedTemplateOp)),
+    ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );
 
 export const SetDefaultTemplate = Command.make(
@@ -45,7 +46,7 @@ export const SetDefaultTemplate = Command.make(
         yield* store.commit(events.templateDefaultSet({ id }));
         return Message.TemplateOpDone();
       }),
-    ).pipe(reportFailure("save", failedTemplateOp)),
+    ).pipe(serialized, reportFailure("save", failedTemplateOp)),
 );
 
 export const DuplicateTemplate = Command.make(
@@ -74,7 +75,7 @@ export const DuplicateTemplate = Command.make(
         );
         return Message.DuplicatedTemplate({ id: copyId });
       }),
-    ).pipe(reportFailure("duplicate", failedTemplateOp)),
+    ).pipe(serialized, reportFailure("duplicate", failedTemplateOp)),
 );
 
 export const DeleteTemplate = Command.make(
@@ -102,7 +103,7 @@ export const DeleteTemplate = Command.make(
         yield* store.commit(...promote, events.templateDeleted({ id }));
         return Message.TemplateOpDone();
       }),
-    ).pipe(reportFailure("delete", failedTemplateOp)),
+    ).pipe(serialized, reportFailure("delete", failedTemplateOp)),
 );
 
 // ── Sample templates ───────────────────────────────────────────────────────
@@ -255,7 +256,7 @@ export const EnsureTemplatesSeeded = Command.make("EnsureTemplatesSeeded", { arg
       yield* store.commit(events.templatesSeeded({ templates, now }));
       return Message.TemplatesSeededCheck();
     }),
-  ).pipe(reportFailure("create", failedTemplateOp)),
+  ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );
 
 /**
@@ -281,5 +282,5 @@ export const AddSampleTemplates = Command.make("AddSampleTemplates", { args: {} 
         yield* store.commit(events.templatesSeeded({ templates: missing, now }));
       return Message.SampleTemplatesAdded();
     }),
-  ).pipe(reportFailure("create", failedTemplateOp)),
+  ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );

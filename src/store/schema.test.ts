@@ -112,3 +112,39 @@ it("rebuilds the tables from the journal when the store opens again", async () =
   ]);
   expect(reopened.query(queries.archiveRows("s")).sections).toHaveLength(2);
 });
+
+it("drops a write the journal did not save from the tables", async () => {
+  const memory = await Effect.runPromise(EventJournal.makeMemory);
+  let failNext = false;
+  // Like a quota error: the handlers run, then the journal refuses to commit.
+  const journal = EventJournal.EventJournal.of({
+    ...memory,
+    writeMany: (options) =>
+      failNext
+        ? memory.writeMany({
+            ...options,
+            effect: (entries) =>
+              Effect.flatMap(options.effect(entries), () =>
+                Effect.fail(
+                  new EventJournal.EventJournalError({ method: "writeMany", cause: "full" }),
+                ),
+              ),
+          })
+        : memory.writeMany(options),
+  });
+  const store = await Effect.runPromise(
+    makeStore(Layer.succeed(EventJournal.EventJournal, journal), "in-memory").pipe(
+      Scope.provide(Scope.makeUnsafe()),
+    ),
+  );
+  await Effect.runPromise(store.commit(...endedSession));
+  failNext = true;
+  const renamed: Array<string> = [];
+  store.subscribe(queries.archivedSessions, (rows) => renamed.push(rows[0]!.sessionName));
+  const failed = await Effect.runPromiseExit(
+    store.commit(events.sessionRenamed({ id: "s", sessionName: "Lost" })),
+  );
+  expect(failed._tag).toBe("Failure");
+  expect(store.query(queries.archivedSessions)[0]?.sessionName).toBe("");
+  expect(renamed.at(-1)).toBe("");
+});

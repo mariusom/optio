@@ -1,4 +1,15 @@
-import { Array, Context, Effect, Equal, Layer, Redacted, Schema, Scope } from "effect";
+import {
+  Array,
+  Context,
+  Effect,
+  Equal,
+  Exit,
+  Layer,
+  Record,
+  Redacted,
+  Schema,
+  Scope,
+} from "effect";
 import { EventJournal, EventLog } from "effect/eventlog";
 
 import { materialize } from "./materialize";
@@ -65,6 +76,7 @@ const payloadCodecs = StoreEvents.events as unknown as Readonly<
 const replay = (log: EventLog.EventLog["Service"], state: StoreState) =>
   Effect.gen(function* () {
     const entries = yield* log.entries;
+    for (const table of Record.values(state)) table.clear();
     for (const entry of entries) {
       const codec = payloadCodecs[entry.event];
       // An event this version doesn't know (from a newer version) is skipped.
@@ -114,7 +126,14 @@ export const makeStore = (
               addPending(1),
               () => write(events),
               () => addPending(-1),
-            ).pipe(Effect.asVoid, Effect.ensuring(notifyChange))
+            ).pipe(
+              Effect.asVoid,
+              // The handlers have already changed the tables; a write the
+              // journal did not save must not stay on screen or guide later
+              // writes, so rebuild the tables from what was saved.
+              Effect.onError(() => Effect.orDie(replay(log, state))),
+              Effect.ensuring(notifyChange),
+            )
           : Effect.void,
       subscribe: (query, onChange) => {
         let last = query.run(state);
@@ -150,24 +169,43 @@ const takeTabLock = Effect.callback<boolean>((resume) => {
     resume(Effect.succeed(true));
     return;
   }
-  void navigator.locks.request("optio-store", { ifAvailable: true }, (lock) => {
-    tabLockHeld = lock !== null;
-    resume(Effect.succeed(tabLockHeld));
-    return tabLockHeld ? Effect.runPromise(Effect.never) : undefined;
-  });
+  navigator.locks
+    .request("optio-store", { ifAvailable: true }, (lock) => {
+      tabLockHeld = lock !== null;
+      resume(Effect.succeed(tabLockHeld));
+      return tabLockHeld ? Effect.runPromise(Effect.never) : undefined;
+    })
+    // Where locks are refused (such as a sandboxed frame), open without one.
+    .catch(() => resume(Effect.succeed(true)));
 });
 
-const flag = (read: (storage: Storage) => boolean | void) =>
-  Effect.try({ try: () => read(localStorage) === true, catch: () => false }).pipe(
-    Effect.orElseSucceed(() => false),
-  );
+/** Whether Settings asked to reset storage; false where localStorage is blocked. */
+const resetRequested = Effect.sync(() => {
+  try {
+    return localStorage.getItem(storageResetKey) === "1";
+  } catch {
+    return false;
+  }
+});
 
-/** Erases the journal: the way out of storage the user chose to reset in Settings. */
-const deleteJournal = Effect.callback<void>((resume) => {
+const clearResetRequest = Effect.sync(() => {
+  try {
+    localStorage.removeItem(storageResetKey);
+  } catch {
+    // The flag stays; the next open resets again, which is still empty.
+  }
+});
+
+/**
+ * Erases the journal: the way out of storage the user chose to reset in
+ * Settings. True once deleted; a blocked delete completes before the journal
+ * reopens, because IndexedDB queues the open behind it.
+ */
+const deleteJournal = Effect.callback<boolean>((resume) => {
   const request = indexedDB.deleteDatabase(database);
-  request.addEventListener("success", () => resume(Effect.void));
-  request.addEventListener("error", () => resume(Effect.void));
-  request.addEventListener("blocked", () => resume(Effect.void));
+  request.addEventListener("success", () => resume(Effect.succeed(true)));
+  request.addEventListener("error", () => resume(Effect.succeed(false)));
+  request.addEventListener("blocked", () => resume(Effect.succeed(true)));
 });
 
 // Best effort: ask the browser not to evict studies under storage pressure.
@@ -182,11 +220,8 @@ const requestPersistentStorage = Effect.tryPromise({
  * private windows and blocked-storage settings).
  */
 const openJournal = Effect.gen(function* () {
-  const reset = yield* flag((storage) => storage.getItem(storageResetKey) === "1");
-  if (reset) {
-    yield* deleteJournal;
-    yield* flag((storage) => storage.removeItem(storageResetKey));
-  }
+  // A failed delete keeps the request, so the next open tries again.
+  if ((yield* resetRequested) && (yield* deleteJournal)) yield* clearResetRequest;
   const journal = yield* Layer.build(EventJournal.layerIndexedDb({ database }));
   return Layer.succeedContext(journal);
 }).pipe(Effect.catchCause(() => Effect.succeed(null)));
@@ -207,12 +242,21 @@ const openPersisted = Effect.gen(function* () {
   ),
 );
 
-/** Promise boundary: the store client caches and retries this promise. */
-export const openStore = () =>
-  Effect.runPromise(
+/**
+ * Promise boundary: the store client caches and retries this promise. The
+ * store lives as long as the tab; a failed open closes what it opened, so a
+ * retry starts clean.
+ */
+export const openStore = () => {
+  const scope = Scope.makeUnsafe();
+  return Effect.runPromise(
     Effect.gen(function* () {
       if (!(yield* takeTabLock))
         return yield* Effect.die(new Error("Optio is open in another tab."));
       return yield* openPersisted;
-    }).pipe(Scope.provide(Scope.makeUnsafe())),
+    }).pipe(
+      Scope.provide(scope),
+      Effect.onError((cause) => Scope.close(scope, Exit.failCause(cause))),
+    ),
   );
+};

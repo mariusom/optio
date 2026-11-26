@@ -4,6 +4,7 @@ import { Command } from "@effect/ui";
 import { Message } from "../../../messages";
 import { reportFailure } from "../../errors";
 import { withStore } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import { FieldDef } from "../../../domain/fields";
 
 export const SaveTemplate = Command.make(
@@ -43,5 +44,8 @@ export const SaveTemplate = Command.make(
         }
         return Message.TemplateSaved();
       }),
-    ).pipe(reportFailure("save", (error) => Message.FailedTemplateOp({ error }))),
+    ).pipe(
+      serialized,
+      reportFailure("save", (error) => Message.FailedTemplateOp({ error })),
+    ),
 );
