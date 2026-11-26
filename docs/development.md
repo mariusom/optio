@@ -180,13 +180,46 @@ Set `OPTIO_SCREENSHOTS=/tmp/optio-e2e pnpm test:e2e` to capture recording,
 results and export states during the production journey. Inspect captures
 before publishing them; use synthetic data only.
 
+`pnpm test:e2e` ends with `pnpm test:a11y`, which also runs on its own after
+`pnpm build`. [accessibility.e2e.mjs](../scripts/accessibility.e2e.mjs) runs
+axe-core's WCAG 2.2 A/AA rules on the start, Templates, History, Settings and
+runner screens of every look in light and dark (fresh sample data, phone
+width). [lighthouse.e2e.mjs](../scripts/lighthouse.e2e.mjs) requires 100 for
+accessibility, best practices and SEO on the four tab screens and fails
+performance only below 80, since shared runners are noisy. It runs a pinned
+`pnpm dlx lighthouse` rather than a dev dependency: Lighthouse's dependency tree
+breaks the TSRS check's ES2023 library types and ships nothing. Both
+complement `src/web/looks.test.ts`; neither replaces keyboard and
+screen-reader checks.
+
+### Agent UI reviews
+
+Two optional agent skills review interface code against outside guidance.
+Install them locally instead of committing them (the Google set vendors about
+3 MB, mostly unrelated guides):
+
+```sh
+npx skills add GoogleChrome/modern-web-guidance
+npx skills add vercel-labs/agent-skills --skill web-design-guidelines
+```
+
+`npx modern-web-guidance@latest legacy-scan src` flags legacy web-platform
+patterns without installing anything. On 2026-11-26 it reported one candidate,
+`dark-mode-toggle`, which does not apply: the `.dark` class already sets
+`color-scheme`, an inline script applies the saved scheme before paint, and the
+control lives in Settings. Vercel's checklist flags `transition-all` in the
+Foldcn registry components; that is upstream anatomy, kept as described in
+[interface conventions](interface.md). Apply findings that fit the
+[interface conventions](interface.md); the conventions win over generic
+advice (for example, sentence-case buttons over title case).
+
 ## Performance audits
 
 Audit a production build, not the dev server. With `pnpm build` complete and
 `pnpm preview --port 60002` running, use:
 
 ```sh
-pnpm dlx lighthouse@13.4.1 http://localhost:60002/optio/ --output=html --output-path=/tmp/optio-lighthouse.html
+pnpm dlx lighthouse@13.6.0 http://localhost:60002/optio/ --output=html --output-path=/tmp/optio-lighthouse.html
 ```
 
 Set `CHROME_PATH` if Chrome is not discovered automatically.
