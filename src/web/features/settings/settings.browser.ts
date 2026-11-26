@@ -1,16 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
-import { Effect, Option } from "effect";
-import { Runtime } from "foldkit";
-import { fromString } from "foldkit/url";
+import { Effect } from "effect";
 
-import { init, Model, update, view as appView } from "../../../main";
+import { init, view as appView } from "../../../main";
+import { mountView, type Mounted } from "../../../app/testMount";
 import { initializeControlSize, initializeLook } from "../../browserTheme";
 import "../../../index.css";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
-let handle: Runtime.EmbedHandle | undefined;
+let mounted: Mounted | undefined;
 let container: HTMLDivElement | undefined;
 const root = document.documentElement;
 
@@ -19,22 +18,14 @@ const mountSettings = async (width: number) => {
   container = document.createElement("div");
   container.id = `settings-test-${crypto.randomUUID()}`;
   document.body.append(container);
-  const model = init(Option.getOrThrow(fromString("https://example.com/#/settings"))).model;
-  handle = Runtime.embed(
-    Runtime.makeElement({
-      Model,
-      container,
-      init: () => ({ model }),
-      view: (current, h) => appView(current, h).body,
-      update,
-      slow: false,
-    }),
-  );
+  const model = init("#/settings").model;
+  mounted = await mountView({ model, view: appView, container });
   await expect.element(page.getByRole("radiogroup", { name: "Look" })).toBeVisible();
 };
 
-afterEach(() => {
-  handle?.dispose();
+afterEach(async () => {
+  await mounted?.dispose();
+  mounted = undefined;
   container?.remove();
   for (const key of ["optio-look", "optio-control-size", "optio-theme"]) {
     localStorage.removeItem(key);
@@ -65,7 +56,8 @@ describe("settings appearance", () => {
         .toHaveAttribute("aria-checked", "true");
       await looks.getByRole("radio", { name: /Studio/ }).click();
       await expect.poll(() => root.dataset.look).toBe("studio");
-      expect(await Effect.runPromise(initializeLook)).toBe("studio");
+      // The look applies at once; its save to storage follows.
+      await expect.poll(() => Effect.runPromise(initializeLook)).toBe("studio");
       await page.getByRole("radio", { name: "Dark", exact: true }).click();
       await expect.poll(themeColor).toBe("#1a1510");
     } finally {

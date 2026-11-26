@@ -4,10 +4,9 @@ import { Message } from "../messages";
 import { storeStream } from "./managedStream";
 
 /**
- * Writes left unconfirmed this long mean the store has stopped saving. A
- * browser crash in the middle of a commit can leave LiveStore's state and
- * event log out of step, after which new work shows on screen but never
- * reaches disk; normal writes confirm well within a second.
+ * A write still unsaved this long means the browser's storage has stopped
+ * responding, so new work may never reach disk; normal writes save well
+ * within a second.
  */
 const stallAfter = Duration.seconds(20);
 

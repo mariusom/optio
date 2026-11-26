@@ -1,10 +1,11 @@
 import { DateTime, Effect, Schema } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 import { reportFailure } from "../../errors";
-import type { AppStore } from "../../../livestore/client";
-import { withStore, type StoreAccess } from "../../../livestore/access";
+import type { AppStore } from "../../../store/client";
+import { withStore, type StoreAccess } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import { FieldDef } from "../../../domain/fields";
 import { fieldRowsToDefs } from "../../fieldRows";
 import { randomUuid } from "../../../lib/ids";
@@ -49,16 +50,18 @@ const resolveStartTemplate = (
 
 const failed = (error: string) => Message.FailedSessionOp({ error });
 
-export const StartSession = Command.define("StartSession", {
-  args: {
-    id: Schema.String,
-    templateId: Schema.Union([Schema.Null, Schema.String]),
-    templateName: Schema.String,
-    sessionName: Schema.String,
-    fields: Schema.Array(FieldDef),
+export const StartSession = Command.make(
+  "StartSession",
+  {
+    args: {
+      id: Schema.String,
+      templateId: Schema.Union([Schema.Null, Schema.String]),
+      templateName: Schema.String,
+      sessionName: Schema.String,
+      fields: Schema.Array(FieldDef),
+    },
   },
-  messages: [Message.SessionStarted, Message.FailedSessionOp],
-  execute: ({ id, templateId, templateName, sessionName, fields }) =>
+  ({ id, templateId, templateName, sessionName, fields }) =>
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const now = yield* DateTime.nowAsDate;
@@ -69,7 +72,7 @@ export const StartSession = Command.define("StartSession", {
 
         const template = resolveStartTemplate(store, tables, { templateId, templateName, fields });
         const taskId = yield* randomUuid;
-        store.commit(
+        yield* store.commit(
           events.sessionStarted({
             id,
             templateId: template.templateId,
@@ -91,22 +94,22 @@ export const StartSession = Command.define("StartSession", {
           ? Message.SessionStarted({ sessionId: id, joinedExisting: false })
           : Message.SessionStarted({ sessionId: live.id, joinedExisting: true });
       }),
-    ).pipe(reportFailure("start", failed)),
-});
+    ).pipe(serialized, reportFailure("start", failed)),
+);
 
-export const DiscardLiveSession = Command.define("DiscardLiveSession", {
-  args: { sessionId: Schema.String },
-  messages: [Message.SessionDiscarded, Message.FailedSessionOp],
-  execute: ({ sessionId }) =>
+export const DiscardLiveSession = Command.make(
+  "DiscardLiveSession",
+  { args: { sessionId: Schema.String } },
+  ({ sessionId }) =>
     withStore(({ store, tables, events }) =>
-      Effect.sync(() => {
+      Effect.gen(function* () {
         const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
         if (session === undefined || session.endedAt !== null) return Message.SessionDiscarded();
-        store.commit(
+        yield* store.commit(
           events.sessionLiveGraphCleared({ sessionId }),
           events.sessionDeleted({ id: sessionId }),
         );
         return Message.SessionDiscarded();
       }),
-    ).pipe(reportFailure("delete", failed)),
-});
+    ).pipe(serialized, reportFailure("delete", failed)),
+);

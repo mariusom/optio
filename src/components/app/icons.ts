@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 import type { IconNode } from "lucide";
 
 import { icon as lucideIcon } from "@/lib/icons";
@@ -35,8 +35,8 @@ export {
 } from "lucide";
 
 /**
- * App icon: a lucide node rendered as Foldkit VDOM. Decorative by default
+ * App icon: a lucide node rendered as Effect UI elements. Decorative by default
  * (aria-hidden); pair with visible text or an aria-label on the control.
  */
-export const icon = <M>(h: HtmlBuilder<M>, node: IconNode, className = "size-5 shrink-0"): Html =>
+export const icon = <M>(h: H<M>, node: IconNode, className = "size-5 shrink-0") =>
   lucideIcon(h, node, className);

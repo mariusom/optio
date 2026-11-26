@@ -1,5 +1,5 @@
-import { Button as FoldkitButton } from "@foldkit/ui";
-import type { Attribute, Html, HtmlBuilder } from "foldkit/html";
+import { Button } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 
 import { cn } from "@/lib/utils";
 
@@ -66,12 +66,11 @@ export type ButtonConfig<M> = Readonly<{
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
-  /** Extra attributes merged onto the button element (ids, handlers,
-   *  popoover anchors, …). */
-  attributes?: ReadonlyArray<Attribute<M>>;
+  /** Extra attributes on the button element (ids, ARIA, keyboard shortcuts). */
+  attrs?: Readonly<Record<string, string | undefined>>;
 }>;
 
-export type ButtonLabel = Html | string | ReadonlyArray<Html | string>;
+export type ButtonLabel = Ui | string | ReadonlyArray<Ui | string>;
 
 /** Shared styles for buttons and navigation links styled as buttons. */
 export const buttonClass = (
@@ -84,27 +83,18 @@ export const buttonClass = (
     config.className,
   );
 
-/** Styled button built on the @foldkit/ui Button helper. */
-export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: HtmlBuilder<M>): Html =>
-  FoldkitButton.view<M>(
-    {
-      onClick: config.onClick,
-      isDisabled: config.isDisabled,
-      type: config.type,
-      isAutofocus: config.isAutofocus,
-      toView: (attributes) =>
-        h.button(
-          [
-            ...attributes.button,
-            h.Class(buttonClass(config)),
-            h.DataAttribute("slot", "button"),
-            h.DataAttribute("variant", config.variant ?? "default"),
-            h.DataAttribute("size", config.size ?? "default"),
-            ...(config.attributes ?? []),
-          ],
-          // @effect-diagnostics-next-line preferEffectArray:off -- Effect's isArray does not narrow ReadonlyArray labels
-          Array.isArray(label) ? label : [label],
-        ),
-    },
-    h,
-  );
+/** Styled button built on the @effect/ui-kit Button view function. */
+export const button = <M>(config: ButtonConfig<M>, label: ButtonLabel, h: H<M>) =>
+  Button(h, {
+    props: { disabled: config.isDisabled, type: config.type ?? "button" },
+    ...(config.onClick === undefined ? {} : { onPress: config.onClick }),
+  })
+    .class(buttonClass(config))
+    .attrs({
+      "data-slot": "button",
+      "data-variant": config.variant ?? "default",
+      "data-size": config.size ?? "default",
+      autofocus: config.isAutofocus === true ? "" : undefined,
+      ...config.attrs,
+    })
+    .children(label);

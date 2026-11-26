@@ -1,5 +1,5 @@
 import { Array, Option, Order, pipe } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import {
   Download,
@@ -11,8 +11,8 @@ import {
   notice,
   page,
   row,
+  confirmSheet,
 } from "@/components/app";
-import { confirmSheet } from "../../sheets";
 import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
 import { hrefFor } from "../../routes";
@@ -68,7 +68,7 @@ const taskSubtitle = (task: SessionDetailTask): string | undefined => {
   );
 };
 
-const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
+const taskRow = (task: SessionDetailTask, h: H<Message>): Ui => {
   const subtitle = taskSubtitle(task);
   const duration =
     task.startedAt !== null && task.endedAt !== null
@@ -89,46 +89,42 @@ const taskRow = (task: SessionDetailTask, h: HtmlBuilder<Message>): Html => {
   );
 };
 
-const loadingDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Message>, backHref: string) =>
-  h.div(
-    [h.Class("flex min-h-full flex-col")],
-    [
-      navBar({ title: "Session", back: { href: backHref, label: "History" } }, h),
-      page(
-        {},
-        [
-          ...(model.historyError === null
-            ? []
-            : [
-                notice(
-                  {
-                    tone: "error",
-                    text: model.historyError,
-                    onDismiss: Message.DismissedHistoryError(),
-                    dismissLabel: "Dismiss error",
-                  },
-                  h,
-                ),
-              ]),
-          model.detailLoadFailed
-            ? notice(
+const loadingDetailPage = (model: SessionDetailModel, h: H<Message>, backHref: string) =>
+  h.div.class("flex min-h-full flex-col").children(
+    navBar({ title: "Session", back: { href: backHref, label: "History" } }, h),
+    page(
+      {},
+      [
+        ...(model.historyError === null
+          ? []
+          : [
+              notice(
                 {
                   tone: "error",
-                  text: "This session couldn’t be opened. Go back to History and try again.",
+                  text: model.historyError,
+                  onDismiss: Message.DismissedHistoryError(),
+                  dismissLabel: "Dismiss error",
                 },
                 h,
-              )
-            : h.p(
-                [h.Class("pt-8 text-center text-sm text-muted-foreground")],
-                ["Opening this session…"],
               ),
-        ],
-        h,
-      ),
-    ],
+            ]),
+        model.detailLoadFailed
+          ? notice(
+              {
+                tone: "error",
+                text: "This session couldn’t be opened. Go back to History and try again.",
+              },
+              h,
+            )
+          : h.p
+              .class("pt-8 text-center text-sm text-muted-foreground")
+              .children("Opening this session…"),
+      ],
+      h,
+    ),
   );
 
-export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Message>) => {
+export const sessionDetailPage = (model: SessionDetailModel, h: H<Message>) => {
   const detail = model.selectedHistorySession;
   const backHref = hrefFor({ _tag: "HistoryTab" });
 
@@ -148,136 +144,133 @@ export const sessionDetailPage = (model: SessionDetailModel, h: HtmlBuilder<Mess
   const canExport = detail.endedAt !== null && detail.taskCount > 0;
   const breakdown = timeBreakdownSection(detail.tasks, h);
 
-  return h.div(
-    [h.Class("flex min-h-full flex-col")],
-    [
-      navBar(
-        {
-          title: displayName,
-          back: { href: backHref, label: "History" },
-          trailing: [
-            navBarAction(
+  return h.div.class("flex min-h-full flex-col").children(
+    navBar(
+      {
+        title: displayName,
+        back: { href: backHref, label: "History" },
+        trailing: [
+          navBarAction(
+            {
+              label: icon(h, Download, "size-5"),
+              onClick: Message.ClickedExportHistoryCsv({
+                sessionId: detail.id,
+                spreadsheetSafe: true,
+              }),
+              isDisabled: !canExport,
+              ariaLabel: `Export ${displayName}`,
+            },
+            h,
+          ),
+          navBarAction(
+            {
+              label: icon(h, Pencil, "size-5"),
+              onClick: Message.ClickedEditHistoryName(),
+              ariaLabel: "Edit session name",
+            },
+            h,
+          ),
+        ],
+      },
+      h,
+    ),
+    page(
+      {},
+      [
+        ...(model.historyError === null
+          ? []
+          : [
+              notice(
+                {
+                  tone: "error",
+                  text: model.historyError,
+                  onDismiss: Message.DismissedHistoryError(),
+                  dismissLabel: "Dismiss error",
+                },
+                h,
+              ),
+            ]),
+        groupedList(
+          { header: "Summary" },
+          [
+            row({ title: "Template", value: detail.templateName }, h),
+            row({ title: "Date", value: formatDay(detail.startedAt) }, h),
+            row({ title: "Started", value: formatTimeOnly(detail.startedAt) }, h),
+            ...(detail.endedAt === null
+              ? []
+              : [
+                  row(
+                    {
+                      title: "Ended",
+                      value: formatEndTime(detail.startedAt, detail.endedAt, formatTimeOnly),
+                    },
+                    h,
+                  ),
+                ]),
+            ...(duration === null ? [] : [row({ title: "Duration", value: duration }, h)]),
+            row({ title: "Tasks", value: taskCountLabel(detail.taskCount) }, h),
+          ],
+          h,
+        ),
+        ...(breakdown === null ? [] : [breakdown]),
+        groupedList(
+          {
+            header: "Tasks",
+            ...(sortedTasks.length === 0 ? {} : { footer: "Select a task to see every answer." }),
+          },
+          sortedTasks.length === 0
+            ? [row({ title: "No tasks were recorded." }, h)]
+            : Array.map(sortedTasks, (task) => taskRow(task, h)),
+          h,
+        ),
+        groupedList(
+          {},
+          [
+            row(
               {
-                label: icon(h, Download, "size-5"),
-                onClick: Message.ClickedExportHistoryCsv({
-                  sessionId: detail.id,
-                  spreadsheetSafe: true,
+                title: "Delete session",
+                destructive: true,
+                onClick: Message.RequestedHistoryDelete({
+                  id: detail.id,
+                  displayName,
                 }),
-                isDisabled: !canExport,
-                ariaLabel: `Export ${displayName}`,
-              },
-              h,
-            ),
-            navBarAction(
-              {
-                label: icon(h, Pencil, "size-5"),
-                onClick: Message.ClickedEditHistoryName(),
-                ariaLabel: "Edit session name",
+                chevron: false,
+                // Named by its visible title, "Delete session".
               },
               h,
             ),
           ],
-        },
-        h,
-      ),
-      page(
-        {},
-        [
-          ...(model.historyError === null
-            ? []
-            : [
-                notice(
-                  {
-                    tone: "error",
-                    text: model.historyError,
-                    onDismiss: Message.DismissedHistoryError(),
-                    dismissLabel: "Dismiss error",
-                  },
-                  h,
-                ),
-              ]),
-          groupedList(
-            { header: "Summary" },
-            [
-              row({ title: "Template", value: detail.templateName }, h),
-              row({ title: "Date", value: formatDay(detail.startedAt) }, h),
-              row({ title: "Started", value: formatTimeOnly(detail.startedAt) }, h),
-              ...(detail.endedAt === null
-                ? []
-                : [
-                    row(
-                      {
-                        title: "Ended",
-                        value: formatEndTime(detail.startedAt, detail.endedAt, formatTimeOnly),
-                      },
-                      h,
-                    ),
-                  ]),
-              ...(duration === null ? [] : [row({ title: "Duration", value: duration }, h)]),
-              row({ title: "Tasks", value: taskCountLabel(detail.taskCount) }, h),
-            ],
-            h,
-          ),
-          ...(breakdown === null ? [] : [breakdown]),
-          groupedList(
+          h,
+        ),
+      ],
+      h,
+    ),
+    selectedTask === null ? [] : [taskDetailView({ task: selectedTask }, h)],
+    editSessionNameSheet(
+      {
+        showEditHistoryName: model.showEditHistoryName,
+        editHistoryNameInput: model.editHistoryNameInput,
+        selectedHistorySession: detail,
+      },
+      h,
+    ),
+    model.pendingHistoryDelete === null
+      ? []
+      : [
+          confirmSheet(
             {
-              header: "Tasks",
-              ...(sortedTasks.length === 0 ? {} : { footer: "Select a task to see every answer." }),
+              id: "delete-session-detail",
+              title: "Delete this session?",
+              message: `“${model.pendingHistoryDelete.displayName}” and everything recorded in it will be deleted. This can’t be undone.`,
+              confirmLabel: "Delete",
+              confirmAriaLabel: "Confirm delete",
+              cancelAriaLabel: "Cancel delete",
+              destructive: true,
+              onConfirm: Message.ConfirmedHistoryDelete(),
+              onCancel: Message.CanceledHistoryDelete(),
             },
-            sortedTasks.length === 0
-              ? [row({ title: "No tasks were recorded." }, h)]
-              : Array.map(sortedTasks, (task) => taskRow(task, h)),
-            h,
-          ),
-          groupedList(
-            {},
-            [
-              row(
-                {
-                  title: "Delete session",
-                  destructive: true,
-                  onClick: Message.RequestedHistoryDelete({
-                    id: detail.id,
-                    displayName,
-                  }),
-                  chevron: false,
-                  // Named by its visible title, "Delete session".
-                },
-                h,
-              ),
-            ],
             h,
           ),
         ],
-        h,
-      ),
-      ...(selectedTask === null ? [] : [taskDetailView({ task: selectedTask }, h)]),
-      editSessionNameSheet(
-        {
-          showEditHistoryName: model.showEditHistoryName,
-          editHistoryNameInput: model.editHistoryNameInput,
-          selectedHistorySession: detail,
-        },
-        h,
-      ),
-      ...(model.pendingHistoryDelete === null
-        ? []
-        : [
-            confirmSheet(
-              {
-                id: "delete-session-detail",
-                title: "Delete this session?",
-                message: `“${model.pendingHistoryDelete.displayName}” and everything recorded in it will be deleted. This can’t be undone.`,
-                confirmLabel: "Delete",
-                confirmAriaLabel: "Confirm delete",
-                cancelAriaLabel: "Cancel delete",
-                destructive: true,
-                onConfirm: Message.ConfirmedHistoryDelete(),
-                onCancel: Message.CanceledHistoryDelete(),
-              },
-              h,
-            ),
-          ]),
-    ],
   );
 };

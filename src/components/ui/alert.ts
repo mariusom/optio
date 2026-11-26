@@ -1,7 +1,7 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export const alertVariantKeys = ["default", "destructive"] as const;
 export type AlertVariant = (typeof alertVariantKeys)[number];
@@ -29,55 +29,33 @@ type StyleConfig = Readonly<{
   role?: "alert" | "status";
 }>;
 
-const alertContainer = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(alertClass, alertVariants[config.variant ?? "default"], config.className)),
-      h.Role(config.role ?? "alert"),
-      h.DataAttribute("slot", "alert"),
-      h.DataAttribute("variant", config.variant ?? "default"),
-    ],
-    children,
-  );
+const alertContainer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(alertClass, alertVariants[config.variant ?? "default"], config.className))
+    .attr("role", config.role ?? "alert")
+    .attr("data-slot", "alert")
+    .attr("data-variant", config.variant ?? "default")
+    .children(children);
 
-const alertTitle = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(alertTitleClass, config.className)), h.DataAttribute("slot", "alert-title")],
-    children,
-  );
+const alertTitle = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(alertTitleClass, config.className))
+    .attr("data-slot", "alert-title")
+    .children(children);
 
-const alertDescription = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(alertDescriptionClass, config.className)),
-      h.DataAttribute("slot", "alert-description"),
-    ],
-    children,
-  );
+const alertDescription = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(alertDescriptionClass, config.className))
+    .attr("data-slot", "alert-description")
+    .children(children);
 
 /** Alert action — an absolutely positioned slot in the top-right corner; the
  *  container token reserves room for it via has-data-[slot=alert-action]. */
-const alertAction = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(alertActionClass, config.className)), h.DataAttribute("slot", "alert-action")],
-    children,
-  );
+const alertAction = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(alertActionClass, config.className))
+    .attr("data-slot", "alert-action")
+    .children(children);
 
 /**
  * Styled alert — `Alert.title`, `Alert.description` and `Alert.action`

@@ -1,5 +1,3 @@
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { initWithFlags, update } from "../main";
@@ -18,7 +16,7 @@ const booted = initWithFlags(
     now: 0,
     idSeed: "boot",
   },
-  Option.getOrThrow(fromString("https://optio.test/#/templates")),
+  "#/templates",
 ).model;
 
 describe("IDs created in update", () => {

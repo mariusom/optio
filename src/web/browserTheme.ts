@@ -1,5 +1,5 @@
-import { Effect, Schema, String, pipe } from "effect";
-import * as BrowserKeyValueStore from "@effect/platform-browser/BrowserKeyValueStore";
+import { Effect, Record, Schema, String, pipe } from "effect";
+import * as KeyValueStore from "effect/persistence/KeyValueStore";
 import iconSvg from "../../public/icon.svg?raw";
 import {
   accentForeground,
@@ -27,6 +27,48 @@ import {
 } from "./theme";
 import { setCurrentIconLibrary } from "../lib/iconPreference";
 import { getCurrentStyle, readStyle, saveStyle, setCurrentStyle, type FoldcnStyle } from "./style";
+
+/** A Foldcn style preset that could not be downloaded or applied. */
+class StyleLoadError extends Schema.TaggedError<
+  StyleLoadError,
+  { readonly brand: unique symbol }
+>()("StyleLoadError", {
+  cause: Schema.Defect(),
+}) {}
+
+const applyStyle = (style: FoldcnStyle) =>
+  Effect.tryPromise({
+    try: () => setCurrentStyle(style),
+    catch: (cause) => StyleLoadError.make({ cause }),
+  });
+
+/** One `localStorage` call as a store operation, failing with a store error. */
+const storageCall = <A>(method: string, run: (storage: Storage) => A, key?: string) =>
+  Effect.try({
+    try: () => run(localStorage),
+    catch: (cause) =>
+      new KeyValueStore.KeyValueStoreError({
+        method,
+        key,
+        message: `localStorage ${method} failed`,
+        cause,
+      }),
+  });
+
+/**
+ * Saved preferences live in `localStorage`. The store is a plain service, so
+ * each read or write provides it without building a Layer per call.
+ */
+const localPreferences = KeyValueStore.makeStringOnly({
+  get: (key) => storageCall("get", (storage) => storage.getItem(key) ?? undefined, key),
+  set: (key, value) => storageCall("set", (storage) => storage.setItem(key, value), key),
+  remove: (key) => storageCall("remove", (storage) => storage.removeItem(key), key),
+  clear: storageCall("clear", (storage) => storage.clear()),
+  size: storageCall("size", (storage) => storage.length),
+  keys: storageCall("keys", (storage) => Record.keys(storage)),
+});
+
+const withLocalPreferences = Effect.provideService(KeyValueStore.KeyValueStore, localPreferences);
 
 const updateFavicon = () => {
   const styles = getComputedStyle(document.documentElement);
@@ -77,7 +119,7 @@ const applyLook = (look: Look) => {
 
 export const initializeLook = Effect.gen(function* () {
   const look = yield* readLook.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed(defaultLook)),
   );
   applyLook(look);
@@ -87,14 +129,14 @@ export const initializeLook = Effect.gen(function* () {
 export const changeLook = Effect.fn("changeLook")(function* (look: Look) {
   applyLook(look);
   return yield* saveLook(look).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
 export const initializeControlSize = Effect.gen(function* () {
   const size = yield* readControlSize.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed("standard" as const)),
   );
   document.documentElement.dataset.controlSize = size;
@@ -104,14 +146,14 @@ export const initializeControlSize = Effect.gen(function* () {
 export const changeControlSize = Effect.fn("changeControlSize")(function* (size: ControlSize) {
   document.documentElement.dataset.controlSize = size;
   return yield* saveControlSize(size).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
 export const initializeTheme = Effect.gen(function* () {
   const theme = yield* readTheme.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     // Accessing localStorage itself can fail when browser storage is blocked.
     Effect.catchCause(() => Effect.succeed("auto" as const)),
   );
@@ -124,14 +166,14 @@ export const initializeTheme = Effect.gen(function* () {
 /** Saves the theme choice; `applyColorScheme` shows it. */
 export const saveThemeChoice = Effect.fn("saveThemeChoice")(function* (theme: Theme) {
   return yield* saveTheme(theme).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
 export const initializeFont = Effect.gen(function* () {
   const font = yield* readFont.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed("sans" as const)),
   );
   document.documentElement.dataset.font = font;
@@ -143,14 +185,14 @@ export const changeFont = Effect.fn("changeFont")(function* (font: Font) {
   document.documentElement.dataset.font = font;
   updateFavicon();
   return yield* saveFont(font).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
 export const initializeIconLibrary = Effect.gen(function* () {
   const library = yield* readIconLibrary.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed("hugeicons" as const)),
   );
   setCurrentIconLibrary(library);
@@ -162,7 +204,7 @@ export const changeIconLibrary = Effect.fn("changeIconLibrary")(function* (libra
   setCurrentIconLibrary(library);
   document.documentElement.dataset.iconLibrary = library;
   return yield* saveIconLibrary(library).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
@@ -184,7 +226,7 @@ const applyAccent = (accent: Accent) => {
 
 export const initializeAccent = Effect.gen(function* () {
   const accent = yield* readAccent.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed("default" as const)),
   );
   applyAccent(accent);
@@ -194,17 +236,17 @@ export const initializeAccent = Effect.gen(function* () {
 export const changeAccent = Effect.fn("changeAccent")(function* (accent: Accent) {
   applyAccent(accent);
   return yield* saveAccent(accent).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
 });
 
 export const initializeStyle = Effect.gen(function* () {
   const style = yield* readStyle.pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.catchCause(() => Effect.succeed("nova" as const)),
   );
-  yield* Effect.tryPromise(() => setCurrentStyle(style)).pipe(
+  yield* applyStyle(style).pipe(
     // A missing preset must not prevent the app from opening. Keep the saved
     // preference so it can be restored on a subsequent successful load.
     Effect.catch(() => Effect.promise(() => setCurrentStyle("nova"))),
@@ -215,14 +257,12 @@ export const initializeStyle = Effect.gen(function* () {
 });
 
 export const changeStyle = Effect.fn("changeStyle")(function* (style: FoldcnStyle) {
-  const applied = yield* Effect.tryPromise(() => setCurrentStyle(style)).pipe(
-    Effect.orElseSucceed(() => null),
-  );
+  const applied = yield* applyStyle(style).pipe(Effect.orElseSucceed(() => null));
   if (applied === false) return null; // A newer selection superseded this download.
   if (applied === null) return { appliedStyle: getCurrentStyle(), saved: false, loadFailed: true };
   document.documentElement.dataset.foldcnStyle = style;
   const saved = yield* saveStyle(style).pipe(
-    Effect.provide(BrowserKeyValueStore.layerLocalStorage),
+    withLocalPreferences,
     Effect.matchCause({ onSuccess: () => true, onFailure: () => false }),
   );
   return { appliedStyle: style, saved, loadFailed: false };

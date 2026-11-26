@@ -1,14 +1,11 @@
-import type { AppServices } from "./services";
-import type { Update } from "foldkit";
-
 import { restoreSummary } from "../web/backup";
 import { DownloadBackup, RestoreBackup } from "../web/features/settings/backupCommands";
 import { backupInputId } from "../web/features/settings/backupView";
-import type { Message, MessageHandlers } from "../messages";
+import type { MessageHandlers, UpdateResult } from "../messages";
 import { ResetLocalStorage } from "../web/storageReset";
 import type { Model } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type BackupHandlers = Pick<
   MessageHandlers<Result>,
   | "ClickedDownloadBackup"
@@ -34,7 +31,7 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
       : {
           model: { ...model, backupBusy: true, backupNotice: null },
           // While saving is stalled the open session is included: it may never reach disk.
-          commands: [DownloadBackup({ includeOpenSession: model.saveStalled })],
+          commands: [DownloadBackup.make({ includeOpenSession: model.saveStalled })],
         },
   BackupDownloaded: ({ filename }) => done(model, "success", `Saved ${filename}.`),
   ChoseBackupFile: () =>
@@ -49,21 +46,14 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
               text: "Restoring… keep Optio open until this finishes.",
             },
           },
-          commands: [RestoreBackup({ inputId: backupInputId })],
+          commands: [RestoreBackup.make({ inputId: backupInputId })],
         },
-  BackupRestored: ({ saved, ...counts }) =>
-    done(
-      model,
-      "success",
-      saved
-        ? restoreSummary(counts)
-        : `${restoreSummary(counts)} It's still saving: keep Optio open for a moment before closing it.`,
-    ),
+  BackupRestored: (counts) => done(model, "success", restoreSummary(counts)),
   FailedBackup: ({ error }) => done(model, "error", error),
   ClickedResetStorage: () => ({ model: { ...model, pendingStorageReset: true } }),
   CanceledResetStorage: () => ({ model: { ...model, pendingStorageReset: false } }),
   ConfirmedResetStorage: () => ({
     model: { ...model, pendingStorageReset: false },
-    commands: [ResetLocalStorage()],
+    commands: [ResetLocalStorage.make({})],
   }),
 });

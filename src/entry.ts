@@ -1,10 +1,12 @@
-import { Runtime } from "foldkit";
-import { Clock, Effect, Fiber } from "effect";
+import { BrowserHost } from "@effect/ui/html";
+import { DevTools } from "@effect/ui-devtools";
+import { Clock, Effect, Fiber, Layer } from "effect";
 import * as BrowserRuntime from "@effect/platform-browser/BrowserRuntime";
 import { registerSW } from "virtual:pwa-register";
 
 import "./index.css";
-import { applicationConfig } from "./application.ts";
+import { App, devToolsOptions } from "./application.ts";
+import { CurrentAgentBridge, makeAgentBridge } from "./agents/bridge";
 import {
   initializeAccent,
   initializeControlSize,
@@ -14,9 +16,8 @@ import {
   initializeStyle,
   initializeTheme,
 } from "./web/browserTheme";
-import { getStore } from "./livestore/client";
+import { getStore } from "./store/client";
 import { randomUuid } from "./lib/ids";
-import { appServices } from "./app/services";
 import type { ModelContext } from "./agents/webmcp";
 import { signalUpdateReady } from "./web/updateSignal";
 
@@ -28,25 +29,23 @@ registerSW({ immediate: true, onNeedReload: signalUpdateReady });
 // Startup Flags: saved preferences (applied to the document as they load) and
 // the Model's first time, from Effect's Clock, never Date.now(), and the
 // random seed for IDs created in update.
-const browserFlags = Effect.all({
-  theme: initializeTheme,
-  style: initializeStyle,
-  font: initializeFont,
-  iconLibrary: initializeIconLibrary,
-  accent: initializeAccent,
-  look: initializeLook,
-  controlSize: initializeControlSize,
-  now: Clock.currentTimeMillis,
-  // Flags run outside the Commands runtime, so provide its services here.
-  idSeed: randomUuid.pipe(Effect.provide(appServices)),
-});
+const browserFlags = Effect.all(
+  {
+    theme: initializeTheme,
+    style: initializeStyle,
+    font: initializeFont,
+    iconLibrary: initializeIconLibrary,
+    accent: initializeAccent,
+    look: initializeLook,
+    controlSize: initializeControlSize,
+    now: Clock.currentTimeMillis,
+    idSeed: randomUuid,
+  },
+  // In order: each initializer applies its preference to the document.
+  { concurrency: 1 },
+);
 
 const main = Effect.gen(function* () {
-  const application = Runtime.makeApplication({
-    ...applicationConfig,
-    container: document.getElementById("root")!,
-  });
-
   // Explicit per-tab opt-in grants access to study values and all existing UI operations.
   const modelContext = (document as Document & { modelContext?: ModelContext }).modelContext;
   const url = new URL(location.href);
@@ -64,9 +63,12 @@ const main = Effect.gen(function* () {
   }
   const assistantAccess = approved ? "approved" : supported ? "off" : "unavailable";
   const flags = Effect.map(browserFlags, (values) => ({ ...values, assistantAccess }) as const);
-  if (approved) {
-    const handle = Runtime.embed(application, { flags });
-    const registration = Effect.gen(function* () {
+  // One bridge per mounted app: the app's Subscription reads its requests and
+  // ReplyToAgent answers through it; the agent connection holds its handles.
+  const bridge = makeAgentBridge();
+
+  const register = (context: ModelContext) =>
+    Effect.gen(function* () {
       const [{ registerWebMcp }, { makeToolHandlers }, { connectAgentApplication }] =
         yield* Effect.all(
           [
@@ -76,10 +78,10 @@ const main = Effect.gen(function* () {
           ],
           { concurrency: "unbounded" },
         );
-      const connection = connectAgentApplication(handle.ports, (message) =>
+      const connection = connectAgentApplication(bridge.handles, (message) =>
         window.confirm(message),
       );
-      yield* registerWebMcp(modelContext, makeToolHandlers(getStore, connection));
+      yield* registerWebMcp(context, makeToolHandlers(getStore, connection));
       return yield* Effect.never;
     }).pipe(
       Effect.scoped,
@@ -87,18 +89,34 @@ const main = Effect.gen(function* () {
         Effect.logWarning("Optio agent tools could not be registered. The app remains available."),
       ),
     );
-    // Forked from the main program so the registration shares its runtime.
-    const fiber = yield* Effect.forkDetach(registration);
-    // HMR dispose is a synchronous callback outside this fiber: run the
-    // interruption with the main program's services.
-    const runFork = Effect.runForkWith(yield* Effect.context());
-    import.meta.hot?.dispose(() => {
-      runFork(Fiber.interrupt(fiber));
-      handle.dispose();
-    });
-  } else {
-    Runtime.run(application, { flags });
-  }
+
+  const app = BrowserHost.mount(App, flags, document.getElementById("root")!).pipe(
+    Layer.provide(
+      Layer.mergeAll(
+        Layer.succeed(CurrentAgentBridge, bridge),
+        // Optio registers its own WebMCP tools; keep the inspector's off the page.
+        import.meta.env.DEV ? DevTools.layer({ ...devToolsOptions, webMcp: false }) : Layer.empty,
+      ),
+    ),
+  );
+
+  // Only a supported context can be approved.
+  const program =
+    approved && modelContext !== undefined
+      ? Effect.all([Layer.launch(app), register(modelContext)], {
+          concurrency: "unbounded",
+          discard: true,
+        })
+      : Layer.launch(app);
+  const fiber = yield* Effect.forkDetach(program);
+  // HMR dispose is a synchronous callback outside this fiber: run the
+  // interruption with the main program's services.
+  const context = yield* Effect.context();
+  const runFork = Effect.runForkWith(context);
+  import.meta.hot?.dispose(() => {
+    runFork(Fiber.interrupt(fiber));
+  });
+  return yield* Fiber.join(fiber);
 });
 
 BrowserRuntime.runMain(main);

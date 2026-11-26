@@ -1,19 +1,18 @@
-import { AsyncData } from "foldkit";
-import { Scene } from "foldkit/test";
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
+import * as AsyncData from "@/lib/asyncData";
+import { HtmlLocator } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { it as effectIt } from "@effect/vitest";
+import { Effect } from "effect";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { ShowSheet } from "../../../components/app/sheet";
 import { init, update, type Model } from "../../../main";
 import { Message } from "../../../messages";
 import type { TemplateReport, TemplateSummary } from "../../types";
+import { viewScene } from "../viewScene";
 import { templatesPage } from "./view";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
-
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 // A template's time report: the session-detail breakdown summed over every
 // finished session recorded with that template, opened from its action sheet.
 
@@ -40,9 +39,8 @@ const report: TemplateReport = {
   tasks: [task(30_000, "Walking"), task(60_000, "Value-added"), task(10_000, "Walking")],
 };
 
-const url = fromString("http://localhost/optio/#/templates");
 const appModel: Model = {
-  ...init(Option.getOrThrow(url)).model,
+  ...init("#/templates").model,
   templates: AsyncData.succeed([template]),
   templateActionsFor: template.id,
 };
@@ -86,10 +84,11 @@ describe("template report state", () => {
 
 type PageModel = Parameters<typeof templatesPage>[0];
 
-const settleSheets = (simulation: Scene.SceneSimulation<PageModel, Message>) =>
-  Scene.Mount.resolveAll(
-    ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
-  )(simulation);
+/** The open sheet's focus and scroll handling runs as a Mount on its <dialog>. */
+const showing = (model: PageModel, sheet: string = "template-report") =>
+  viewScene((h) => templatesPage(model, h)).pipe(
+    Effect.tap((s) => Effect.sync(() => s.expectMount(ShowSheet({ id: sheet })))),
+  );
 
 describe("template report sheet", () => {
   const model: PageModel = {
@@ -104,65 +103,58 @@ describe("template report sheet", () => {
     liveSession: null,
     templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
   };
-  const config = {
-    view: templatesPage,
-    update: (current: PageModel, message: Message) => ({ model: current, outMessage: message }),
-  };
+  effectIt.effect("is offered in the template action sheet", () =>
+    Effect.gen(function* () {
+      const s = yield* showing(
+        { ...model, templateActionsFor: "t1", templateReportFor: null },
+        "template-actions",
+      );
+      s.click(HtmlLocator.role("button", { name: "Time report" })).emitted(
+        Message.OpenedTemplateReport({ id: "t1" }),
+      );
+    }),
+  );
 
-  it("is offered in the template action sheet", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, templateActionsFor: "t1", templateReportFor: null }),
-      settleSheets,
-      Scene.click(Scene.role("button", { name: "Time report" })),
-      Scene.expectOutMessage(Message.OpenedTemplateReport({ id: "t1" })),
-    );
-  });
+  effectIt.effect("shows a loading status until the report arrives", () =>
+    Effect.gen(function* () {
+      const s = yield* showing(model);
+      s.expect(HtmlLocator.role("status")).toHaveText("Loading report…");
+    }),
+  );
 
-  it("shows a loading status until the report arrives", () => {
-    Scene.scene(
-      config,
-      Scene.given(model),
-      settleSheets,
-      Scene.expect(Scene.role("status")).toHaveText("Loading report…"),
-    );
-  });
+  effectIt.effect("shows a failure instead of loading forever", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({ ...model, templateReportFailed: true });
+      s.expect(HtmlLocator.role("alert"))
+        .toHaveText("Couldn't load the report right now. Close it and try again.")
+        .expect(Locator.text("Loading report…"))
+        .toBeAbsent();
+    }),
+  );
 
-  it("shows a failure instead of loading forever", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, templateReportFailed: true }),
-      settleSheets,
-      Scene.expect(Scene.role("alert")).toHaveText(
-        "Couldn't load the report right now. Close it and try again.",
-      ),
-      Scene.expect(Scene.text("Loading report…")).toBeAbsent(),
-    );
-  });
-
-  it("explains an empty report", () => {
-    Scene.scene(
-      config,
-      Scene.given({
+  effectIt.effect("explains an empty report", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({
         ...model,
         templateReport: { ...report, sessionCount: 0, totalMs: 0, tasks: [] },
-      }),
-      settleSheets,
-      Scene.expect(Scene.text(/No finished sessions yet/)).toExist(),
-    );
-  });
+      });
+      s.expect(Locator.text("No finished sessions yet")).toExist();
+    }),
+  );
 
-  it("totals sessions and tasks and breaks time down by answer", () => {
-    Scene.scene(
-      config,
-      Scene.given({ ...model, templateReport: report }),
-      settleSheets,
-      Scene.expect(Scene.text("2 sessions · 3 tasks · 10m")).toExist(),
-      Scene.expect(Scene.text("Value-added")).toExist(),
-      Scene.expect(Scene.text(/ · 60%$/)).toExist(),
-      Scene.expect(Scene.text("40s · 40%")).toExist(),
-      Scene.click(Scene.role("button", { name: "Close" })),
-      Scene.expectOutMessage(Message.ClosedTemplateReport()),
-    );
-  });
+  effectIt.effect("totals sessions and tasks and breaks time down by answer", () =>
+    Effect.gen(function* () {
+      const s = yield* showing({ ...model, templateReport: report });
+      s.expect(Locator.text("2 sessions · 3 tasks · 10m"))
+        .toExist()
+        .expect(Locator.text("Value-added"))
+        .toExist()
+        .expect(Locator.text(" · 60%"))
+        .toExist()
+        .expect(Locator.text("40s · 40%"))
+        .toExist()
+        .click(HtmlLocator.role("button", { name: "Close" }))
+        .emitted(Message.ClosedTemplateReport());
+    }),
+  );
 });

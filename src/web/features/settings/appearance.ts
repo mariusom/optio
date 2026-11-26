@@ -1,11 +1,10 @@
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 import { Array, pipe, Schema, String } from "effect";
 
-import { choiceRows, controlRow, groupedList, segmentedControl } from "@/components/app";
+import { choiceRows, controlRow, groupedList, segmentedControl, sheet } from "@/components/app";
 import { cn } from "@/lib/utils";
 import { input } from "@/components/ui/input";
 import { switch_ } from "@/components/ui/switch";
-import { sheet } from "../../sheets";
 import { Message } from "../../../messages";
 import {
   HexColour,
@@ -43,28 +42,24 @@ const ACCENTS: ReadonlyArray<{ value: Accent; label: string }> = [
   { value: "rose", label: "Rose" },
 ];
 
-const swatch = (look: Look, h: HtmlBuilder<Message>, className: string) =>
-  h.span(
-    [
-      h.Class(cn("look-swatch shrink-0", className)),
-      h.DataAttribute("look", look),
-      h.AriaHidden(true),
-    ],
-    [h.span([])],
-  );
+const swatch = (look: Look, h: H<Message>, className: string) =>
+  h.span
+    .class(cn("look-swatch shrink-0", className))
+    .attr("data-look", look)
+    .attr("aria-hidden", "true")
+    .children(h.span);
 
 /** Look picker: each row previews the look in the current light/dark scheme. */
-export const lookRows = (look: Look, h: HtmlBuilder<Message>) =>
+export const lookRows = (look: Look, h: H<Message>) =>
   choiceRows(
     {
       label: "Look",
       header: "Look",
       footer: "Changes colours, surfaces and headings. Your layout and data stay the same.",
       choices: Array.map(LOOKS, (option) => ({
-        label: h.span(
-          [h.Class("flex items-center gap-3")],
-          [swatch(option.value, h, "h-8 w-12"), option.label],
-        ),
+        label: h.span
+          .class("flex items-center gap-3")
+          .children(swatch(option.value, h, "h-8 w-12"), option.label),
         subtitle: option.description,
         selected: look === option.value,
         onSelect: Message.SelectedLook({ look: option.value }),
@@ -73,7 +68,7 @@ export const lookRows = (look: Look, h: HtmlBuilder<Message>) =>
     h,
   );
 
-export const themeControl = (theme: Theme, h: HtmlBuilder<Message>) =>
+export const themeControl = (theme: Theme, h: H<Message>) =>
   segmentedControl(
     {
       name: "settings-theme",
@@ -88,7 +83,7 @@ export const themeControl = (theme: Theme, h: HtmlBuilder<Message>) =>
     h,
   );
 
-export const iconLibraryControl = (iconLibrary: IconLibrary, h: HtmlBuilder<Message>) =>
+export const iconLibraryControl = (iconLibrary: IconLibrary, h: H<Message>) =>
   segmentedControl(
     {
       name: "settings-icon-library",
@@ -103,7 +98,7 @@ export const iconLibraryControl = (iconLibrary: IconLibrary, h: HtmlBuilder<Mess
     h,
   );
 
-export const controlSizeRow = (controlSize: ControlSize, h: HtmlBuilder<Message>) =>
+export const controlSizeRow = (controlSize: ControlSize, h: H<Message>) =>
   groupedList(
     { header: "Controls" },
     [
@@ -131,21 +126,17 @@ export const controlSizeRow = (controlSize: ControlSize, h: HtmlBuilder<Message>
 
 const isCustomAccent = (accent: Accent): boolean => pipe(accent, String.startsWith("#"));
 
-const accentLabel = (label: string, accent: Accent, h: HtmlBuilder<Message>) =>
-  h.span(
-    [h.Class("flex items-center gap-3")],
-    [
-      h.span([
-        h.Class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20"),
-        h.DataAttribute("accent", accent),
-        h.AriaHidden(true),
-        ...(isCustomAccent(accent) ? [h.Style({ backgroundColor: accent })] : []),
-      ]),
-      label,
-    ],
+const accentLabel = (label: string, accent: Accent, h: H<Message>) =>
+  h.span.class("flex items-center gap-3").children(
+    h.span
+      .class("accent-swatch size-5 shrink-0 rounded-full border border-foreground/20")
+      .attr("data-accent", accent)
+      .attr("aria-hidden", "true")
+      .style({ backgroundColor: isCustomAccent(accent) && accent }),
+    label,
   );
 
-export const accentRows = (accent: Accent, h: HtmlBuilder<Message>) =>
+export const accentRows = (accent: Accent, h: H<Message>) =>
   choiceRows(
     {
       label: "Accent colour",
@@ -169,7 +160,7 @@ export const accentRows = (accent: Accent, h: HtmlBuilder<Message>) =>
     h,
   );
 
-export const accentPicker = (accentDraft: string | null, h: HtmlBuilder<Message>) =>
+export const accentPicker = (accentDraft: string | null, h: H<Message>) =>
   accentDraft === null
     ? []
     : [
@@ -190,33 +181,30 @@ export const accentPicker = (accentDraft: string | null, h: HtmlBuilder<Message>
             },
           },
           [
-            h.div(
-              [h.Class("flex flex-col gap-4")],
-              [
-                input(
-                  {
-                    id: "accent-colour",
-                    label: "Colour",
-                    type: "color",
-                    value: Schema.is(HexColour)(accentDraft) ? accentDraft : "#2563eb",
-                    onInput: (colour) => Message.ChangedAccentDraft({ colour }),
-                    className: "h-16 p-1 cursor-pointer",
-                  },
-                  h,
-                ),
-                input(
-                  {
-                    id: "accent-hex",
-                    label: "Hex colour",
-                    value: accentDraft,
-                    placeholder: "#2563eb",
-                    isInvalid: !Schema.is(HexColour)(accentDraft),
-                    description: "Six hexadecimal digits, for example #2563eb.",
-                    onInput: (colour) => Message.ChangedAccentDraft({ colour }),
-                  },
-                  h,
-                ),
-              ],
+            h.div.class("flex flex-col gap-4").children(
+              input(
+                {
+                  id: "accent-colour",
+                  label: "Colour",
+                  type: "color",
+                  value: Schema.is(HexColour)(accentDraft) ? accentDraft : "#2563eb",
+                  onInput: (colour) => Message.ChangedAccentDraft({ colour }),
+                  className: "h-16 p-1 cursor-pointer",
+                },
+                h,
+              ),
+              input(
+                {
+                  id: "accent-hex",
+                  label: "Hex colour",
+                  value: accentDraft,
+                  placeholder: "#2563eb",
+                  isInvalid: !Schema.is(HexColour)(accentDraft),
+                  description: "Six hexadecimal digits, for example #2563eb.",
+                  onInput: (colour) => Message.ChangedAccentDraft({ colour }),
+                },
+                h,
+              ),
             ),
           ],
           h,

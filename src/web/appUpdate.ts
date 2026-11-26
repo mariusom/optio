@@ -1,11 +1,9 @@
 import { Effect, Queue, Stream } from "effect";
-import { Command } from "foldkit";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import { Command, Component } from "@effect/ui";
+import type { H, Ui } from "@/lib/view";
 
 import { Message } from "../messages";
-import { withStore } from "../livestore/access";
-import { serialized } from "./features/session/writeLock";
-import { confirmedOnDisk } from "./storeDurability";
+import { serialized } from "../store/writeLock";
 import { cn } from "@/lib/utils";
 import { onUpdateReady } from "./updateSignal";
 
@@ -25,25 +23,22 @@ export const appUpdates: Stream.Stream<Message> = Stream.callback<Message>((queu
   ).pipe(Effect.andThen(Effect.never)),
 );
 
-/** Loads the new version. Pending answers flush on `beforeunload`, as on any reload. */
 /** Longest wait for pending answers to reach disk before reloading anyway. */
 const flushWait = "3 seconds";
 
 /**
- * Reloads into the new version once pending answers are on disk. It queues
- * behind runner writes (the flush update issued just before it), then waits
- * for the leader to confirm them; a store that is unavailable or slow never
- * blocks the update beyond the short wait.
+ * Reloads into the new version once pending answers are on disk. Every write
+ * holds the write lock until it is saved, so taking the lock after the flush
+ * update issued just before it waits for them; a slow write never blocks the
+ * update beyond the short wait.
  */
-export const ReloadForUpdate = Command.define("ReloadForUpdate", {
-  messages: [Message.Navigated],
-  execute: withStore(({ store }) => confirmedOnDisk(store, flushWait)).pipe(
-    serialized,
-    Effect.catchCause(() => Effect.void),
+export const ReloadForUpdate = Command.make("ReloadForUpdate", { args: {} }, () =>
+  serialized(Effect.void).pipe(
+    Effect.timeoutOption(flushWait),
     Effect.andThen(Effect.sync(() => window.location.reload())),
-    Effect.as(Message.Navigated()),
+    Effect.as(Component.noop),
   ),
-});
+);
 
 /**
  * The "Update ready" prompt, pinned above the page until it is tapped. A status
@@ -52,35 +47,28 @@ export const ReloadForUpdate = Command.define("ReloadForUpdate", {
  */
 export const appUpdatePrompt = (
   status: "none" | "ready" | "applying",
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
   options: Readonly<{ belowNavBar: boolean }> = { belowNavBar: false },
-): Html | null =>
+): Ui | null =>
   status === "none"
     ? null
-    : h.div(
-        [
-          h.Role("status"),
-          h.Class(
-            cn(
-              "fixed left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
-              options.belowNavBar
-                ? "top-[calc(4.75rem+env(safe-area-inset-top))]"
-                : "top-[calc(0.75rem+env(safe-area-inset-top))]",
-            ),
+    : h.div
+        .attr("role", "status")
+        .class(
+          cn(
+            "fixed left-1/2 z-[60] w-max max-w-[calc(100%-2rem)] -translate-x-1/2 animate-[toast-in_0.25s_ease-out]",
+            options.belowNavBar
+              ? "top-[calc(4.75rem+env(safe-area-inset-top))]"
+              : "top-[calc(0.75rem+env(safe-area-inset-top))]",
           ),
-        ],
-        [
-          h.button(
-            [
-              h.Type("button"),
-              h.Class(
-                "min-h-11 w-full rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-medium text-background shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-80",
-              ),
-              // Disabled after the first tap so a double tap cannot reload twice.
-              h.Disabled(status === "applying"),
-              h.OnClick(Message.ClickedApplyUpdate()),
-            ],
-            [status === "applying" ? "Loading update…" : "Update ready. Tap to refresh."],
-          ),
-        ],
-      );
+        )
+        .children(
+          h.button
+            .attr("type", "button")
+            .class(
+              "min-h-11 w-full rounded-2xl bg-foreground px-4 py-3 text-center text-sm font-medium text-background shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-80",
+            )
+            .disabled(status === "applying")
+            .on("click", Message.ClickedApplyUpdate())
+            .children(status === "applying" ? "Loading update…" : "Update ready. Tap to refresh."),
+        );

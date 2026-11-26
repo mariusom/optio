@@ -1,10 +1,11 @@
 import { Array, DateTime, Effect, Schema } from "effect";
-import { Command } from "foldkit";
+import { Command } from "@effect/ui";
 
 import { Message } from "../../../messages";
 import { friendlyFailure, reportFailure } from "../../errors";
 import { isBooleanTrue } from "../../fields";
-import { withStore } from "../../../livestore/access";
+import { withStore } from "../../../store/access";
+import { serialized } from "../../../store/writeLock";
 import { saveTextFile } from "../../download";
 import {
   buildArchiveCsv,
@@ -41,36 +42,36 @@ const failedHistoryOp = (error: string) => Message.FailedHistoryOp({ error });
 const failedExport = (error: string) => Message.FailedCsvExport({ error });
 
 // DeleteHistorySession → sessionDeleted
-export const DeleteHistorySession = Command.define("DeleteHistorySession", {
-  args: { id: Schema.String },
-  messages: [Message.HistoryDeleted, Message.FailedHistoryOp],
-  execute: ({ id }) =>
+export const DeleteHistorySession = Command.make(
+  "DeleteHistorySession",
+  { args: { id: Schema.String } },
+  ({ id }) =>
     withStore(({ store, events }) =>
-      Effect.sync(() => {
-        store.commit(events.sessionDeleted({ id }));
+      Effect.gen(function* () {
+        yield* store.commit(events.sessionDeleted({ id }));
         return Message.HistoryDeleted();
       }),
-    ).pipe(reportFailure("delete", failedHistoryOp)),
-});
+    ).pipe(serialized, reportFailure("delete", failedHistoryOp)),
+);
 
 // RenameHistorySession → sessionRenamed
-export const RenameHistorySession = Command.define("RenameHistorySession", {
-  args: { id: Schema.String, sessionName: Schema.String },
-  messages: [Message.HistoryNameUpdated, Message.FailedHistoryOp],
-  execute: ({ id, sessionName }) =>
+export const RenameHistorySession = Command.make(
+  "RenameHistorySession",
+  { args: { id: Schema.String, sessionName: Schema.String } },
+  ({ id, sessionName }) =>
     withStore(({ store, events }) =>
-      Effect.sync(() => {
-        store.commit(events.sessionRenamed({ id, sessionName }));
+      Effect.gen(function* () {
+        yield* store.commit(events.sessionRenamed({ id, sessionName }));
         return Message.HistoryNameUpdated();
       }),
-    ).pipe(reportFailure("save", failedHistoryOp)),
-});
+    ).pipe(serialized, reportFailure("save", failedHistoryOp)),
+);
 
 // ExportSessionCsv — archive format only (history is archive)
-export const ExportSessionCsv = Command.define("ExportSessionCsv", {
-  args: { sessionId: Schema.String, spreadsheetSafe: Schema.optionalKey(Schema.Boolean) },
-  messages: [Message.CsvExported, Message.FailedCsvExport],
-  execute: ({ sessionId, spreadsheetSafe = false }) =>
+export const ExportSessionCsv = Command.make(
+  "ExportSessionCsv",
+  { args: { sessionId: Schema.String, spreadsheetSafe: Schema.optionalKey(Schema.Boolean) } },
+  ({ sessionId, spreadsheetSafe = false }) =>
     withStore(({ store, queries }) =>
       Effect.gen(function* () {
         const exportedAt = yield* DateTime.nowAsDate;
@@ -94,4 +95,4 @@ export const ExportSessionCsv = Command.define("ExportSessionCsv", {
         );
       }),
     ).pipe(reportFailure("export", failedExport)),
-});
+);

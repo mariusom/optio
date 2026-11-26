@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
-import { Effect, Option } from "effect";
-import { AsyncData, Runtime } from "foldkit";
-import { fromString } from "foldkit/url";
+import { Effect } from "effect";
+import * as AsyncData from "@/lib/asyncData";
 
-import { init, Model, update, view as appView } from "../main";
+import { init, type Model, view as appView } from "../main";
+import { mountView, type Mounted } from "../app/testMount";
+import type { H, Ui } from "@/lib/view";
 import { Message } from "../messages";
 import { makeEmptyDraft, withKindChanged } from "./features/templates/editor";
 import { templateEditorPage } from "./features/templates/editorView";
@@ -27,13 +28,13 @@ import {
   initializeTheme,
 } from "./browserTheme";
 import { groupedList, navBar, navBarAction, row as appRow } from "../components/app";
-import { confirmSheet } from "./sheets";
+import { confirmSheet } from "@/components/app";
 import { button as uiButton } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { Item } from "../components/ui/item";
 import "../index.css";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 
 const now = 1_700_000_000_000;
 const css = (selector: string) => getComputedStyle(document.querySelector(selector)!);
@@ -115,26 +116,18 @@ const detail = {
   tasks: [{ id: "task-1", taskId: 1, startedAt: now, endedAt: now + 30_000, sections }],
 };
 
-let handle: Runtime.EmbedHandle | undefined;
+let mounted: Mounted | undefined;
 let container: HTMLDivElement | undefined;
 
-const mount = async (
-  view: (
-    model: Model,
-    h: Parameters<typeof templateEditorPage>[1],
-  ) => ReturnType<typeof templateEditorPage>,
-  height = 900,
-) => {
+const mount = async (view: (model: Model, h: H<Message>) => Ui, height = 900) => {
   await page.viewport(700, height);
   container = document.createElement("div");
   container.id = `presentation-test-${crypto.randomUUID()}`;
   container.style.minHeight = `${height}px`;
   document.body.append(container);
-  const model = init(Option.getOrThrow(fromString("https://example.com/#/start"))).model;
+  const model = init("#/start").model;
   const target = container;
-  handle = Runtime.embed(
-    Runtime.makeElement({ Model, container, init: () => ({ model }), view, update, slow: false }),
-  );
+  mounted = await mountView({ model, view, container });
   // The runtime commits its first render asynchronously (replacing or filling
   // the container); tests that read the DOM directly must wait for it.
   await vi.waitFor(() => {
@@ -143,7 +136,8 @@ const mount = async (
 };
 
 afterEach(async () => {
-  await handle?.disposeAsync();
+  await mounted?.dispose();
+  mounted = undefined;
   container?.remove();
   document.documentElement.style.removeProperty("font-size");
   await setCurrentStyle("nova");
@@ -164,7 +158,7 @@ afterEach(async () => {
 
 describe("persistent presentation regressions", () => {
   it("keeps help links behind a keyboard-operable disclosure", async () => {
-    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h).body);
+    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h));
     const about = page.getByRole("link", { name: "About Optio", exact: true, includeHidden: true });
     await expect.element(about).not.toBeVisible();
     const summary = document.querySelector("summary")!;
@@ -292,12 +286,9 @@ describe("persistent presentation regressions", () => {
   it.each(foldcnStyles)("keeps 44px table row actions inside their row in %s", async (style) => {
     await setCurrentStyle(style);
     await mount((model, h) =>
-      h.div(
-        [],
-        [
-          historyPage({ ...model, history: [history] }, h),
-          templatesPage({ ...model, templates: [template] }, h),
-        ],
+      h.div.children(
+        historyPage({ ...model, history: [history] }, h),
+        templatesPage({ ...model, templates: [template] }, h),
       ),
     );
     for (const name of [`Actions for "${history.displayName}"`, 'Actions for "Observation"']) {
@@ -315,12 +306,9 @@ describe("persistent presentation regressions", () => {
   it.each(foldcnStyles)("uses %s Card and Item styling in template groups", async (style) => {
     await setCurrentStyle(style);
     await mount((model, h) =>
-      h.div(
-        [],
-        [
-          Card({}, [Item({}, ["Reference row"], h)], h),
-          templateEditorPage({ ...model, editor: editor(1, 1) }, h),
-        ],
+      h.div.children(
+        Card({}, [Item({}, ["Reference row"], h)], h),
+        templateEditorPage({ ...model, editor: editor(1, 1) }, h),
       ),
     );
     await expect.element(page.getByRole("textbox", { name: "Name", exact: true })).toBeVisible();
@@ -365,7 +353,7 @@ describe("persistent presentation regressions", () => {
 
   it("switches navigation icons immediately and restores the saved library", async () => {
     expect(await Effect.runPromise(initializeIconLibrary)).toBe("hugeicons");
-    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h).body);
+    await mount((model, h) => appView({ ...model, route: { _tag: "SettingsTab" } }, h));
     await expect.element(page.getByRole("link", { name: "Templates", exact: true })).toBeVisible();
     const original = navigationIcon();
     const picker = page.getByRole("radiogroup", { name: "Icon style" });
@@ -428,12 +416,15 @@ describe("persistent presentation regressions", () => {
     try {
       expect(
         await Effect.runPromise(
-          Effect.all({
-            theme: initializeTheme,
-            style: initializeStyle,
-            font: initializeFont,
-            accent: initializeAccent,
-          }),
+          Effect.all(
+            {
+              theme: initializeTheme,
+              style: initializeStyle,
+              font: initializeFont,
+              accent: initializeAccent,
+            },
+            { concurrency: 1 },
+          ),
         ),
       ).toEqual({ theme: "auto", style: "nova", font: "sans", accent: "default" });
       expect(await Effect.runPromise(changeFont("mono"))).toBe(false);
@@ -569,10 +560,8 @@ describe("persistent presentation regressions", () => {
   });
 
   it.each([390, 1280])("creates and edits questions in a focused page at %ipx", async (width) => {
-    await mount(
-      (model, h) =>
-        appView({ ...model, route: { _tag: "TemplatesTab" }, templates: AsyncData.succeed([]) }, h)
-          .body,
+    await mount((model, h) =>
+      appView({ ...model, route: { _tag: "TemplatesTab" }, templates: AsyncData.succeed([]) }, h),
     );
     await page.viewport(width, 900);
     await page.getByRole("button", { name: "Create template", exact: true }).click();
@@ -673,28 +662,28 @@ describe("persistent presentation regressions", () => {
         expect(left!.right).toBeLessThan(right!.left);
         expect(left!.top).toBe(right!.top);
         expect(group.scrollWidth).toBe(group.clientWidth);
-        await handle?.disposeAsync();
+        await mounted?.dispose();
+        mounted = undefined;
         container?.remove();
       }
     },
   );
 
   it("pins the mobile title and add action together while scrolling", async () => {
-    await mount(
-      (model, h) =>
-        appView(
-          {
-            ...model,
-            route: { _tag: "TemplatesTab" },
-            templates: AsyncData.succeed(
-              Array.from({ length: 30 }, (_, index) => ({
-                ...template,
-                id: `template-${index}`,
-              })),
-            ),
-          },
-          h,
-        ).body,
+    await mount((model, h) =>
+      appView(
+        {
+          ...model,
+          route: { _tag: "TemplatesTab" },
+          templates: AsyncData.succeed(
+            Array.from({ length: 30 }, (_, index) => ({
+              ...template,
+              id: `template-${index}`,
+            })),
+          ),
+        },
+        h,
+      ),
     );
     await page.viewport(390, 700);
     const heading = page.getByRole("heading", { name: "Templates", exact: true });
@@ -712,17 +701,16 @@ describe("persistent presentation regressions", () => {
   });
 
   it("places a sheet above bottom navigation", async () => {
-    await mount(
-      (model, h) =>
-        appView(
-          {
-            ...model,
-            route: { _tag: "TemplatesTab" },
-            templates: AsyncData.succeed([template]),
-            templateActionsFor: template.id,
-          },
-          h,
-        ).body,
+    await mount((model, h) =>
+      appView(
+        {
+          ...model,
+          route: { _tag: "TemplatesTab" },
+          templates: AsyncData.succeed([template]),
+          templateActionsFor: template.id,
+        },
+        h,
+      ),
     );
     await page.viewport(390, 700);
     await expect.element(page.getByRole("dialog")).toBeVisible();
@@ -758,7 +746,9 @@ describe("persistent presentation regressions", () => {
   });
 
   it("applies every settings style and restores the last selection", async () => {
-    await mount((model, h) => h.div([], [settingsPage(model, h), uiButton({}, "Style sample", h)]));
+    await mount((model, h) =>
+      h.div.children(settingsPage(model, h), uiButton({}, "Style sample", h)),
+    );
     const choices = page.getByRole("radiogroup", { name: "Component style" });
     await expect.element(choices).toBeVisible();
     expect(choices.element().querySelectorAll('[role="radio"]')).toHaveLength(8);
@@ -792,7 +782,10 @@ describe("persistent presentation regressions", () => {
     // the buttons' size transitions and make computed sizes time-dependent.
     document.documentElement.style.fontSize = `${rootSize}px`;
     await mount((_model, h) =>
-      h.div([], [uiButton({}, "Default control", h), uiButton({ size: "lg" }, "Large control", h)]),
+      h.div.children(
+        uiButton({}, "Default control", h),
+        uiButton({ size: "lg" }, "Large control", h),
+      ),
     );
     await expect.element(page.getByRole("button", { name: "Large control" })).toBeVisible();
     for (const [name, height, padding] of [
@@ -833,10 +826,9 @@ describe("persistent presentation regressions", () => {
 
   it.each([390, 1280])("keeps the editor within the viewport at %ipx", async (width) => {
     await mount((model, h) =>
-      h.div(
-        [h.Class("app-shell h-dvh overflow-y-auto")],
-        [templateEditorPage({ ...model, editor: editor(2, 2) }, h)],
-      ),
+      h.div
+        .class("app-shell h-dvh overflow-y-auto")
+        .children(templateEditorPage({ ...model, editor: editor(2, 2) }, h)),
     );
     await page.viewport(width, 900);
     await expect.element(page.getByLabelText("Name", { exact: true })).toBeVisible();
@@ -854,20 +846,17 @@ describe("persistent presentation regressions", () => {
 
   it("keeps every app-layer control at least 44px tall", async () => {
     await mount((_model, h) =>
-      h.div(
-        [h.Class("app-shell flex flex-col gap-2")],
-        [
-          navBar(
-            {
-              title: "Example",
-              back: { href: "#start", label: "Back" },
-              trailing: [navBarAction({ label: "Done", ariaLabel: "Done action" }, h)],
-            },
-            h,
-          ),
-          groupedList({}, [appRow({ title: "Row action", href: "#start" }, h)], h),
-          uiButton({ size: "lg", className: "h-12" }, "Primary", h),
-        ],
+      h.div.class("app-shell flex flex-col gap-2").children(
+        navBar(
+          {
+            title: "Example",
+            back: { href: "#start", label: "Back" },
+            trailing: [navBarAction({ label: "Done", ariaLabel: "Done action" }, h)],
+          },
+          h,
+        ),
+        groupedList({}, [appRow({ title: "Row action", href: "#start" }, h)], h),
+        uiButton({ size: "lg", className: "h-12" }, "Primary", h),
       ),
     );
     await expect.element(page.getByLabelText("Done action")).toBeVisible();
@@ -907,12 +896,9 @@ describe("persistent presentation regressions", () => {
     "uses grammatical editor counts for %i question(s)",
     async (count, options, fieldLabel, optionLabel) => {
       await mount((model, h) =>
-        h.div(
-          [],
-          [
-            templateEditorPage({ ...model, editor: editor(count, options) }, h),
-            templateEditorPage({ ...model, editor: editor(count, options, true) }, h),
-          ],
+        h.div.children(
+          templateEditorPage({ ...model, editor: editor(count, options) }, h),
+          templateEditorPage({ ...model, editor: editor(count, options, true) }, h),
         ),
       );
       await expect.element(page.getByText(fieldLabel, { exact: true })).toBeVisible();
@@ -923,27 +909,24 @@ describe("persistent presentation regressions", () => {
   it("renders all singular history and resume counts, including the sliced field preview", async () => {
     await mount(
       (model, h) =>
-        h.div(
-          [h.Class("grid gap-8 bg-background p-4")],
-          [
-            historyPage({ ...model, history: [history] }, h),
-            sessionDetailPage({ ...model, selectedHistorySession: detail }, h),
-            startView(
-              {
-                ...model,
-                templates: [template],
-                activeSession: {
-                  id: history.id,
-                  templateId: template.id,
-                  templateName: template.name,
-                  sessionName: history.sessionName,
-                  startedAt: now,
-                  completedCount: 1,
-                },
+        h.div.class("grid gap-8 bg-background p-4").children(
+          historyPage({ ...model, history: [history] }, h),
+          sessionDetailPage({ ...model, selectedHistorySession: detail }, h),
+          startView(
+            {
+              ...model,
+              templates: [template],
+              activeSession: {
+                id: history.id,
+                templateId: template.id,
+                templateName: template.name,
+                sessionName: history.sessionName,
+                startedAt: now,
+                completedCount: 1,
               },
-              h,
-            ),
-          ],
+            },
+            h,
+          ),
         ),
       1800,
     );
@@ -958,7 +941,7 @@ describe("persistent presentation regressions", () => {
 
   it("opens the history action sheet from a named, keyboard-reachable button", async () => {
     await mount(
-      (model, h) => h.div([h.Class("p-4")], [historyPage({ ...model, history: [history] }, h)]),
+      (model, h) => h.div.class("p-4").children(historyPage({ ...model, history: [history] }, h)),
       900,
     );
     const trigger = page.getByRole("button", { name: 'Actions for "Morning observation"' });
@@ -984,7 +967,7 @@ describe("persistent presentation regressions", () => {
         appView(
           { ...model, route: { _tag: "HistoryTab" }, history: AsyncData.succeed([history]) },
           h,
-        ).body,
+        ),
       900,
     );
     await page.viewport(390, 844);
@@ -996,7 +979,14 @@ describe("persistent presentation regressions", () => {
     await expect.element(actions).toBeVisible();
     const actionsElement = actions.element();
     await expect.poll(() => actionsElement.contains(document.activeElement)).toBe(true);
-    expect(triggerElement.closest("[inert]")).not.toBeNull();
+    // A modal dialog makes the rest of the page inert.
+    expect(actionsElement.matches(":modal")).toBe(true);
+    // On a phone the panel is a bottom sheet across the full width, not the
+    // browser's content-sized dialog box (polled past its slide-in).
+    const panel = () =>
+      actionsElement.querySelector('[data-slot="sheet-content"]')!.getBoundingClientRect();
+    expect(panel().width).toBe(390);
+    await expect.poll(() => panel().bottom).toBe(844);
     expect(document.documentElement.style.overflow).toBe("hidden");
     expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("hidden");
     for (const shift of [false, true]) {
@@ -1013,11 +1003,11 @@ describe("persistent presentation regressions", () => {
     await expect.element(confirmation).toBeVisible();
     await expect.element(actions).not.toBeInTheDocument();
     await expect.poll(() => confirmation.element().contains(document.activeElement)).toBe(true);
-    expect(triggerElement.closest("[inert]")).not.toBeNull();
+    expect(confirmation.element().matches(":modal")).toBe(true);
     await userEvent.keyboard("{Escape}");
     await expect.element(confirmation).not.toBeInTheDocument();
     await expect.element(trigger).toHaveFocus();
-    expect(triggerElement.closest("[inert]")).toBeNull();
+    expect(document.querySelector("dialog:modal")).toBeNull();
     await expect.poll(() => document.documentElement.style.overflow).toBe("");
     expect(getComputedStyle(document.querySelector("main")!).overflowY).toBe("auto");
   });
@@ -1028,7 +1018,7 @@ describe("persistent presentation regressions", () => {
         appView(
           { ...model, route: { _tag: "TemplatesTab" }, templates: AsyncData.succeed([template]) },
           h,
-        ).body,
+        ),
       900,
     );
     const trigger = page.getByRole("button", { name: 'Actions for "Observation"' });
@@ -1037,7 +1027,7 @@ describe("persistent presentation regressions", () => {
     expect(document.documentElement.style.overflow).toBe("hidden");
     // Choosing an action clears the page state; unmounting the sheet is its close.
     await page.getByRole("button", { name: "Duplicate" }).click();
-    // A click dispatches the message; FoldKit commits the render on its next frame.
+    // A click dispatches the message; Effect UI commits the render on its next frame.
     await expect.poll(() => document.querySelector("dialog")).toBeNull();
     await expect.poll(() => document.documentElement.style.overflow).toBe("");
     await expect.element(trigger).toHaveFocus();
@@ -1046,7 +1036,9 @@ describe("persistent presentation regressions", () => {
   it("opens the template action sheet from a named, keyboard-reachable button", async () => {
     await mount(
       (model, h) =>
-        h.div([h.Class("grid gap-8 p-4")], [templatesPage({ ...model, templates: [template] }, h)]),
+        h.div
+          .class("grid gap-8 p-4")
+          .children(templatesPage({ ...model, templates: [template] }, h)),
       1500,
     );
     const trigger = page.getByRole("button", { name: 'Actions for "Observation"' });
@@ -1065,17 +1057,14 @@ describe("persistent presentation regressions", () => {
   it("shows what each template asks for and offers the ready-made studies", async () => {
     await mount(
       (model, h) =>
-        h.div(
-          [h.Class("grid gap-8 p-4")],
-          [
-            templatesPage(
-              {
-                ...model,
-                templates: [{ ...template, isDefault: true, fieldCount: 5, requiredCount: 3 }],
-              },
-              h,
-            ),
-          ],
+        h.div.class("grid gap-8 p-4").children(
+          templatesPage(
+            {
+              ...model,
+              templates: [{ ...template, isDefault: true, fieldCount: 5, requiredCount: 3 }],
+            },
+            h,
+          ),
         ),
       1200,
     );

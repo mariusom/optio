@@ -1,20 +1,14 @@
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import { init, update, type Model } from "../main";
 import { Message } from "../messages";
 import { TemplateEditor } from "./routes";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
-// provide self for @livestore/adapter-web shared-worker stub (node env)
-(globalThis as unknown as { self?: unknown }).self ??= globalThis;
-
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 // Leaving the template editor through any internal link (sidebar, tab bar,
 // back) must ask before discarding unsaved changes, then honour the link.
 
-const url = fromString("http://localhost/optio/#/templates/t1");
-const baseModel = (): Model => init(Option.getOrThrow(url)).model;
+const baseModel = (): Model => init("#/templates/t1").model;
 
 const editor = (name: string): NonNullable<Model["editor"]> => ({
   id: "t1",
@@ -30,12 +24,7 @@ const editor = (name: string): NonNullable<Model["editor"]> => ({
 });
 
 const internalLink = (href: string) =>
-  Message.ClickedLink({
-    request: {
-      _tag: "Internal",
-      url: Option.getOrThrow(fromString(`http://localhost/optio/${href}`)),
-    },
-  });
+  Message.ClickedLink({ url: `http://localhost/optio/${href}` });
 
 describe("template editor navigation guard", () => {
   it("asks before leaving with unsaved changes and keeps the destination", () => {

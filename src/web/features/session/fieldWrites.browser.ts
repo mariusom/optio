@@ -1,17 +1,15 @@
 import { afterEach, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
-import { Runtime } from "foldkit";
-import { Effect } from "effect";
-import { createStorePromise } from "@livestore/livestore";
-import { makeInMemoryAdapter } from "@livestore/adapter-web";
+import { commitNow, openMemoryStore } from "../../../store/testStore";
+import { tables } from "../../../store/tables";
 
-import { applicationConfig } from "../../../application";
-import { getStore } from "../../../livestore/client";
-import { events, schema, tables } from "../../../livestore/schema";
+import { mountApp } from "../../../app/testMount";
+import { getStore } from "../../../store/client";
+import { events } from "../../../store/schema";
 import type { FieldDef } from "../../../domain/fields";
 import "../../../index.css";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
 const fields: FieldDef[] = [
   {
@@ -26,7 +24,7 @@ const fields: FieldDef[] = [
   },
 ];
 
-const flags = Effect.succeed({
+const flags = {
   assistantAccess: "unavailable",
   theme: "auto",
   style: "nova",
@@ -37,42 +35,35 @@ const flags = Effect.succeed({
   controlSize: "standard",
   now: Date.now(),
   idSeed: "field-writes-test",
-} as const);
+} as const;
 
-const cleanups: Array<() => void> = [];
-afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) cleanup();
+const cleanups: Array<() => void | Promise<void>> = [];
+afterEach(async () => {
+  for (const cleanup of cleanups.splice(0)) await cleanup();
   history.replaceState(null, "", "#/");
 });
 
-const mount = () => {
+const mount = async () => {
   const container = document.createElement("div");
   container.id = `field-writes-${crypto.randomUUID()}`;
   document.body.append(container);
-  const handle = Runtime.embed(
-    Runtime.makeApplication({ ...applicationConfig, container, slow: false }),
-    { flags },
-  );
-  const unmount = () => {
-    handle.dispose();
+  const mounted = await mountApp(flags, container);
+  const unmount = async () => {
+    await mounted.dispose();
     container.remove();
   };
   cleanups.push(unmount);
   return unmount;
 };
 
-// Real runtime, commands and SQLite materializers on LiveStore's in-memory
-// adapter; remounting the app stands in for a reload.
+// Real runtime, commands and event handlers on an in-memory journal;
+// remounting the app stands in for a reload.
 it("writes a typed answer in two events, keeps its first-keystroke time and survives a reload", async () => {
   await page.viewport(1440, 900);
-  const store = await createStorePromise({
-    schema,
-    storeId: `field-writes-${crypto.randomUUID()}`,
-    adapter: makeInMemoryAdapter(),
-  });
-  cleanups.push(() => void store.shutdownPromise?.());
+  const store = await openMemoryStore();
   vi.mocked(getStore).mockResolvedValue(store);
-  store.commit(
+  await commitNow(
+    store,
     events.sessionStarted({
       id: "s",
       templateId: null,
@@ -83,14 +74,16 @@ it("writes a typed answer in two events, keeps its first-keystroke time and surv
     events.taskSpawned({ sessionId: "s", id: "t", orderIndex: 1, fields }),
   );
   const commit = vi.spyOn(store, "commit");
-  const fieldWrites = () =>
-    commit.mock.calls
-      .flat()
-      .filter((event) => (event as { name?: string }).name === "v2.TaskFieldValueChanged").length;
+  /** The answer values written so far, in order. */
+  const writtenValues = () =>
+    commit.mock.calls.flat().flatMap((event) => {
+      const written = event as { name?: string; args?: { value?: string } };
+      return written.name === "v2.TaskFieldValueChanged" ? [written.args?.value] : [];
+    });
   const stored = () => store.query(tables.sessionTaskFields.select().where({ id: "t:a" }))[0]!;
 
   history.replaceState(null, "", "#/session/s");
-  const unmount = mount();
+  const unmount = await mount();
   const input = page.getByRole("textbox", { name: "Activity" });
   await expect.element(input).toBeVisible();
 
@@ -104,24 +97,25 @@ it("writes a typed answer in two events, keeps its first-keystroke time and surv
     element.value += character;
     element.dispatchEvent(new Event("input", { bubbles: true }));
   }
-  // Only the first keystroke is written while typing continues.
-  await expect.poll(fieldWrites).toBe(1);
-  expect(stored().value).toBe("T");
+  // The first keystroke is written at once; the rest wait for a pause or blur.
+  await expect.poll(() => writtenValues()[0]).toBe("T");
   const startDate = stored().startDate!.getTime();
   expect(startDate).toBeGreaterThanOrEqual(typingStarted);
 
   await userEvent.tab();
   await expect.poll(() => stored().value).toBe(text);
-  expect(fieldWrites()).toBe(2);
+  // One more write carries the whole answer, whichever of the idle write (on a
+  // loaded machine) or the blur sent it; no keystroke was written on its own.
+  expect(writtenValues()).toEqual(["T", text]);
   // Later writes keep the first keystroke's time.
   expect(stored().startDate!.getTime()).toBe(startDate);
 
   // A pause writes the answer without leaving the field.
   await userEvent.type(input, "!");
   await expect.poll(() => stored().value, { timeout: 3_000 }).toBe(`${text}!`);
-  expect(fieldWrites()).toBe(3);
+  expect(writtenValues()).toEqual(["T", text, `${text}!`]);
 
-  unmount();
-  mount();
+  await unmount();
+  await mount();
   await expect.element(page.getByRole("textbox", { name: "Activity" })).toHaveValue(`${text}!`);
 });

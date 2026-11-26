@@ -1,8 +1,10 @@
-import { inertHtml, type Html, type HtmlBuilder } from "foldkit/html";
-import { Scene } from "foldkit/test";
+import { Html } from "@effect/ui/html";
+import { HtmlScene } from "@effect/ui/html/testing";
+import { Locator } from "@effect/ui/testing";
+import { Schema } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ShowSheet } from "../components/app/sheet";
+import type { H, Ui } from "@/lib/view";
 import { Message } from "../messages";
 import { editSessionNameSheet } from "./features/history/editSessionNameSheet";
 import { historyPage } from "./features/history/historyView";
@@ -13,39 +15,40 @@ import { startView } from "./features/session/startView";
 import type { EditorState } from "./features/templates/editor";
 import { templateEditorPage } from "./features/templates/editorView";
 import { templatesPage } from "./features/templates/view";
+import { ShowSheet } from "../components/app/sheet";
 
-// These tests inspect VNodes without dispatching messages.
-const h = inertHtml as unknown as HtmlBuilder<Message>;
-type Node = NonNullable<ReturnType<typeof h.div>>;
-/** Renders views that embed sheets, which need a runtime frame and settle their show Mounts. */
-const render = (view: (h: HtmlBuilder<Message>) => Html): Node | null => {
-  let rendered: Html = null;
-  Scene.scene(
-    {
-      update: (model: null, _message: Message) => ({ model }),
-      view: (_model: null, frame) => view(frame),
-    },
-    Scene.given(null),
-    (simulation: Scene.SceneSimulation<null, Message>) =>
-      Scene.Mount.resolveAll(
-        ...simulation.mounts.map(() => [ShowSheet, Message.SettledSheet()] as const),
-      )(simulation),
-    (simulation: Scene.SceneSimulation<null, Message>) => {
-      rendered = simulation.html;
-      return simulation;
-    },
+type Node = Locator.Node;
+
+/** Renders a view in a scene; every message it sends comes out as an event. */
+const render = (view: (h: H<Message>) => Ui | null) =>
+  HtmlScene.start(
+    Html.component({
+      name: "AccessibilityFrame",
+      model: Schema.Null,
+      message: Message,
+      events: Message,
+    }).make({
+      init: () => null,
+      update: ($, message) => $.emit(message),
+      view: (h) => view(h) ?? h.div,
+    }),
+    {},
   );
-  return rendered;
+type Rendered = ReturnType<typeof render>;
+const nodes = (scene: Rendered): ReadonlyArray<Node> => Locator.elements(scene.root);
+/** An attribute, or the property the view sets in its place (such as `id`). */
+const attr = (node: Node | undefined, name: string): string | undefined => {
+  const value = node?.attrs?.[name] ?? node?.props?.[name];
+  return typeof value === "string" || typeof value === "number" ? `${value}` : undefined;
 };
-const nodes = (node: Node | null): Node[] =>
-  node === null
-    ? []
-    : [
-        node,
-        ...(node.children ?? []).flatMap((child) =>
-          typeof child === "object" ? nodes(child) : [],
-        ),
-      ];
+/** The message an interaction on `locator` sends, acknowledged, or undefined. */
+const sent = (scene: Rendered, locator: Locator.Locator, event: string) => {
+  const before = scene.current.emitted.length;
+  scene.fire(locator, event);
+  const message = scene.current.emitted[before];
+  if (message !== undefined) scene.emitted(message);
+  return message;
+};
 
 const field = {
   id: "field-1",
@@ -165,21 +168,30 @@ describe("audited view accessibility", () => {
       ),
       render((frame) => endConfirmModal(runner, frame)),
     ];
-    const dialogs = views.flatMap(nodes).filter((n) => n.sel?.startsWith("dialog"));
+    const dialogs = views.flatMap((view) =>
+      nodes(view)
+        .filter((n) => n.tag === "dialog")
+        .map((dialog) => ({ view, dialog })),
+    );
     // Creation and question editing are inline; only confirmations/actions are modal.
     expect(dialogs).toHaveLength(6);
-    for (const dialog of dialogs) {
+    for (const { view, dialog } of dialogs) {
+      // An open sheet runs its focus and scroll Mount.
+      view.expectMount(ShowSheet({ id: attr(dialog, "id")! }));
       // Escape arrives as the dialog's cancel event; the backdrop is decorative.
-      expect(dialog.data?.on?.cancel).toBeTypeOf("function");
-      const backdrop = nodes(dialog).find((n) => n.data?.class?.["modal-backdrop"]);
-      expect(backdrop?.sel).toBe("div");
-      expect(backdrop?.data?.on?.click).toBeTypeOf("function");
+      const escaped = sent(view, Locator.tag("dialog"), "cancel");
+      expect(escaped).toBeDefined();
+      const backdrop = Locator.elements(dialog).find((n) =>
+        (attr(n, "class") ?? "").split(" ").includes("modal-backdrop"),
+      );
+      expect(backdrop?.tag).toBe("div");
+      expect(sent(view, Locator.attr("data-slot", attr(backdrop, "data-slot")), "click")).toEqual(
+        escaped,
+      );
       // A named in-panel action always offers the same way out.
       expect(
-        nodes(dialog).some(
-          (n) =>
-            n.sel === "button" &&
-            /^(Cancel|Continue|Keep)/.test(String(n.data?.attrs?.["aria-label"] ?? "")),
+        Locator.elements(dialog).some(
+          (n) => n.tag === "button" && /^(Cancel|Continue|Keep)/.test(attr(n, "aria-label") ?? ""),
         ),
       ).toBe(true);
     }
@@ -198,30 +210,26 @@ describe("audited view accessibility", () => {
       [details, "Task 1"],
       [render((frame) => endConfirmModal(runner, frame)), "End session?"],
     ] as const) {
-      expect(view?.sel).toBe("dialog");
-      expect(view?.data?.attrs?.["aria-modal"]).toBeTruthy();
-      const titleId = view?.data?.attrs?.["aria-labelledby"];
+      const dialog = nodes(view).find((n) => n.tag === "dialog");
+      expect(attr(dialog, "aria-modal")).toBeTruthy();
+      const titleId = attr(dialog, "aria-labelledby");
       expect(titleId).toEqual(expect.any(String));
-      expect(nodes(view).find((n) => n.data?.props?.id === titleId)?.children).toContainEqual(
-        expect.objectContaining({ text: title }),
-      );
+      const titleNode = nodes(view).find((n) => attr(n, "id") === titleId);
+      expect(titleNode && Locator.textOf(titleNode)).toContain(title);
     }
     // The live session reports failures inline, next to the action they block.
-    const error = errorAlert("Cannot save", h);
-    expect(error?.data?.attrs?.role).toBe("alert");
-    expect(nodes(error).flatMap((n) => n.children ?? [])).toContainEqual(
-      expect.objectContaining({ text: "Cannot save" }),
-    );
-    expect(
-      nodes(error).find((n) => n.data?.attrs?.["aria-label"] === "Dismiss error")?.data?.on?.click,
-    ).toBeTypeOf("function");
+    const error = render((frame) => errorAlert("Cannot save", frame));
+    const alert = nodes(error).find((n) => attr(n, "role") === "alert");
+    expect(alert && Locator.textOf(alert)).toContain("Cannot save");
+    expect(sent(error, Locator.attr("aria-label", "Dismiss error"), "click")).toBeDefined();
   });
 
   it("associates the visible name label with the edit-session textbox", () => {
     const all = nodes(editSheet());
-    const input = all.find((n) => n.sel === "input");
-    expect(input?.data?.props?.id).toBe("edit-session-name-input");
-    expect(all.find((n) => n.sel === "label")?.data?.props?.htmlFor).toBe(input?.data?.props?.id);
+    const input = all.find((n) => n.tag === "input");
+    expect(attr(input, "id")).toBe("edit-session-name-input");
+    const label = all.find((n) => n.tag === "label");
+    expect(attr(label, "for") ?? attr(label, "htmlFor")).toBe("edit-session-name-input");
   });
 
   it("names every question control with the question it acts on", () => {
@@ -236,15 +244,11 @@ describe("audited view accessibility", () => {
     // The edit row is named by its visible text, not an aria-label (WCAG 2.5.3).
     expect(
       all.some(
-        (n) =>
-          n.sel === "button" &&
-          String(n.data?.attrs?.["aria-label"] ?? "").startsWith("Edit question"),
+        (n) => n.tag === "button" && (attr(n, "aria-label") ?? "").startsWith("Edit question"),
       ),
     ).toBe(false);
     for (const label of ["Move Observed up", "Move Observed down", "Delete question Observed"]) {
-      const controls = all.filter(
-        (n) => n.sel === "button" && n.data?.attrs?.["aria-label"] === label,
-      );
+      const controls = all.filter((n) => n.tag === "button" && attr(n, "aria-label") === label);
       expect(controls).toHaveLength(1);
     }
   });
@@ -259,16 +263,16 @@ describe("audited view accessibility", () => {
       render((frame) => templateEditorPage({ editor: textEditor, lastError: null }, frame)),
     ]) {
       const all = nodes(view);
-      const switches = all.filter((n) => n.data?.attrs?.role === "switch");
+      const switches = all.filter((n) => attr(n, "role") === "switch");
       expect(switches).toHaveLength(1);
       for (const control of switches) {
-        expect(control.sel).toBe("button");
-        expect(control.data?.props?.type).toBe("button");
-        const labelId = control.data?.attrs?.["aria-labelledby"];
-        expect(labelId).toEqual(expect.any(String));
-        const labels = all.filter((n) => n.sel === "label" && n.data?.props?.id === labelId);
+        expect(control.tag).toBe("button");
+        expect(attr(control, "type")).toBe("button");
+        // A native label names the button, and tapping it toggles the switch.
+        const id = attr(control, "id");
+        expect(id).toEqual(expect.any(String));
+        const labels = all.filter((n) => n.tag === "label" && attr(n, "for") === id);
         expect(labels).toHaveLength(1);
-        expect(labels[0]?.data?.on?.click).toBeTypeOf("function");
       }
     }
   });
@@ -285,65 +289,69 @@ describe("audited view accessibility", () => {
     };
     const cases = [
       {
-        view: templatesPage(
-          {
-            templates: [
-              {
-                id: "template-1",
-                name: "Study",
-                isDefault: false,
-                fieldCount: 1,
-                requiredCount: 0,
-                createdAt: 0,
-                updatedAt: 0,
-              },
-            ],
-            showCreate: false,
-            newName: "",
-            pendingDelete: null,
-            lastError: null,
-            templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
-          },
-          h,
+        view: render((h) =>
+          templatesPage(
+            {
+              templates: [
+                {
+                  id: "template-1",
+                  name: "Study",
+                  isDefault: false,
+                  fieldCount: 1,
+                  requiredCount: 0,
+                  createdAt: 0,
+                  updatedAt: 0,
+                },
+              ],
+              showCreate: false,
+              newName: "",
+              pendingDelete: null,
+              lastError: null,
+              templatesGrid: { query: "", sorting: [{ id: "name", desc: false }], filters: {} },
+            },
+            h,
+          ),
         ),
         name: 'Actions for "Study"',
       },
       {
-        view: historyPage(
-          {
-            history: [session],
-            now: session.startedAt,
-            pendingHistoryDelete: null,
-            historyActionsFor: null,
-            historyError: null,
-            historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
-          },
-          h,
+        view: render((h) =>
+          historyPage(
+            {
+              history: [session],
+              now: session.startedAt,
+              pendingHistoryDelete: null,
+              historyActionsFor: null,
+              historyError: null,
+              historyGrid: { query: "", sorting: [{ id: "started", desc: true }], filters: {} },
+            },
+            h,
+          ),
         ),
         name: 'Actions for "Morning study"',
       },
     ];
 
     for (const { view, name } of cases) {
-      const triggers = nodes(view).filter((node) => node.data?.attrs?.["aria-label"] === name);
+      const triggers = nodes(view).filter((node) => attr(node, "aria-label") === name);
       expect(triggers.length).toBeGreaterThan(0);
       for (const trigger of triggers) {
-        expect(trigger.sel).toBe("button");
-        expect(trigger.data?.props?.type).toBe("button");
-        expect(trigger.data?.attrs?.tabindex).toBeUndefined();
+        expect(trigger.tag).toBe("button");
+        expect(attr(trigger, "type")).toBe("button");
+        expect(attr(trigger, "tabindex")).toBeUndefined();
       }
     }
   });
 
   it("labels each yes/no answer group and its three states in the live session", () => {
-    const all = nodes(formSectionsView(runner.tasks[0]!, h));
+    const all = nodes(render((h) => formSectionsView(runner.tasks[0]!, h)));
     const groups = all.filter(
-      (n) => n.data?.attrs?.role === "radiogroup" && n.data?.attrs?.["aria-label"] === "Observed",
+      (n) => attr(n, "role") === "radiogroup" && attr(n, "aria-label") === "Observed",
     );
     expect(groups).toHaveLength(2);
     for (const group of groups) {
-      const radios = nodes(group).filter((n) => n.data?.props?.type === "radio");
-      expect(radios.map((n) => n.data?.attrs?.["aria-label"])).toEqual(["Unanswered", "Yes", "No"]);
+      const radios = Locator.elements(group).filter((n) => attr(n, "type") === "radio");
+      expect(radios.map((n) => attr(n, "aria-label"))).toEqual(["Unanswered", "Yes", "No"]);
     }
   });
 });

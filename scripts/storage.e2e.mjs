@@ -1,4 +1,4 @@
-// Production browser journey. Uses real workers, SQLite/OPFS and the service worker.
+// Production browser journey. Uses the real IndexedDB journal and the service worker.
 // Run after pnpm build. Each run owns and removes a disposable browser profile.
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm } from "node:fs/promises";
@@ -75,17 +75,20 @@ void test(
       await page.getByRole("button", { name: /^Task 1\b.*Done$/ }).click();
       await waitValue("Torque bolts");
       await operation().fill("Unsaved correction");
-      // fill() updates the DOM before the debounced answer reaches SQLite.
-      // Confirm both the edit backup and answer reached the worker before
-      // discarding the page: this journey tests durable edit recovery.
+      // fill() updates the DOM before the debounced answer reaches the store.
+      // Confirm both the edit backup and answer were saved before discarding
+      // the page: this journey tests durable edit recovery.
       await page.waitForFunction((expected) => {
-        const store = globalThis["__debugLiveStore"]?.["optio-v3"];
+        const store = globalThis["__debugOptioStore"];
         if (!store) return false;
         const edits = store.query({
-          query: `SELECT f.value, t.editBackup FROM sessionTaskFields f
-            JOIN sessionTasks t ON t.id = f.taskId
-            WHERE f.name = 'Operation' AND t.isBeingEdited = 1`,
-          bindValues: {},
+          run: (state) =>
+            [...state.sessionTaskFields.values()].flatMap((field) => {
+              const task = state.sessionTasks.get(field.taskId);
+              return field.name === "Operation" && task?.isBeingEdited === 1
+                ? [{ value: field.value, editBackup: task.editBackup }]
+                : [];
+            }),
         });
         return (
           edits.some((edit) => edit.value === expected && edit.editBackup !== null) &&
@@ -123,7 +126,7 @@ void test(
       await page.getByRole("button", { name: /^Task 3\b.*Recording$/ }).waitFor();
 
       // Wait for installed precache before simulating network loss. Actual
-      // offline reload must reopen the real local database and its workers.
+      // offline reload must reopen the real local journal.
       await page.evaluate(() => navigator.serviceWorker.ready);
       await page.reload();
       await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
@@ -164,7 +167,8 @@ void test(
       });
       assert.equal(offlineNotices.status, 200);
       assert.match(offlineNotices.text, /Copyright \(c\) 2026 Marius Matei/);
-      assert.match(offlineNotices.text, /Copyright \(c\) 2015 Simon Friis Vindum/);
+      assert.match(offlineNotices.text, /^@effect\/ui@/m);
+      assert.match(offlineNotices.text, /Copyright \(c\) 2023 Effectful Technologies Inc/);
       const offlineInventory = await page.evaluate(async () => {
         const response = await fetch("dependency-inventory.json");
         return response.json();
@@ -280,13 +284,12 @@ void test(
             !button.matches(':disabled, [aria-disabled="true"]'),
         ),
       );
-      // LiveStore exposes its existing store for debugging; no extra app/test API.
-      // A query notification precedes the leader's OPFS commit acknowledgement.
+      // The store's debug handle reports writes still being saved.
       await page.waitForFunction(
-        () => globalThis["__debugLiveStore"]?.["optio-v3"]?.syncStatus().pendingCount === 0,
+        () => globalThis["__debugOptioStore"]?.syncStatus().pendingCount === 0,
       );
       assert.equal(
-        await page.evaluate(() => globalThis["__debugLiveStore"]["optio-v3"].storageMode),
+        await page.evaluate(() => globalThis["__debugOptioStore"].storageMode),
         "persisted",
       );
       // Persisted storage shows no private-browsing or unavailable-storage notice.
@@ -369,7 +372,7 @@ void test(
         "failed end retains live values",
       );
       await page.waitForFunction(
-        () => globalThis["__debugLiveStore"]?.["optio-v3"]?.syncStatus().pendingCount === 0,
+        () => globalThis["__debugOptioStore"]?.syncStatus().pendingCount === 0,
       );
       await page.reload();
       await input("Items packed").waitFor();
@@ -416,44 +419,35 @@ void test("warns when the browser keeps studies only in memory", { timeout: 60_0
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ serviceWorkers: "block" });
-    // Some private windows refuse OPFS; LiveStore then keeps data in memory.
-    // The page keeps the real API only to check, at the end, that nothing was
-    // written; the app and LiveStore's workers all see the refusal.
+    // Some private windows and storage settings refuse IndexedDB; the store
+    // then keeps data in memory. The page keeps the real API only to check,
+    // at the end, that nothing was written.
     await context.addInitScript(() => {
-      globalThis.optioRealGetDirectory = navigator.storage.getDirectory.bind(navigator.storage);
-      navigator.storage.getDirectory = () =>
-        Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));
-    });
-    // Init scripts do not reach workers, so refuse OPFS at the top of each
-    // LiveStore worker script too; otherwise the workers still persist.
-    const refuse = `navigator.storage.getDirectory = () => Promise.reject(new DOMException("The request is not allowed.", "SecurityError"));\n`;
-    await context.route(/(livestore\.worker|make-shared-worker)-[^/]*\.js$/, async (route) => {
-      const response = await route.fetch();
-      await route.fulfill({ response, body: refuse + (await response.text()) });
+      globalThis.optioRealDatabases = indexedDB.databases.bind(indexedDB);
+      IDBFactory.prototype.open = () => {
+        throw new DOMException("The request is not allowed.", "SecurityError");
+      };
     });
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
     await page.goto(base);
     await page.getByText("This browser isn’t saving studies", { exact: false }).waitFor();
     assert.equal(
-      await page.evaluate(() => globalThis["__debugLiveStore"]?.["optio-v3"]?.storageMode),
+      await page.evaluate(() => globalThis["__debugOptioStore"]?.storageMode),
       "in-memory",
     );
     // Where sessions start, the warning stays in view and cannot be dismissed.
     assert.equal(await page.getByRole("button", { name: "Dismiss storage warning" }).count(), 0);
-    // Record into the in-memory store, then confirm nothing reached OPFS.
+    // Record into the in-memory store, then confirm nothing reached IndexedDB.
     await page.getByRole("button", { name: "Start Session" }).click();
     await page.getByRole("button", { name: "Record task" }).first().waitFor();
-    const opfsEntries = await page.evaluate(async () => {
-      const root = await globalThis.optioRealGetDirectory();
-      const names = [];
-      for await (const [name] of root.entries()) names.push(name);
-      return names;
-    });
+    const databases = await page.evaluate(async () =>
+      (await globalThis.optioRealDatabases()).map(({ name }) => name),
+    );
     assert.deepEqual(
-      opfsEntries.filter((name) => name.includes("livestore")),
+      databases,
       [],
-      `LiveStore wrote to OPFS despite the refusal: ${opfsEntries.join(", ")}`,
+      `The store wrote to IndexedDB despite the refusal: ${databases}`,
     );
   } finally {
     await browser.close();

@@ -1,6 +1,6 @@
 import { Option, Stream } from "effect";
-import { Dom } from "foldkit";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import { fromEventPreventingDefault } from "@/lib/domEvents";
+import type { H, Ui } from "@/lib/view";
 
 import { Kbd } from "@/components/ui/kbd";
 import { Message } from "../../../messages";
@@ -36,30 +36,24 @@ export const isPrimaryShortcut = (
 export const primaryShortcutPresses: Stream.Stream<Message> =
   typeof window === "undefined"
     ? Stream.empty
-    : Dom.streamFromEventFilterMapPreventDefault({
-        target: window,
-        type: "keydown",
-        filterMapEvent: (event) =>
-          isPrimaryShortcut(event, document.querySelector("dialog[open]") !== null)
-            ? Option.some(Message.PressedPrimaryShortcut())
-            : Option.none(),
-      });
+    : fromEventPreventingDefault<KeyboardEvent, Message>(window, "keydown", (event) =>
+        isPrimaryShortcut(event, document.querySelector("dialog[open]") !== null)
+          ? Option.some(Message.PressedPrimaryShortcut())
+          : Option.none(),
+      );
 
 /**
  * The in-button hint stays out of the label's layout and accessible name.
  * The button's `aria-keyshortcuts` exposes the shortcut to assistive tech.
  */
-export const primaryShortcutHint = (h: HtmlBuilder<Message>): Html =>
-  h.span(
-    [
-      h.Class("absolute right-3 hidden md:pointer-fine:@min-[14rem]:inline-flex"),
-      h.AriaHidden(true),
-    ],
-    [
+export const primaryShortcutHint = (h: H<Message>): Ui =>
+  h.span
+    .class("absolute right-3 hidden md:pointer-fine:@min-[14rem]:inline-flex")
+    .attr("aria-hidden", String(true))
+    .children(
       Kbd(
         { className: "border border-current bg-transparent text-primary-foreground" },
         ["Ctrl/⌘ + Enter"],
         h,
       ),
-    ],
-  );
+    );

@@ -1,7 +1,7 @@
 import { Array, Option, pipe, type Stream } from "effect";
 import { storeStream } from "./managedStream";
 import { Message } from "../messages";
-import type { SessionTaskFieldRow, SessionTaskRow } from "../livestore/queries";
+import type { SessionTaskFieldRow, SessionTaskRow } from "../store/queries";
 import { safeArray, toFieldKind } from "../web/fieldRows";
 
 export const activeSessionStream: Stream.Stream<Message> = storeStream(

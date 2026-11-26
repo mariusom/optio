@@ -1,9 +1,9 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { Array } from "effect";
 
 import { sectionFooter, sectionHeader } from "./layout";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export type Segment<M> = Readonly<{ label: string; selected: boolean; onSelect: M }>;
 
@@ -22,43 +22,34 @@ export const segmentedControl = <M>(
     footer?: Child;
     segments: ReadonlyArray<Segment<M>>;
   }>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.section(
-    [h.Class("flex flex-col")],
-    [
-      sectionHeader(config.label, h),
-      h.div(
-        [
-          h.Role("radiogroup"),
-          h.AriaLabel(config.label),
-          h.DataAttribute("slot", "segmented-control"),
-          h.Class("grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-muted p-1"),
-        ],
+  h: H<M>,
+): Ui =>
+  h.section.class("flex flex-col").children(
+    sectionHeader(config.label, h),
+    h.div
+      .attr("role", "radiogroup")
+      .attr("aria-label", config.label)
+      .attr("data-slot", "segmented-control")
+      .class("grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-muted p-1")
+      .children(
         Array.map(config.segments, (segment) =>
-          h.label(
-            [
-              h.Class(
-                "relative flex min-h-11 min-w-0 items-center justify-center rounded-md px-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-background/60 has-[:checked]:bg-background has-[:checked]:font-semibold has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-input has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
-              ),
-            ],
-            [
-              h.input([
-                h.Class("absolute inset-0 size-full cursor-pointer rounded-md opacity-0"),
-                h.Type("radio"),
-                h.Name(config.name),
-                h.Value(segment.label),
-                h.Checked(segment.selected),
-                h.OnChange(() => segment.onSelect),
-              ]),
-              h.span(
-                [h.Class("pointer-events-none py-1 leading-tight [overflow-wrap:anywhere]")],
-                [segment.label],
-              ),
-            ],
-          ),
+          h.label
+            .class(
+              "relative flex min-h-11 min-w-0 items-center justify-center rounded-md px-2 text-center text-sm font-medium text-foreground transition-colors hover:bg-background/60 has-[:checked]:bg-background has-[:checked]:font-semibold has-[:checked]:text-foreground has-[:checked]:shadow-sm has-[:checked]:ring-1 has-[:checked]:ring-input has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring",
+            )
+            .children(
+              h.input
+                .class("absolute inset-0 size-full cursor-pointer rounded-md opacity-0")
+                .attr("type", "radio")
+                .attr("name", config.name)
+                .value(segment.label)
+                .checked(segment.selected)
+                .on("change", () => segment.onSelect),
+              h.span
+                .class("pointer-events-none py-1 leading-tight [overflow-wrap:anywhere]")
+                .children(segment.label),
+            ),
         ),
       ),
-      ...(config.footer === undefined ? [] : [sectionFooter(config.footer, h)]),
-    ],
+    config.footer === undefined ? [] : [sectionFooter(config.footer, h)],
   );

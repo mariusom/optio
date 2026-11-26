@@ -76,8 +76,8 @@ The local pre-base middleware therefore rewrites only that exact query prefix
 to `/optio/@vite/lazy?...`; it does not proxy or rewrite other root paths.
 
 The workaround is necessary and sufficient for Optio's current dynamic import:
-the real dev-store journey loads `openStore`, starts the LiveStore worker and
-SharedWorker, fetches SQLite WASM, writes data, and preserves it after reload.
+the real dev-store journey loads `openStore` (at the time, the store's worker,
+SharedWorker and SQLite WASM), writes data, and preserves it after reload.
 Vite's documented worker constructor/query forms and static-option constraints
 remain the supported API ([worker guide](https://vite.dev/guide/features.html#web-workers));
 standard dynamic imports split normally, while variable imports have documented

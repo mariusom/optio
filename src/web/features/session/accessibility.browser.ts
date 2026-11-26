@@ -1,19 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { cdp, page, userEvent } from "vite-plus/test/browser";
-import { Runtime } from "foldkit";
-import { Option } from "effect";
-import { fromString } from "foldkit/url";
 
 // These component tests exercise real views, messages and the production update
-// machine. LiveStore's OPFS/workers are not booted: command execution and store
+// machine. The store is not opened: command execution and store
 // notifications are replaced at the boundary, not the view or keyboard handlers.
-import { init, Model, subscriptions, update } from "../../../main";
+import { init, update } from "../../../main";
+import { mountView, type Mounted } from "../../../app/testMount";
 import { Message } from "../../../messages";
 import { sessionView } from "./sessionView";
 import type { RunnerState } from "./runner";
 import "../../../index.css";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
 const runnerFixture = (value: string, override: Partial<RunnerState> = {}): RunnerState => ({
   sessionId: "session",
@@ -82,7 +80,7 @@ const runnerFixture = (value: string, override: Partial<RunnerState> = {}): Runn
   ...override,
 });
 
-let handle: Runtime.EmbedHandle | undefined;
+let mounted: Mounted | undefined;
 let container: HTMLDivElement;
 const changes: Array<{ taskFieldId: string; value: string }> = [];
 
@@ -123,61 +121,47 @@ const mount = async (
   container.style.height = "900px";
   document.body.append(container);
   changes.length = 0;
-  const model = init(Option.getOrThrow(fromString("https://example.com/#/session/session"))).model;
-  handle = Runtime.embed(
-    Runtime.makeElement({
-      Model,
-      container,
-      // Dev-mode budgets flag timing noise here and flood the log with Models.
-      slow: false,
-      init: () => ({
-        model: {
-          ...model,
-          runner: runnerFixture(value, runnerOverride),
-        },
-      }),
-      view: (current, h) =>
-        h.div([h.Class("app-shell focus-workspace h-full")], [sessionView(current, h)]),
-      subscriptions: {
-        focusedSectionScroll: subscriptions.focusedSectionScroll,
-        currentTaskScroll: subscriptions.currentTaskScroll,
-      },
-      update: (current, message: Message) => {
-        const result = update(current, message);
-        if (message._tag !== "ChangedFieldValue") return result;
-        changes.push({ taskFieldId: message.taskFieldId, value: message.value });
-        // Typed answers wait for a pause; first answers and choices write at once.
-        const write = expect.objectContaining({
-          name: "UpdateFieldValues",
-          args: { writes: [{ taskFieldId: message.taskFieldId, value: message.value }] },
-        });
-        expect([[], [write]]).toContainEqual(result.commands ?? []);
-        // Simulate the store snapshot that would follow the emitted write command.
-        const runner = result.model.runner!;
-        return update(
-          result.model,
-          Message.GotRunnerData({
-            data: {
-              ...runner,
-              tasks: runner.tasks.map((task) => ({
-                ...task,
-                sections: task.sections.map((section) =>
-                  section.id === message.taskFieldId
-                    ? { ...section, value: message.value }
-                    : section,
-                ),
-              })),
-            },
-          }),
-        );
-      },
-    }),
-  );
+  const model = init("#/session/session").model;
+  mounted = await mountView({
+    model: { ...model, runner: runnerFixture(value, runnerOverride) },
+    view: (current, h) =>
+      h.div.class("app-shell focus-workspace h-full").children(sessionView(current, h)),
+    container,
+    subscriptions: ["focusedSectionScroll", "currentTaskScroll"],
+    update: (current, message: Message) => {
+      const result = update(current, message);
+      if (message._tag !== "ChangedFieldValue") return result;
+      changes.push({ taskFieldId: message.taskFieldId, value: message.value });
+      // Typed answers wait for a pause; first answers and choices write at once.
+      const write = expect.objectContaining({
+        name: "UpdateFieldValues",
+        args: { writes: [{ taskFieldId: message.taskFieldId, value: message.value }] },
+      });
+      expect([[], [write]]).toContainEqual(result.commands ?? []);
+      // Simulate the store snapshot that would follow the emitted write command.
+      const runner = result.model.runner!;
+      return update(
+        result.model,
+        Message.GotRunnerData({
+          data: {
+            ...runner,
+            tasks: runner.tasks.map((task) => ({
+              ...task,
+              sections: task.sections.map((section) =>
+                section.id === message.taskFieldId ? { ...section, value: message.value } : section,
+              ),
+            })),
+          },
+        }),
+      );
+    },
+  });
   await expect.element(page.getByRole("radiogroup", { name: "Activity" })).toBeVisible();
 };
 
-afterEach(() => {
-  handle?.dispose();
+afterEach(async () => {
+  await mounted?.dispose();
+  mounted = undefined;
   container?.remove();
   vi.restoreAllMocks();
 });

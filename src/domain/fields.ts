@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 
 // Store-free domain schemas: the model, messages and agent boundary import these
-// without pulling LiveStore into the initial module graph.
+// without pulling the store runtime into the initial module graph.
 
 /** Supported template answer types. */
 export const FieldKind = Schema.Literals([

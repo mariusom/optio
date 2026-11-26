@@ -1,31 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
-import { foldkit } from "@foldkit/vite-plugin";
 import { playwright } from "vite-plus/test/browser-playwright";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig, type Plugin, type UserConfig } from "vite-plus";
-import foldkitRecommendedJson from "@foldkit/oxlint-plugin/recommended.json" with { type: "json" };
-
-type RuleLevel = "error" | "off";
-type LintOverride = { files: string[]; excludeFiles?: string[]; rules: Record<string, RuleLevel> };
-// JSON imports widen rule levels to `string`; the plugin ships only these two.
-const foldkitRecommended = foldkitRecommendedJson as Omit<
-  typeof foldkitRecommendedJson,
-  "rules" | "overrides"
-> & { rules: Record<string, RuleLevel>; overrides: LintOverride[] };
-
-// FoldKit's recommended rules, minus those that assume conventions Optio does
-// not use: it has no child Submodels, so `Got…` names store results rather than
-// wrapping child Messages, and the Model keeps nullable fields.
-const foldkitRules: Record<string, RuleLevel> = {
-  ...foldkitRecommended.rules,
-  "foldkit/got-prefix-requires-submodel-payload": "off",
-  "foldkit/got-wrapper-carries-only-routing": "off",
-  "foldkit/no-child-message-construction-in-root": "off",
-  "foldkit/prefer-option-over-nullable-in-model": "off",
-  // Module state is limited to deliberate handles: the memoized store open
-  // (see livestore/client.ts) and the applied style table read by `cn`.
-  "foldkit/no-module-level-mutable-state": "off",
-};
+import { presets } from "@effect/tsgo/oxlint-presets";
 
 // One test run schedules both projects concurrently; `--project` selects one.
 const test: UserConfig["test"] = {
@@ -41,8 +18,6 @@ const test: UserConfig["test"] = {
     },
     {
       extends: true,
-      // Browser tests import these entries directly, outside dependency scanning.
-      optimizeDeps: { include: ["foldkit/brand", "@livestore/adapter-web/worker"] },
       test: {
         name: "browser",
         include: ["src/**/*.browser.ts"],
@@ -57,12 +32,66 @@ const test: UserConfig["test"] = {
   ],
 };
 
+// Every Effect rule from every @effect/tsgo preset, as an error, except:
+// - experimental-api-usage, and api-stability-leak (maintainers preset), which
+//   flags exports that expose experimental or allowlisted unstable APIs. Effect
+//   UI is a public preview, so both would flag every use of it.
+// - missing-pipeable-signature: dual (pipeable) signatures are for library
+//   APIs; Optio's exported helpers are application code.
+const effectRules = {
+  ...Object.fromEntries(
+    Object.values(presets).flatMap((preset) =>
+      Object.keys(preset.rules ?? {}).map((rule) => [rule, "error" as const]),
+    ),
+  ),
+  "effecttsgo/experimental-api-usage": "off",
+  "effecttsgo/api-stability-leak": "off",
+  "effecttsgo/missing-pipeable-signature": "off",
+} as const;
+
+// The Effect rules cover the TypeScript project (src and this config), not
+// the plain Node scripts.
+const effectRulesOff = Object.fromEntries(
+  Object.keys(effectRules).map((rule) => [rule, "off" as const]),
+);
+
+// Platform globals and native helpers are fine in tests, Node scripts and the
+// Vite config; the compiler-level Effect rules still apply there.
+const effectNativeExemptions = Object.fromEntries(
+  [
+    "async-function",
+    "global-date",
+    "global-date-in-effect",
+    "crypto-random-uuid",
+    "crypto-random-uuid-in-effect",
+    "new-promise",
+    "global-timers",
+    "global-timers-in-effect",
+    "global-console",
+    "global-random",
+    "process-env",
+    "prefer-effect-array",
+    "prefer-effect-string",
+    "prefer-effect-record",
+    "schema-sync",
+    "global-json",
+    "global-json-in-effect",
+    "schema-number",
+    "node-builtin-import",
+    // A test is the entry point of the program it runs.
+    "strict-effect-provide",
+  ].map((rule) => [`effecttsgo/${rule}`, "off" as const]),
+);
+
 const lint: UserConfig["lint"] = {
-  options: { typeAware: true },
-  plugins: ["typescript", "unicorn", "oxc", "import", "promise"],
-  jsPlugins: foldkitRecommended.jsPlugins,
+  // tsrs runs the type-aware rules, the Effect ones included, and the type check.
+  options: { typeAware: true, typeCheck: true },
+  // effecttsgo is the Effect-patched binding's plugin (`effect-tsgo vp check`);
+  // only `effect-tsgo patch` adds it to Oxlint's config types.
+  plugins: ["typescript", "unicorn", "oxc", "import", "promise", "effecttsgo" as never],
   categories: { correctness: "error", suspicious: "error" },
   rules: {
+    ...effectRules,
     "max-statements": ["error", 25],
     "max-lines-per-function": ["error", { max: 150, skipBlankLines: true, skipComments: true }],
     "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
@@ -86,25 +115,29 @@ const lint: UserConfig["lint"] = {
     "import/no-default-export": "off",
     "no-console": "off",
     "no-underscore-dangle": ["error", { allow: ["_tag"] }],
-    ...foldkitRules,
   },
   overrides: [
-    // Entry and test files may read the clock or generate IDs directly; Node
-    // scripts and browser/e2e tests get the same exemptions as unit tests.
-    ...foldkitRecommended.overrides.map((override) =>
-      override.files.includes("**/*.test.ts")
-        ? { ...override, files: [...override.files, "**/*.browser.ts", "scripts/**"] }
-        : override,
-    ),
+    { files: ["scripts/**"], rules: effectRulesOff },
+    {
+      files: ["src/**/*.test.ts", "src/**/*.browser.ts", "vite.config.ts"],
+      rules: effectNativeExemptions,
+    },
+    {
+      // Its event schemas are persisted contracts.
+      files: ["src/store/schema.ts"],
+      rules: { "effecttsgo/schema-number": "off" },
+    },
+    {
+      // `Command.make(name, { args }, run)` takes the run function as a call
+      // argument, so a store read inside `withStore(... Effect.gen(...))`
+      // counts one callback deeper than the same body would elsewhere.
+      files: ["src/web/features/**/*Commands.ts", "src/web/features/**/commands.ts"],
+      rules: { "max-nested-callbacks": ["error", 4] },
+    },
     {
       // Generated registry data is not hand-maintained application logic.
       files: ["src/web/componentStyles.generated.ts"],
       rules: { "max-lines": "off" },
-    },
-    {
-      // Vite supplies default constructors for worker query imports.
-      files: ["src/livestore/openStore.ts"],
-      rules: { "import/default": "off" },
     },
     {
       files: [
@@ -148,7 +181,6 @@ export default defineConfig(({ command, mode }) => {
       port: 60_001,
       allowedHosts: publicUrl === "" ? [] : [new URL(publicUrl).hostname],
     },
-    worker: { format: "es" },
     plugins: [
       ...(bundledDev
         ? [
@@ -169,7 +201,6 @@ export default defineConfig(({ command, mode }) => {
           ]
         : []),
       ...tailwind,
-      foldkit(),
       VitePWA({
         registerType: "autoUpdate",
         // PNG raster icons (generated by scripts/gen-icons.ts) are required for
@@ -210,24 +241,16 @@ export default defineConfig(({ command, mode }) => {
       }),
     ],
     optimizeDeps: {
-      // Required by LiveStore's web adapter (see @livestore/adapter-web README)
-      exclude: ["@livestore/wa-sqlite"],
-      // The shared-worker entry bypasses dependency scanning. Keep its RPC/schema
-      // runtime in the same optimized graph instead of mixing raw and bundled Effect.
-      // Include the telemetry peer so optimized browser imports resolve it.
-      include: ["@livestore/adapter-web > @livestore/utils/effect", "@opentelemetry/api"],
+      // Vitest's browser runner imports this optional peer from the optimized graph.
+      include: ["@opentelemetry/api"],
       // Avoid a waterfall of small shared dependency chunks over remote dev connections.
       // Also used by tests, which keep Vite's unbundled module/mocking pipeline.
       rolldownOptions: {
         output: {
           codeSplitting: {
-            // FoldKit's plugin serves `foldkit` unbundled, and its pre-bundled
-            // companions (UI, DevTools overlay) import it. Grouping them with
-            // Effect would make the vendor chunk import raw FoldKit, which
-            // imports Effect back from the still-initializing vendor chunk.
-            // OpenTelemetry must also stay out: Vitest externalizes its API,
-            // otherwise that external entry imports this initializing chunk.
-            groups: [{ name: "vendor", test: /node_modules\/(?!.*(?:@foldkit|@opentelemetry)\/)/ }],
+            // OpenTelemetry stays out: Vitest externalizes its API, otherwise
+            // that external entry imports this initializing chunk.
+            groups: [{ name: "vendor", test: /node_modules\/(?!.*@opentelemetry\/)/ }],
           },
         },
       },

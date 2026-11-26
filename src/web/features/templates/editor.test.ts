@@ -1,10 +1,10 @@
-import { Effect, Option, Stream } from "effect";
+import { Effect, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 
-import { getStore } from "../../../livestore/client";
+import { getStore } from "../../../store/client";
 import type { FieldDef } from "../../../domain/fields";
-import { init, subscriptions, update } from "../../../main";
+import { init, update } from "../../../main";
 import { Message } from "../../../messages";
 import {
   addOptionToDraft,
@@ -22,18 +22,11 @@ import {
   withKindChanged,
 } from "./editor";
 import type { EditorState, FieldDraft } from "./editor";
+import { streamAt } from "../../../app/testSubscriptions";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
-const templateEditorModel = () =>
-  init({
-    protocol: "https:",
-    host: "example.com",
-    port: Option.none(),
-    pathname: "/",
-    search: Option.none(),
-    hash: Option.some("#/templates/missing"),
-  }).model;
+const templateEditorModel = () => init("#/templates/missing").model;
 
 const openField = () => {
   const existing = field({ id: "f1", name: "Activity", sortOrder: 0 });
@@ -115,9 +108,10 @@ describe("template detail regressions", () => {
         },
       } as unknown as Awaited<ReturnType<typeof getStore>>);
 
-      const messages = yield* subscriptions.templateDetail
-        .dependenciesToStream({ templateId: "t1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamAt("#/templates/t1", "templateDetail").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
 
       expect(messages[0]).toMatchObject({
         _tag: "GotTemplateDetail",

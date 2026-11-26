@@ -1,8 +1,8 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 // Table is a pure presentational primitive. `Table` is the container
 // (`table`); sub-builders are attached as properties: Table.header, Table.body,
@@ -30,90 +30,52 @@ export const tableCaptionClass = "text-muted-foreground mt-4 text-sm";
 
 type StyleConfig = Readonly<{ className?: string }>;
 
-const tableContainer = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(tableContainerClass)), h.DataAttribute("slot", "table-container")],
-    [
-      h.table(
-        [h.Class(cn(tableClass, config.className)), h.DataAttribute("slot", "table")],
-        children,
-      ),
-    ],
-  );
+const tableContainer = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(tableContainerClass))
+    .attr("data-slot", "table-container")
+    .children(
+      h.table.class(cn(tableClass, config.className)).attr("data-slot", "table").children(children),
+    );
 
-const tableHeader = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.thead(
-    [h.Class(cn(tableHeaderClass, config.className)), h.DataAttribute("slot", "table-header")],
-    children,
-  );
+const tableHeader = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.thead
+    .class(cn(tableHeaderClass, config.className))
+    .attr("data-slot", "table-header")
+    .children(children);
 
-const tableBody = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.tbody(
-    [h.Class(cn(tableBodyClass, config.className)), h.DataAttribute("slot", "table-body")],
-    children,
-  );
+const tableBody = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.tbody
+    .class(cn(tableBodyClass, config.className))
+    .attr("data-slot", "table-body")
+    .children(children);
 
-const tableFooter = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.tfoot(
-    [h.Class(cn(tableFooterClass, config.className)), h.DataAttribute("slot", "table-footer")],
-    children,
-  );
+const tableFooter = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.tfoot
+    .class(cn(tableFooterClass, config.className))
+    .attr("data-slot", "table-footer")
+    .children(children);
 
-const tableRow = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.tr(
-    [h.Class(cn(tableRowClass, config.className)), h.DataAttribute("slot", "table-row")],
-    children,
-  );
+const tableRow = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.tr.class(cn(tableRowClass, config.className)).attr("data-slot", "table-row").children(children);
 
-const tableHead = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.th(
-    [h.Class(cn(tableHeadClass, config.className)), h.DataAttribute("slot", "table-head")],
-    children,
-  );
+const tableHead = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.th
+    .class(cn(tableHeadClass, config.className))
+    .attr("data-slot", "table-head")
+    .children(children);
 
-const tableCell = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.td(
-    [h.Class(cn(tableCellClass, config.className)), h.DataAttribute("slot", "table-cell")],
-    children,
-  );
+const tableCell = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.td
+    .class(cn(tableCellClass, config.className))
+    .attr("data-slot", "table-cell")
+    .children(children);
 
-const tableCaption = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.caption(
-    [h.Class(cn(tableCaptionClass, config.className)), h.DataAttribute("slot", "table-caption")],
-    children,
-  );
+const tableCaption = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.caption
+    .class(cn(tableCaptionClass, config.className))
+    .attr("data-slot", "table-caption")
+    .children(children);
 
 /** Composable table — `Table` is the container, with sub-builders as
  *  properties: `Table.header`, `Table.body`, `Table.footer`, `Table.row`,

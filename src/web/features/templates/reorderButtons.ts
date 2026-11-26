@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { ArrowDown, ArrowUp, icon, rowAction } from "@/components/app";
 import { Message } from "../../../messages";
@@ -11,13 +11,13 @@ const quietClass =
 
 const moveButton = (
   config: Readonly<{ label: string; onClick: Message; isDisabled: boolean; up: boolean }>,
-  h: HtmlBuilder<Message>,
-): Html =>
+  h: H<Message>,
+): Ui =>
   rowAction(
     {
       isDisabled: config.isDisabled,
       className: quietClass,
-      attributes: [h.AriaLabel(config.label)],
+      attrs: { "aria-label": config.label },
       onClick: config.onClick,
     },
     [icon(h, config.up ? ArrowUp : ArrowDown, "size-4")],
@@ -35,30 +35,27 @@ export const reorderButtons = (
     up: Message;
     down: Message;
   }>,
-  h: HtmlBuilder<Message>,
-): Html => {
+  h: H<Message>,
+): Ui => {
   const disabled = config.isDisabled ?? false;
-  return h.div(
-    [h.Class("flex shrink-0 items-stretch")],
-    [
-      moveButton(
-        {
-          label: `Move ${config.subject} up`,
-          up: true,
-          isDisabled: disabled || config.index === 0,
-          onClick: config.up,
-        },
-        h,
-      ),
-      moveButton(
-        {
-          label: `Move ${config.subject} down`,
-          up: false,
-          isDisabled: disabled || config.index === config.total - 1,
-          onClick: config.down,
-        },
-        h,
-      ),
-    ],
+  return h.div.class("flex shrink-0 items-stretch").children(
+    moveButton(
+      {
+        label: `Move ${config.subject} up`,
+        up: true,
+        isDisabled: disabled || config.index === 0,
+        onClick: config.up,
+      },
+      h,
+    ),
+    moveButton(
+      {
+        label: `Move ${config.subject} down`,
+        up: false,
+        isDisabled: disabled || config.index === config.total - 1,
+        onClick: config.down,
+      },
+      h,
+    ),
   );
 };

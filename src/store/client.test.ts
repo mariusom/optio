@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vite-plus/test";
 
-it("defers SQLite loading and shares one store across concurrent and later callers", async () => {
+it("defers loading the store runtime and shares one store across concurrent and later callers", async () => {
   const loaded = vi.fn();
   const openStore = vi.fn();
   vi.doMock("./openStore.ts", () => {

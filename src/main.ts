@@ -1,5 +1,4 @@
 import { Schema } from "effect";
-import type { Url } from "foldkit/url";
 
 import { EnsureTemplatesSeeded } from "./web/features/templates/commands";
 import { parseRoute } from "./web/routes";
@@ -30,14 +29,14 @@ export const Flags = Schema.Struct({
 });
 export type Flags = typeof Flags.Type;
 
-/** Initial state with default preferences; tests start here. */
-export const init = (url: Url) => ({
-  model: initialModel(parseRoute(url)),
-  commands: [EnsureTemplatesSeeded(), GeneratePlaceholderName()],
+/** Initial state with default preferences for a URL fragment; tests start here. */
+export const init = (hash: string) => ({
+  model: initialModel(parseRoute(hash)),
+  commands: [EnsureTemplatesSeeded.make({}), GeneratePlaceholderName.make({})],
 });
 
 /** Runtime init: the default state with the decoded startup Flags applied. */
-export const initWithFlags = (flags: Flags, url: Url) => {
-  const initial = init(url);
+export const initWithFlags = (flags: Flags, hash: string) => {
+  const initial = init(hash);
   return { ...initial, model: { ...initial.model, ...flags } };
 };

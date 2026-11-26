@@ -25,10 +25,12 @@ import {
 describe("theme preference", () => {
   it.effect("defaults missing or invalid preferences to Auto", () =>
     Effect.gen(function* () {
-      expect(yield* readTheme).toBe("auto");
+      const missing = yield* readTheme;
+      expect(missing).toBe("auto");
       const store = yield* KeyValueStore.KeyValueStore;
       yield* store.set("optio-theme", "invalid");
-      expect(yield* readTheme).toBe("auto");
+      const invalid = yield* readTheme;
+      expect(invalid).toBe("auto");
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
 
@@ -44,23 +46,26 @@ describe("theme preference", () => {
     Effect.gen(function* () {
       for (const theme of ["light", "dark", "auto"] as const) {
         yield* saveTheme(theme);
-        expect(yield* readTheme).toBe(theme);
+        const savedTheme = yield* readTheme;
+        expect(savedTheme).toBe(theme);
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
 
   it.effect("defaults missing and invalid font and accent preferences", () =>
     Effect.gen(function* () {
-      expect(yield* readFont).toBe("sans");
-      expect(yield* readAccent).toBe("default");
-      expect(yield* readIconLibrary).toBe("hugeicons");
+      const missing = yield* Effect.all([readFont, readAccent, readIconLibrary], {
+        concurrency: 1,
+      });
+      expect(missing).toEqual(["sans", "default", "hugeicons"]);
       const store = yield* KeyValueStore.KeyValueStore;
       yield* store.set("optio-font", "comic-sans");
       yield* store.set("optio-accent", "invisible");
       yield* store.set("optio-icon-library", "material");
-      expect(yield* readFont).toBe("sans");
-      expect(yield* readAccent).toBe("default");
-      expect(yield* readIconLibrary).toBe("hugeicons");
+      const invalid = yield* Effect.all([readFont, readAccent, readIconLibrary], {
+        concurrency: 1,
+      });
+      expect(invalid).toEqual(["sans", "default", "hugeicons"]);
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
 
@@ -68,15 +73,18 @@ describe("theme preference", () => {
     Effect.gen(function* () {
       for (const font of fonts) {
         yield* saveFont(font);
-        expect(yield* readFont).toBe(font);
+        const savedFont = yield* readFont;
+        expect(savedFont).toBe(font);
       }
       for (const accent of [...accents, "#19aBcD", "#ffffff", "#000000"]) {
         yield* saveAccent(accent);
-        expect(yield* readAccent).toBe(accent);
+        const savedAccent = yield* readAccent;
+        expect(savedAccent).toBe(accent);
       }
       for (const library of ["lucide", "hugeicons"] as const) {
         yield* saveIconLibrary(library);
-        expect(yield* readIconLibrary).toBe(library);
+        const savedIconLibrary = yield* readIconLibrary;
+        expect(savedIconLibrary).toBe(library);
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
@@ -86,7 +94,8 @@ describe("theme preference", () => {
       const store = yield* KeyValueStore.KeyValueStore;
       for (const invalid of ["#fff", "#1234567", "#gg1234", "red", "#123456; color: red"]) {
         yield* store.set("optio-accent", invalid);
-        expect(yield* readAccent).toBe("default");
+        const savedAccent = yield* readAccent;
+        expect(savedAccent).toBe("default");
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
@@ -102,8 +111,10 @@ describe("theme preference", () => {
 describe("look and control size preferences", () => {
   it.effect("default to Swiss and standard controls when missing or invalid", () =>
     Effect.gen(function* () {
-      expect(yield* readLook).toBe("swiss");
-      expect(yield* readControlSize).toBe("standard");
+      const savedLook = yield* readLook;
+      expect(savedLook).toBe("swiss");
+      const savedControlSize = yield* readControlSize;
+      expect(savedControlSize).toBe("standard");
       const store = yield* KeyValueStore.KeyValueStore;
       for (const [look, size] of [
         ["neon", "huge"],
@@ -112,8 +123,10 @@ describe("look and control size preferences", () => {
       ] as const) {
         yield* store.set("optio-look", look);
         yield* store.set("optio-control-size", size);
-        expect(yield* readLook).toBe("swiss");
-        expect(yield* readControlSize).toBe("standard");
+        const invalidLook = yield* readLook;
+        expect(invalidLook).toBe("swiss");
+        const invalidSize = yield* readControlSize;
+        expect(invalidSize).toBe("standard");
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );
@@ -122,11 +135,13 @@ describe("look and control size preferences", () => {
     Effect.gen(function* () {
       for (const look of looks) {
         yield* saveLook(look);
-        expect(yield* readLook).toBe(look);
+        const savedLook = yield* readLook;
+        expect(savedLook).toBe(look);
       }
       for (const size of ["large", "standard"] as const) {
         yield* saveControlSize(size);
-        expect(yield* readControlSize).toBe(size);
+        const savedControlSize = yield* readControlSize;
+        expect(savedControlSize).toBe(size);
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );

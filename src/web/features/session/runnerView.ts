@@ -1,5 +1,5 @@
 import { Array, Option, Order } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import {
   Check,
@@ -12,8 +12,9 @@ import {
   notice,
   row,
   statusPill,
+  confirmSheet,
+  sheet,
 } from "@/components/app";
-import { confirmSheet, sheet } from "../../sheets";
 import { button } from "@/components/ui/button";
 import { Message } from "../../../messages";
 import { formatDurationHms, formatTimeOnly } from "../../format";
@@ -41,31 +42,28 @@ export { formSectionsView } from "./questionControls";
 /** Scrolling form area; identical on phone, tablet and desktop. */
 export const runnerCanvas = (
   options: Readonly<{ runner: RunnerState; task: RunnerTask; scope: string }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) =>
-  h.div(
-    [
-      h.Class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain"),
-      h.DataAttribute("runner-layout", ""),
-    ],
-    [formSectionsView(options.task, h, { scope: options.scope })],
-  );
+  h.div
+    .class("min-h-0 flex-1 overflow-y-auto overscroll-y-contain")
+    .attr("data-runner-layout", "")
+    .children(formSectionsView(options.task, h, { scope: options.scope }));
 
 // ── Nav bar pieces ──────────────────────────────────────────────────────────
 
 /** Ends recording, so it is neutral rather than a "success" action; it confirms first. */
-const endAction = (h: HtmlBuilder<Message>) =>
+const endAction = (h: H<Message>) =>
   button(
     {
       variant: "outline",
       onClick: Message.ClickedEndSession(),
-      attributes: [h.AriaLabel("End session")],
+      attrs: { "aria-label": "End session" },
     },
     "End",
     h,
   );
 
-const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+const taskListAction = (runner: RunnerState, h: H<Message>) =>
   navBarAction(
     {
       label: taskCountLabel(runner, h),
@@ -77,48 +75,33 @@ const taskListAction = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 
 export const runnerNavBar = (
   runner: RunnerState,
-  controls: Readonly<{ leading?: ReadonlyArray<Html>; trailing?: ReadonlyArray<Html> }>,
-  h: HtmlBuilder<Message>,
+  controls: Readonly<{ leading?: ReadonlyArray<Ui>; trailing?: ReadonlyArray<Ui> }>,
+  h: H<Message>,
 ) =>
-  h.header(
-    [
-      h.Class(
-        "sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background pt-safe select-none",
-      ),
-      h.DataAttribute("slot", "nav-bar"),
-    ],
-    [
-      h.div(
-        [
-          h.Class(
-            "grid min-h-16 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-safe py-2 sm:gap-3",
+  h.header
+    .class("sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background pt-safe select-none")
+    .attr("data-slot", "nav-bar")
+    .children(
+      h.div
+        .class(
+          "grid min-h-16 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-safe py-2 sm:gap-3",
+        )
+        .children(
+          h.div.class("flex items-center justify-start").children(controls.leading ?? []),
+          h.div.class("min-w-0 text-center").children(
+            h.h1
+              .class("truncate text-sm font-semibold tracking-tight sm:text-base")
+              .attr("dir", "auto")
+              .children(runner.sessionName === "" ? runner.templateName : runner.sessionName),
+            sessionTimerView(runner, h),
           ),
-        ],
-        [
-          h.div([h.Class("flex items-center justify-start")], controls.leading ?? []),
-          h.div(
-            [h.Class("min-w-0 text-center")],
-            [
-              h.h1(
-                [
-                  h.Class("truncate text-sm font-semibold tracking-tight sm:text-base"),
-                  h.Dir("auto"),
-                ],
-                [runner.sessionName === "" ? runner.templateName : runner.sessionName],
-              ),
-              sessionTimerView(runner, h),
-            ],
-          ),
-          h.div(
-            [h.Class("flex items-center justify-end gap-2")],
-            [...(controls.trailing ?? []), endAction(h)],
-          ),
-        ],
-      ),
-    ],
-  );
+          h.div
+            .class("flex items-center justify-end gap-2")
+            .children(controls.trailing ?? [], endAction(h)),
+        ),
+    );
 
-const phoneNavBar = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+const phoneNavBar = (runner: RunnerState, h: H<Message>) =>
   runnerNavBar(runner, { leading: [taskListAction(runner, h)] }, h);
 
 // ── Action bar ──────────────────────────────────────────────────────────────
@@ -134,7 +117,7 @@ const recordHint = (task: RunnerTask): string | null => {
 /** The one action that matters, always within thumb reach. */
 export const runnerActionBar = (
   { runner, task, scope }: Readonly<{ runner: RunnerState; task: RunnerTask; scope: string }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const isEditing = task.isBeingEdited;
   const canSubmit = isEditing ? isTaskDone(task) : canRecordTask(task);
@@ -142,51 +125,55 @@ export const runnerActionBar = (
   const hasError = runner.lastError !== null || actionHint !== null;
   const showAnnouncement = !hasError && runner.announcement !== null;
   const statusId = `${scope}-runner-action-status`;
-  const actionAttributes = [
-    h.AriaKeyshortcuts(primaryShortcut),
-    ...(canSubmit || showAnnouncement
-      ? []
-      : [h.AriaDescribedBy(hasError ? statusId : `${scope}-required-answer-label`)]),
-  ];
+  const actionAttributes = {
+    "aria-keyshortcuts": primaryShortcut,
+    "aria-describedby": !(canSubmit || showAnnouncement)
+      ? hasError
+        ? statusId
+        : `${scope}-required-answer-label`
+      : undefined,
+  };
   const status =
     runner.lastError !== null
       ? [errorAlert(runner.lastError, h)]
       : actionHint !== null
-        ? [h.p([h.Role("alert"), h.Class("text-destructive text-sm font-medium")], [actionHint])]
+        ? [
+            h.p
+              .attr("role", "alert")
+              .class("text-destructive text-sm font-medium")
+              .children(actionHint),
+          ]
         : showAnnouncement
           ? []
           : [
               requiredProgress(task, scope, h) ??
-                h.span([h.Class("text-muted-foreground text-sm")], ["No required questions"]),
+                h.span.class("text-muted-foreground text-sm").children("No required questions"),
             ];
 
   const actions = isEditing
-    ? h.div(
-        [h.Class("grid grid-cols-2 gap-2")],
-        [
-          button(
-            {
-              size: "lg",
-              variant: "secondary",
-              className: "rounded-full",
-              onClick: Message.ClickedCancelEdit(),
-              attributes: [h.AriaLabel("Cancel editing")],
-            },
-            "Cancel",
-            h,
-          ),
-          button(
-            {
-              size: "lg",
-              className: "@container relative rounded-full shadow-lg shadow-primary/20",
-              isDisabled: !canSubmit,
-              onClick: Message.ClickedSaveEdit(),
-              attributes: [h.AriaLabel("Save changes"), ...actionAttributes],
-            },
-            ["Save", primaryShortcutHint(h)],
-            h,
-          ),
-        ],
+    ? h.div.class("grid grid-cols-2 gap-2").children(
+        button(
+          {
+            size: "lg",
+            variant: "secondary",
+            className: "rounded-full",
+            onClick: Message.ClickedCancelEdit(),
+            attrs: { "aria-label": "Cancel editing" },
+          },
+          "Cancel",
+          h,
+        ),
+        button(
+          {
+            size: "lg",
+            className: "@container relative rounded-full shadow-lg shadow-primary/20",
+            isDisabled: !canSubmit,
+            onClick: Message.ClickedSaveEdit(),
+            attrs: { "aria-label": "Save changes", ...actionAttributes },
+          },
+          ["Save", primaryShortcutHint(h)],
+          h,
+        ),
       )
     : button(
         {
@@ -194,36 +181,30 @@ export const runnerActionBar = (
           className: "@container relative w-full rounded-full shadow-lg shadow-primary/20",
           isDisabled: !canSubmit,
           onClick: Message.ClickedRecord(),
-          attributes: [h.AriaLabel("Record task"), ...actionAttributes],
+          attrs: { "aria-label": "Record task", ...actionAttributes },
         },
         [icon(h, Check, "size-5"), "Record task", primaryShortcutHint(h)],
         h,
       );
 
-  return h.div(
-    [
-      // Floats like the tab bar: no rule, a soft fade, and a capsule action.
-      h.Class(
-        "shrink-0 bg-linear-to-t from-background from-70% to-background/0 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
-      ),
-      h.DataAttribute("slot", "action-bar"),
-    ],
-    [
-      h.div(
-        [h.Class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-2")],
-        [
-          h.div(
-            [h.Class("relative flex min-h-5 flex-col justify-center")],
-            [
+  return h.div
+    .class(
+      "shrink-0 bg-linear-to-t from-background from-70% to-background/0 pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+    )
+    .attr("data-slot", "action-bar")
+    .children(
+      h.div
+        .class("mx-auto flex w-full max-w-3xl flex-col gap-2 px-safe pt-2")
+        .children(
+          h.div
+            .class("relative flex min-h-5 flex-col justify-center")
+            .children(
               announcementView(runner.announcement, showAnnouncement, h),
-              h.div([h.Id(statusId)], status),
-            ],
-          ),
+              h.div.id(statusId).children(status),
+            ),
           actions,
-        ],
-      ),
-    ],
-  );
+        ),
+    );
 };
 
 // ── Task list ───────────────────────────────────────────────────────────────
@@ -270,7 +251,7 @@ const pillContrast = {
 const taskRow = (
   task: RunnerTask,
   options: Readonly<{ isCurrent: boolean; showValue?: boolean }>,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) => {
   const status = taskStatus(task);
   return row(
@@ -292,7 +273,7 @@ const taskRow = (
       // Muted text is below 4.5:1 on the selected row's accent background.
       className: options.isCurrent ? "[&_.text-muted-foreground]:text-foreground/75" : undefined,
       // Named by its visible text ("Task 2 … Recording"), so voice control matches it.
-      attributes: options.isCurrent ? [h.AriaCurrent("true")] : [],
+      attrs: options.isCurrent ? { "aria-current": "true" } : {},
     },
     h,
   );
@@ -300,9 +281,9 @@ const taskRow = (
 
 export const taskRows = (
   runner: RunnerState,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
   options: Readonly<{ showValue?: boolean }> = {},
-): ReadonlyArray<Html> => {
+): ReadonlyArray<Ui> => {
   const sorted = Array.sort(runner.tasks, newestFirst);
   const currentId = currentTask(runner)?.id ?? runner.currentTaskId;
   return Array.map(sorted, (task) =>
@@ -312,7 +293,7 @@ export const taskRows = (
 
 const newestFirst = Order.mapInput(Order.flip(Order.Number), (task: RunnerTask) => task.orderIndex);
 
-const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
+const taskListSheet = (runner: RunnerState, h: H<Message>) =>
   sheet(
     {
       id: "runner-tasks",
@@ -336,7 +317,7 @@ const taskListSheet = (runner: RunnerState, h: HtmlBuilder<Message>) =>
  * Sheets over the live session. Rendered once, outside the responsive phone
  * and tablet copies, so a hidden copy never holds the open dialog.
  */
-export const runnerSheets = (runner: RunnerState | null, h: HtmlBuilder<Message>) =>
+export const runnerSheets = (runner: RunnerState | null, h: H<Message>) =>
   runner === null || currentTask(runner) === null
     ? []
     : [
@@ -346,7 +327,7 @@ export const runnerSheets = (runner: RunnerState | null, h: HtmlBuilder<Message>
 
 // ── End session & errors ────────────────────────────────────────────────────
 
-export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+export const endConfirmModal = (runner: RunnerState, h: H<Message>) => {
   const count = runner.completedCount;
   const message =
     count === 0
@@ -369,7 +350,7 @@ export const endConfirmModal = (runner: RunnerState, h: HtmlBuilder<Message>) =>
 };
 
 /** Inline, dismissible failure message shown just above the action bar. */
-export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
+export const errorAlert = (message: string, h: H<Message>) =>
   notice(
     {
       tone: "error",
@@ -382,9 +363,9 @@ export const errorAlert = (message: string, h: HtmlBuilder<Message>) =>
 
 // ── Placeholder states ──────────────────────────────────────────────────────
 
-export const runnerLoadingView = (h: HtmlBuilder<Message>) => loadingState("Loading session…", h);
+export const runnerLoadingView = (h: H<Message>) => loadingState("Loading session…", h);
 
-export const runnerEmptyTaskView = (h: HtmlBuilder<Message>) =>
+export const runnerEmptyTaskView = (h: H<Message>) =>
   emptyState(
     {
       icon: Timer,
@@ -400,22 +381,19 @@ type RunnerModel = {
   readonly runner: RunnerState | null;
 };
 
-export const runnerView = (model: RunnerModel, h: HtmlBuilder<Message>) => {
+export const runnerView = (model: RunnerModel, h: H<Message>) => {
   const runner = model.runner;
   if (runner === null) return runnerLoadingView(h);
 
   const task = currentTask(runner);
   if (task === null) return runnerEmptyTaskView(h);
 
-  return h.div(
-    [
-      h.Class("flex h-full min-h-0 w-full flex-col bg-background text-foreground"),
-      h.DataAttribute("runner-layout", ""),
-    ],
-    [
+  return h.div
+    .class("flex h-full min-h-0 w-full flex-col bg-background text-foreground")
+    .attr("data-runner-layout", "")
+    .children(
       phoneNavBar(runner, h),
       runnerCanvas({ runner, task, scope: "mobile" }, h),
       runnerActionBar({ runner, task, scope: "mobile" }, h),
-    ],
-  );
+    );
 };

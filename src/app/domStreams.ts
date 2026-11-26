@@ -1,9 +1,9 @@
 import { Array, Effect, Option, Stream } from "effect";
-import { Render } from "foldkit";
+import { afterCommit as committed, afterPaint } from "@/lib/domEvents";
 
 /** Runs a DOM effect once the render that caused it has committed. */
 const afterCommit = (action: () => void): Stream.Stream<never> =>
-  Stream.fromEffect(Effect.andThen(Render.afterCommit, Effect.sync(action))).pipe(Stream.drain);
+  Stream.fromEffect(Effect.andThen(committed, Effect.sync(action))).pipe(Stream.drain);
 
 /** Responsive copies share content under different IDs; target the rendered one. */
 const visibleElement = (ids: ReadonlyArray<string>): Option.Option<HTMLElement> =>
@@ -20,41 +20,32 @@ const scrollBehavior = (): ScrollBehavior =>
     ? "auto"
     : "smooth";
 
-export const focusEditorDraft = (draftId: string | null): Stream.Stream<never> => {
-  if (draftId === null) return Stream.empty;
-  return afterCommit(() => {
-    document.getElementById("question-name")?.focus({ preventScroll: true });
-    document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
-  });
-};
+export const focusEditorDraft: Stream.Stream<never> = afterCommit(() => {
+  document.getElementById("question-name")?.focus({ preventScroll: true });
+  document.getElementById("question-editor")?.scrollIntoView({ block: "start" });
+});
 
-export const scrollToSection = (sectionId: string | null): Stream.Stream<never> => {
-  if (sectionId === null) return Stream.empty;
-  return afterCommit(() => {
+export const scrollToSection = (sectionId: string): Stream.Stream<never> =>
+  afterCommit(() => {
     Option.map(visibleElement([`mobile-${sectionId}`, `tablet-${sectionId}`]), (element) =>
       element.scrollIntoView({ behavior: scrollBehavior(), block: "center" }),
     );
   });
-};
 
-export const scrollToCurrentTask = (taskId: string | null): Stream.Stream<never> => {
-  if (taskId === null) return Stream.empty;
-  return afterCommit(() => {
-    Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
-      element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
-    );
-  });
-};
+export const scrollToCurrentTask: Stream.Stream<never> = afterCommit(() => {
+  Option.map(visibleElement(["mobile-formTop", "tablet-formTop"]), (element) =>
+    element.scrollIntoView({ behavior: scrollBehavior(), block: "start" }),
+  );
+});
 
 /**
  * Moves screen-reader and keyboard focus to a help page's title once the page
  * has painted. The heading becomes focusable without joining the tab order.
  */
-export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream<never> => {
-  if (page === null) return Stream.empty;
-  return Stream.fromEffect(
+export const focusHelpPage = (page: "AgentHelp" | "About"): Stream.Stream<never> =>
+  Stream.fromEffect(
     Effect.andThen(
-      Render.afterPaint,
+      afterPaint,
       Effect.sync(() => {
         const content = document.querySelector(`[data-help-page="${page}"]`);
         const main = content?.closest("main");
@@ -67,4 +58,3 @@ export const focusHelpPage = (page: "AgentHelp" | "About" | null): Stream.Stream
       }),
     ),
   ).pipe(Stream.drain);
-};

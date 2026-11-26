@@ -1,9 +1,7 @@
-import type { AppServices } from "./services";
-import type { Update } from "foldkit";
 import { Array, Record } from "effect";
 
 import { confirmationChanged, invalidatesAgentConfirmation } from "../agents/actions";
-import type { Message } from "../messages";
+import type { Message, UpdateResult } from "../messages";
 import { editorFieldHandlers, editorLoadHandlers, editorSaveHandlers } from "./editorUpdate";
 import { backupHandlers } from "./backupUpdate";
 import { historyHandlers } from "./historyUpdate";
@@ -13,7 +11,7 @@ import { storageHandlers } from "./storageUpdate";
 import { agentHandlers, shellHandlers } from "./shellUpdate";
 import { templateHandlers } from "./templateUpdate";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type Tag = Message["_tag"];
 type Handler = (message: Message) => Result;
 

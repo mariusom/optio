@@ -1,4 +1,5 @@
-import type { Attribute, ChildAttribute, Html, HtmlBuilder } from "foldkit/html";
+import type { Html } from "@effect/ui/html";
+import type { H, Ui } from "@/lib/view";
 
 import { cn } from "@/lib/utils";
 import { Array, Option } from "effect";
@@ -9,15 +10,17 @@ import { itemClass, itemSizes, itemTitleClass, itemDescriptionClass } from "@/co
 
 import { Check, ChevronRight, icon } from "./icons";
 
-type Child = Html | string;
-type Attrs<M> = ReadonlyArray<Attribute<M> | ChildAttribute>;
+type Child = Ui | string;
+/** Any HTML element builder whose events include `keydown`. */
+type Element<M> = Html.Element<M, never, Html.Events, any, any>;
+type Attrs = Readonly<Record<string, string | undefined>>;
 
 /** Edge-to-edge action cell beside a grouped-list row. */
 export const rowAction = <M>(
-  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attributes" | "className">,
+  config: Pick<ButtonConfig<M>, "onClick" | "isDisabled" | "attrs" | "className">,
   label: ButtonLabel,
-  h: HtmlBuilder<M>,
-): Html =>
+  h: H<M>,
+): Ui =>
   button(
     {
       ...config,
@@ -40,35 +43,29 @@ export const contentWidth = (wide: boolean | "xl" | undefined): string =>
 export const page = <M>(
   config: Readonly<{ className?: string; wide?: boolean | "xl" }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(
-        cn(
-          "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12",
-          contentWidth(config.wide),
-          config.className,
-        ),
+  h: H<M>,
+): Ui =>
+  h.div
+    .class(
+      cn(
+        "mx-auto flex w-full flex-col gap-6 px-safe pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-12",
+        contentWidth(config.wide),
+        config.className,
       ),
-      h.DataAttribute("slot", "page"),
-    ],
-    children,
-  );
+    )
+    .attr("data-slot", "page")
+    .children(children);
 
 /** Section heading above a grouped list (iOS section header). */
-export const sectionHeader = <M>(text: Child, h: HtmlBuilder<M>, className?: string): Html =>
-  h.h2(
-    [
-      h.Class(cn("pb-2 text-sm font-medium text-foreground", className)),
-      h.DataAttribute("slot", "section-header"),
-    ],
-    [text],
-  );
+export const sectionHeader = <M>(text: Child, h: H<M>, className?: string): Ui =>
+  h.h2
+    .class(cn("pb-2 text-sm font-medium text-foreground", className))
+    .attr("data-slot", "section-header")
+    .children(text);
 
 /** Explanatory text under a grouped list (iOS section footer). */
-export const sectionFooter = <M>(text: Child, h: HtmlBuilder<M>): Html =>
-  h.p([h.Class("pt-2 text-sm leading-relaxed text-muted-foreground")], [text]);
+export const sectionFooter = <M>(text: Child, h: H<M>): Ui =>
+  h.p.class("pt-2 text-sm leading-relaxed text-muted-foreground").children(text);
 
 /**
  * Inset grouped list (SwiftUI `List` with `.insetGrouped`). Children are rows;
@@ -81,45 +78,42 @@ export const groupedList = <M>(
     /** Plain groups arrange controls without painting a Card surface. */
     surface?: "card" | "plain";
     className?: string;
-    attributes?: Attrs<M>;
+    attrs?: Attrs;
     /** Role and attributes for the list element itself (e.g. radiogroup + its name). */
     role?: string;
-    listAttributes?: Attrs<M>;
+    listAttrs?: Attrs;
   }>,
-  rows: ReadonlyArray<Html>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.section(
-    [h.Class("flex flex-col"), ...(config.attributes ?? [])],
-    [
-      ...(config.header === undefined ? [] : [sectionHeader(config.header, h)]),
-      h.div(
-        [
-          h.Class(
-            cn(
-              config.surface === "plain" ? "flex flex-col" : cardClass,
-              "gap-0 py-0 divide-y divide-border",
-              config.className,
-            ),
+  rows: ReadonlyArray<Ui>,
+  h: H<M>,
+): Ui =>
+  h.section
+    .class("flex flex-col")
+    .attrs(config.attrs ?? {})
+    .children(
+      config.header === undefined ? [] : [sectionHeader(config.header, h)],
+      h.div
+        .class(
+          cn(
+            config.surface === "plain" ? "flex flex-col" : cardClass,
+            "gap-0 py-0 divide-y divide-border",
+            config.className,
           ),
-          ...(config.role !== undefined ? [h.Role(config.role)] : []),
-          ...(config.listAttributes ?? []),
-          h.DataAttribute("slot", "grouped-list"),
-          h.DataAttribute("surface", config.surface ?? "card"),
-        ],
-        rows,
-      ),
-      ...(config.footer === undefined ? [] : [sectionFooter(config.footer, h)]),
-    ],
-  );
+        )
+        .attr("role", config.role)
+        .attrs(config.listAttrs ?? {})
+        .attr("data-slot", "grouped-list")
+        .attr("data-surface", config.surface ?? "card")
+        .children(rows),
+      config.footer === undefined ? [] : [sectionFooter(config.footer, h)],
+    );
 
 export type RowConfig<M> = Readonly<{
   title: Child;
   subtitle?: Child;
   /** Trailing value text (iOS "detail" label). */
   value?: Child;
-  leading?: Html;
-  trailing?: Html;
+  leading?: Ui;
+  trailing?: Ui;
   /** Navigation affordance. */
   href?: string;
   onClick?: M;
@@ -127,7 +121,9 @@ export type RowConfig<M> = Readonly<{
   destructive?: boolean;
   isDisabled?: boolean;
   className?: string;
-  attributes?: Attrs<M>;
+  attrs?: Attrs;
+  /** Keyboard handler; a returned message also cancels the key's default. */
+  onKeyDown?: (key: string) => M | undefined;
   /** Lazy rows skip paint when off-screen; use for long lists. */
   lazy?: boolean;
   /** Stack the value under the title and let both wrap (long answers). */
@@ -136,50 +132,45 @@ export type RowConfig<M> = Readonly<{
   key?: string;
 }>;
 
-const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: HtmlBuilder<M>): Array<Child> => [
+const rowContent = <M>(config: RowConfig<M>, chevron: boolean, h: H<M>): Array<Child> => [
   ...(config.leading === undefined
     ? []
-    : [h.span([h.Class("shrink-0 text-muted-foreground")], [config.leading])]),
-  h.span(
-    [h.Class("flex min-w-0 flex-1 flex-col")],
-    [
-      // dir="auto" so right-to-left names truncate at their end, not their start.
-      h.span(
-        [h.Class(cn(itemTitleClass, "block max-w-full truncate")), h.Dir("auto")],
-        [config.title],
-      ),
-      ...(config.subtitle === undefined
+    : [h.span.class("shrink-0 text-muted-foreground").children(config.leading)]),
+  h.span
+    .class("flex min-w-0 flex-1 flex-col")
+    .children(
+      h.span
+        .class(cn(itemTitleClass, "block max-w-full truncate"))
+        .attr("dir", "auto")
+        .children(config.title),
+      config.subtitle === undefined
         ? []
         : [
-            h.span(
-              [h.Class(cn(itemDescriptionClass, "truncate")), h.Dir("auto")],
-              [config.subtitle],
-            ),
-          ]),
-    ],
-  ),
+            h.span
+              .class(cn(itemDescriptionClass, "truncate"))
+              .attr("dir", "auto")
+              .children(config.subtitle),
+          ],
+    ),
   ...(config.value === undefined
     ? []
     : [
-        h.span(
-          [
-            h.Class(
-              config.wrap === true
-                ? "basis-full whitespace-pre-wrap break-words text-muted-foreground"
-                : "shrink-0 max-w-[55%] truncate text-right text-muted-foreground tabular",
-            ),
-          ],
-          [config.value],
-        ),
+        h.span
+          .class(
+            config.wrap === true
+              ? "basis-full whitespace-pre-wrap break-words text-muted-foreground"
+              : "shrink-0 max-w-[55%] truncate text-right text-muted-foreground tabular",
+          )
+          .children(config.value),
       ]),
-  ...(config.trailing === undefined ? [] : [h.span([h.Class("shrink-0")], [config.trailing])]),
+  ...(config.trailing === undefined ? [] : [h.span.class("shrink-0").children(config.trailing)]),
   ...(chevron ? [icon(h, ChevronRight, "size-5 shrink-0 text-muted-foreground/60 -mr-1")] : []),
 ];
 
 /**
  * A row in a grouped list: 44pt minimum, whole row tappable when it navigates.
  */
-export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
+export const row = <M>(config: RowConfig<M>, h: H<M>): Ui => {
   const interactive = config.href !== undefined || config.onClick !== undefined;
   const chevron = config.chevron ?? config.href !== undefined;
   const classes = cn(
@@ -194,35 +185,37 @@ export const row = <M>(config: RowConfig<M>, h: HtmlBuilder<M>): Html => {
     config.className,
   );
   const body = rowContent(config, chevron, h);
-  const extra = config.attributes ?? [];
+  const extra = config.attrs ?? {};
+  const { key, onKeyDown } = config;
   // Keyed rows keep their DOM node (and keyboard focus) when rows are inserted above.
-  const { key } = config;
-  const element = (tag: "a" | "button" | "div") =>
-    key === undefined ? h[tag] : (...args: Parameters<typeof h.div>) => h.keyed(tag)(key, ...args);
+  const finish = <B extends Element<M>>(builder: B): B => {
+    const keyed = key === undefined ? builder : builder.key(key);
+    return onKeyDown === undefined
+      ? keyed
+      : keyed.on("keydown", ({ key: pressed }) => onKeyDown(pressed), {
+          preventDefault: true,
+        });
+  };
   if (config.href !== undefined) {
-    return element("a")([h.Class(classes), h.Href(config.href), ...extra], body);
+    return finish(h.a.class(classes).attr("href", config.href).attrs(extra)).children(body);
   }
   if (config.onClick !== undefined) {
-    return element("button")(
-      [
-        h.Type("button"),
-        h.Class(classes),
-        h.Disabled(config.isDisabled ?? false),
-        h.OnClick(config.onClick),
-        ...extra,
-      ],
-      body,
-    );
+    return finish(
+      h.button
+        .attr("type", "button")
+        .class(classes)
+        .disabled(config.isDisabled ?? false)
+        .on("click", config.onClick)
+        .attrs(extra),
+    ).children(body);
   }
-  return element("div")([h.Class(classes), ...extra], body);
+  return finish(h.div.class(classes).attrs(extra)).children(body);
 };
 
 /** Free-form row that hosts a form control (input, textarea, switch). */
-export const controlRow = <M>(
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-  className?: string,
-): Html => h.div([h.Class(cn(itemSizes.default, "flex flex-col", className))], children);
+// Returns the element, not `Ui`, so a row among keyed siblings can take a `.key`.
+export const controlRow = <M>(children: ReadonlyArray<Child>, h: H<M>, className?: string) =>
+  h.div.class(cn(itemSizes.default, "flex flex-col", className)).children(children);
 
 /** Chip-style status label. */
 export const statusPill = <M>(
@@ -231,8 +224,8 @@ export const statusPill = <M>(
     className?: string;
   }>,
   children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui => {
   const tone = config.tone ?? "neutral";
   const tones = {
     neutral: "bg-muted text-muted-foreground",
@@ -263,8 +256,8 @@ export const choiceRows = <M>(
     footer?: Child;
     choices: ReadonlyArray<Choice<M>>;
   }>,
-  h: HtmlBuilder<M>,
-): Html => {
+  h: H<M>,
+): Ui => {
   const choices = config.choices;
   const selectedIndex = Option.getOrElse(
     Array.findFirstIndex(choices, (choice) => choice.selected),
@@ -277,7 +270,7 @@ export const choiceRows = <M>(
       header: config.header,
       footer: config.footer,
       role: "radiogroup",
-      listAttributes: [h.AriaLabel(config.label)],
+      listAttrs: { "aria-label": config.label },
     },
     Array.map(choices, (choice, index) =>
       row(
@@ -292,28 +285,28 @@ export const choiceRows = <M>(
             : "py-3",
           trailing: choice.selected
             ? icon(h, Check, "size-5 shrink-0 text-primary")
-            : h.span([h.Class("block size-5 shrink-0"), h.AriaHidden(true)]),
-          attributes: [
-            h.Role("radio"),
-            h.AriaChecked(choice.selected),
-            h.Tabindex(index === selectedIndex ? 0 : -1),
-            h.OnKeyDownPreventDefault((key) => {
-              switch (key) {
-                case "ArrowDown":
-                case "ArrowRight":
-                  return Option.some(at(index + 1).onSelect);
-                case "ArrowUp":
-                case "ArrowLeft":
-                  return Option.some(at(index - 1).onSelect);
-                case "Home":
-                  return Option.some(at(0).onSelect);
-                case "End":
-                  return Option.some(at(choices.length - 1).onSelect);
-                default:
-                  return Option.none();
-              }
-            }),
-          ],
+            : h.span.class("block size-5 shrink-0").attr("aria-hidden", String(true)),
+          attrs: {
+            role: "radio",
+            "aria-checked": String(choice.selected),
+            tabindex: index === selectedIndex ? "0" : "-1",
+          },
+          onKeyDown: (key) => {
+            switch (key) {
+              case "ArrowDown":
+              case "ArrowRight":
+                return at(index + 1).onSelect;
+              case "ArrowUp":
+              case "ArrowLeft":
+                return at(index - 1).onSelect;
+              case "Home":
+                return at(0).onSelect;
+              case "End":
+                return at(choices.length - 1).onSelect;
+              default:
+                return undefined;
+            }
+          },
         },
         h,
       ),

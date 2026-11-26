@@ -1,4 +1,3 @@
-import type { AppServices } from "./services";
 import { pipe, Result, Schema, String } from "effect";
 import {
   actionError,
@@ -14,7 +13,6 @@ import {
   ApplyColorScheme,
   applyPlan,
   GeneratePlaceholderName,
-  NavigateExternal,
   NavigateInternal,
   ReplyToAgent,
   SaveAccent,
@@ -25,12 +23,10 @@ import {
   SaveStyle,
   SaveTheme,
 } from "./commands";
-import type { Update } from "foldkit";
-import { toString as urlToString } from "foldkit/url";
-import { Message, type MessageHandlers } from "../messages";
+import { Message, type MessageHandlers, type UpdateResult } from "../messages";
 import { activeSessionOf, type Model } from "./model";
 
-type Result = Update.Return<Model, Message, AppServices>;
+type Result = UpdateResult<Model>;
 type AllHandlers = MessageHandlers<Result>;
 
 type AgentHandlers = Pick<AllHandlers, "AgentRequest">;
@@ -41,7 +37,7 @@ const perform = (
   dispatch: (model: Model, message: Message) => Result,
 ): Result => {
   if (operation._tag === "Navigate") {
-    return { model, commands: [NavigateInternal({ url: hrefFor(operation.route) })] };
+    return { model, commands: [NavigateInternal.make({ url: hrefFor(operation.route) })] };
   }
   const result = dispatch(model, operation);
   if (operation._tag !== "ChangedFieldValue") return result;
@@ -77,7 +73,7 @@ export const agentHandlers = (
       model: result.model,
       commands: [
         ...commands,
-        ReplyToAgent({
+        ReplyToAgent.make({
           reply: {
             requestId,
             state: result.model,
@@ -98,7 +94,7 @@ type LookMessage =
 
 /** Look and control size: applied by their save commands, like font. */
 const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
-  SelectedLook: ({ look }) => ({ model: { ...model, look }, commands: [SaveLook({ look })] }),
+  SelectedLook: ({ look }) => ({ model: { ...model, look }, commands: [SaveLook.make({ look })] }),
   ChangedGrid: ({ grid, state }) => ({
     model:
       grid === "history" ? { ...model, historyGrid: state } : { ...model, templatesGrid: state },
@@ -108,7 +104,7 @@ const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
   }),
   SelectedControlSize: ({ controlSize }) => ({
     model: { ...model, controlSize },
-    commands: [SaveControlSize({ controlSize })],
+    commands: [SaveControlSize.make({ controlSize })],
   }),
   ControlSizeSaveFinished: ({ controlSize, saved }) => ({
     model: controlSize === model.controlSize ? { ...model, controlSizeSaveFailed: !saved } : model,
@@ -128,7 +124,7 @@ const appUpdateHandlers = (model: Model): Pick<AllHandlers, AppUpdateMessage> =>
     const flushed = applyPlan(model, { _tag: "FlushRequested" });
     return {
       model: { ...flushed.model, appUpdate: "applying" },
-      commands: [...(flushed.commands ?? []), ReloadForUpdate()],
+      commands: [...(flushed.commands ?? []), ReloadForUpdate.make({})],
     };
   },
 });
@@ -195,14 +191,11 @@ const routeHandlers = (model: Model): Pick<AllHandlers, RouteMessage> => ({
     }
     // Offer a fresh suggested name on entry; preserve any explicitly typed name.
     if (route._tag === "StartTab" && activeSessionOf(base) === null) {
-      return { model: base, commands: [GeneratePlaceholderName()] };
+      return { model: base, commands: [GeneratePlaceholderName.make({})] };
     }
     return { model: base };
   },
-  ClickedLink: ({ request }) => {
-    if (request._tag !== "Internal")
-      return { model, commands: [NavigateExternal({ href: request.href })] };
-    const url = urlToString(request.url);
+  ClickedLink: ({ url }) => {
     // Leaving the template editor with unsaved changes asks first; the
     // requested destination is kept and used once the discard is confirmed.
     if (
@@ -218,7 +211,7 @@ const routeHandlers = (model: Model): Pick<AllHandlers, RouteMessage> => ({
         },
       };
     }
-    return { model, commands: [NavigateInternal({ url })] };
+    return { model, commands: [NavigateInternal.make({ url })] };
   },
 });
 
@@ -244,24 +237,21 @@ type ShellHandlers = Pick<
   | AppUpdateMessage
   | RouteMessage
   | "FailedDetailLoad"
-  | "Navigated"
-  | "CompletedReplyToAgent"
-  | "SettledSheet"
   | "SupersededStyleSave"
 >;
 export const shellHandlers = (model: Model): ShellHandlers => ({
   SelectedTheme: ({ theme }) => ({
     model: { ...model, theme },
     commands: [
-      ApplyColorScheme({ dark: isDarkTheme(theme, model.systemPrefersDark) }),
-      SaveTheme({ theme }),
+      ApplyColorScheme.make({ dark: isDarkTheme(theme, model.systemPrefersDark) }),
+      SaveTheme.make({ theme }),
     ],
   }),
   ChangedSystemColorScheme: ({ prefersDark }) => {
     const next = { ...model, systemPrefersDark: prefersDark };
     // A fixed light or dark choice ignores the system scheme.
     if (model.theme !== "auto") return { model: next };
-    return { model: next, commands: [ApplyColorScheme({ dark: prefersDark })] };
+    return { model: next, commands: [ApplyColorScheme.make({ dark: prefersDark })] };
   },
   AppliedColorScheme: () => ({ model }),
   ...appUpdateHandlers(model),
@@ -270,7 +260,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   }),
   SelectedStyle: ({ style }) => ({
     model: { ...model, style },
-    commands: [SaveStyle({ style })],
+    commands: [SaveStyle.make({ style })],
   }),
   StyleSaveFinished: ({ style, appliedStyle, saved, loadFailed }) => ({
     model:
@@ -285,21 +275,21 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   }),
   SelectedFont: ({ font }) => ({
     model: { ...model, font },
-    commands: [SaveFont({ font })],
+    commands: [SaveFont.make({ font })],
   }),
   FontSaveFinished: ({ font, saved }) => ({
     model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
   }),
   SelectedIconLibrary: ({ library }) => ({
     model: { ...model, iconLibrary: library },
-    commands: [SaveIconLibrary({ library })],
+    commands: [SaveIconLibrary.make({ library })],
   }),
   IconLibrarySaveFinished: ({ library, saved }) => ({
     model: library === model.iconLibrary ? { ...model, iconLibrarySaveFailed: !saved } : model,
   }),
   SelectedAccent: ({ accent }) => ({
     model: { ...model, accent, accentDraft: null },
-    commands: [SaveAccent({ accent })],
+    commands: [SaveAccent.make({ accent })],
   }),
   OpenedAccentPicker: () => ({
     model: {
@@ -316,7 +306,7 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     const accent = String.toLowerCase(model.accentDraft);
     return {
       model: { ...model, accent, accentDraft: null },
-      commands: [SaveAccent({ accent })],
+      commands: [SaveAccent.make({ accent })],
     };
   },
   AccentSaveFinished: ({ accent, saved }) => ({
@@ -324,9 +314,6 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
   }),
   ...lookHandlers(model),
   ...routeHandlers(model),
-  Navigated: () => ({ model }),
   FailedDetailLoad: () => ({ model: { ...model, detailLoadFailed: true } }),
-  CompletedReplyToAgent: () => ({ model }),
-  SettledSheet: () => ({ model }),
   SupersededStyleSave: () => ({ model }),
 });

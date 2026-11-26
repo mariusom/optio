@@ -1,5 +1,5 @@
 import { Array } from "effect";
-import type { HtmlBuilder } from "foldkit/html";
+import type { H } from "@/lib/view";
 
 import { choiceRows, groupedList, notice, page, row } from "@/components/app";
 import { button } from "@/components/ui/button";
@@ -60,7 +60,7 @@ const unsavedNotices = (options: FailureOptions): ReadonlyArray<string> => {
   return Array.flatMap(notices, ([failed, text]) => (failed ? [text] : []));
 };
 
-const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
+const failureNotices = (options: FailureOptions, h: H<Message>) => [
   ...(options.themeSaveFailed
     ? [
         notice(
@@ -84,29 +84,24 @@ const failureNotices = (options: FailureOptions, h: HtmlBuilder<Message>) => [
   ...Array.map(unsavedNotices(options), (text) => notice({ tone: "warning", text }, h)),
 ];
 
-const helpAndAbout = (h: HtmlBuilder<Message>) =>
-  h.details(
-    [h.Class("rounded-lg border border-border")],
-    [
-      h.summary(
-        [
-          h.Class(
-            "min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
-          ),
-        ],
-        ["Help & about"],
-      ),
-      h.div(
-        [h.Class("border-t border-border divide-y divide-border")],
-        [
+const helpAndAbout = (h: H<Message>) =>
+  h.details
+    .class("rounded-lg border border-border")
+    .children(
+      h.summary
+        .class(
+          "min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring",
+        )
+        .children("Help & about"),
+      h.div
+        .class("border-t border-border divide-y divide-border")
+        .children(
           row({ title: "Use with AI", href: hrefFor({ _tag: "AgentHelp" }) }, h),
           row({ title: "About Optio", href: hrefFor({ _tag: "About" }) }, h),
-        ],
-      ),
-    ],
-  );
+        ),
+    );
 
-const privacy = (h: HtmlBuilder<Message>) =>
+const privacy = (h: H<Message>) =>
   groupedList(
     {
       header: "Privacy",
@@ -141,68 +136,65 @@ type SettingsModel = FailureOptions &
   }>;
 
 /** One settings column; columns sit side by side from 1280px (xl). */
-const column = (children: Parameters<typeof page>[1], h: HtmlBuilder<Message>) =>
-  h.div([h.Class("flex min-w-0 flex-col gap-6")], children);
+const column = (children: Parameters<typeof page>[1], h: H<Message>) =>
+  h.div.class("flex min-w-0 flex-col gap-6").children(children);
 
 /**
  * Settings reads top to bottom on phones; from 1280px the same order flows
  * into two columns (look and colour, then type, symbols, shape and info), so
  * reading and tab order still finish one column before starting the next.
  */
-export const settingsPage = (model: SettingsModel, h: HtmlBuilder<Message>) =>
+export const settingsPage = (model: SettingsModel, h: H<Message>) =>
   page(
     { wide: "xl" },
     [
-      h.div(
-        [h.Class("grid gap-6 xl:grid-cols-2 xl:items-start xl:gap-8")],
-        [
-          column(
-            [
-              lookRows(model.look, h),
-              themeControl(model.theme, h),
-              accentRows(model.accent, h),
-              controlSizeRow(model.controlSize, h),
-            ],
-            h,
-          ),
-          column(
-            [
-              choiceRows(
-                {
-                  label: "Font",
-                  header: "Font",
-                  footer: "Uses fonts already available on your device.",
-                  choices: Array.map(FONTS, (option) => ({
-                    label: option.label,
-                    selected: model.font === option.value,
-                    onSelect: Message.SelectedFont({ font: option.value }),
-                  })),
-                },
-                h,
-              ),
-              iconLibraryControl(model.iconLibrary, h),
-              choiceRows(
-                {
-                  label: "Component style",
-                  header: "Component style",
-                  footer:
-                    "Changes component shape, spacing and typography independently of appearance.",
-                  choices: Array.map(STYLES, (option) => ({
-                    label: option.label,
-                    selected: model.style === option.value,
-                    onSelect: Message.SelectedStyle({ style: option.value }),
-                  })),
-                },
-                h,
-              ),
-              ...failureNotices(model, h),
-              backupSection(model, h),
-              privacy(h),
-              helpAndAbout(h),
-            ],
-            h,
-          ),
-        ],
+      h.div.class("grid gap-6 xl:grid-cols-2 xl:items-start xl:gap-8").children(
+        column(
+          [
+            lookRows(model.look, h),
+            themeControl(model.theme, h),
+            accentRows(model.accent, h),
+            controlSizeRow(model.controlSize, h),
+          ],
+          h,
+        ),
+        column(
+          [
+            choiceRows(
+              {
+                label: "Font",
+                header: "Font",
+                footer: "Uses fonts already available on your device.",
+                choices: Array.map(FONTS, (option) => ({
+                  label: option.label,
+                  selected: model.font === option.value,
+                  onSelect: Message.SelectedFont({ font: option.value }),
+                })),
+              },
+              h,
+            ),
+            iconLibraryControl(model.iconLibrary, h),
+            choiceRows(
+              {
+                label: "Component style",
+                header: "Component style",
+                footer:
+                  "Changes component shape, spacing and typography independently of appearance.",
+                choices: Array.map(STYLES, (option) => ({
+                  label: option.label,
+                  selected: model.style === option.value,
+                  onSelect: Message.SelectedStyle({ style: option.value }),
+                })),
+              },
+              h,
+            ),
+            ...failureNotices(model, h),
+            backupSection(model, h),
+            privacy(h),
+            helpAndAbout(h),
+          ],
+          h,
+        ),
       ),
       ...accentPicker(model.accentDraft, h),
       ...resetStorageSheet(model, h),

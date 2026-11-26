@@ -1,4 +1,4 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import type { IconNode } from "lucide";
 import { Array } from "effect";
 
@@ -48,30 +48,26 @@ const activeTab = (route: Route): TabTag =>
  * hash routing. Hidden at md+ where the sidebar takes over, and on full-screen
  * routes (the live session). No glass refraction: a translucent surface only.
  */
-export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
+export const tabBar = <M>(route: Route, h: H<M>): Ui => {
   const tabs = navigationTabs;
   const current = activeTab(route);
-  return h.nav(
-    [
-      h.Class(
-        "md:hidden pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] select-none",
-      ),
-      h.AriaLabel("Tabs"),
-      h.DataAttribute("slot", "tab-bar"),
-    ],
-    [
-      h.div(
-        [
-          h.Class(
-            "pointer-events-auto mx-auto flex h-16 max-w-md items-stretch gap-1 rounded-full border border-border/70 bg-card/85 p-1 shadow-lg shadow-black/10 backdrop-blur-xl",
-          ),
-          h.DataAttribute("slot", "tab-bar-capsule"),
-        ],
-        Array.map(tabs, (tab) => {
-          const active = current === tab.tag;
-          return h.a(
-            [
-              h.Class(
+  return h.nav
+    .class(
+      "md:hidden pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] select-none",
+    )
+    .attr("aria-label", "Tabs")
+    .attr("data-slot", "tab-bar")
+    .children(
+      h.div
+        .class(
+          "pointer-events-auto mx-auto flex h-16 max-w-md items-stretch gap-1 rounded-full border border-border/70 bg-card/85 p-1 shadow-lg shadow-black/10 backdrop-blur-xl",
+        )
+        .attr("data-slot", "tab-bar-capsule")
+        .children(
+          Array.map(tabs, (tab) => {
+            const active = current === tab.tag;
+            return h.a
+              .class(
                 cn(
                   "flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring active:scale-[0.97] motion-reduce:active:scale-100",
                   // The inner capsule marks the current tab beyond colour alone.
@@ -79,27 +75,21 @@ export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
                     ? "bg-primary/12 text-primary"
                     : "text-muted-foreground hover:text-foreground",
                 ),
-              ),
-              h.Href(hrefFor({ _tag: tab.tag })),
-              h.AriaLabel(tab.label),
-              ...(active ? [h.AriaCurrent("page")] : []),
-            ],
-            [
-              icon(h, tab.icon, "size-6 shrink-0"),
-              h.span(
-                [
-                  h.Class(
+              )
+              .attr("href", hrefFor({ _tag: tab.tag }))
+              .attr("aria-label", tab.label)
+              .attr("aria-current", active ? "page" : undefined)
+              .children(
+                icon(h, tab.icon, "size-6 shrink-0"),
+                h.span
+                  .class(
                     cn("text-[0.625rem] leading-none", active ? "font-semibold" : "font-medium"),
-                  ),
-                ],
-                [tab.label],
-              ),
-            ],
-          );
-        }),
-      ),
-    ],
-  );
+                  )
+                  .children(tab.label),
+              );
+          }),
+        ),
+    );
 };
 
 // ── Tablet / desktop: sidebar ─────────────────────────────────────────────
@@ -109,118 +99,94 @@ export const tabBar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
  * tablets, a labeled column on wide screens. Same links, same order as the
  * tab bar, so nothing moves when the device rotates or the window grows.
  */
-export const sidebar = <M>(route: Route, h: HtmlBuilder<M>): Html => {
+export const sidebar = <M>(route: Route, h: H<M>): Ui => {
   const tabs = navigationTabs;
   const current = activeTab(route);
-  return h.aside(
-    [
-      h.Class(
-        "hidden md:flex fixed inset-y-0 left-0 z-30 w-[4.5rem] xl:w-60 flex-col border-r border-border/70 bg-sidebar px-2 xl:px-3 pt-safe",
-      ),
-      h.DataAttribute("slot", "sidebar"),
-    ],
-    [
-      h.a(
-        [
-          h.Class(
-            "mt-4 mb-6 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent/60 xl:mx-0 justify-center xl:justify-start",
-          ),
-          h.Href(hrefFor({ _tag: "StartTab" })),
-        ],
-        [
-          h.span(
-            [
-              h.Class(
-                "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground text-xl font-semibold leading-none",
-              ),
-              h.AriaHidden(true),
-            ],
-            ["o"],
-          ),
-          // Named by its content, "optio home": the brand is screen-reader-only
-          // below 1280px, so voice control can say what it sees.
-          h.span(
-            [h.Class("sr-only xl:not-sr-only xl:block")],
-            [
-              h.span(
-                [h.Class("block text-base font-semibold tracking-tight")],
-                ["optio", h.span([h.Class("sr-only")], [" home"])],
-              ),
-              // Decorative tagline, not part of the link's name.
-              h.span(
-                [h.Class("block text-[0.6875rem] text-muted-foreground"), h.AriaHidden(true)],
-                ["Time & motion studies"],
-              ),
-            ],
-          ),
-        ],
-      ),
-      h.nav(
-        [h.Class("flex flex-col gap-1"), h.AriaLabel("Sections")],
-        Array.map(tabs, (tab) => {
-          const active = current === tab.tag;
-          return h.a(
-            [
-              h.Class(
+  return h.aside
+    .class(
+      "hidden md:flex fixed inset-y-0 left-0 z-30 w-[4.5rem] xl:w-60 flex-col border-r border-border/70 bg-sidebar px-2 xl:px-3 pt-safe",
+    )
+    .attr("data-slot", "sidebar")
+    .children(
+      h.a
+        .class(
+          "mt-4 mb-6 flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-sidebar-accent/60 xl:mx-0 justify-center xl:justify-start",
+        )
+        .attr("href", hrefFor({ _tag: "StartTab" }))
+        .children(
+          h.span
+            .class(
+              "grid size-9 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground text-xl font-semibold leading-none",
+            )
+            .attr("aria-hidden", String(true))
+            .children("o"),
+          h.span
+            .class("sr-only xl:not-sr-only xl:block")
+            .children(
+              h.span
+                .class("block text-base font-semibold tracking-tight")
+                .children("optio", h.span.class("sr-only").children(" home")),
+              h.span
+                .class("block text-[0.6875rem] text-muted-foreground")
+                .attr("aria-hidden", String(true))
+                .children("Time & motion studies"),
+            ),
+        ),
+      h.nav
+        .class("flex flex-col gap-1")
+        .attr("aria-label", "Sections")
+        .children(
+          Array.map(tabs, (tab) => {
+            const active = current === tab.tag;
+            return h.a
+              .class(
                 cn(
                   "flex min-h-11 items-center gap-3 rounded-lg px-2.5 text-sm font-medium transition-colors justify-center xl:justify-start",
                   active
                     ? "bg-primary/10 font-semibold text-primary"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                 ),
+              )
+              .attr("href", hrefFor({ _tag: tab.tag }))
+              .attr("aria-label", tab.label)
+              .attr("title", tab.label)
+              .attr("aria-current", active ? "page" : undefined)
+              .children(
+                icon(h, tab.icon, "size-5 shrink-0"),
+                h.span.class("hidden xl:inline").children(tab.label),
+              );
+          }),
+        ),
+      h.div.class("mt-auto mb-4 flex flex-col gap-1 border-t border-border/70 pt-2").children(
+        h.a
+          .class(
+            "flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring xl:justify-start",
+          )
+          .attr("href", "https://github.com/mariusom/optio")
+          .attr("target", "_blank")
+          .attr("rel", "noopener noreferrer")
+          .attr("aria-label", "Optio on GitHub (opens in a new tab)")
+          .attr("title", "Optio on GitHub")
+          .children(
+            h
+              .el("svg")
+              .attr("class", "size-5 shrink-0")
+              .attr("viewBox", "0 0 16 16")
+              .attr("fill", "currentColor")
+              .attr("aria-hidden", String(true))
+              .children(
+                h
+                  .el("path")
+                  .attr(
+                    "d",
+                    "M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656",
+                  ),
               ),
-              h.Href(hrefFor({ _tag: tab.tag })),
-              h.AriaLabel(tab.label),
-              h.Title(tab.label),
-              ...(active ? [h.AriaCurrent("page")] : []),
-            ],
-            [
-              icon(h, tab.icon, "size-5 shrink-0"),
-              h.span([h.Class("hidden xl:inline")], [tab.label]),
-            ],
-          );
-        }),
-      ),
-      h.div(
-        [h.Class("mt-auto mb-4 flex flex-col gap-1 border-t border-border/70 pt-2")],
-        [
-          h.a(
-            [
-              h.Class(
-                "flex min-h-11 items-center justify-center gap-3 rounded-lg px-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring xl:justify-start",
-              ),
-              h.Href("https://github.com/mariusom/optio"),
-              h.Target("_blank"),
-              h.Rel("noopener noreferrer"),
-              h.AriaLabel("Optio on GitHub (opens in a new tab)"),
-              h.Title("Optio on GitHub"),
-            ],
-            [
-              // GitHub's mark-github-16 from primer/octicons (MIT).
-              h.svg(
-                [
-                  h.Class("size-5 shrink-0"),
-                  h.ViewBox("0 0 16 16"),
-                  h.Fill("currentColor"),
-                  h.AriaHidden(true),
-                ],
-                [
-                  h.path([
-                    h.D(
-                      "M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656",
-                    ),
-                  ]),
-                ],
-              ),
-              h.span([h.Class("hidden xl:inline")], ["GitHub"]),
-            ],
+            h.span.class("hidden xl:inline").children("GitHub"),
           ),
-          h.p(
-            [h.Class("hidden xl:block px-2.5 text-xs leading-relaxed text-muted-foreground")],
-            ["Studies stored in this browser."],
-          ),
-        ],
+        h.p
+          .class("hidden xl:block px-2.5 text-xs leading-relaxed text-muted-foreground")
+          .children("Studies stored in this browser."),
       ),
-    ],
-  );
+    );
 };

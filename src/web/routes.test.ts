@@ -1,8 +1,6 @@
-import { Option } from "effect";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  historyRouter,
   hrefFor,
   parseRoute,
   RouteSchema,
@@ -13,50 +11,30 @@ import {
   TemplateEditor,
   TemplatesTab,
 } from "./routes";
-import type { Url } from "foldkit/url";
-
-const urlWithHash = (hash: string | null): Url => ({
-  protocol: "https:",
-  host: "example.com",
-  port: Option.none(),
-  pathname: "/optio/",
-  search: Option.none(),
-  hash: hash === null ? Option.none() : Option.some(hash),
-});
-
 describe("parseRoute", () => {
   it("lands unknown or empty hashes on the Start tab", () => {
-    expect(parseRoute(urlWithHash(null))).toEqual(StartTab());
-    expect(parseRoute(urlWithHash(""))).toEqual(StartTab());
-    expect(parseRoute(urlWithHash("#/"))).toEqual(StartTab());
-    expect(parseRoute(urlWithHash("#/nonsense"))).toEqual(StartTab());
+    expect(parseRoute("")).toEqual(StartTab());
+    expect(parseRoute("")).toEqual(StartTab());
+    expect(parseRoute("#/")).toEqual(StartTab());
+    expect(parseRoute("#/nonsense")).toEqual(StartTab());
   });
 
   it("parses tab routes", () => {
-    expect(parseRoute(urlWithHash("#/start"))._tag).toBe("StartTab");
-    expect(parseRoute(urlWithHash("#/history"))._tag).toBe("HistoryTab");
-    expect(parseRoute(urlWithHash("#/templates"))._tag).toBe("TemplatesTab");
+    expect(parseRoute("#/start")._tag).toBe("StartTab");
+    expect(parseRoute("#/history")._tag).toBe("HistoryTab");
+    expect(parseRoute("#/templates")._tag).toBe("TemplatesTab");
   });
 
   it("parses parameterized routes", () => {
-    expect(parseRoute(urlWithHash("#/session/abc-123"))).toEqual(
-      SessionRunner({ sessionId: "abc-123" }),
-    );
-    expect(parseRoute(urlWithHash("#/templates/t-42"))).toEqual(
-      TemplateEditor({ templateId: "t-42" }),
-    );
-    expect(parseRoute(urlWithHash("#/history/s-9"))).toEqual(SessionDetail({ sessionId: "s-9" }));
+    expect(parseRoute("#/session/abc-123")).toEqual(SessionRunner({ sessionId: "abc-123" }));
+    expect(parseRoute("#/templates/t-42")).toEqual(TemplateEditor({ templateId: "t-42" }));
+    expect(parseRoute("#/history/s-9")).toEqual(SessionDetail({ sessionId: "s-9" }));
   });
 
   it("requires complete paths but ignores empty segments and preserves encoded IDs", () => {
-    expect(parseRoute(urlWithHash("#/session"))).toEqual(StartTab());
-    expect(parseRoute(urlWithHash("#/history/s-9/extra"))).toEqual(StartTab());
-    expect(parseRoute(urlWithHash("#//templates///t%2F42/"))).toEqual(
-      TemplateEditor({ templateId: "t%2F42" }),
-    );
-    expect(
-      parseRoute({ ...urlWithHash("#/history"), search: Option.some("?ignored=yes") }),
-    ).toEqual(HistoryTab());
+    expect(parseRoute("#/session")).toEqual(StartTab());
+    expect(parseRoute("#/history/s-9/extra")).toEqual(StartTab());
+    expect(parseRoute("#//templates///t%2F42/")).toEqual(TemplateEditor({ templateId: "t%2F42" }));
   });
 });
 
@@ -77,14 +55,13 @@ describe("hrefFor round-trips through parseRoute", () => {
     it(`round-trips ${route._tag}`, () => {
       const href = hrefFor(route);
       expect(href.startsWith("#")).toBe(true);
-      const url = urlWithHash(href);
-      expect(parseRoute(url)).toEqual(route);
+      expect(parseRoute(href)).toEqual(route);
     });
   }
 
   it("builds distinct hrefs for tabs", () => {
     const hrefs = routes.slice(0, 3).map(hrefFor);
     expect(new Set(hrefs).size).toBe(3);
-    expect(historyRouter()).toBe("/history");
+    expect(hrefFor(HistoryTab())).toBe("#/history");
   });
 });

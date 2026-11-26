@@ -14,12 +14,15 @@ import {
 describe("Foldcn component style", () => {
   it.effect("defaults invalid preferences and round-trips every style", () =>
     Effect.gen(function* () {
-      expect(yield* readStyle).toBe("nova");
+      const missing = yield* readStyle;
+      expect(missing).toBe("nova");
       const store = yield* KeyValueStore.KeyValueStore;
       yield* store.set("optio-foldcn-style", "unknown");
-      expect(yield* readStyle).toBe("nova");
+      const unknown = yield* readStyle;
+      expect(unknown).toBe("nova");
       yield* store.set("optio-foldcn-style", "default");
-      expect(yield* readStyle).toBe("nova");
+      const legacy = yield* readStyle;
+      expect(legacy).toBe("nova");
       for (const style of [
         "nova",
         "vega",
@@ -31,7 +34,8 @@ describe("Foldcn component style", () => {
         "rhea",
       ] as const) {
         yield* saveStyle(style);
-        expect(yield* readStyle).toBe(style);
+        const savedStyle = yield* readStyle;
+        expect(savedStyle).toBe(style);
       }
     }).pipe(Effect.provide(KeyValueStore.layerMemory)),
   );

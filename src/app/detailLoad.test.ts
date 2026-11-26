@@ -1,17 +1,16 @@
-import { Effect, Option, Stream } from "effect";
+import { Effect, Stream } from "effect";
 import { describe, expect, it } from "@effect/vitest";
-import { fromString } from "foldkit/url";
 import { beforeEach, vi } from "vite-plus/test";
 
-import { getStore, type AppStore } from "../livestore/client";
-import { init, subscriptions, update } from "../main";
+import { getStore, type AppStore } from "../store/client";
+import { init, update } from "../main";
+import { streamOf } from "./testSubscriptions";
 import { Message } from "../messages";
 import { HistoryTab } from "../web/routes";
 
-vi.mock("../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../store/client", () => ({ getStore: vi.fn() }));
 
-const at = (hash: string) =>
-  init(Option.getOrThrow(fromString(`https://optio.test/#${hash}`))).model;
+const at = (hash: string) => init(`#${hash}`).model;
 
 beforeEach(() => vi.resetAllMocks());
 
@@ -27,9 +26,10 @@ describe("detail pages when an item cannot be read", () => {
   it.effect("reports a failed session read instead of staying on “Opening…”", () =>
     Effect.gen(function* () {
       vi.mocked(getStore).mockResolvedValue(unreadableStore);
-      const messages = yield* subscriptions.historyDetail
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamOf(at("/history/s1"), "historyDetail").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
       expect(messages).toEqual([Message.FailedDetailLoad()]);
     }),
   );
@@ -37,9 +37,10 @@ describe("detail pages when an item cannot be read", () => {
   it.effect("reports a failed template read", () =>
     Effect.gen(function* () {
       vi.mocked(getStore).mockResolvedValue(unreadableStore);
-      const messages = yield* subscriptions.templateDetail
-        .dependenciesToStream({ templateId: "t1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamOf(at("/templates/t1"), "templateDetail").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
       expect(messages).toEqual([Message.FailedDetailLoad()]);
     }),
   );
@@ -47,9 +48,10 @@ describe("detail pages when an item cannot be read", () => {
   it.effect("reports an unopenable store as unavailable, not as a failed read", () =>
     Effect.gen(function* () {
       vi.mocked(getStore).mockRejectedValue(new Error("storage unavailable"));
-      const messages = yield* subscriptions.historyDetail
-        .dependenciesToStream({ sessionId: "s1" })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamOf(at("/history/s1"), "historyDetail").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
       expect(messages).toEqual([Message.StoreUnavailable()]);
     }),
   );
@@ -57,9 +59,10 @@ describe("detail pages when an item cannot be read", () => {
   it.effect("reports a failed list read so its page can offer a retry", () =>
     Effect.gen(function* () {
       vi.mocked(getStore).mockResolvedValue(unreadableStore);
-      const messages = yield* subscriptions.history
-        .dependenciesToStream({ attempt: 0 })
-        .pipe(Stream.take(1), Stream.runCollect);
+      const messages = yield* streamOf(at("/history"), "history").pipe(
+        Stream.take(1),
+        Stream.runCollect,
+      );
       expect(messages).toEqual([Message.FailedListRead({ list: "history" })]);
     }),
   );

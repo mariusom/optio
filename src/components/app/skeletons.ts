@@ -1,5 +1,5 @@
 import { Array, Match } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { cardClass } from "@/components/ui/card";
 import { itemSizes } from "@/components/ui/item";
@@ -15,47 +15,42 @@ export type SkeletonBlock =
   /** A full-width large button (`h-12`). */
   | Readonly<{ _tag: "Action" }>;
 
-const bar = <M>(className: string, h: HtmlBuilder<M>) => skeleton({ className }, [], h);
+const bar = <M>(className: string, h: H<M>) => skeleton({ className }, [], h);
 
 // Varied widths read as text rather than a grid of identical bars.
 const titleWidths = ["w-2/5", "w-1/2", "w-1/3", "w-3/5"];
 const subtitleWidths = ["w-1/4", "w-1/3", "w-1/5", "w-2/5"];
 
-const sectionHeader = <M>(h: HtmlBuilder<M>) => bar("mb-2 h-4 w-24", h);
+const sectionHeader = <M>(h: H<M>) => bar("mb-2 h-4 w-24", h);
 
-const listRow = <M>(index: number, subtitles: boolean, h: HtmlBuilder<M>) =>
-  h.div(
-    [h.Class(cn(itemSizes.default, "flex min-h-11 flex-col justify-center"))],
-    [
+const listRow = <M>(index: number, subtitles: boolean, h: H<M>) =>
+  h.div
+    .class(cn(itemSizes.default, "flex min-h-11 flex-col justify-center"))
+    .children(
       bar(cn("h-4", titleWidths[index % titleWidths.length]), h),
-      ...(subtitles
-        ? [bar(cn("mt-1.5 h-3", subtitleWidths[index % subtitleWidths.length]), h)]
-        : []),
-    ],
-  );
+      subtitles ? [bar(cn("mt-1.5 h-3", subtitleWidths[index % subtitleWidths.length]), h)] : [],
+    );
 
-const controlRow = <M>(h: HtmlBuilder<M>) =>
-  h.div([h.Class("flex flex-col gap-2")], [bar("h-4 w-28", h), bar("h-11 w-full", h)]);
+const controlRow = <M>(h: H<M>) =>
+  h.div.class("flex flex-col gap-2").children(bar("h-4 w-28", h), bar("h-11 w-full", h));
 
 const indexesOf = (rows: number) => globalThis.Array.from({ length: rows }, (_, index) => index);
 
-const block = <M>(config: SkeletonBlock, h: HtmlBuilder<M>): Html =>
+const block = <M>(config: SkeletonBlock, h: H<M>): Ui =>
   Match.valueTags(config, {
     List: ({ rows, subtitles }) =>
-      h.div(
-        [h.Class("flex flex-col")],
-        [
+      h.div
+        .class("flex flex-col")
+        .children(
           sectionHeader(h),
-          h.div(
-            [h.Class(cn(cardClass, "gap-0 py-0 divide-y divide-border"))],
-            Array.map(indexesOf(rows), (index) => listRow(index, subtitles ?? false, h)),
-          ),
-        ],
-      ),
+          h.div
+            .class(cn(cardClass, "gap-0 py-0 divide-y divide-border"))
+            .children(Array.map(indexesOf(rows), (index) => listRow(index, subtitles ?? false, h))),
+        ),
     Controls: ({ rows }) =>
-      h.div(
-        [h.Class("flex flex-col gap-4")],
-        [sectionHeader(h), ...Array.map(indexesOf(rows), () => controlRow(h))],
+      h.div.class("flex flex-col gap-4").children(
+        sectionHeader(h),
+        Array.map(indexesOf(rows), () => controlRow(h)),
       ),
     Action: () => bar("h-12 w-full", h),
   });
@@ -68,14 +63,17 @@ const block = <M>(config: SkeletonBlock, h: HtmlBuilder<M>): Html =>
  */
 export const skeletonPage = <M>(
   config: Readonly<{ label: string; blocks: ReadonlyArray<SkeletonBlock> }>,
-  h: HtmlBuilder<M>,
-): Html =>
+  h: H<M>,
+): Ui =>
   page(
     { className: "loading-reveal" },
     [
-      h.p([h.Class("sr-only"), h.Role("status")], [config.label]),
+      h.p.class("sr-only").attr("role", "status").children(config.label),
       ...Array.map(config.blocks, (item) =>
-        h.div([h.AriaHidden(true), h.DataAttribute("slot", "skeleton-block")], [block(item, h)]),
+        h.div
+          .attr("aria-hidden", String(true))
+          .attr("data-slot", "skeleton-block")
+          .children(block(item, h)),
       ),
     ],
     h,

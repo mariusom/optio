@@ -1,6 +1,6 @@
 import { Effect, Queue, Stream } from "effect";
 
-import { openStoreAccess, storeRecovered, type StoreAccess } from "../livestore/access";
+import { openStoreAccess, storeRecovered, type StoreAccess } from "../store/access";
 
 type Unsubscribe = () => void;
 

@@ -1,5 +1,5 @@
 import { Array } from "effect";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 
 import { Check, List, icon } from "@/components/app";
 import { progress, progressLabel } from "@/components/ui/progress";
@@ -23,7 +23,7 @@ import {
  * The live clock under the session name: a small task label and a large,
  * glanceable time. Not a live region: it would announce every second.
  */
-export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+export const sessionTimerView = (runner: RunnerState, h: H<Message>) => {
   const task = currentTask(runner);
   const isEditing = task !== null && task.isBeingEdited;
   const taskStart = task === null ? null : taskStartDate(task);
@@ -43,38 +43,31 @@ export const sessionTimerView = (runner: RunnerState, h: HtmlBuilder<Message>) =
         ? `Editing task ${task.orderIndex}`
         : `Task ${task.orderIndex}`;
 
-  return h.div(
-    [h.Class("flex min-w-0 items-center justify-center gap-2"), h.DataAttribute("slot", "timer")],
-    [
-      h.span(
-        [h.Class("flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground")],
-        [
-          h.span([
-            h.Class(
+  return h.div
+    .class("flex min-w-0 items-center justify-center gap-2")
+    .attr("data-slot", "timer")
+    .children(
+      h.span
+        .class("flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground")
+        .children(
+          h.span
+            .class(
               cn(
                 "size-2 shrink-0 rounded-full",
                 isEditing ? "bg-warning" : isRecording ? "bg-success animate-pulse" : "bg-border",
               ),
-            ),
-            h.AriaHidden(true),
-          ]),
+            )
+            .attr("aria-hidden", String(true)),
           label,
-        ],
-      ),
-      ...(isEditing
+        ),
+      isEditing
         ? []
         : [
-            h.span(
-              [
-                h.Class(
-                  "text-2xl leading-tight font-semibold tracking-tight text-foreground tabular",
-                ),
-              ],
-              [formatClock(elapsed)],
-            ),
-          ]),
-    ],
-  );
+            h.span
+              .class("text-2xl leading-tight font-semibold tracking-tight text-foreground tabular")
+              .children(formatClock(elapsed)),
+          ],
+    );
 };
 
 // ── Task counter ────────────────────────────────────────────────────────────
@@ -89,47 +82,33 @@ export const taskCountName = (runner: RunnerState, action: string) =>
  * "2 tasks" with a list icon. The number is re-keyed per count and briefly
  * scales in after a recording (static under reduced motion).
  */
-export const taskCountLabel = (runner: RunnerState, h: HtmlBuilder<Message>) => {
+export const taskCountLabel = (runner: RunnerState, h: H<Message>) => {
   const count = runner.completedCount;
   const justRecorded = runner.announcement?.kind === "recorded";
-  return h.span(
-    [h.Class("flex items-center gap-1.5 text-sm font-medium")],
-    [
-      icon(h, List, "size-5 shrink-0"),
-      // Inline text, so the visible label (and its accessible text) is "2 tasks".
-      h.span(
-        [],
-        [
-          h.keyed("span")(
-            `task-count-${count}`,
-            [
-              h.Class(
-                cn(
-                  "inline-block tabular",
-                  justRecorded &&
-                    "text-success motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-500",
-                ),
-              ),
-              h.DataAttribute("slot", "task-count"),
-            ],
-            [`${count}`],
+  return h.span.class("flex items-center gap-1.5 text-sm font-medium").children(
+    icon(h, List, "size-5 shrink-0"),
+    h.span.children(
+      h.span
+        .key(`task-count-${count}`)
+        .class(
+          cn(
+            "inline-block tabular",
+            justRecorded &&
+              "text-success motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-500",
           ),
-          " ",
-          h.span([h.Class("max-[359px]:sr-only")], [tasksWord(count)]),
-        ],
-      ),
-    ],
+        )
+        .attr("data-slot", "task-count")
+        .children(`${count}`),
+      " ",
+      h.span.class("max-[359px]:sr-only").children(tasksWord(count)),
+    ),
   );
 };
 
 // ── Action bar status ───────────────────────────────────────────────────────
 
 /** Required-answer progress stays visible at completion to keep the footer steady. */
-export const requiredProgress = (
-  task: RunnerTask,
-  scope: string,
-  h: HtmlBuilder<Message>,
-): Html | null => {
+export const requiredProgress = (task: RunnerTask, scope: string, h: H<Message>): Ui | null => {
   const required = Array.filter(task.sections, (section) => section.isRequired);
   const answered = Array.filter(required, isSectionDone).length;
   if (required.length === 0) return null;
@@ -167,20 +146,17 @@ export const requiredProgress = (
 export const announcementView = (
   announcement: RunnerState["announcement"],
   isVisible: boolean,
-  h: HtmlBuilder<Message>,
+  h: H<Message>,
 ) =>
-  h.p(
-    [
-      h.Role("status"),
-      h.AriaLive("polite"),
-      h.DataAttribute("slot", "runner-status"),
-      h.Class(
-        cn(
-          "flex items-center justify-center gap-1.5 text-sm font-medium empty:sr-only",
-          announcement?.kind === "recorded" ? "text-success" : "text-foreground",
-          !isVisible && "sr-only",
-        ),
+  h.p
+    .attr("role", "status")
+    .attr("aria-live", "polite")
+    .attr("data-slot", "runner-status")
+    .class(
+      cn(
+        "flex items-center justify-center gap-1.5 text-sm font-medium empty:sr-only",
+        announcement?.kind === "recorded" ? "text-success" : "text-foreground",
+        !isVisible && "sr-only",
       ),
-    ],
-    announcement === null ? [] : [icon(h, Check, "size-4 shrink-0"), announcement.text],
-  );
+    )
+    .children(announcement === null ? [] : [icon(h, Check, "size-4 shrink-0"), announcement.text]);

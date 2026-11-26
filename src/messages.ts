@@ -1,6 +1,5 @@
+import { type Command, type Component, UiSchema } from "@effect/ui";
 import { Schema } from "effect";
-import { defineMessageUnion } from "foldkit/message";
-import { UrlRequest } from "foldkit/navigation";
 
 import { FieldDef } from "./domain/fields";
 import { RouteSchema } from "./web/routes";
@@ -19,7 +18,7 @@ import {
 // Central flat Message union. Payload schemas are grouped by feature;
 // root-model handlers are composed by src/app/update.ts.
 
-export const Message = defineMessageUnion({
+export const Message = UiSchema.TaggedEnum({
   AgentRequest: {
     requestId: Schema.String,
     action: Schema.Unknown,
@@ -33,11 +32,9 @@ export const Message = defineMessageUnion({
 
   // ── Routing ────────────────────────────────────────────────────────────
   GotRoute: { route: RouteSchema },
-  ClickedLink: { request: UrlRequest },
-  Navigated: {},
-  CompletedReplyToAgent: {},
+  /** A same-document link was followed; `url` is its href (the hash route). */
+  ClickedLink: { url: Schema.String },
   /** A sheet was shown or released; the page model already owns whether it is open. */
-  SettledSheet: {},
   SelectedTheme: { theme: Theme },
   ThemeSaveFinished: { theme: Theme, saved: Schema.Boolean },
   ChangedSystemColorScheme: { prefersDark: Schema.Boolean },
@@ -81,8 +78,6 @@ export const Message = defineMessageUnion({
     templates: Schema.Finite,
     sessions: Schema.Finite,
     skipped: Schema.Finite,
-    /** False when it had not reached disk within the wait; it may still be saving. */
-    saved: Schema.Boolean,
   },
   FailedBackup: { error: Schema.String },
 
@@ -240,3 +235,12 @@ export type Message = typeof Message.Type;
 export type MessageHandlers<Result> = {
   readonly [M in Message as M["_tag"]]: (message: M) => Result;
 };
+
+/** A Command a root handler issues; its result is a Message, or nothing to report. */
+export type AppCommand = Command.Command<Message | Component.Noop>;
+
+/** What a root handler returns: the next Model and the Commands to run. */
+export type UpdateResult<Model> = Readonly<{
+  model: Model;
+  commands?: ReadonlyArray<AppCommand>;
+}>;

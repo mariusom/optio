@@ -1,23 +1,21 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
-import { Option } from "effect";
-import { Runtime } from "foldkit";
-import type { Html, HtmlBuilder } from "foldkit/html";
-import { fromString } from "foldkit/url";
 
-import { init, Model, update } from "../../../main";
+import { init, type Model } from "../../../main";
 import type { Message } from "../../../messages";
+import { mountView, type Mounted } from "../../../app/testMount";
+import type { H, Ui } from "@/lib/view";
 import { templateEditorPage } from "./editorView";
 import { templatesPage } from "./view";
 import "../../../index.css";
 
-vi.mock("../../../livestore/client", () => ({ getStore: vi.fn() }));
+vi.mock("../../../store/client", () => ({ getStore: vi.fn() }));
 
-let handle: { dispose: () => void } | undefined;
+let mounted: Mounted | undefined;
 let container: HTMLElement | undefined;
 
 const mount = async (
-  view: (model: Model, h: HtmlBuilder<Message>) => Html,
+  view: (model: Model, h: H<Message>) => Ui,
   options: Readonly<{ width: number; initial?: Partial<Model> }>,
 ) => {
   const { width } = options;
@@ -27,20 +25,19 @@ const mount = async (
   container.style.minHeight = "900px";
   document.body.append(container);
   const model = {
-    ...init(Option.getOrThrow(fromString("https://example.com/#/templates"))).model,
+    ...init("#/templates").model,
     ...options.initial,
   };
   const target = container;
-  handle = Runtime.embed(
-    Runtime.makeElement({ Model, container, init: () => ({ model }), view, update, slow: false }),
-  );
+  mounted = await mountView({ model, view, container });
   await vi.waitFor(() => {
     if (target.isConnected && !target.hasChildNodes()) throw new Error("Not rendered yet");
   });
 };
 
-afterEach(() => {
-  handle?.dispose();
+afterEach(async () => {
+  await mounted?.dispose();
+  mounted = undefined;
   container?.remove();
 });
 
@@ -156,7 +153,7 @@ const openRow = (index: number) =>
 
 describe("template list layout", () => {
   const templates = [1, 2, 3].map(summary);
-  const list = (model: Model, h: HtmlBuilder<Message>) =>
+  const list = (model: Model, h: H<Message>) =>
     templatesPage({ ...model, templates, templateActionsFor: null }, h);
 
   it("shows rows without a chevron, keeping the actions button and Default badge", async () => {

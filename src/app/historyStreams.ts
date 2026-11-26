@@ -1,7 +1,7 @@
 import { Array, type Stream } from "effect";
 import { storeStream } from "./managedStream";
 import { Message } from "../messages";
-import type { TaskSectionRow } from "../livestore/queries";
+import type { TaskSectionRow } from "../store/queries";
 import { displayNameFor, groupSectionsByRecord } from "../web/features/history/helpers";
 
 const toHistorySection = (section: TaskSectionRow) => ({

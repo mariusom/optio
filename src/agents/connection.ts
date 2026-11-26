@@ -1,15 +1,13 @@
 import { Array, Effect, Exit, Schema } from "effect";
-import type { Runtime } from "foldkit";
+import type { AgentPortHandles } from "./bridge";
 // The model schema decodes replies at runtime; import it directly, not via main.ts.
 import { Model } from "../app/model";
 import { randomUuid } from "../lib/ids";
-import { appServices } from "../app/services";
 
 import {
   type AgentAction,
   type AgentPortReply,
   type AgentResult,
-  type agentPorts,
   confirmationLabel,
   confirmationTarget,
   requiresConfirmation,
@@ -40,13 +38,12 @@ const decodeModel = (reply: AgentPortReply) =>
 
 /** Each request owns its reply subscription; Effect handles interruption and timeout cleanup. */
 export const connectAgentApplication = (
-  ports: Runtime.PortHandles<typeof agentPorts>,
+  ports: AgentPortHandles,
   confirm: (message: string) => boolean,
 ): AgentApplication => {
   const requestPort = Effect.fn("agents.requestPort")(
     function* (action: AgentAction | null, confirmationVersion?: number) {
-      // Outside the FoldKit runtime, so provide its services here.
-      const requestId = yield* randomUuid.pipe(Effect.provide(appServices));
+      const requestId = yield* randomUuid;
       return yield* Effect.callback<AgentPortReply, AgentConnectionError>((resume) => {
         const unsubscribe = ports.agentReply.subscribe((reply) => {
           if (reply.requestId === requestId) resume(Effect.succeed(reply));
@@ -79,7 +76,8 @@ export const connectAgentApplication = (
   ) {
     let confirmationVersion: number | undefined;
     if (action !== null && requiresConfirmation(action)) {
-      const state = yield* decodeModel(yield* requestPort(null));
+      const current = yield* requestPort(null);
+      const state = yield* decodeModel(current);
       const target = confirmationTarget(state, action);
       if (target === null)
         return yield* AgentConnectionError.make({ message: "Request confirmation first." });

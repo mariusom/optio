@@ -1,7 +1,7 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 export const itemGroupClass =
   "gap-4 has-data-[size=sm]:gap-2.5 has-data-[size=xs]:gap-2 group/item-group flex w-full flex-col";
@@ -71,128 +71,79 @@ type ItemSeparatorConfig = Readonly<{
   className?: string;
 }>;
 
-const itemGroup = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Role("list"),
-      h.Class(cn(itemGroupClass, config.className)),
-      h.DataAttribute("slot", "item-group"),
-    ],
-    children,
-  );
+const itemGroup = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .attr("role", "list")
+    .class(cn(itemGroupClass, config.className))
+    .attr("data-slot", "item-group")
+    .children(children);
 
-const itemSeparator = <M>(config: ItemSeparatorConfig, h: HtmlBuilder<M>): Html =>
-  h.div([
-    h.Class(cn(itemSeparatorClass, config.className)),
-    h.Role("separator"),
-    h.AriaOrientation(config.orientation ?? "horizontal"),
-    h.DataAttribute("slot", "item-separator"),
-    h.DataAttribute("orientation", config.orientation ?? "horizontal"),
-    h.DataAttribute(config.orientation ?? "horizontal", ""),
-  ]);
+const itemSeparator = <M>(config: ItemSeparatorConfig, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemSeparatorClass, config.className))
+    .attr("role", "separator")
+    .attr("aria-orientation", config.orientation ?? "horizontal")
+    .attr("data-slot", "item-separator")
+    .attr("data-orientation", config.orientation ?? "horizontal")
+    .attr(`data-${config.orientation ?? "horizontal"}`, "");
 
-const itemContainer = <M>(
-  config: ItemConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(
-        cn(
-          itemClass,
-          itemVariants[config.variant ?? "default"],
-          itemSizes[config.size ?? "default"],
-          config.className,
-        ),
+const itemContainer = <M>(config: ItemConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(
+      cn(
+        itemClass,
+        itemVariants[config.variant ?? "default"],
+        itemSizes[config.size ?? "default"],
+        config.className,
       ),
-      h.DataAttribute("slot", "item"),
-      h.DataAttribute("variant", config.variant ?? "default"),
-      h.DataAttribute("size", config.size ?? "default"),
-    ],
-    children,
-  );
+    )
+    .attr("data-slot", "item")
+    .attr("data-variant", config.variant ?? "default")
+    .attr("data-size", config.size ?? "default")
+    .children(children);
 
-const itemMedia = <M>(
-  config: ItemMediaConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [
-      h.Class(cn(itemMediaClass, itemMediaVariants[config.variant ?? "default"], config.className)),
-      h.DataAttribute("slot", "item-media"),
-      h.DataAttribute("variant", config.variant ?? "default"),
-    ],
-    children,
-  );
+const itemMedia = <M>(config: ItemMediaConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemMediaClass, itemMediaVariants[config.variant ?? "default"], config.className))
+    .attr("data-slot", "item-media")
+    .attr("data-variant", config.variant ?? "default")
+    .children(children);
 
-const itemContent = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(itemContentClass, config.className)), h.DataAttribute("slot", "item-content")],
-    children,
-  );
+const itemContent = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemContentClass, config.className))
+    .attr("data-slot", "item-content")
+    .children(children);
 
-const itemTitle = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(itemTitleClass, config.className)), h.DataAttribute("slot", "item-title")],
-    children,
-  );
+const itemTitle = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemTitleClass, config.className))
+    .attr("data-slot", "item-title")
+    .children(children);
 
-const itemDescription = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.p(
-    [
-      h.Class(cn(itemDescriptionClass, config.className)),
-      h.DataAttribute("slot", "item-description"),
-    ],
-    children,
-  );
+const itemDescription = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.p
+    .class(cn(itemDescriptionClass, config.className))
+    .attr("data-slot", "item-description")
+    .children(children);
 
-const itemActions = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(itemActionsClass, config.className)), h.DataAttribute("slot", "item-actions")],
-    children,
-  );
+const itemActions = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemActionsClass, config.className))
+    .attr("data-slot", "item-actions")
+    .children(children);
 
-const itemHeader = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(itemHeaderClass, config.className)), h.DataAttribute("slot", "item-header")],
-    children,
-  );
+const itemHeader = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemHeaderClass, config.className))
+    .attr("data-slot", "item-header")
+    .children(children);
 
-const itemFooter = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.div(
-    [h.Class(cn(itemFooterClass, config.className)), h.DataAttribute("slot", "item-footer")],
-    children,
-  );
+const itemFooter = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.div
+    .class(cn(itemFooterClass, config.className))
+    .attr("data-slot", "item-footer")
+    .children(children);
 
 /** Styled item — a flexible list row with `Item.group`, `Item.separator`,
  *  `Item.media`, `Item.content`, `Item.title`, `Item.description`,

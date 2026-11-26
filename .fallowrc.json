@@ -3,7 +3,6 @@
   "entry": [
     "src/entry.ts",
     "src/main.ts",
-    "src/livestore/livestore.worker.ts",
     "src/**/*.test.ts",
     "src/**/*.browser.ts",
     "scripts/**/*.{mjs,ts}",
@@ -16,7 +15,7 @@
       "exports": ["*"]
     },
     {
-      "file": "src/livestore/{modules,queries}.ts",
+      "file": "src/store/{modules,queries}.ts",
       "exports": ["*"]
     },
     {
@@ -24,5 +23,5 @@
       "exports": ["icon"]
     }
   ],
-  "ignoreDependencies": ["@livestore/wa-sqlite", "@foldkit/devtools", "@effect/language-service"]
+  "ignoreDependencies": ["@effect/ui-devtools", "@effect/language-service"]
 }

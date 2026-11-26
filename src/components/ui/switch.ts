@@ -1,17 +1,13 @@
-import { Switch as FoldkitSwitch } from "@foldkit/ui";
-import type { Html, HtmlBuilder } from "foldkit/html";
+import { Switch } from "@effect/ui-kit";
+import type { H, Ui } from "@/lib/view";
 
 import { cn } from "@/lib/utils";
 
 /**
- * foldkit deltas (inlined at style resolution): foldkit emits aria-disabled/
- * data-disabled instead of native disabled, and only data-checked (never
- * data-unchecked) on the ROOT button — this view hand-emits data-unchecked
- * there when off. Upstream Base UI also puts data-checked/data-unchecked on
- * the THUMB itself (the travel/track variants like
- * group-data-[size=default]/switch:data-checked:* key on the thumb's own
- * attribute), so the thumb span mirrors the state attribute too.
- *
+ * The @effect/ui-kit Switch emits data-checked / data-unchecked and
+ * data-disabled on both the root button and the thumb, as upstream Base UI
+ * does (the travel/track variants like group-data-[size=default]/switch:data-checked:*
+ * key on the thumb's own attribute), and native `disabled` on the root.
  */
 
 export const switchSizeKeys = ["default", "sm"] as const;
@@ -55,64 +51,61 @@ export type SwitchConfig<M> = Readonly<{
 }>;
 
 /** Styled switch with label and optional description, built on the
- *  @foldkit/ui Switch helper. */
-const switchView = <M>(config: SwitchConfig<M>, h: HtmlBuilder<M>): Html =>
-  FoldkitSwitch.view<M>(
-    {
-      id: config.id,
-      hasDescription: config.description !== undefined,
-      isChecked: config.isChecked,
-      onToggle: config.onToggle,
-      isDisabled: config.isDisabled,
-      isReadOnly: config.isReadOnly,
+ *  @effect/ui-kit Switch view function (ARIA, data attributes, hidden form
+ *  field and click handling). */
+const switchView = <M>(config: SwitchConfig<M>, h: H<M>): Ui => {
+  const isDisabled = config.isDisabled === true;
+  const descriptionId = `${config.id}-description`;
+  const onToggle = config.onToggle;
+  return Switch(h, {
+    props: {
+      checked: config.isChecked,
+      disabled: isDisabled,
+      readOnly: config.isReadOnly,
       name: config.name,
       value: config.value,
-      toView: (attributes) =>
-        h.div(
-          [
-            h.Class(cn(switchWrapperClass, config.wrapperClass)),
-            ...(config.isDisabled === true ? [h.DataAttribute("disabled", "")] : []),
-          ],
-          [
-            h.button(
-              [
-                ...attributes.button,
-                h.DataAttribute("slot", "switch"),
-                h.DataAttribute("size", config.size ?? "default"),
-                ...(config.isChecked ? [] : [h.DataAttribute("unchecked", "")]),
-                h.Class(cn(switchClass, config.className)),
-              ],
-              [
-                h.span([
-                  h.DataAttribute("slot", "switch-thumb"),
-                  h.DataAttribute(config.isChecked ? "checked" : "unchecked", ""),
-                  h.Class(cn(switchThumbClass, config.thumbClass)),
-                ]),
-              ],
-            ),
-            ...(attributes.hiddenInput.length > 0 ? [h.input([...attributes.hiddenInput])] : []),
-            h.div(
-              [h.Class(cn(switchTextWrapperClass))],
-              [
-                h.label(
-                  [...attributes.label, h.Class(cn(switchLabelClass, config.labelClass))],
-                  [config.label],
-                ),
-                config.description === undefined
-                  ? h.empty
-                  : h.p(
-                      [
-                        ...attributes.description,
-                        h.Class(cn(switchDescriptionClass, config.descriptionClass)),
-                      ],
-                      [config.description],
-                    ),
-              ],
-            ),
-          ],
-        ),
     },
-    h,
-  );
+    onToggle: ({ checked }) => onToggle(checked),
+    view: (parts) =>
+      h.div
+        .class(cn(switchWrapperClass, config.wrapperClass))
+        .attr("data-disabled", isDisabled ? "" : undefined)
+        .children(
+          parts
+            .root(
+              h.button
+                .id(config.id)
+                .attr(
+                  "aria-describedby",
+                  config.description === undefined ? undefined : descriptionId,
+                )
+                .attr("data-slot", "switch")
+                .attr("data-size", config.size ?? "default")
+                .class(cn(switchClass, config.className)),
+            )
+            .children(
+              parts.thumb(
+                h.span
+                  .attr("data-slot", "switch-thumb")
+                  .class(cn(switchThumbClass, config.thumbClass)),
+              ),
+            ),
+          h.div
+            .class(cn(switchTextWrapperClass))
+            .children(
+              h.label
+                .attr("for", config.id)
+                .class(cn(switchLabelClass, config.labelClass))
+                .children(config.label),
+              config.description === undefined
+                ? null
+                : h.p
+                    .id(descriptionId)
+                    .class(cn(switchDescriptionClass, config.descriptionClass))
+                    .children(config.description),
+            ),
+        ),
+  });
+};
 
 export { switchView as switch_ };

@@ -1,7 +1,7 @@
-import type { Html, HtmlBuilder } from "foldkit/html";
+import type { H, Ui } from "@/lib/view";
 import { cn } from "@/lib/utils";
 
-type Child = Html | string;
+type Child = Ui | string;
 
 /** Badge variant keys — keep in sync with `badgeVariants`. */
 export const badgeVariantKeys = [
@@ -33,16 +33,9 @@ type StyleConfig = Readonly<{ className?: string; variant?: BadgeVariant }>;
 /** Styled badge built as a themed `<span>` (mirrors the shadcn v4 `badge.tsx`
  *  default element). For a link badge, render an `<a>` child and apply
  *  `badgeClass` via `cn` — foldcn has no Radix `Slot`. */
-export const badge = <M>(
-  config: StyleConfig,
-  children: ReadonlyArray<Child>,
-  h: HtmlBuilder<M>,
-): Html =>
-  h.span(
-    [
-      h.Class(cn(badgeClass, badgeVariants[config.variant ?? "default"], config.className)),
-      h.DataAttribute("slot", "badge"),
-      h.DataAttribute("variant", config.variant ?? "default"),
-    ],
-    children,
-  );
+export const badge = <M>(config: StyleConfig, children: ReadonlyArray<Child>, h: H<M>): Ui =>
+  h.span
+    .class(cn(badgeClass, badgeVariants[config.variant ?? "default"], config.className))
+    .attr("data-slot", "badge")
+    .attr("data-variant", config.variant ?? "default")
+    .children(children);
