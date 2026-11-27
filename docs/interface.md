@@ -5,9 +5,10 @@ feedback and sheets. They compose project-owned [registry components](../src/com
 from [Foldcn](https://foldcn.elianiva.com), ported to Effect UI element chains
 (`h.div.class(...).children(...)`) and, where it has a stateless view function,
 [`@effect/ui-kit`](https://ui.effect.website) (button, input, switch,
-separator). Foldcn targets FoldKit, so its upstream APIs no longer apply as is:
-keep its class strings and anatomy, and review local customizations before
-refreshing a registry item.
+separator; features use its `Toggle` directly for pressed buttons). Foldcn
+targets FoldKit, so its upstream APIs no longer apply as is: keep its class
+strings and anatomy, and review local customizations before refreshing a
+registry item.
 
 - Use semantic colors and Tailwind spacing. Primary controls keep 44px touch
   targets (`h-11`); large buttons use `h-12`. Pages control layout, while shared
@@ -37,8 +38,9 @@ refreshing a registry item.
   [web/sheets.ts](../src/web/sheets.ts) wrappers). Each is a keyed native
   `<dialog>` rendered with `.modal(true)` and open while rendered: Effect UI
   shows it with `showModal()` (top layer, inert page), Escape arrives as
-  `cancel`, and its `ShowSheet` Mount adds focus entry (`[autofocus]`, else the
-  first control), Tab wrapping and scroll lock (the delegated `main` scroller
+  `cancel`, a close the browser forces anyway arrives as `close` (both
+  dismiss), and its `ShowSheet` Mount adds focus entry (`[autofocus]`, else
+  the first control), Tab wrapping and scroll lock (the delegated `main` scroller
   stops too); unmounting releases them and returns focus to whatever opened
   the first of consecutive sheets. Give each sheet a unique
   `id`; render it once, outside responsive copies. Action sheets list every

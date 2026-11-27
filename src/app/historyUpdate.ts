@@ -23,18 +23,18 @@ type HistoryHandlers = Pick<
   | "ClosedHistoryActions"
   | "CanceledHistoryDelete"
   | "ConfirmedHistoryDelete"
-  | "HistoryDeleted"
+  | "SucceededDeleteHistorySession"
   | "ClickedEditHistoryName"
   | "ChangedEditHistoryName"
   | "CanceledEditHistoryName"
   | "ConfirmedEditHistoryName"
-  | "HistoryNameUpdated"
+  | "SucceededRenameHistorySession"
   | "FailedHistoryOp"
   | "ClickedHistoryTask"
   | "DismissedHistoryTask"
   | "ClickedExportHistoryCsv"
-  | "CsvExported"
-  | "FailedCsvExport"
+  | "SucceededExportSessionCsv"
+  | "FailedExportSessionCsv"
   | "DismissedHistoryError"
 >;
 export const historyHandlers = (model: Model): HistoryHandlers => ({
@@ -92,11 +92,11 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     model.pendingHistoryDelete === null
       ? { model }
       : {
-          // Keep pending until HistoryDeleted arrives so we know which was deleted
+          // Keep pending until SucceededDeleteHistorySession arrives so we know which was deleted
           model,
           commands: [DeleteHistorySession.make({ id: model.pendingHistoryDelete.id })],
         },
-  HistoryDeleted: () => {
+  SucceededDeleteHistorySession: () => {
     const deletedId = model.pendingHistoryDelete?.id ?? null;
     const shouldNavigate =
       model.route._tag === "SessionDetail" &&
@@ -149,7 +149,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
       ],
     };
   },
-  HistoryNameUpdated: () => ({ model: { ...model, showEditHistoryName: false } }),
+  SucceededRenameHistorySession: () => ({ model: { ...model, showEditHistoryName: false } }),
   FailedHistoryOp: ({ error }) => ({
     model: { ...model, pendingHistoryDelete: null, historyError: error },
   }),
@@ -159,7 +159,7 @@ export const historyHandlers = (model: Model): HistoryHandlers => ({
     model: { ...model, historyError: null, historyActionsFor: null },
     commands: [ExportSessionCsv.make({ sessionId, spreadsheetSafe })],
   }),
-  CsvExported: () => ({ model }),
-  FailedCsvExport: ({ error }) => ({ model: { ...model, historyError: error } }),
+  SucceededExportSessionCsv: () => ({ model }),
+  FailedExportSessionCsv: ({ error }) => ({ model: { ...model, historyError: error } }),
   DismissedHistoryError: () => ({ model: { ...model, historyError: null } }),
 });

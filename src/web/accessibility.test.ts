@@ -42,11 +42,12 @@ const attr = (node: Node | undefined, name: string): string | undefined => {
   return typeof value === "string" || typeof value === "number" ? `${value}` : undefined;
 };
 /** The message an interaction on `locator` sends, acknowledged, or undefined. */
-const sent = (scene: Rendered, locator: Locator.Locator, event: string) => {
+const sent = (scene: Rendered, locator: Locator.Locator, event: string, payload?: object) => {
   const before = scene.current.emitted.length;
-  scene.fire(locator, event);
+  scene.fire(locator, event, payload);
   const message = scene.current.emitted[before];
-  if (message !== undefined) scene.emitted(message);
+  if (message === undefined) scene.expectIgnored();
+  else scene.emitted(message);
   return message;
 };
 
@@ -179,8 +180,12 @@ describe("audited view accessibility", () => {
       // An open sheet runs its focus and scroll Mount.
       view.expectMount(ShowSheet({ id: attr(dialog, "id")! }));
       // Escape arrives as the dialog's cancel event; the backdrop is decorative.
-      const escaped = sent(view, Locator.tag("dialog"), "cancel");
+      const escaped = sent(view, Locator.tag("dialog"), "cancel", { cancelable: true });
       expect(escaped).toBeDefined();
+      // A request the browser won't let be cancelled closes the dialog itself:
+      // the dismissal comes once, from `close`.
+      expect(sent(view, Locator.tag("dialog"), "cancel", { cancelable: false })).toBeUndefined();
+      expect(sent(view, Locator.tag("dialog"), "close", { returnValue: "" })).toEqual(escaped);
       const backdrop = Locator.elements(dialog).find((n) =>
         (attr(n, "class") ?? "").split(" ").includes("modal-backdrop"),
       );

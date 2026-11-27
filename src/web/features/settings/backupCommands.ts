@@ -147,7 +147,7 @@ export const DownloadBackup = Command.make(
           Effect.match({
             // Log the thrown value itself, as before; the user sees the backup phrase.
             onFailure: (error) => failed(friendlyFailure("backup", error.cause)),
-            onSuccess: () => Message.BackupDownloaded({ filename }),
+            onSuccess: () => Message.SucceededDownloadBackup({ filename }),
           }),
         );
       }),
@@ -184,7 +184,7 @@ const restore = (access: Access, file: BackupFile) =>
       events.backupRestored({ now, templates: plan.templates, sessions: plan.sessions }),
     );
     // The write resolves once the journal has saved it.
-    return Message.BackupRestored({
+    return Message.SucceededRestoreBackup({
       templates: plan.templates.length,
       sessions: plan.sessions.length,
       skipped: plan.skipped,

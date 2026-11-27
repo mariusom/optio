@@ -67,7 +67,10 @@ export const StartSession = Command.make(
         const now = yield* DateTime.nowAsDate;
         const activeSession = store.query(tables.sessions.select().where({ endedAt: null }))[0];
         if (activeSession !== undefined) {
-          return Message.SessionStarted({ sessionId: activeSession.id, joinedExisting: true });
+          return Message.SucceededStartSession({
+            sessionId: activeSession.id,
+            joinedExisting: true,
+          });
         }
 
         const template = resolveStartTemplate(store, tables, { templateId, templateName, fields });
@@ -91,8 +94,8 @@ export const StartSession = Command.make(
         // session, so report the one that is actually live.
         const live = store.query(tables.sessions.select().where({ endedAt: null }))[0];
         return live === undefined || live.id === id
-          ? Message.SessionStarted({ sessionId: id, joinedExisting: false })
-          : Message.SessionStarted({ sessionId: live.id, joinedExisting: true });
+          ? Message.SucceededStartSession({ sessionId: id, joinedExisting: false })
+          : Message.SucceededStartSession({ sessionId: live.id, joinedExisting: true });
       }),
     ).pipe(serialized, reportFailure("start", failed)),
 );
@@ -104,12 +107,13 @@ export const DiscardLiveSession = Command.make(
     withStore(({ store, tables, events }) =>
       Effect.gen(function* () {
         const session = store.query(tables.sessions.select().where({ id: sessionId }))[0];
-        if (session === undefined || session.endedAt !== null) return Message.SessionDiscarded();
+        if (session === undefined || session.endedAt !== null)
+          return Message.SucceededDiscardLiveSession();
         yield* store.commit(
           events.sessionLiveGraphCleared({ sessionId }),
           events.sessionDeleted({ id: sessionId }),
         );
-        return Message.SessionDiscarded();
+        return Message.SucceededDiscardLiveSession();
       }),
     ).pipe(serialized, reportFailure("delete", failed)),
 );

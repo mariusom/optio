@@ -44,25 +44,24 @@ const NavigateInternal = Command.make(
 );
 
 const SaveTheme = Command.make("SaveTheme", { args: { theme: Theme } }, ({ theme }) =>
-  Effect.map(saveThemeChoice(theme), (saved) => Message.ThemeSaveFinished({ theme, saved })),
+  Effect.map(saveThemeChoice(theme), (saved) => Message.CompletedSaveTheme({ theme, saved })),
 );
 
 const ApplyColorScheme = Command.make(
   "ApplyColorScheme",
   { args: { dark: Schema.Boolean } },
-  ({ dark }) => Effect.as(applyColorScheme(dark), Message.AppliedColorScheme()),
+  ({ dark }) => Effect.as(applyColorScheme(dark), Message.CompletedApplyColorScheme()),
 );
 
 const SaveStyle = Command.make("SaveStyle", { args: { style: FoldcnStyle } }, ({ style }) =>
   Effect.map(changeStyle(style), (result) =>
-    result === null
-      ? Message.SupersededStyleSave()
-      : Message.StyleSaveFinished({ style, ...result }),
+    // A newer selection superseded this one before its styles loaded.
+    result === null ? Component.noop : Message.CompletedSaveStyle({ style, ...result }),
   ),
 );
 
 const SaveFont = Command.make("SaveFont", { args: { font: Font } }, ({ font }) =>
-  Effect.map(changeFont(font), (saved) => Message.FontSaveFinished({ font, saved })),
+  Effect.map(changeFont(font), (saved) => Message.CompletedSaveFont({ font, saved })),
 );
 
 const SaveIconLibrary = Command.make(
@@ -70,16 +69,16 @@ const SaveIconLibrary = Command.make(
   { args: { library: IconLibrary } },
   ({ library }) =>
     Effect.map(changeIconLibrary(library), (saved) =>
-      Message.IconLibrarySaveFinished({ library, saved }),
+      Message.CompletedSaveIconLibrary({ library, saved }),
     ),
 );
 
 const SaveAccent = Command.make("SaveAccent", { args: { accent: Accent } }, ({ accent }) =>
-  Effect.map(changeAccent(accent), (saved) => Message.AccentSaveFinished({ accent, saved })),
+  Effect.map(changeAccent(accent), (saved) => Message.CompletedSaveAccent({ accent, saved })),
 );
 
 const SaveLook = Command.make("SaveLook", { args: { look: Look } }, ({ look }) =>
-  Effect.map(changeLook(look), (saved) => Message.LookSaveFinished({ look, saved })),
+  Effect.map(changeLook(look), (saved) => Message.CompletedSaveLook({ look, saved })),
 );
 
 const SaveControlSize = Command.make(
@@ -87,12 +86,12 @@ const SaveControlSize = Command.make(
   { args: { controlSize: ControlSize } },
   ({ controlSize }) =>
     Effect.map(changeControlSize(controlSize), (saved) =>
-      Message.ControlSizeSaveFinished({ controlSize, saved }),
+      Message.CompletedSaveControlSize({ controlSize, saved }),
     ),
 );
 
 const GeneratePlaceholderName = Command.make("GeneratePlaceholderName", { args: {} }, () =>
-  Effect.map(randomSessionName, (name) => Message.GotPlaceholderName({ name })),
+  Effect.map(randomSessionName, (name) => Message.CompletedGeneratePlaceholderName({ name })),
 );
 
 const ReplyToAgent = Command.make(

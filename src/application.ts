@@ -32,8 +32,8 @@ export const App = Html.component({
 });
 
 /**
- * Development-only inspector settings. The 1 Hz Tick would flood its timeline.
+ * Development-only inspector settings. The 1 Hz `Ticked` message would flood its timeline.
  * Never enable its MCP dispatch: that would let outside tools send Messages
  * without the consent flow in docs/agent-access.md.
  */
-export const devToolsOptions = { position: "BottomRight", exclude: ["Tick"] } as const;
+export const devToolsOptions = { position: "BottomRight", exclude: ["Ticked"] } as const;

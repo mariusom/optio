@@ -86,7 +86,9 @@ const seedChecked = (model: Model) =>
 describe("first-run sample templates", () => {
   it("reads templates only after the startup seed check, so the first list is never pre-seed", () => {
     expect(seedChecked(at("/templates"))).toBe(false);
-    expect(seedChecked(receive(at("/templates"), Message.TemplatesSeededCheck()))).toBe(true);
+    expect(seedChecked(receive(at("/templates"), Message.SucceededEnsureTemplatesSeeded()))).toBe(
+      true,
+    );
   });
 
   it("still reads templates when the seed check fails", () => {

@@ -15,38 +15,39 @@ type SessionHandlers = Pick<
   AllHandlers,
   | "GotActiveSession"
   | "ChangedSessionNameInput"
-  | "GotPlaceholderName"
+  | "CompletedGeneratePlaceholderName"
   | "SelectedTemplate"
   | "ClickedStartSession"
-  | "SessionStarted"
+  | "SucceededStartSession"
   | "DismissedJoinedSession"
   | "ClickedResumeSession"
   | "ClickedDiscardSession"
   | "CanceledDiscardSession"
   | "ConfirmedDiscardSession"
-  | "SessionDiscarded"
+  | "SucceededDiscardLiveSession"
   | "FailedSessionOp"
   | "GotRunnerData"
-  | "Tick"
+  | "Ticked"
   | "ChangedFieldValue"
   | "SettledFieldInput"
   | "BlurredField"
   | "AdjustedCounter"
   | "ClickedRecord"
   | "PressedPrimaryShortcut"
-  | "TaskRecorded"
-  | "GaveRecordFeedback"
+  | "SucceededRecordTask"
+  | "CompletedVibrateRecorded"
   | "ClickedEndSession"
   | "CanceledEndSession"
   | "ConfirmedEndSession"
-  | "SessionEnded"
+  | "SucceededEndSession"
   | "ClickedSelectTask"
   | "ToggledTaskList"
   | "FocusedSection"
   | "ClickedCancelEdit"
   | "ClickedSaveEdit"
   | "TaskEditStarted"
-  | "UpdatedFieldValue"
+  | "SucceededUpdateFieldValues"
+  | "SucceededAdjustCounter"
   | "TaskEditFinished"
   | "FailedRunnerOp"
   | "DismissedRunnerError"
@@ -57,7 +58,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     model: { ...model, activeSession: AsyncData.succeed(activeSession) },
   }),
   ChangedSessionNameInput: ({ text }) => ({ model: { ...model, sessionNameInput: text } }),
-  GotPlaceholderName: ({ name }) => ({ model: { ...model, placeholderName: name } }),
+  CompletedGeneratePlaceholderName: ({ name }) => ({ model: { ...model, placeholderName: name } }),
   SelectedTemplate: ({ id }) => ({ model: { ...model, selectedTemplateId: id } }),
   ClickedStartSession: () => {
     const selected = resolveSelectedTemplate(templatesOf(model), model.selectedTemplateId);
@@ -81,7 +82,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   },
   // A session already live in another tab is joined instead, and the runner
   // says so; the name typed for the new session is kept for later.
-  SessionStarted: ({ sessionId, joinedExisting }) => ({
+  SucceededStartSession: ({ sessionId, joinedExisting }) => ({
     model: {
       ...model,
       sessionNameInput: joinedExisting ? model.sessionNameInput : "",
@@ -116,7 +117,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
       commands: [DiscardLiveSession.make({ sessionId: active.id })],
     };
   },
-  SessionDiscarded: () => ({
+  SucceededDiscardLiveSession: () => ({
     model: {
       ...model,
       activeSession: AsyncData.succeed(null),
@@ -141,7 +142,7 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
     }
     return planned;
   },
-  Tick: ({ now }) => {
+  Ticked: ({ now }) => {
     const runner = model.runner === null ? null : { ...model.runner, now };
     return { model: { ...model, now, runner } };
   },
@@ -160,12 +161,13 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
           ? "EditSaved"
           : "RecordRequested",
     }),
-  TaskRecorded: ({ taskId, fresh }) => applyPlan(model, { _tag: "RecordAcked", taskId, fresh }),
-  GaveRecordFeedback: () => ({ model }),
+  SucceededRecordTask: ({ taskId, fresh }) =>
+    applyPlan(model, { _tag: "RecordAcked", taskId, fresh }),
+  CompletedVibrateRecorded: () => ({ model }),
   ClickedEndSession: () => applyPlan(model, { _tag: "EndRequested" }),
   CanceledEndSession: () => applyPlan(model, { _tag: "EndCancelled" }),
   ConfirmedEndSession: () => applyPlan(model, { _tag: "EndConfirmed" }),
-  SessionEnded: () => {
+  SucceededEndSession: () => {
     const planned = applyPlan(model, { _tag: "EndAcked" });
     return {
       model: planned.model,
@@ -182,7 +184,8 @@ export const sessionHandlers = (model: Model): SessionHandlers => ({
   ClickedCancelEdit: () => applyPlan(model, { _tag: "EditCancelled" }),
   ClickedSaveEdit: () => applyPlan(model, { _tag: "EditSaved" }),
   TaskEditStarted: () => ({ model }),
-  UpdatedFieldValue: () => ({ model }),
+  SucceededUpdateFieldValues: () => ({ model }),
+  SucceededAdjustCounter: () => ({ model }),
   TaskEditFinished: ({ savedTaskId }) => applyPlan(model, { _tag: "EditAcked", savedTaskId }),
   FailedRunnerOp: ({ error }) => {
     if (model.runner === null) return { model: { ...model, lastError: error } };

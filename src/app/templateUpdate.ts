@@ -23,10 +23,10 @@ type TemplateHandlers = Pick<
   | "ClickedNewTemplate"
   | "ChangedNewName"
   | "ConfirmedCreateTemplate"
-  | "TemplateCreated"
+  | "SucceededCreateTemplate"
   | "CanceledCreateTemplate"
   | "ClickedTemplateRow"
-  | "DuplicatedTemplate"
+  | "SucceededDuplicateTemplate"
   | "RequestedDeleteTemplate"
   | "CanceledDeleteTemplate"
   | "ConfirmedDeleteTemplate"
@@ -40,9 +40,10 @@ type TemplateHandlers = Pick<
   | "GotTemplateReport"
   | "FailedTemplateReport"
   | "ClickedAddSampleTemplates"
-  | "SampleTemplatesAdded"
-  | "TemplateOpDone"
-  | "TemplatesSeededCheck"
+  | "SucceededAddSampleTemplates"
+  | "SucceededSetDefaultTemplate"
+  | "SucceededDeleteTemplate"
+  | "SucceededEnsureTemplatesSeeded"
   | "FailedTemplateOp"
 >;
 type ReportMessage =
@@ -126,7 +127,9 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     const [id, next] = takeId(model);
     return { model: next, commands: [CreateTemplate.make({ id, name })] };
   },
-  TemplateCreated: () => ({ model: { ...model, showCreate: false, newName: "", editor: null } }),
+  SucceededCreateTemplate: () => ({
+    model: { ...model, showCreate: false, newName: "", editor: null },
+  }),
   CanceledCreateTemplate: () => ({
     model: { ...model, showCreate: false, newName: "", editor: null },
   }),
@@ -134,7 +137,7 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     model,
     commands: [NavigateInternal.make({ url: hrefFor(TemplateEditor({ templateId: id })) })],
   }),
-  DuplicatedTemplate: ({ id }) => ({
+  SucceededDuplicateTemplate: ({ id }) => ({
     model,
     commands: [NavigateInternal.make({ url: hrefFor(TemplateEditor({ templateId: id })) })],
   }),
@@ -207,9 +210,10 @@ export const templateHandlers = (model: Model): TemplateHandlers => ({
     model: { ...model, lastError: null },
     commands: [AddSampleTemplates.make({})],
   }),
-  SampleTemplatesAdded: () => ({ model }),
-  TemplateOpDone: () => ({ model }),
-  TemplatesSeededCheck: () => ({ model: { ...model, templatesSeedChecked: true } }),
+  SucceededAddSampleTemplates: () => ({ model }),
+  SucceededSetDefaultTemplate: () => ({ model }),
+  SucceededDeleteTemplate: () => ({ model }),
+  SucceededEnsureTemplatesSeeded: () => ({ model: { ...model, templatesSeedChecked: true } }),
   FailedTemplateOp: ({ error }) => {
     // A failed startup seed must not keep the templates subscription waiting.
     const base = { ...model, templatesSeedChecked: true, lastError: error };

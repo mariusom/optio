@@ -243,8 +243,8 @@ const defaultOptionRow = <M, Value extends string>(
   const fieldAttrs = {
     "data-slot": "field",
     "data-orientation": "horizontal",
-    "data-disabled": info.isDisabled ? "true" : undefined,
-    "data-invalid": isInvalid === true ? "true" : undefined,
+    "data-disabled": info.isDisabled ? "" : undefined,
+    "data-invalid": isInvalid === true ? "" : undefined,
   };
   if (layout === "choice-card")
     return h.label

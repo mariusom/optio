@@ -89,6 +89,42 @@ describe("Foldcn description contracts", () => {
         }
       }),
     );
+
+    it.effect(`${name} closes once when the browser forces a close`, () =>
+      Effect.gen(function* () {
+        for (const isOpen of [true, false]) {
+          const Host = Html.component({
+            name: "RegistryModalHost",
+            model: Schema.Null,
+            message: Schema.String,
+            events: Schema.String,
+          }).make({
+            init: () => null,
+            // Every message comes out as an event, so the scene reports it.
+            update: ($, message) => $.emit(message),
+            view: (h) =>
+              h.div.children(
+                component.view({ id: "confirm", isOpen, onClose: "close", content: () => [] }, h),
+              ),
+          });
+          const s = yield* HtmlScene.make(Host, {});
+          const sent = (event: string, payload: object) => {
+            const before = s.current.emitted.length;
+            s.fire(Locator.tag("dialog"), event, payload);
+            const message = s.current.emitted[before];
+            if (message === undefined) s.expectIgnored();
+            else s.emitted(message);
+            return message;
+          };
+          // Escape on an open modal asks to close; one the browser won't let be
+          // cancelled closes it anyway and reports only through `close`.
+          if (isOpen) assert.strictEqual(sent("cancel", { cancelable: true }), "close");
+          assert.isUndefined(sent("cancel", { cancelable: false }));
+          // A `close` after the Model closed the dialog is the Model's own.
+          assert.strictEqual(sent("close", { returnValue: "" }), isOpen ? "close" : undefined);
+        }
+      }),
+    );
   }
 });
 

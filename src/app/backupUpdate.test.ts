@@ -28,7 +28,7 @@ describe("backup actions", () => {
       "Restoring… keep Optio open until this finishes.",
     );
     const counts = { templates: 1, sessions: 2, skipped: 0 };
-    const saved = update(restoring.model, Message.BackupRestored(counts));
+    const saved = update(restoring.model, Message.SucceededRestoreBackup(counts));
     expect(saved.model.backupNotice?.text).toBe("Restored 1 template and 2 sessions.");
     expect(saved.model.backupBusy).toBe(false);
   });
