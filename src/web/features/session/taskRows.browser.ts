@@ -47,14 +47,14 @@ afterEach(async () => {
   scope = undefined;
 });
 
-/** The task list for `count` tasks; Tick stands in for the store snapshot that follows recording one. */
+/** The task list for `count` tasks; Ticked stands in for the store snapshot that follows recording one. */
 const TaskRows = Html.component({
   name: "TaskRows",
   model: Schema.Struct({ count: Schema.Number }),
   message: Message,
 }).make({
   init: () => ({ count: 2 }),
-  update: ($, message) => (message._tag === "Tick" ? { count: message.now } : $.model),
+  update: ($, message) => (message._tag === "Ticked" ? { count: message.now } : $.model),
   view: (h, model) => h.div.children(...taskRows(runnerWith(model.count), h)),
 });
 
@@ -72,7 +72,7 @@ it("keeps keyboard focus on the same task when a newer task is added above it", 
   const focused = document.activeElement;
   expect(focused?.textContent).toMatch(/^Task 1(?!\d).*Done$/);
 
-  root.send(Message.Tick({ now: 3 }));
+  root.send(Message.Ticked({ now: 3 }));
   await expect.poll(() => taskButton(3)).not.toBeNull();
 
   expect(document.activeElement).toBe(focused);

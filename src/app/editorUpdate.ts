@@ -185,7 +185,7 @@ type EditorFieldHandlers = Pick<
   | "ToggledFieldDefaultBoolean"
   | "ChangedNewOptionText"
   | "ConfirmedAddOption"
-  | "ClearedNewChoice"
+  | "CompletedClearNewChoice"
   | "ClickedMoveOption"
   | "ClickedDeleteOption"
   | "ToggledExclusiveOption"
@@ -286,7 +286,7 @@ export const editorFieldHandlers = (model: Model): EditorFieldHandlers => ({
       commands: [ClearNewChoice.make({ added: String.trim(model.editor.draft.newOptionText) })],
     };
   },
-  ClearedNewChoice: () => ({ model }),
+  CompletedClearNewChoice: () => ({ model }),
   ClickedMoveOption: ({ index, direction }) => {
     if (model.editor === null || model.editor.draft === null) return { model };
     return {
@@ -357,8 +357,8 @@ type EditorSaveHandlers = Pick<
   AllHandlers,
   | "ClickedSaveTemplate"
   | "ClickedCancelEditTemplate"
-  | "TemplateSaved"
-  | "ShowDiscardConfirm"
+  | "SucceededSaveTemplate"
+  | "RequestedDiscard"
   | "CanceledDiscard"
   | "ConfirmedDiscard"
 >;
@@ -396,7 +396,7 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
       },
     };
   },
-  TemplateSaved: () => {
+  SucceededSaveTemplate: () => {
     if (model.editor === null)
       return { model, commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })] };
     return {
@@ -404,7 +404,7 @@ export const editorSaveHandlers = (model: Model): EditorSaveHandlers => ({
       commands: [NavigateInternal.make({ url: hrefFor(TemplatesTab()) })],
     };
   },
-  ShowDiscardConfirm: () => {
+  RequestedDiscard: () => {
     if (model.editor === null) return { model };
     return { model: { ...model, editor: { ...model.editor, pendingDiscard: true } } };
   },

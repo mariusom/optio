@@ -150,7 +150,7 @@ A recorded task's vibration is a command
 (`VibrateRecorded`), feature-detected and skipped silently where unsupported.
 
 Wall-clock time reaches the UI through the Model. The runtime boot and the
-ticker subscription read Effect's Clock; `Tick` stamps `model.now` and
+ticker subscription read Effect's Clock; `Ticked` stamps `model.now` and
 `runner.now`, and the session planner receives that time as part of its input.
 `model.now` is the latest sample, refreshed while a screen with a live timer is
 active, so live timing renders from the Model instead of the clock. History

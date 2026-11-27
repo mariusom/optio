@@ -32,7 +32,7 @@ export const CreateTemplate = Command.make(
             now,
           }),
         );
-        return Message.TemplateCreated();
+        return Message.SucceededCreateTemplate();
       }),
     ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );
@@ -44,7 +44,7 @@ export const SetDefaultTemplate = Command.make(
     withStore(({ store, events }) =>
       Effect.gen(function* () {
         yield* store.commit(events.templateDefaultSet({ id }));
-        return Message.TemplateOpDone();
+        return Message.SucceededSetDefaultTemplate();
       }),
     ).pipe(serialized, reportFailure("save", failedTemplateOp)),
 );
@@ -73,7 +73,7 @@ export const DuplicateTemplate = Command.make(
           events.templateCreated({ id: copyId, name: copyName, isDefault: false, now }),
           events.fieldsReplaced({ templateId: copyId, fields }),
         );
-        return Message.DuplicatedTemplate({ id: copyId });
+        return Message.SucceededDuplicateTemplate({ id: copyId });
       }),
     ).pipe(serialized, reportFailure("duplicate", failedTemplateOp)),
 );
@@ -86,7 +86,7 @@ export const DeleteTemplate = Command.make(
       Effect.gen(function* () {
         const templates = store.query(tables.templates.select());
         const target = Array.findFirst(templates, (t) => t.id === id);
-        if (Option.isNone(target)) return Message.TemplateOpDone();
+        if (Option.isNone(target)) return Message.SucceededDeleteTemplate();
         // Deleting the default promotes the earliest other template BEFORE deletion
         const [firstRemaining, ...laterRemaining] = Array.filter(templates, (t) => t.id !== id);
         const promote =
@@ -101,7 +101,7 @@ export const DeleteTemplate = Command.make(
               ]
             : [];
         yield* store.commit(...promote, events.templateDeleted({ id }));
-        return Message.TemplateOpDone();
+        return Message.SucceededDeleteTemplate();
       }),
     ).pipe(serialized, reportFailure("delete", failedTemplateOp)),
 );
@@ -251,10 +251,10 @@ export const EnsureTemplatesSeeded = Command.make("EnsureTemplatesSeeded", { arg
     Effect.gen(function* () {
       const now = yield* DateTime.nowAsDate;
       const existing = store.query(tables.templates.select());
-      if (existing.length > 0) return Message.TemplatesSeededCheck();
+      if (existing.length > 0) return Message.SucceededEnsureTemplatesSeeded();
       const templates = yield* withRandomUuids(sampleTemplates);
       yield* store.commit(events.templatesSeeded({ templates, now }));
-      return Message.TemplatesSeededCheck();
+      return Message.SucceededEnsureTemplatesSeeded();
     }),
   ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );
@@ -280,7 +280,7 @@ export const AddSampleTemplates = Command.make("AddSampleTemplates", { args: {} 
       );
       if (missing.length > 0)
         yield* store.commit(events.templatesSeeded({ templates: missing, now }));
-      return Message.SampleTemplatesAdded();
+      return Message.SucceededAddSampleTemplates();
     }),
   ).pipe(serialized, reportFailure("create", failedTemplateOp)),
 );

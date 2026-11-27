@@ -39,7 +39,7 @@ const tickStream = (interval: Duration.Duration): Stream.Stream<Message> =>
   documentVisibility.pipe(
     Stream.switchMap((visible) => (visible ? Stream.tick(interval) : Stream.empty)),
     Stream.mapEffect(() => Clock.currentTimeMillis),
-    Stream.map((now) => Message.Tick({ now })),
+    Stream.map((now) => Message.Ticked({ now })),
   );
 
 /** Idle time after the last keystroke before typed answers are written. */

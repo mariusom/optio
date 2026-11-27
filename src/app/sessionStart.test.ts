@@ -13,7 +13,7 @@ describe("starting while another tab's session is live", () => {
   it("joins it, keeps the typed name, and explains why until dismissed or left", () => {
     const joined = update(
       start,
-      Message.SessionStarted({ sessionId: "a", joinedExisting: true }),
+      Message.SucceededStartSession({ sessionId: "a", joinedExisting: true }),
     ).model;
     expect(joined.joinedExistingSession).toBe(true);
     expect(joined.sessionNameInput).toBe("Race B");
@@ -27,7 +27,7 @@ describe("starting while another tab's session is live", () => {
   it("starts normally without the notice", () => {
     const started = update(
       start,
-      Message.SessionStarted({ sessionId: "b", joinedExisting: false }),
+      Message.SucceededStartSession({ sessionId: "b", joinedExisting: false }),
     ).model;
     expect(started.joinedExistingSession).toBe(false);
     expect(started.sessionNameInput).toBe("");

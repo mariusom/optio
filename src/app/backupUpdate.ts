@@ -9,9 +9,9 @@ type Result = UpdateResult<Model>;
 type BackupHandlers = Pick<
   MessageHandlers<Result>,
   | "ClickedDownloadBackup"
-  | "BackupDownloaded"
+  | "SucceededDownloadBackup"
   | "ChoseBackupFile"
-  | "BackupRestored"
+  | "SucceededRestoreBackup"
   | "FailedBackup"
   | "ClickedResetStorage"
   | "CanceledResetStorage"
@@ -33,7 +33,7 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
           // While saving is stalled the open session is included: it may never reach disk.
           commands: [DownloadBackup.make({ includeOpenSession: model.saveStalled })],
         },
-  BackupDownloaded: ({ filename }) => done(model, "success", `Saved ${filename}.`),
+  SucceededDownloadBackup: ({ filename }) => done(model, "success", `Saved ${filename}.`),
   ChoseBackupFile: () =>
     model.backupBusy
       ? { model }
@@ -48,7 +48,7 @@ export const backupHandlers = (model: Model): BackupHandlers => ({
           },
           commands: [RestoreBackup.make({ inputId: backupInputId })],
         },
-  BackupRestored: (counts) => done(model, "success", restoreSummary(counts)),
+  SucceededRestoreBackup: (counts) => done(model, "success", restoreSummary(counts)),
   FailedBackup: ({ error }) => done(model, "error", error),
   ClickedResetStorage: () => ({ model: { ...model, pendingStorageReset: true } }),
   CanceledResetStorage: () => ({ model: { ...model, pendingStorageReset: false } }),

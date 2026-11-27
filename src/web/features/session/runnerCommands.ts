@@ -67,7 +67,7 @@ export const UpdateFieldValues = Command.make(
             ),
           );
         }
-        return Message.UpdatedFieldValue();
+        return Message.SucceededUpdateFieldValues();
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 );
@@ -88,14 +88,14 @@ export const AdjustCounter = Command.make(
           field.kind !== "counter" ||
           !isScalarAnswerValid("counter", field.value)
         )
-          return Message.UpdatedFieldValue();
-        if (!isPersistedFieldEditable(access, taskFieldId)) return Message.UpdatedFieldValue();
+          return Message.SucceededAdjustCounter();
+        if (!isPersistedFieldEditable(access, taskFieldId)) return Message.SucceededAdjustCounter();
         const value = Number(field.value) + delta;
-        if (value < 0 || !Number.isSafeInteger(value)) return Message.UpdatedFieldValue();
+        if (value < 0 || !Number.isSafeInteger(value)) return Message.SucceededAdjustCounter();
         yield* store.commit(
           events.taskFieldValueChanged({ id: taskFieldId, value: String(value), now: committedAt }),
         );
-        return Message.UpdatedFieldValue();
+        return Message.SucceededAdjustCounter();
       }),
     ).pipe(serialized, reportFailure("save", failed)),
 );
@@ -115,7 +115,7 @@ export const RecordTask = Command.make(
         if (Option.isNone(currentRow)) return failed("That task isn’t available any more.");
         // Guard: if task already finished, no-op
         if (currentRow.value.endDate !== null)
-          return Message.TaskRecorded({ taskId: currentTaskId, fresh: false });
+          return Message.SucceededRecordTask({ taskId: currentTaskId, fresh: false });
 
         const fieldRows = store.query(
           tables.sessionTaskFields
@@ -140,7 +140,7 @@ export const RecordTask = Command.make(
             fields: nextFields,
           }),
         );
-        return Message.TaskRecorded({ taskId: currentTaskId, fresh: true });
+        return Message.SucceededRecordTask({ taskId: currentTaskId, fresh: true });
       }),
     ).pipe(serialized, reportFailure("record", failed)),
 );
@@ -171,7 +171,7 @@ export const EndSession = Command.make(
             events.sessionLiveGraphCleared({ sessionId }),
             events.sessionDeleted({ id: sessionId }),
           );
-          return Message.SessionEnded();
+          return Message.SucceededEndSession();
         }
 
         const records = [];
@@ -195,7 +195,7 @@ export const EndSession = Command.make(
           events.sessionEnded({ id: sessionId, endedAt, records }),
           events.sessionLiveGraphCleared({ sessionId }),
         );
-        return Message.SessionEnded();
+        return Message.SucceededEndSession();
       }),
     ).pipe(serialized, reportFailure("end", failed)),
 );

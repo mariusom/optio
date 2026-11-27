@@ -19,7 +19,7 @@ tests; it does not substitute mock study data. See the measured alternatives and
 upstream discussions in [bundling research](dev-bundling-research.md).
 The dev server also shows the Effect UI DevTools overlay (`DevTools.layer` from
 `@effect/ui-devtools`, a dev dependency provided only under `import.meta.env.DEV`,
-so production builds omit it). `Tick` is excluded from its history. Its WebMCP
+so production builds omit it). `Ticked` is excluded from its history. Its WebMCP
 tools are off (`webMcp: false`), and do not add its Vite plugin, MCP server or
 `dispatch` option: those would let outside tools send Messages without the
 consent described in [agent access](agent-access.md).

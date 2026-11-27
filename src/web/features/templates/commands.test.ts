@@ -35,25 +35,25 @@ describe.each([
   [
     "create",
     () => CreateTemplate.make({ id: "new", name: "Study" }),
-    Message.TemplateCreated(),
+    Message.SucceededCreateTemplate(),
     "Couldn't create that. Please try again.",
   ],
   [
     "set default",
     () => SetDefaultTemplate.make({ id: "existing" }),
-    Message.TemplateOpDone(),
+    Message.SucceededSetDefaultTemplate(),
     "Couldn't save that. Please try again.",
   ],
   [
     "seed",
     () => EnsureTemplatesSeeded.make({}),
-    Message.TemplatesSeededCheck(),
+    Message.SucceededEnsureTemplatesSeeded(),
     "Couldn't create that. Please try again.",
   ],
   [
     "add samples",
     () => AddSampleTemplates.make({}),
-    Message.SampleTemplatesAdded(),
+    Message.SucceededAddSampleTemplates(),
     "Couldn't create that. Please try again.",
   ],
 ] as const)("%s template persistence", (_name, command, success, failure) => {
@@ -110,7 +110,7 @@ describe("CreateTemplate", () => {
           isDefault: false,
           fields,
         }).effect;
-        expect(message).toEqual(Message.TemplateSaved());
+        expect(message).toEqual(Message.SucceededSaveTemplate());
         expect(commit).toHaveBeenCalledExactlyOnceWith(
           {
             name: "v3.TemplateCreated",
@@ -130,7 +130,7 @@ describe("CreateTemplate", () => {
     () =>
       Effect.gen(function* () {
         const message = yield* CreateTemplate.make({ id: "new", name: "  Study  " }).effect;
-        expect(message).toEqual(Message.TemplateCreated());
+        expect(message).toEqual(Message.SucceededCreateTemplate());
         expect(commit).toHaveBeenCalledWith({
           name: "v3.TemplateCreated",
           args: { id: "new", name: "Study", isDefault: true, now: expect.any(Date) },
@@ -196,7 +196,7 @@ describe("template queries", () => {
   it.effect("seeds the four sample templates when the app is empty", () =>
     Effect.gen(function* () {
       const message = yield* EnsureTemplatesSeeded.make({}).effect;
-      expect(message).toEqual(Message.TemplatesSeededCheck());
+      expect(message).toEqual(Message.SucceededEnsureTemplatesSeeded());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Ward round",
@@ -210,7 +210,7 @@ describe("template queries", () => {
     Effect.gen(function* () {
       query.mockReturnValue([{ id: "existing" }]);
       const message = yield* EnsureTemplatesSeeded.make({}).effect;
-      expect(message).toEqual(Message.TemplatesSeededCheck());
+      expect(message).toEqual(Message.SucceededEnsureTemplatesSeeded());
       expect(commit).not.toHaveBeenCalled();
     }),
   );
@@ -221,7 +221,7 @@ describe("AddSampleTemplates", () => {
     Effect.gen(function* () {
       query.mockReturnValue([{ name: "Ward round" }, { name: "My own study" }]);
       const message = yield* AddSampleTemplates.make({}).effect;
-      expect(message).toEqual(Message.SampleTemplatesAdded());
+      expect(message).toEqual(Message.SucceededAddSampleTemplates());
       expect(seededTemplates().map((t: { name: string }) => t.name)).toEqual([
         "Assembly line",
         "Warehouse pick",
@@ -237,7 +237,7 @@ describe("AddSampleTemplates", () => {
         sampleTemplates(() => crypto.randomUUID()).map((template) => ({ name: template.name })),
       );
       const message = yield* AddSampleTemplates.make({}).effect;
-      expect(message).toEqual(Message.SampleTemplatesAdded());
+      expect(message).toEqual(Message.SucceededAddSampleTemplates());
       expect(commit).not.toHaveBeenCalled();
     }),
   );
@@ -245,7 +245,7 @@ describe("AddSampleTemplates", () => {
   it.effect("makes the first sample the default when the app has no templates", () =>
     Effect.gen(function* () {
       const message = yield* AddSampleTemplates.make({}).effect;
-      expect(message).toEqual(Message.SampleTemplatesAdded());
+      expect(message).toEqual(Message.SucceededAddSampleTemplates());
       expect(seededTemplates().map((t: { isDefault: boolean }) => t.isDefault)).toEqual([
         true,
         false,

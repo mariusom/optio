@@ -15,7 +15,7 @@ export const fieldGroupClass =
   "gap-5 data-[slot=checkbox-group]:gap-3 *:data-[slot=field-group]:gap-4 group/field-group @container/field-group flex w-full flex-col";
 
 /** Upstream cva base + per-orientation variant strings. */
-export const fieldBaseClass = "data-[invalid=true]:text-destructive gap-2 group/field flex w-full";
+export const fieldBaseClass = "data-invalid:text-destructive gap-2 group/field flex w-full";
 
 export const fieldOrientationClasses = {
   vertical: "flex-col *:w-full [&>.sr-only]:w-auto",
@@ -95,7 +95,7 @@ export const field = <M>(
     .attr("role", "group")
     .attr("data-slot", "field")
     .attr("data-orientation", orientation)
-    .attr("data-invalid", config.isInvalid === true ? "true" : undefined)
+    .attr("data-invalid", config.isInvalid === true ? "" : undefined)
     .class(cn(fieldBaseClass, fieldOrientationClasses[orientation], config.className))
     .children(children);
 };
@@ -150,7 +150,7 @@ export const fieldSeparator = <M>(
   const hasContent = children.length > 0;
   return h.div
     .attr("data-slot", "field-separator")
-    .attr("data-content", hasContent ? "true" : "false")
+    .attr("data-content", hasContent ? "" : undefined)
     .class(cn(fieldSeparatorClass, config.className))
     .children(
       h.div

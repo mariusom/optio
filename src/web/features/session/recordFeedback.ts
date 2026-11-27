@@ -19,6 +19,6 @@ export const VibrateRecorded = Command.make("VibrateRecorded", { args: {} }, () 
     } catch {
       // Vibration is optional feedback.
     }
-    return Message.GaveRecordFeedback();
+    return Message.CompletedVibrateRecorded();
   }),
 );

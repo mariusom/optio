@@ -140,7 +140,7 @@ describe("history detail regressions", () => {
       expect(
         await Effect.runPromise(ExportSessionCsv.make({ sessionId: "s1" }).effect),
       ).toMatchObject({
-        _tag: "CsvExported",
+        _tag: "SucceededExportSessionCsv",
       });
       expect(csv.mock.results[0]?.value).toBe(
         "id,A,B,C,D,E,F,startTime,endTime\n1,,false,true,true,,No,,",
@@ -175,7 +175,7 @@ describe("history detail regressions", () => {
           state,
           source === "subscription"
             ? Message.GotHistoryDetail({ detail: null })
-            : Message.HistoryDeleted(),
+            : Message.SucceededDeleteHistorySession(),
         ).model;
         expect(state).toMatchObject({
           selectedHistorySession: null,

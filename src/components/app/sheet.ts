@@ -30,7 +30,8 @@ export type SheetConfig<M> = Readonly<{
 // the only open/closed state. The <dialog> is rendered with `modal(true)`:
 // the browser host shows it with `showModal()` at the commit that inserts it
 // (top layer, inert page) and closes it before removing it.
-// Escape arrives as `cancel`, which the page answers with `onDismiss`.
+// Escape arrives as `cancel`, which the page answers with `onDismiss`; a
+// close the browser forces anyway arrives as `close`, which dismisses too.
 //
 // The mount below adds what the host leaves to the app: focus entry
 // (`[autofocus]`, else the first control), Tab wrapping inside the sheet (a
@@ -168,7 +169,14 @@ export const sheet = <M>(config: SheetConfig<M>, children: ReadonlyArray<Child>,
           ? "items-stretch justify-end"
           : "items-end justify-center sm:items-center",
       )
-      .on("cancel", () => config.onDismiss, { preventDefault: true })
+      // Escape or a backdrop click. When the browser won't let it be
+      // cancelled, it closes the sheet itself and `close` reports it instead.
+      .on("cancel", ({ cancelable }) => (cancelable ? config.onDismiss : undefined), {
+        preventDefault: true,
+      })
+      // Open while rendered: the host's own close on removal never reaches a
+      // handler, so every `close` here is the browser forcing it shut.
+      .on("close", () => config.onDismiss)
       .onMount(ShowSheet({ id: config.id }))
       .children(
         h.div

@@ -42,7 +42,7 @@ export const SaveTemplate = Command.make(
             events.templateUpdated({ id, name: trimmedName, isDefault, fields: dense, now }),
           );
         }
-        return Message.TemplateSaved();
+        return Message.SucceededSaveTemplate();
       }),
     ).pipe(
       serialized,

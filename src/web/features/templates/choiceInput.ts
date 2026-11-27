@@ -22,6 +22,6 @@ export const ClearNewChoice = Command.make(
       const input =
         typeof document === "undefined" ? null : document.getElementById(newChoiceInputId);
       if (input instanceof HTMLInputElement && String.trim(input.value) === added) input.value = "";
-      return Message.ClearedNewChoice();
+      return Message.CompletedClearNewChoice();
     }),
 );

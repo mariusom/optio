@@ -1,3 +1,4 @@
+import { Toggle } from "@effect/ui-kit";
 import { Array, pipe, String } from "effect";
 import type { H } from "@/lib/view";
 
@@ -48,14 +49,14 @@ const exclusiveToggle = (
   config: Readonly<{ option: string; index: number; isExclusive: boolean }>,
   h: H<Message>,
 ) =>
-  h.button
-    .attr("type", "button")
+  Toggle(h, {
+    props: { pressed: config.isExclusive },
+    onToggle: () => Message.ToggledExclusiveOption({ index: config.index }),
+  })
     .class(
       "group/exclusive flex h-auto min-h-11 shrink-0 items-center self-stretch px-1 outline-none focus-visible:outline-2 focus-visible:-outline-offset-3 focus-visible:outline-ring",
     )
-    .attr("aria-pressed", globalThis.String(config.isExclusive))
     .attr("aria-label", `${config.option} clears others`)
-    .on("click", Message.ToggledExclusiveOption({ index: config.index }))
     .children(
       h.span
         .class(

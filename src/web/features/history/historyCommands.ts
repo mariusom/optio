@@ -20,9 +20,9 @@ const downloadCsv = (csv: string, filename: string) => {
   try {
     saveTextFile(csv, filename, "text/csv;charset=utf-8;");
   } catch (error) {
-    return Message.FailedCsvExport({ error: friendlyFailure("export", error) });
+    return Message.FailedExportSessionCsv({ error: friendlyFailure("export", error) });
   }
-  return Message.CsvExported({ filename });
+  return Message.SucceededExportSessionCsv({ filename });
 };
 
 const toCsvSection = (section: {
@@ -39,7 +39,7 @@ const toCsvSection = (section: {
 });
 
 const failedHistoryOp = (error: string) => Message.FailedHistoryOp({ error });
-const failedExport = (error: string) => Message.FailedCsvExport({ error });
+const failedExport = (error: string) => Message.FailedExportSessionCsv({ error });
 
 // DeleteHistorySession → sessionDeleted
 export const DeleteHistorySession = Command.make(
@@ -49,7 +49,7 @@ export const DeleteHistorySession = Command.make(
     withStore(({ store, events }) =>
       Effect.gen(function* () {
         yield* store.commit(events.sessionDeleted({ id }));
-        return Message.HistoryDeleted();
+        return Message.SucceededDeleteHistorySession();
       }),
     ).pipe(serialized, reportFailure("delete", failedHistoryOp)),
 );
@@ -62,7 +62,7 @@ export const RenameHistorySession = Command.make(
     withStore(({ store, events }) =>
       Effect.gen(function* () {
         yield* store.commit(events.sessionRenamed({ id, sessionName }));
-        return Message.HistoryNameUpdated();
+        return Message.SucceededRenameHistorySession();
       }),
     ).pipe(serialized, reportFailure("save", failedHistoryOp)),
 );

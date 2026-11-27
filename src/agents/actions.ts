@@ -48,7 +48,7 @@ export const AgentAction = Schema.Union([
   Message.cases.ConfirmedSaveField,
   Message.cases.ClickedSaveTemplate,
   Message.cases.ClickedCancelEditTemplate,
-  Message.cases.ShowDiscardConfirm,
+  Message.cases.RequestedDiscard,
   Message.cases.CanceledDiscard,
   Message.cases.ConfirmedDiscard,
   Message.cases.ChangedSessionNameInput,

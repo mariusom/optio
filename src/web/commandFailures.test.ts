@@ -47,7 +47,7 @@ const cases = [
     name: "UpdateFieldValues",
     command: () => UpdateFieldValues.make({ writes: [{ taskFieldId: "field", value: "x" }] }),
     rows: [[{ id: "field", taskId: "task" }], [task]],
-    success: "UpdatedFieldValue",
+    success: "SucceededUpdateFieldValues",
     failure: "FailedRunnerOp",
     writes: true,
   },
@@ -55,7 +55,7 @@ const cases = [
     name: "RecordTask",
     command: () => RecordTask.make({ sessionId: "session", currentTaskId: "task" }),
     rows: [[task], []],
-    success: "TaskRecorded",
+    success: "SucceededRecordTask",
     failure: "FailedRunnerOp",
     writes: true,
   },
@@ -63,7 +63,7 @@ const cases = [
     name: "EndSession empty",
     command: () => EndSession.make({ sessionId: "session" }),
     rows: [[liveSession], [task]],
-    success: "SessionEnded",
+    success: "SucceededEndSession",
     failure: "FailedRunnerOp",
     writes: true,
   },
@@ -71,7 +71,7 @@ const cases = [
     name: "EndSession archive",
     command: () => EndSession.make({ sessionId: "session" }),
     rows: [[liveSession], [finishedTask], []],
-    success: "SessionEnded",
+    success: "SucceededEndSession",
     failure: "FailedRunnerOp",
     writes: true,
   },
@@ -111,7 +111,7 @@ const cases = [
     name: "RenameHistorySession",
     command: () => RenameHistorySession.make({ id: "session", sessionName: "Edited" }),
     rows: [],
-    success: "HistoryNameUpdated",
+    success: "SucceededRenameHistorySession",
     failure: "FailedHistoryOp",
     writes: true,
   },
@@ -119,7 +119,7 @@ const cases = [
     name: "DeleteHistorySession",
     command: () => DeleteHistorySession.make({ id: "session" }),
     rows: [],
-    success: "HistoryDeleted",
+    success: "SucceededDeleteHistorySession",
     failure: "FailedHistoryOp",
     writes: true,
   },
@@ -134,15 +134,15 @@ const cases = [
         sections: [],
       },
     ],
-    success: "CsvExported",
-    failure: "FailedCsvExport",
+    success: "SucceededExportSessionCsv",
+    failure: "FailedExportSessionCsv",
     writes: false,
   },
   {
     name: "SaveTemplate",
     command: () => SaveTemplate.make(saveArgs),
     rows: [],
-    success: "TemplateSaved",
+    success: "SucceededSaveTemplate",
     failure: "FailedTemplateOp",
     writes: true,
   },
@@ -150,7 +150,7 @@ const cases = [
     name: "SaveTemplate default",
     command: () => SaveTemplate.make({ ...saveArgs, isDefault: true }),
     rows: [],
-    success: "TemplateSaved",
+    success: "SucceededSaveTemplate",
     failure: "FailedTemplateOp",
     writes: true,
   },
@@ -158,7 +158,7 @@ const cases = [
     name: "DuplicateTemplate",
     command: () => DuplicateTemplate.make({ id: "template" }),
     rows: [[template], []],
-    success: "DuplicatedTemplate",
+    success: "SucceededDuplicateTemplate",
     failure: "FailedTemplateOp",
     writes: true,
   },
@@ -166,7 +166,7 @@ const cases = [
     name: "DeleteTemplate",
     command: () => DeleteTemplate.make({ id: "template" }),
     rows: [[template]],
-    success: "TemplateOpDone",
+    success: "SucceededDeleteTemplate",
     failure: "FailedTemplateOp",
     writes: true,
   },
@@ -230,7 +230,7 @@ describe("field writes", () => {
       const message = yield* UpdateFieldValues.make({
         writes: [{ taskFieldId: "field", value: "late" }],
       }).effect;
-      expect(message).toMatchObject({ _tag: "UpdatedFieldValue" });
+      expect(message).toMatchObject({ _tag: "SucceededUpdateFieldValues" });
       expect(commit).toHaveBeenCalledTimes(commits);
     }),
   );
@@ -250,7 +250,7 @@ describe("batched field writes", () => {
           { taskFieldId: "closed", value: "Late" },
         ],
       }).effect;
-      expect(result).toMatchObject({ _tag: "UpdatedFieldValue" });
+      expect(result).toMatchObject({ _tag: "SucceededUpdateFieldValues" });
       expect(commit).toHaveBeenCalledTimes(1);
       expect(commit.mock.calls[0]).toHaveLength(1);
       expect(commit.mock.calls[0]![0]).toMatchObject({ args: { id: "open", value: "Observed" } });
@@ -392,7 +392,7 @@ describe("EndSession idempotency", () => {
 
       const first = yield* EndSession.make({ sessionId: "session" }).effect;
       expect(first).toMatchObject({
-        _tag: "SessionEnded",
+        _tag: "SucceededEndSession",
       });
       const second = yield* EndSession.make({ sessionId: "session" }).effect;
       expect(second).toMatchObject({

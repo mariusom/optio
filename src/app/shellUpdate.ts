@@ -87,10 +87,10 @@ export const agentHandlers = (
 
 type LookMessage =
   | "SelectedLook"
-  | "LookSaveFinished"
+  | "CompletedSaveLook"
   | "ChangedGrid"
   | "SelectedControlSize"
-  | "ControlSizeSaveFinished";
+  | "CompletedSaveControlSize";
 
 /** Look and control size: applied by their save commands, like font. */
 const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
@@ -99,14 +99,14 @@ const lookHandlers = (model: Model): Pick<AllHandlers, LookMessage> => ({
     model:
       grid === "history" ? { ...model, historyGrid: state } : { ...model, templatesGrid: state },
   }),
-  LookSaveFinished: ({ look, saved }) => ({
+  CompletedSaveLook: ({ look, saved }) => ({
     model: look === model.look ? { ...model, lookSaveFailed: !saved } : model,
   }),
   SelectedControlSize: ({ controlSize }) => ({
     model: { ...model, controlSize },
     commands: [SaveControlSize.make({ controlSize })],
   }),
-  ControlSizeSaveFinished: ({ controlSize, saved }) => ({
+  CompletedSaveControlSize: ({ controlSize, saved }) => ({
     model: controlSize === model.controlSize ? { ...model, controlSizeSaveFailed: !saved } : model,
   }),
 });
@@ -218,26 +218,25 @@ const routeHandlers = (model: Model): Pick<AllHandlers, RouteMessage> => ({
 type ShellHandlers = Pick<
   AllHandlers,
   | "SelectedTheme"
-  | "ThemeSaveFinished"
+  | "CompletedSaveTheme"
   | "ChangedSystemColorScheme"
-  | "AppliedColorScheme"
+  | "CompletedApplyColorScheme"
   | "SelectedStyle"
-  | "StyleSaveFinished"
+  | "CompletedSaveStyle"
   | "SelectedFont"
-  | "FontSaveFinished"
+  | "CompletedSaveFont"
   | "SelectedIconLibrary"
-  | "IconLibrarySaveFinished"
+  | "CompletedSaveIconLibrary"
   | "SelectedAccent"
   | "OpenedAccentPicker"
   | "ChangedAccentDraft"
   | "CanceledAccentPicker"
   | "ConfirmedAccentPicker"
-  | "AccentSaveFinished"
+  | "CompletedSaveAccent"
   | LookMessage
   | AppUpdateMessage
   | RouteMessage
   | "FailedDetailLoad"
-  | "SupersededStyleSave"
 >;
 export const shellHandlers = (model: Model): ShellHandlers => ({
   SelectedTheme: ({ theme }) => ({
@@ -253,16 +252,16 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     if (model.theme !== "auto") return { model: next };
     return { model: next, commands: [ApplyColorScheme.make({ dark: prefersDark })] };
   },
-  AppliedColorScheme: () => ({ model }),
+  CompletedApplyColorScheme: () => ({ model }),
   ...appUpdateHandlers(model),
-  ThemeSaveFinished: ({ theme, saved }) => ({
+  CompletedSaveTheme: ({ theme, saved }) => ({
     model: theme === model.theme ? { ...model, themeSaveFailed: !saved } : model,
   }),
   SelectedStyle: ({ style }) => ({
     model: { ...model, style },
     commands: [SaveStyle.make({ style })],
   }),
-  StyleSaveFinished: ({ style, appliedStyle, saved, loadFailed }) => ({
+  CompletedSaveStyle: ({ style, appliedStyle, saved, loadFailed }) => ({
     model:
       style === model.style
         ? {
@@ -277,14 +276,14 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
     model: { ...model, font },
     commands: [SaveFont.make({ font })],
   }),
-  FontSaveFinished: ({ font, saved }) => ({
+  CompletedSaveFont: ({ font, saved }) => ({
     model: font === model.font ? { ...model, fontSaveFailed: !saved } : model,
   }),
   SelectedIconLibrary: ({ library }) => ({
     model: { ...model, iconLibrary: library },
     commands: [SaveIconLibrary.make({ library })],
   }),
-  IconLibrarySaveFinished: ({ library, saved }) => ({
+  CompletedSaveIconLibrary: ({ library, saved }) => ({
     model: library === model.iconLibrary ? { ...model, iconLibrarySaveFailed: !saved } : model,
   }),
   SelectedAccent: ({ accent }) => ({
@@ -309,11 +308,10 @@ export const shellHandlers = (model: Model): ShellHandlers => ({
       commands: [SaveAccent.make({ accent })],
     };
   },
-  AccentSaveFinished: ({ accent, saved }) => ({
+  CompletedSaveAccent: ({ accent, saved }) => ({
     model: accent === model.accent ? { ...model, accentSaveFailed: !saved } : model,
   }),
   ...lookHandlers(model),
   ...routeHandlers(model),
   FailedDetailLoad: () => ({ model: { ...model, detailLoadFailed: true } }),
-  SupersededStyleSave: () => ({ model }),
 });

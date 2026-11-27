@@ -78,7 +78,7 @@ describe("DiscardLiveSession live-session guard", () => {
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       const message = yield* DiscardLiveSession.make({ sessionId: "s" }).effect;
-      expect(message).toEqual(Message.SessionDiscarded());
+      expect(message).toEqual(Message.SucceededDiscardLiveSession());
       expect(query).toHaveBeenCalledTimes(1);
       expect(commit).not.toHaveBeenCalled();
     }),
@@ -91,7 +91,7 @@ describe("DiscardLiveSession live-session guard", () => {
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       const message = yield* DiscardLiveSession.make({ sessionId: "s" }).effect;
-      expect(message).toEqual(Message.SessionDiscarded());
+      expect(message).toEqual(Message.SucceededDiscardLiveSession());
       expect(query).toHaveBeenCalledTimes(1);
       expect(commit).toHaveBeenCalledWith(
         events.sessionLiveGraphCleared({ sessionId: "s" }),
@@ -158,7 +158,7 @@ describe("StartSession template resolution", () => {
           fields: [],
         }).effect;
         expect(message).toEqual(
-          Message.SessionStarted({ sessionId: "session", joinedExisting: false }),
+          Message.SucceededStartSession({ sessionId: "session", joinedExisting: false }),
         );
         expect(query).toHaveBeenCalledTimes(4);
         expect(commit).toHaveBeenCalledWith(
@@ -218,8 +218,12 @@ describe("StartSession active-session guard", () => {
         { concurrency: "unbounded" },
       );
 
-      expect(first).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: false }));
-      expect(second).toEqual(Message.SessionStarted({ sessionId: "first", joinedExisting: true }));
+      expect(first).toEqual(
+        Message.SucceededStartSession({ sessionId: "first", joinedExisting: false }),
+      );
+      expect(second).toEqual(
+        Message.SucceededStartSession({ sessionId: "first", joinedExisting: true }),
+      );
       expect(commit).toHaveBeenCalledTimes(1);
     }),
   );
@@ -234,7 +238,9 @@ describe("StartSession active-session guard", () => {
       vi.mocked(getStore).mockResolvedValue({ query, commit } as unknown as AppStore);
 
       const message = yield* StartSession.make(args("new")).effect;
-      expect(message).toEqual(Message.SessionStarted({ sessionId: "new", joinedExisting: false }));
+      expect(message).toEqual(
+        Message.SucceededStartSession({ sessionId: "new", joinedExisting: false }),
+      );
       expect(commit).toHaveBeenCalledTimes(1);
     }),
   );
@@ -247,7 +253,7 @@ describe("StartSession active-session guard", () => {
 
       const message = yield* StartSession.make(args("new")).effect;
       expect(message).toEqual(
-        Message.SessionStarted({ sessionId: "active", joinedExisting: true }),
+        Message.SucceededStartSession({ sessionId: "active", joinedExisting: true }),
       );
       expect(commit).not.toHaveBeenCalled();
     }),

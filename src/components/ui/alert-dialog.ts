@@ -171,7 +171,15 @@ export const view = <M>(config: ViewConfig<M>, h: H<M>): Ui => {
   const backdrop = h.div
     .attr("data-slot", "alert-dialog-overlay")
     .class(cn(alertDialogBackdropClass, config.backdropClass));
-  return (config.onClose === undefined ? dialog : dialog.on("cancel", config.onClose)).children(
+  return (
+    config.onClose === undefined
+      ? dialog
+      : // A close request that can't be cancelled closes the dialog anyway, and
+        // `close` follows; a close the Model made arrives while `isOpen` is false.
+        dialog
+          .on("cancel", ({ cancelable }) => (cancelable ? config.onClose : undefined))
+          .on("close", () => (config.isOpen ? config.onClose : undefined))
+  ).children(
     config.isOpen
       ? [
           config.onClose === undefined ? backdrop : backdrop.on("click", config.onClose),
