@@ -166,7 +166,8 @@ describe("history detail regressions", () => {
           .expectMount(ShowSheet({ id: "history-task" }))
           .expect(HtmlLocator.role("dialog", { name: "Session name" }))
           .toExist()
-          .expect(HtmlLocator.role("dialog", { name: "Task 1" }))
+          // Under the topmost modal (Session name), so it is inert.
+          .expect(HtmlLocator.role("dialog", { name: "Task 1", hidden: true }))
           .toExist()
           .expect(HtmlLocator.role("textbox", { name: "Name" }))
           .toHaveValue("Unsaved rename");

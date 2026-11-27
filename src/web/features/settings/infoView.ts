@@ -82,7 +82,7 @@ const agentContent = (access: Model["assistantAccess"], h: H<Message>) => [
                   : "A WebMCP assistant can read, change and delete studies if you approve. Its provider may receive study data. Deletion needs separate confirmation.",
               ),
               // A new query string loads a new document, so the startup consent
-              // gate runs. (Effect UI cancels every form submit, so this is a link.)
+              // gate runs.
               h.a
                 .attr(
                   "href",
