@@ -188,8 +188,8 @@ overrides:
   '@effect/platform-node-shared': 4.1.5
   vite@*: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vitest@*: 5.1.0
-  '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92
-  '@effect/ui-kit': https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92
+  '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b
+  '@effect/ui-kit': https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b
 
 importers:
 
@@ -199,11 +199,11 @@ importers:
         specifier: 4.1.5
         version: 4.1.5(effect@4.1.5)
       '@effect/ui':
-        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92
-        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)
+        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b
+        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5)
       '@effect/ui-kit':
-        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92
-        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5)
+        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b
+        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5)
       '@hugeicons/core-free-icons':
         specifier: ^4.4.0
         version: 4.4.0
@@ -227,8 +227,8 @@ importers:
         specifier: 0.73.2
         version: 0.73.2
       '@effect/ui-devtools':
-        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@77dcd92
-        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@77dcd92(@effect/platform-node@4.1.5(effect@4.1.5)(redis@6.3.1(@opentelemetry/api@1.9.1)))(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5)
+        specifier: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@7bff56b
+        version: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@7bff56b(@effect/platform-node@4.1.5(effect@4.1.5)(redis@6.3.1(@opentelemetry/api@1.9.1)))(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5)
       '@effect/vitest':
         specifier: 4.1.5
         version: 4.1.5(effect@4.1.5)(vitest@5.1.0)
@@ -838,8 +838,8 @@ packages:
     resolution: {integrity: sha512-eM5ayjlp0fD2l+aL+4O/y9d1LwF1m5in5EdNkOYwLFcXI3kcee8CWP4wr2xTc4L/+KJmS/uaYUGWdOj4G46BDA==}
     hasBin: true
 
-  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@77dcd92':
-    resolution: {integrity: sha512-zYF6ePbbSskH3onSGTj1Z2ZYIIRfdxvCxxLubed0NsOuT0/eYkAksSC/0BEpnDJjtWjlYmV6N9Ke9T1BZJUTVA==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@77dcd92}
+  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@7bff56b':
+    resolution: {integrity: sha512-kCLqy6rQvXFBAqyUytgS6Lxa79/r+1dEorb5D+Hva3uP4VNmm/tA8AuF5jmye4X/AH31sUhJ9tQB46uiDBRWZw==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@7bff56b}
     version: 0.0.0
     hasBin: true
     peerDependencies:
@@ -851,15 +851,15 @@ packages:
       '@effect/platform-node':
         optional: true
 
-  '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92':
-    resolution: {integrity: sha512-XLRrtQQeHJ7LxEKpEYZUz/MPoqsLi0pw7gwbMHj6qunsmsOTcC2yg8nq4K/F/cIE6PoySt0CCpWUEx7cxpJpiQ==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92}
+  '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b':
+    resolution: {integrity: sha512-wLh/vd7hsWs4IELZ/NSrp+TmtEMkw8dKCnJbmYVV/aOv7t3L0ianvE8uTSVaVQV1JCVOhLVxEFw9krQ52Qg/6Q==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b}
     version: 0.0.0
     peerDependencies:
       '@effect/ui': ^0.0.0
       effect: 4.1.5
 
-  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92':
-    resolution: {integrity: sha512-POm07ahakQr5GHJgOV7/WzFFNuA6WlK/Ycs8x0/5U4eOaqq8w+PeOq2NYTNN6lqZnMZzfoNTcsVu7Mtltftn1Q==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92}
+  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b':
+    resolution: {integrity: sha512-uYecYnIGC/Q15cl914C6Zbr1FOT1ahCjy625xwQyDODgNdq/yPEdxr6UuhkaYp83zWsiL4rVJsz8nFHziOCBDw==, tarball: https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b}
     version: 0.0.0
     peerDependencies:
       effect: 4.1.5
@@ -3950,20 +3950,20 @@ snapshots:
       '@effect/tsgo-win32-arm64': 0.73.2
       '@effect/tsgo-win32-x64': 0.73.2
 
-  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@77dcd92(@effect/platform-node@4.1.5(effect@4.1.5)(redis@6.3.1(@opentelemetry/api@1.9.1)))(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5)':
+  '@effect/ui-devtools@https://pkg.pr.new/Effect-TS/ui/@effect/ui-devtools@7bff56b(@effect/platform-node@4.1.5(effect@4.1.5)(redis@6.3.1(@opentelemetry/api@1.9.1)))(@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5))(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5)':
     dependencies:
-      '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)
-      '@effect/ui-kit': https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5)
+      '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5)
+      '@effect/ui-kit': https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5)
       effect: 4.1.5
     optionalDependencies:
       '@effect/platform-node': 4.1.5(effect@4.1.5)(redis@6.3.1(@opentelemetry/api@1.9.1))
 
-  '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5))(effect@4.1.5)':
+  '@effect/ui-kit@https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b(@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5))(effect@4.1.5)':
     dependencies:
-      '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)
+      '@effect/ui': https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5)
       effect: 4.1.5
 
-  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92(effect@4.1.5)':
+  '@effect/ui@https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b(effect@4.1.5)':
     dependencies:
       effect: 4.1.5
 

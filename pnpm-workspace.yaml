@@ -12,8 +12,8 @@ overrides:
   vitest@*: "catalog:"
   # Effect UI is a public preview with no npm release: pin its packages to one
   # pkg.pr.new snapshot of Effect-TS/ui so their cross-references resolve.
-  "@effect/ui": https://pkg.pr.new/Effect-TS/ui/@effect/ui@77dcd92
-  "@effect/ui-kit": https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@77dcd92
+  "@effect/ui": https://pkg.pr.new/Effect-TS/ui/@effect/ui@7bff56b
+  "@effect/ui-kit": https://pkg.pr.new/Effect-TS/ui/@effect/ui-kit@7bff56b
 
 allowBuilds:
   msgpackr-extract: false

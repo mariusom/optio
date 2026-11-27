@@ -279,13 +279,12 @@ failure for the document's lifetime. `OPTIO_URL` overrides the preview URL.
 - The UI runs on Effect UI (`@effect/ui`, `@effect/ui-kit`; DevTools
   `@effect/ui-devtools`), the successor to FoldKit 0.x, which it replaced. It
   is a public preview with no npm release: all three install from the
-  pkg.pr.new snapshot of Effect-TS/ui commit `77dcd92`, pinned by URL and
+  pkg.pr.new snapshot of Effect-TS/ui commit `7bff56b`, pinned by URL and
   lockfile hash. `pnpm-workspace.yaml` overrides `@effect/ui` and
   `@effect/ui-kit` to the same URLs, because ui-devtools peer-depends on
   them and they are not on npm. Bump all of them together by replacing the
   short SHA in `package.json` and `pnpm-workspace.yaml`, then run every check
-  in this file: preview APIs can change between snapshots. Effect UI cancels
-  every form `submit`, so a control that must load a new document is a link.
+  in this file: preview APIs can change between snapshots.
   The custom Record/Save shortcut ignores `keyCode` 229 when an IME clears
   `isComposing` too early. `web/features/templates/reportBody.ts` is the
   earlier standalone-component spike of the template report; the app renders
